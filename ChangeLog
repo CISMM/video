@@ -1,3 +1,12 @@
+2003-11-22  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* roper_example.cpp : Hiding the printf so we could see first
+		messages.
+	* roper_server.cpp : Modifying comments and error messages.
+		Making it send the upper 8 bits of the 12-bit values
+		read from the camera, rather than the lower 8.
+	* video_tempimager_server.cpp : Updated version number.
+
 2003-11-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* edt_server.h : Class to read from raw Pulnix files gotten through

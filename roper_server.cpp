@@ -260,11 +260,11 @@ bool roper_server::open_and_find_parameters(void)
   PL_CHECK_EXIT(pl_get_param(_camera_handle, PARAM_SER_SIZE, ATTR_CURRENT, &num_columns),
     "PARAM_SER_SIZE");
   PL_CHECK_EXIT(pl_get_param(_camera_handle, PARAM_CIRC_BUFFER, ATTR_AVAIL, &avail_flag),
-    "PARAM_SER_SIZE");
+    "PARAM_SER_CIRCBUFFER");
   _num_rows = num_rows;
   _num_columns = num_columns;
   _circbuffer_on = avail_flag;
-  //XXX This code doesn't work -- emailed factory asking about it
+  // XXX This code may or may not work, so turning it off until tested
   _circbuffer_on = false;
   if (!_circbuffer_on) {
     fprintf(stderr,"roper_server::open_and_find_parameters(): Does not support circular buffers (using single-capture mode)\n");
@@ -549,12 +549,22 @@ bool roper_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized
     // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION)
     unsigned  num_x = get_num_columns();
     unsigned  num_y = get_num_rows();
+    //XXX Should be 16-bit version later
     int nRowsPerRegion = vrpn_IMAGER_MAX_REGIONu8/(num_x*sizeof(vrpn_uint8)) - 1;
     unsigned y;
-    //XXX This is hacked to send 8-bit values. Need to modify reader to handle 16-bit ints.
+
+    //XXX This is hacked to optimize the value in the upper 8 bits to be the most-significant bits
+    // of the 12 bits.  I thought this should depend on binning, but it seems like it does not.
+    // Strange.
+    unsigned loop;
+    for (loop = 0; loop < num_x*num_y; loop++) {
+	((vrpn_uint16*)_memory)[loop] = ((vrpn_uint16*)_memory)[loop] << 4;
+    }
+
+    //XXX This is hacked to send the upper 8 bits of each value. Need to modify reader to handle 16-bit ints.
     // For these, stride will be 1 and offset will be 0, and the code will use memcpy() to copy the values.
     const int stride = 2;
-    const int offset = 0;
+    const int offset = 1;
     for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
       svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1,
 	(uns8 *)_memory + offset, stride, num_x * stride);

@@ -58,7 +58,7 @@ void FocusContinuous( int16 hCam )
       /* wait for data or error */
       printf("  Checking status\n");
       while( pl_exp_check_cont_status( hCam, &status, &not_needed,
-	&not_needed ) && (status != READOUT_COMPLETE) && (status != READOUT_FAILED) ) {printf("%d.",status);};
+	&not_needed ) && (status != READOUT_COMPLETE) && (status != READOUT_FAILED) ) {/*printf("%d.",status);*/};
 
       /* Check Error Codes */
       if( status == READOUT_FAILED ) {
