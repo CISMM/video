@@ -1,3 +1,27 @@
+2004-09-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* SEM_camera_server.h : Removed a dangerous method.
+	* diaginc_server.h : Same.
+	* roper_server.h : Same.
+	* base_camera_server.cpp : Fixed the method that stores to
+		a TIFF file so that it gets the correct offset.
+	* base_camera_server.h : Comment changes.
+	* edt_server.cpp : Added a server for a live connection to
+		a camera on an EDT board.
+	* edt_server.h : Same.
+	* file_list.cpp : Made it search for offsets of up to 1000
+		in the file names.
+	* stack_collector.bat : Fixed formatting, added needed path
+		and arguments.
+	* stack_collector.cpp : Made it read from all available cameras
+		rather than just the Roper.  Also made it possible to
+		use a remote Nikon control.  Other major changes.
+	* stack_collector.dsp : Made to link with new needed things.
+	* video.dsw : Added dependencies.
+	* video_spot_tracker.cpp : Removed the imager class, which is
+		now redundant with the camera as they are derived from
+		the same class.
+
 2004-09-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* spot_tracker.cpp : Adds a parabolic really-fast tracking

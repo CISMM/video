@@ -91,10 +91,10 @@ bool  file_list(const string file_name, list <string> &file_list)
     // Start looking for files whose name is the same as the one we
     // have but the number in them is smaller.  We're trying to find
     // the stride to use between file names.  Look for differences of
-    // up to 100 before giving up.  Look both higher and lower than
+    // up to 1000 before giving up.  Look both higher and lower than
     // the number in the file name we were given.
     stride = 0;
-    for (i = 1; i <= 100; i++) {
+    for (i = 1; i <= 1000; i++) {
       string newname = make_filename(file_name, first_number, num_length, num_value+i);
       if (file_exists(newname)) {
 	stride = i;

@@ -25,9 +25,6 @@ public:
   /// Send whole image over a vrpn connection
   virtual bool  send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan);
 
-  /// Get a pointer to the raw memory holding the image.  Dangerous but fast.
-  vrpn_uint16	*get_memory_pointer(void) const { return (vrpn_uint16*)_memory; };
-
 protected:
   unsigned short _binMin, _binMax;//< Range of values that binning can be set to
   unsigned short _bitDepth;	  //< Bit depth that is set

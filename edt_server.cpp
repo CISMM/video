@@ -1,4 +1,241 @@
+#include "edtinc.h"
 #include "edt_server.h"
+
+edt_server::edt_server(bool swap_lines, unsigned num_buffers) :
+d_buffer(NULL),
+d_swap_buffer(NULL),
+d_pdv_p(NULL),
+d_swap_lines(swap_lines),
+d_num_buffers(num_buffers)
+{
+  // In case we fail somewhere along the way
+  _status = false;
+
+  // Open the device and find out what we need to know.
+  _status = open_and_find_parameters();
+}
+
+edt_server::~edt_server()
+{
+  if (d_pdv_p) {
+    pdv_close((PdvDev*)d_pdv_p);
+    d_pdv_p = NULL;
+  }
+  if (d_swap_buffer) {
+    delete [] d_swap_buffer;
+    d_swap_buffer = NULL;
+  }
+}
+
+bool edt_server::open_and_find_parameters(void)
+{
+  char    errstr[256];
+  char    *devname = EDT_INTERFACE;
+  int	  unit = 0;
+  int	  channel = 0;
+
+  // Try to open the default device name and unit
+  d_pdv_p = pdv_open_channel(devname, unit, channel);
+  if (d_pdv_p == NULL) {
+    fprintf(stderr,"edt_server::open_and_find_parameters: Could not open camera\n");
+    sprintf(errstr, "pdv_open_channel(%s%d_%d)", devname, unit, channel);
+    pdv_perror(errstr);
+    return false;
+  }
+
+  // Check the parameters.
+  if (pdv_get_depth((PdvDev*)d_pdv_p) != 8) {
+    fprintf(stderr,"edt_server::open_and_find_parameters: Can only handle 8-bit cameras\n");
+    pdv_close((PdvDev*)d_pdv_p);
+    d_pdv_p = NULL;
+    return false;
+  }
+  _num_columns = pdv_get_width((PdvDev*)d_pdv_p);
+  _num_rows = pdv_get_height((PdvDev*)d_pdv_p);
+  _minX = _minY = 0;
+  _maxX = _num_columns-1;
+  _maxY = _num_rows-1;
+  _binning = 1;
+
+  // Allocate space to swap a line from the buffer
+  if ( (d_swap_buffer = new vrpn_uint8[_num_columns]) == NULL) {
+    fprintf(stderr,"edt_server::open_and_find_parameters: Out of memory\n");
+    pdv_close((PdvDev*)d_pdv_p);
+    d_pdv_p = NULL;
+    return false;
+  }
+
+  /*
+   * allocate four buffers for optimal pdv ring buffer pipeline (reduce if
+   * memory is at a premium)
+   */
+  pdv_multibuf((PdvDev*)d_pdv_p, d_num_buffers);
+
+  // Clear the timeouts value.
+  d_first_timeouts = d_last_timeouts = pdv_timeouts((PdvDev*)d_pdv_p);
+
+  /*
+   * prestart the first image or images outside the loop to get the
+   * pipeline going. Start multiple images unless force_single set in
+   * config file, since some cameras (e.g. ones that need a gap between
+   * images or that take a serial command to start every image) don't
+   * tolerate queueing of multiple images
+   */
+  if (((PdvDev*)d_pdv_p)->dd_p->force_single)
+  {
+      pdv_start_image((PdvDev*)d_pdv_p);
+      d_started = 1;
+  }
+  else
+  {
+      pdv_start_images((PdvDev*)d_pdv_p, d_num_buffers);
+      d_started = d_num_buffers;
+  }
+
+  (void) edt_dtime();		/* initialize time so that the later check will be zero-based. */
+
+  // Read one frame when we start.
+  _status = true;
+  if (read_image_to_memory()) {
+    return true;
+  } else {
+    pdv_close((PdvDev*)d_pdv_p);
+    d_pdv_p = NULL;
+    fprintf(stderr, "edt_server::open_and_find_parameters: could not read image to memory\n");
+    return false;
+  }
+}
+
+bool  edt_server::read_image_to_memory(unsigned minX, unsigned maxX,
+							unsigned minY, unsigned maxY,
+							double exposure_time_millisecs)
+{
+  u_char *image_p;
+
+  if (!_status) { return false; }
+
+  // XXX Set the exposure time.
+  //---------------------------------------------------------------------
+  // Set the size of the window to include all pixels if there were not
+  // any binning.  This means adding all but 1 of the binning back at
+  // the end to cover the pixels that are within that bin.
+  _minX = minX * _binning;
+  _maxX = maxX * _binning + (_binning-1);
+  _minY = minY * _binning;
+  _maxY = maxY * _binning + (_binning-1);
+
+  //---------------------------------------------------------------------
+  // If the maxes are greater than the mins, set them to the size of
+  // the image.
+  if (_maxX <= _minX) {
+    _minX = 0; _maxX = _num_columns - 1;
+  }
+  if (_maxY <= _minY) {
+    _minY = 0; _maxY = _num_rows - 1;
+  }
+
+  //---------------------------------------------------------------------
+  // Clip collection range to the size of the sensor on the camera.
+  if (_minX < 0) { _minX = 0; };
+  if (_minY < 0) { _minY = 0; };
+  if (_maxX >= _num_columns) { _maxX = _num_columns - 1; };
+  if (_maxY >= _num_rows) { _maxY = _num_rows - 1; };
+
+  /*
+   * get the image and immediately start the next one. Processing
+   * can then occur in parallel with the next acquisition
+   */
+  image_p = pdv_wait_image((PdvDev*)d_pdv_p);
+  if (image_p == NULL) {
+    fprintf(stderr,"edt_server::read_image_to_memory(): Failed to read image\n");
+    pdv_close((PdvDev*)d_pdv_p);
+    d_pdv_p = NULL;
+    _status = false;
+    return false;
+  }
+
+  pdv_start_image((PdvDev*)d_pdv_p);
+
+  unsigned timeouts = pdv_timeouts((PdvDev*)d_pdv_p);
+  if (timeouts > d_last_timeouts)
+  {
+      /*
+       * pdv_timeout_cleanup helps recover gracefully after a timeout,
+       * particularly if multiple buffers were prestarted
+       */
+      if (d_num_buffers > 1)
+      {
+	  int     pending = pdv_timeout_cleanup((PdvDev*)d_pdv_p);
+
+	  pdv_start_images((PdvDev*)d_pdv_p, pending);
+      }
+      d_last_timeouts = timeouts;
+  }
+
+  // If we're supposed to swap every other line, do that here.
+  // The image lines are swapped in place.
+  if (d_swap_lines) {
+    unsigned j;    // Indexes into the lines, skipping every other.
+
+    for (j = 0; j < _num_rows; j += 2) {
+      memcpy(d_swap_buffer, image_p + j*_num_columns, _num_columns);
+      memcpy(image_p + (j+1)*_num_columns, image_p + j*_num_columns, _num_columns);
+      memcpy(image_p + (j+1)*_num_columns, d_swap_buffer, _num_columns);
+    }
+  }
+
+  // Point to the image in memory.
+  d_buffer = image_p;
+
+  return true;
+}
+
+/// Get pixels out of the memory buffer
+bool  edt_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint8 &val, int /* ignore color */) const
+{
+  // Make sure we have a valid, open device
+  if (!_status) { return false; };
+
+  // Make sure we are within the range of allowed pixels
+  if ( (X < _minX) || (Y < _minY) || (X > _maxX) || (Y > _maxY) ) {
+    return false;
+  }
+
+  // Fill in the pixel value, assuming pixels vary in X fastest in the file.
+  // Invert Y so that the image shown in the spot tracker program matches the
+  // images shown in the capture program.
+  val = d_buffer[ X + ((_num_rows-1) - Y) * _num_columns ];
+  return true;
+}
+
+bool  edt_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &val, int /* ignore color */) const
+{
+  // Make sure we have a valid, open device
+  if (!_status) { return false; };
+
+  // Make sure we are within the range of allowed pixels
+  if ( (X < _minX) || (Y < _minY) || (X > _maxX) || (Y > _maxY) ) {
+    return false;
+  }
+
+  // Fill in the pixel value, assuming pixels vary in X fastest in the file.
+  val = d_buffer[ X + ((_num_rows-1) - Y) * _num_columns ];
+  return true;
+}
+
+/// Send whole image over a vrpn connection
+bool  edt_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
+{
+  // Make sure we have a valid, open device
+  if (!_status) { return false; };
+
+  ///XXX;
+  fprintf(stderr,"edt_server::send_vrpn_image(): Not yet implemented\n");
+  return false;
+
+  return true;
+}
+
 
 const unsigned PULNIX_X_SIZE = 648;
 const unsigned PULNIX_Y_SIZE = 484;

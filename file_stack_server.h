@@ -46,9 +46,6 @@ public:
   /// Send whole image over a vrpn connection.
   virtual bool  send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan);
 
-  /// Get a pointer to the raw memory holding the image.  Dangerous but fast.
-  vrpn_uint16	*get_memory_pointer(void) const { return NULL; };
-
 protected:
   vrpn_uint16		      *d_buffer;	  //< Holds one frame of data from the file
   enum {PAUSE, PLAY, SINGLE}  d_mode;		  //< What we're doing right now
@@ -107,9 +104,6 @@ public:
 
   /// Send whole image over a vrpn connection.
   virtual bool  send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan);
-
-  /// Get a pointer to the raw memory holding the image.  Dangerous but fast.
-  vrpn_uint16	*get_memory_pointer(void) const { return NULL; };
 
 protected:
   vrpn_uint16		      *d_buffer;	  //< Holds one frame of data from the file

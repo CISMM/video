@@ -19,7 +19,7 @@ static	vrpn_uint16 scale_and_clamp(const double value, const double gain)
   return (vrpn_uint16)(result);
 }
 
-/// Store the memory image to a TIFF file.
+/// Store the portion of the image that is in memory to a TIFF file.
 bool  image_wrapper::write_to_tiff_file(const char *filename, double gain, bool sixteen_bits,
 						    const char *magick_files_dir) const
 {
@@ -44,11 +44,11 @@ bool  image_wrapper::write_to_tiff_file(const char *filename, double gain, bool 
     for (c = 0; c < numcols; c++) {
       int flip_r = (numrows - 1) - r;
       double  value;
-      read_pixel(c, r, value, 0);
+      read_pixel(minx + c, miny + r, value, 0);
       gain_buffer[0 + 3*(c + flip_r * numcols)] = scale_and_clamp(value, gain);
-      read_pixel(c, r, value, 1);
+      read_pixel(minx + c, miny + r, value, 1);
       gain_buffer[1 + 3*(c + flip_r * numcols)] = scale_and_clamp(value, gain);
-      read_pixel(c, r, value, 2);
+      read_pixel(minx + c, miny + r, value, 2);
       gain_buffer[2 + 3*(c + flip_r * numcols)] = scale_and_clamp(value, gain);
     }
   }
@@ -168,4 +168,3 @@ double	copy_of_image::read_pixel_nocheck(int x, int y, unsigned rgb) const
   }
   return _image[index(x, y, rgb)];
 }
-

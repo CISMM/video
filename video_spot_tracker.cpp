@@ -173,7 +173,6 @@ public:
 
 char  *g_device_name = NULL;			  //< Name of the device to open
 base_camera_server  *g_camera;			  //< Camera used to get an image
-image_wrapper	    *g_image;			  //< Image wrapper for the camera
 copy_of_image	    *g_last_image = NULL;	  //< Copy of the last image we had, if any
 float		    g_search_radius = 0;	  //< Search radius for doing local max in before optimizing.
 Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
@@ -270,8 +269,7 @@ double	flip_y(double y)
 
 /// Open the wrapped camera we want to use depending on the name of the
 //  camera we're trying to open.
-bool  get_camera_and_imager(const char *type, base_camera_server **camera, image_wrapper **imager,
-			    Controllable_Video **video)
+bool  get_camera(const char *type, base_camera_server **camera, Controllable_Video **video)
 {
 #ifdef VST_USE_ROPER
   if (!strcmp(type, "roper")) {
@@ -279,7 +277,6 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
     // it fits on the screen.
     roper_server *r = new roper_server(2);
     *camera = r;
-    *imager = r;
   } else
 #endif  
   if (!strcmp(type, "diaginc")) {
@@ -287,17 +284,14 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
     // it fits on the screen.
     diaginc_server *r = new diaginc_server(2);
     *camera = r;
-    *imager = r;
     g_exposure = 80;	// Seems to be the minimum exposure for the one we have
   } else if (!strcmp(type, "directx")) {
     // Passing width and height as zero leaves it open to whatever the camera has
     directx_camera_server *d = new directx_camera_server(1,0,0);	// Use camera #1 (first one found)
     *camera = d;
-    *imager = d;
   } else if (!strcmp(type, "directx640x480")) {
     directx_camera_server *d = new directx_camera_server(1,640,480);	// Use camera #1 (first one found)
     *camera = d;
-    *imager = d;
 
   // If this is a VRPN URL for an SEM device, then open the file and set up
   // to read from that device.
@@ -305,13 +299,12 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
     SEM_Controllable_Video  *s = new SEM_Controllable_Video (type);
     *camera = s;
     *video = s;
-    *imager = s;
 
   // Unknown type, so we presume that it is a file.  Now we figure out what
   // kind of file based on the extension and open the appropriate type of
   // imager.
   } else {
-    fprintf(stderr,"get_camera_and_imager(): Assuming filename (%s)\n", type);
+    fprintf(stderr,"get_camera(): Assuming filename (%s)\n", type);
 
     // If the extension is ".raw" then we assume it is a Pulnix file and open
     // it that way.
@@ -319,7 +312,6 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       Pulnix_Controllable_Video *f = new Pulnix_Controllable_Video(type);
       *camera = f;
       *video = f;
-      *imager = f;
 
     // If the extension is ".sem" then we assume it is a VRPN-format file
     // with an SEM device in it, so we form the name of the device and open
@@ -335,7 +327,6 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       SEM_Controllable_Video *s = new SEM_Controllable_Video(name);
       *camera = s;
       *video = s;
-      *imager = s;
       delete [] name;
 
     // If the extension is ".tif" or ".tiff" or ".bmp" then we assume it is
@@ -351,7 +342,6 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       FileStack_Controllable_Video *s = new FileStack_Controllable_Video(type);
       *camera = s;
       *video = s;
-      *imager = s;
 
     // If the extension is ".stk"  then we assume it is a Metamorph file
     // to be opened by the Metamorph reader.
@@ -360,7 +350,6 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       MetamorphStack_Controllable_Video *s = new MetamorphStack_Controllable_Video(type);
       *camera = s;
       *video = s;
-      *imager = s;
 
     // File of unknown type.  We assume that it is something that DirectX knows
     // how to open.
@@ -369,7 +358,6 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       Directx_Controllable_Video *f = new Directx_Controllable_Video(type);
       *camera = f;
       *video = f;
-      *imager = f;
     }
   }
   return true;
@@ -832,7 +820,7 @@ void myBeadDisplayFunc(void)
     int shift = g_bitdepth - 8;
     for (x = min_x; x < max_x; x++) {
       for (y = min_y; y < max_y; y++) {
-	if (!g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix)) {
+	if (!g_camera->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix)) {
 	  g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = 0;
 	  g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = 0;
 	  g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = 0;
@@ -886,7 +874,7 @@ void myLandscapeDisplayFunc(void)
     for (x = 0; x < g_landscape_size; x++) {
       for (y = 0; y < g_landscape_size; y++) {
 	g_active_tracker->set_location(x + xImageOffset, y + yImageOffset);
-	this_val = g_active_tracker->check_fitness(*g_image);
+	this_val = g_active_tracker->check_fitness(*g_camera);
 	g_landscape_floats[x + g_landscape_size * y] = this_val;
 	if (this_val < min_val) { min_val = this_val; }
 	if (this_val > max_val) { max_val = this_val; }
@@ -938,7 +926,7 @@ void myLandscapeDisplayFunc(void)
       } else {
 	g_active_tracker->set_location(x + xImageOffset, start_y);
       }
-      this_val = g_active_tracker->check_fitness(*g_image);
+      this_val = g_active_tracker->check_fitness(*g_camera);
       glVertex3f( strip_start_x + x * strip_step_x, this_val * scale - offset,0);
     }
     glEnd();
@@ -1114,9 +1102,9 @@ void myIdleFunc(void)
 
   if (g_search_radius > 0) {
     if (g_last_image == NULL) {
-      g_last_image = new copy_of_image(*g_image);
+      g_last_image = new copy_of_image(*g_camera);
     } else {
-      *g_last_image = *g_image;
+      *g_last_image = *g_camera;
     }
   }
 
@@ -1243,12 +1231,12 @@ void myIdleFunc(void)
 	int x_offset, y_offset;
 	int best_x_offset = 0;
 	int best_y_offset = 0;
-	double best_value = max_find.check_fitness(*g_image);
+	double best_value = max_find.check_fitness(*g_camera);
 	for (x_offset = -floor(used_search_radius); x_offset <= floor(used_search_radius); x_offset++) {
 	  for (y_offset = -floor(used_search_radius); y_offset <= floor(used_search_radius); y_offset++) {
 	    if ( (x_offset * x_offset) + (y_offset * y_offset) <= radsq) {
 	      max_find.set_location(x_base + x_offset, y_base + y_offset);
-	      double val = max_find.check_fitness(*g_image);
+	      double val = max_find.check_fitness(*g_camera);
 	      if (val > best_value) {
 		best_x_offset = x_offset;
 		best_y_offset = y_offset;
@@ -1265,9 +1253,9 @@ void myIdleFunc(void)
 
       // Here's where the tracker is optimized to its new location
       if (g_parabolafit) {
-	(*loop)->tracker()->optimize_xy_parabolafit(*g_image, x, y, (*loop)->tracker()->get_x(), (*loop)->tracker()->get_y() );
+	(*loop)->tracker()->optimize_xy_parabolafit(*g_camera, x, y, (*loop)->tracker()->get_x(), (*loop)->tracker()->get_y() );
       } else {
-	(*loop)->tracker()->optimize_xy(*g_image, x, y, (*loop)->tracker()->get_x(), (*loop)->tracker()->get_y() );
+	(*loop)->tracker()->optimize_xy(*g_camera, x, y, (*loop)->tracker()->get_x(), (*loop)->tracker()->get_y() );
       }
 
       // If we are doing prediction, update the estimated velocity based on the
@@ -1351,7 +1339,7 @@ void myIdleFunc(void)
 	  int ky = g_kymograph_filled;
 
 	  // Look up the pixel in the image and put it into the kymograph if we get a reading.
-	  if (!g_image->read_pixel_bilerp(x, y, double_pix)) {
+	  if (!g_camera->read_pixel_bilerp(x, y, double_pix)) {
 	    g_kymograph_image[0 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
 	    g_kymograph_image[1 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
 	    g_kymograph_image[2 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
@@ -2065,10 +2053,10 @@ int main(int argc, char *argv[])
   }
 
   //------------------------------------------------------------------
-  // Open the camera and image wrapper.  If we have a video file, then
+  // Open the camera.  If we have a video file, then
   // set up the Tcl controls to run it.  Also, report the frame number.
-  if (!get_camera_and_imager(g_device_name, &g_camera, &g_image, &g_video)) {
-    fprintf(stderr,"Cannot open camera/imager\n");
+  if (!get_camera(g_device_name, &g_camera, &g_video)) {
+    fprintf(stderr,"Cannot open camera\n");
     if (g_camera) { delete g_camera; g_camera = NULL; }
     cleanup();
     exit(-1);

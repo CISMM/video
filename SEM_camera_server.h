@@ -40,9 +40,6 @@ public:
   /// Send whole image over a vrpn connection
   virtual bool  send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan);
 
-  /// Get a pointer to the raw memory holding the image.  Dangerous but fast.
-  vrpn_uint16	*get_memory_pointer(void) const { return (vrpn_uint16*)_memory; };
-
 protected:
   nmm_Microscope_SEM_Remote *_myScope;	  //< Scope that we're using
   vrpn_File_Connection *_fileCon;	  //< File connection, if we have one.

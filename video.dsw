@@ -362,6 +362,18 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name roper_library
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name base_camera_server
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name diaginc_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name directx_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name edt_library
+    End Project Dependency
 }}}
 
 ###############################################################################
