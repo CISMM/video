@@ -18,6 +18,10 @@ public:
   // Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.
   virtual bool	read_pixel(int x, int y, double	&result) const = 0;
+
+  // Do bilinear interpolation to read from the image, in order to
+  // smoothly interpolate between pixel values.
+  virtual bool	read_pixel_bilerp(double x, double y, double &result) const;
 };
 
 class test_image: public image_wrapper {
@@ -36,6 +40,7 @@ public:
   // Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.
   virtual bool	read_pixel(int x, int y, double &result) const;
+
 
 protected:
   int	  _minx, _maxx, _miny, _maxy;

@@ -1,14 +1,16 @@
-//XXX Doesn't get any images from Betty card; times out.
-//XXX Would like to do multiple spots at the same time.
+//XXX Small-area code should fill in around all trackers, not just the active one.
+//XXX Got a crash down in the image-read callback when reading from video file.
+//XXX Make a better match (Gaussian kernel, or re-use existing, or something)
+//XXX Put in times based on video timestamps for samples rather than real time.
 //XXX Would like to be able to specify the microns-per-pixel value
 //    and have it stored in the log file.
 //XXX Off-by-1 somewhere in Roper when binning (top line dark)
-//XXX PerfectOrbit video doesn't seem to play once it has been loaded!
-//    Pausing does make it jump to the end, like other videos
-//    LongOrbit behaves the same way... (both are large files)
-//    BigBeadCatch plays herky-jerky, especially with larger radius optimizer
-//    The test.avi program seemed to work smoothly.
-//XXX Pause seems to be broken on the video playback -- it skips to the end.
+//XXX Is the camera being deleted twice?
+//XXX When we don't find the camera (or file), in debug the code hangs on camera delete.
+//XXX It doesn't seem to show the first picture when you rewind if it has
+//    been stuck at the end for a while when rewind is pressed.  If it just
+//    got there, or has been there briefly (<1 sec?) it does.  Pressing
+//    rewind again fixes it, as do play and single-step.
 //XXX All of the Y coordinates seem to be inverted in this code compared
 //    to the image-capture code.  Mouse, display, and video clipping.
 //XXX The camera code seems to stop updating the video after about
@@ -29,6 +31,7 @@
 //    AMCAP needs to be run ahead of time to "turn on" the video from
 //    the device -- it stays on after the program exits.  Maybe it is
 //    timing out somehow?
+//XXX One time it hung at quit with the Logitech camera.
 
 #include <math.h>
 #include <stdio.h>
@@ -50,10 +53,15 @@
 #include <GL/glut.h>
 #include <vrpn_Connection.h>
 #include <vrpn_Tracker.h>
+#include <list>
+using namespace std;
+
+//#define	DEBUG
+const int MAX_TRACKERS = 100; // How many trackers can exist (for VRPN's tracker object)
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.07";
+const char *Version_string = "01.09";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -63,11 +71,13 @@ base_camera_server  *g_camera;	    //< Camera used to get an image
 image_wrapper	    *g_image;	    //< Image wrapper for the camera
 directx_videofile_server  *g_video = NULL;  //< Video controls, if we have them
 unsigned char	    *g_glut_image = NULL; //< Pointer to the storage for the image
-disk_spot_tracker   *g_tracker = new disk_spot_tracker(5,true);   //< Tracker to follow the bead, white-on-dark when false.
+list <spot_tracker *>g_trackers;    //< List of active trackers
+spot_tracker  *g_active_tracker = NULL;	//< The tracker that the controls refer to
 bool		    g_ready_to_display = false;	//< Don't unless we get an image
-bool	g_already_posted = false;	//< Posted redisplay since the last display?
-int	g_mousePressX, g_mousePressY;	//< Where the mouse was when the button was pressed
-int		    g_shift = 0;	//< How many bits to shift right to get to 8
+bool	g_already_posted = false;	  //< Posted redisplay since the last display?
+int	g_mousePressX, g_mousePressY;	  //< Where the mouse was when the button was pressed
+int	g_whichDragAction;		  //< What action to take for mouse drag
+int		    g_shift = 0;	  //< How many bits to shift right to get to 8
 vrpn_Connection	*g_vrpn_connection = NULL;  //< Connection to send position over
 vrpn_Tracker_Server *g_vrpn_tracker = NULL; //< Tracker server to send positions
 vrpn_Connection	*g_client_connection = NULL;//< Connection on which to perform logging
@@ -75,6 +85,7 @@ vrpn_Connection	*g_client_connection = NULL;//< Connection on which to perform l
 //--------------------------------------------------------------------------
 // Tcl controls and displays
 void  logfilename_changed(char *newvalue, void *);
+void  rebuild_trackers(int newvalue, void *);
 //XXX X and Y range should match the image range, like the region size controls are.
 Tclvar_float_with_scale	g_X("x", "", 0, 1391, 0);
 Tclvar_float_with_scale	g_Y("y", "", 0, 1039, 0);
@@ -84,16 +95,25 @@ Tclvar_float_with_scale	*g_maxX;
 Tclvar_float_with_scale	*g_minY;
 Tclvar_float_with_scale	*g_maxY;
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
-Tclvar_int_with_button	g_invert("dark_spot","",1);
+Tclvar_int_with_button	g_invert("dark_spot","",1, rebuild_trackers);
+Tclvar_int_with_button	g_interpolate("interpolate","",1, rebuild_trackers);
 Tclvar_int_with_button	g_opt("optimize","");
-Tclvar_int_with_button	g_globalopt("global_optimize_now","",1);
+Tclvar_int_with_button	g_globalopt("global_optimize_now","",0);
 Tclvar_int_with_button	g_small_area("small_area","");
 Tclvar_int_with_button	g_full_area("full_area","");
 Tclvar_int_with_button	g_mark("show_tracker","",1);
 Tclvar_int_with_button	g_show_video("show_video","",1);
 Tclvar_int_with_button	g_quit("quit","");
-Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL;
-Tclvar_selector		g_logfilenname("logfilename", NULL, NULL, "", logfilename_changed, NULL);
+Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
+Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
+
+//--------------------------------------------------------------------------
+// Helper routine to get the Y coordinate right when going between camera
+// space and openGL space.
+double	flip_y(double y)
+{
+  return g_camera->get_num_rows() - 1 - y;
+}
 
 //--------------------------------------------------------------------------
 // Cameras wrapped by image wrapper and function to return wrapped cameras.
@@ -108,7 +128,7 @@ public:
   }
   virtual bool	read_pixel(int x, int y, double &result) const {
     uns16 val;
-    if (get_pixel_from_memory(x, get_num_rows() - 1 - y, val)) {
+    if (get_pixel_from_memory(x, flip_y(y), val)) {
       result = val;
       return true;
     } else {
@@ -128,7 +148,7 @@ public:
   }
   virtual bool	read_pixel(int x, int y, double &result) const {
     uns16 val;
-    if (get_pixel_from_memory(x, get_num_rows() - 1 - y, val)) {
+    if (get_pixel_from_memory(x, flip_y(y), val)) {
       result = val;
       return true;
     } else {
@@ -146,7 +166,7 @@ public:
   }
   virtual bool	read_pixel(int x, int y, double &result) const {
     uns16 val;
-    if (get_pixel_from_memory(x, get_num_rows() - 1 - y, val)) {
+    if (get_pixel_from_memory(x, flip_y(y), val)) {
       result = val;
       return true;
     } else {
@@ -164,7 +184,7 @@ public:
   }
   virtual bool	read_pixel(int x, int y, double &result) const {
     uns16 val;
-    if (get_pixel_from_memory(x, get_num_rows() - 1 - y, val)) {
+    if (get_pixel_from_memory(x, flip_y(y), val)) {
       result = val;
       return true;
     } else {
@@ -210,18 +230,38 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
   return true;
 }
 
+
+/// Create a pointer to a new tracker of the appropriate type,
+// given the global settings for interpolation and inversion.
+// Return NULL on failure.
+
+spot_tracker  *create_appropriate_tracker(void)
+{
+  if (g_interpolate) {
+    return new disk_spot_tracker_interp(g_Radius,(g_invert != 0), 0.05, 0.1);
+  } else {
+    return new disk_spot_tracker(g_Radius,(g_invert != 0));
+  }
+}
+
 //--------------------------------------------------------------------------
 // Glut callback routines.
 
 static void  cleanup(void)
 {
-  // Done with the camera
+  // Done with the camera and other objects.
   printf("Exiting\n");
+
+  list<spot_tracker *>::iterator  loop;
+
+  for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+    delete *loop;
+  }
   delete g_camera;
-  delete g_tracker;
   if (g_glut_image) { delete [] g_glut_image; };
   if (g_play) { delete g_play; };
   if (g_rewind) { delete g_rewind; };
+  if (g_step) { delete g_step; };
   if (g_vrpn_tracker) { delete g_vrpn_tracker; };
   if (g_vrpn_connection) { delete g_vrpn_connection; };
   if (g_client_connection) { delete g_client_connection; };
@@ -242,6 +282,9 @@ void myDisplayFunc(void)
   if (g_show_video) {
     // Copy pixels into the image buffer.  XXX Flip the image over in
     // Y so that the image coordinates display correctly in OpenGL.
+#ifdef DEBUG
+    printf("XXX Filling pixels %d,%d through %d,%d\n", (int)(*g_minX),(int)(*g_minY), (int)(*g_maxX), (int)(*g_maxY));
+#endif
     for (r = *g_minY; r <= *g_maxY; r++) {
       for (c = *g_minX; c <= *g_maxX; c++) {
 	if (!g_camera->get_pixel_from_memory(c, r, uns_pix)) {
@@ -266,26 +309,37 @@ void myDisplayFunc(void)
     // so that they cover the entire image (starting from lower-left
     // corner, which is at (-1,-1)).
     glRasterPos2f(-1, -1);
+#ifdef DEBUG
+    printf("XXX Drawing %dx%d pixels\n", g_camera->get_num_columns(), g_camera->get_num_rows());
+#endif
     glDrawPixels(g_camera->get_num_columns(),g_camera->get_num_rows(),
       GL_RGBA, GL_UNSIGNED_BYTE, g_glut_image);
   }
 
-  // If we have been asked to show the tracking marker, draw it.
+  // If we have been asked to show the tracking markers, draw them.
+  // The active one is drawn in red and the others are drawn in blue.
   if (g_mark) {
-    // Normalize center and radius so that they match the coordinates
-    // (-1..1) in X and Y.
-    double  x = -1.0 + g_X * (2.0/g_camera->get_num_columns());
-    double  y = -1.0 + g_Y * (2.0/g_camera->get_num_rows());
-    double  dx = g_Radius * (2.0/g_camera->get_num_columns());
-    double  dy = g_Radius * (2.0/g_camera->get_num_rows());
+    list <spot_tracker *>::iterator loop;
+    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+      // Normalize center and radius so that they match the coordinates
+      // (-1..1) in X and Y.
+      double  x = -1.0 + (*loop)->get_x() * (2.0/g_camera->get_num_columns());
+      double  y = -1.0 + flip_y((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
+      double  dx = (*loop)->get_radius() * (2.0/g_camera->get_num_columns());
+      double  dy = (*loop)->get_radius() * (2.0/g_camera->get_num_rows());
 
-    glColor3f(1,0,0);
-    glBegin(GL_LINES);
-      glVertex2f(x-dx,y);
-      glVertex2f(x+dx,y);
-      glVertex2f(x,y-dy);
-      glVertex2f(x,y+dy);
-    glEnd();
+      if (*loop == g_active_tracker) {
+	glColor3f(1,0,0);
+      } else {
+	glColor3f(0,0,1);
+      }
+      glBegin(GL_LINES);
+	glVertex2f(x-dx,y);
+	glVertex2f(x+dx,y);
+	glVertex2f(x,y-dy);
+	glVertex2f(x,y+dy);
+      glEnd();
+    }
   }
 
   // Draw a green border around the selected area.  It will be beyond the
@@ -338,6 +392,8 @@ void myDisplayFunc(void)
 
 void myIdleFunc(void)
 {
+  list<spot_tracker *>::iterator loop;
+
   //------------------------------------------------------------
   // This must be done in any Tcl app, to allow Tcl/Tk to handle
   // events.  This must happen at the beginning of the idle function
@@ -366,7 +422,13 @@ void myIdleFunc(void)
   }
 
   // If we are asking for a small region around the tracked dot,
-  // set the borders to be around the dot.
+  // set the borders to be around the set of trackers.
+  //XXX Modify to include all trackers in the calculation, not
+  // just the active one.  This will be a min/max over all of the
+  // bounding boxes.  Actually, probably it is better to move this
+  // to the render loop and have it update the values in the whole
+  // set and draw boxes around all of them; this will be less video
+  // than the whole block.
   if (g_opt && g_small_area) {
     (*g_minX) = g_X - 4*g_Radius;
     (*g_minY) = g_Y - 4*g_Radius;
@@ -383,43 +445,54 @@ void myIdleFunc(void)
   // Read an image from the camera into memory, within a structure that
   // is wrapped by an image_wrapper object that the tracker can use.
   // Tell Glut that it can display an image.
+  // We ignore the error return if we're doing a video file because
+  // this can happen due to timeouts when we're paused or at the
+  // end of a file.
   if (!g_camera->read_image_to_memory((int)(*g_minX),(int)(*g_maxX), (int)(*g_minY),(int)(*g_maxY), g_exposure)) {
-    fprintf(stderr, "Can't read image to memory!\n");
-    cleanup();
-    exit(-1);
+    if (!g_video) {
+      fprintf(stderr, "Can't read image to memory!\n");
+      cleanup();
+      exit(-1);
+    }
   }
   g_ready_to_display = true;
 
+  g_active_tracker->set_radius(g_Radius);
   if (g_opt) {
     double  x, y;
-    g_tracker->set_radius(g_Radius);
 
-    // If the user has requested a global search, do this once and then reset the
-    // checkbox.  Otherwise, keep tracking the last feature found.
+    // If the user has requested a global search, do this once for the
+    // active tracker only and then reset the checkbox.
     if (g_globalopt) {
-      g_tracker->locate_good_fit_in_image(*g_image, x,y);
-      g_tracker->optimize(*g_image, x, y);
+      g_active_tracker->locate_good_fit_in_image(*g_image, x,y);
+      g_active_tracker->optimize(*g_image, x, y);
       g_globalopt = 0;
-    } else {
-      // Optimize to find the best fit starting from last position.
-      // Invert the Y values on the way in and out.
-      // Don't let it adjust the radius here (otherwise it gets too
-      // jumpy).
-      g_tracker->optimize_xy(*g_image, x, y, g_X, g_camera->get_num_rows() - 1 - g_Y );
+    }
+    
+    // Optimize to find the best fit starting from last position for each tracker.
+    // Invert the Y values on the way in and out.
+    // Don't let it adjust the radius here (otherwise it gets too
+    // jumpy).
+    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+      (*loop)->optimize_xy(*g_image, x, y, (*loop)->get_x(), (*loop)->get_y() );
     }
 
-    // Show the result
-    g_X = (float)x;
-    g_Y = (float)g_camera->get_num_rows() - 1 - y;
-    g_Radius = (float)g_tracker->get_radius();
+    // Make the GUI track the result for the active tracker
+    g_X = (float)g_active_tracker->get_x();
+    g_Y = (float)flip_y(g_active_tracker->get_y());
+    g_Radius = (float)g_active_tracker->get_radius();
 
-    // Update the VRPN tracker position and report it
+    // Update the VRPN tracker position for each tracker and report it
+    // using the same time value for each.
     if (g_vrpn_tracker) {
+      int i = 0;
       struct timeval now; gettimeofday(&now, NULL);
-      vrpn_float64  pos[3] = {g_X, g_Y, 0};
-      vrpn_float64  quat[4] = { 0, 0, 0, 1};
+      for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++, i++) {
+	vrpn_float64  pos[3] = {(*loop)->get_x(), flip_y((*loop)->get_y()), 0};
+	vrpn_float64  quat[4] = { 0, 0, 0, 1};
 
-      g_vrpn_tracker->report_pose(0, now, pos, quat);
+	g_vrpn_tracker->report_pose(i, now, pos, quat);
+      }
     }
   }
 
@@ -429,12 +502,12 @@ void myIdleFunc(void)
   if (g_video) {
     static  int	last_play = 0;
 
-    // If the user has pressed rewind, go the the beginning of
-    // the stream and then pause (by clearing play).
-    if (*g_rewind) {
-      g_video->rewind();
+    // If the user has pressed step, then run the video for a
+    // single step and pause it.
+    if (*g_step) {
+      g_video->single_step();
       *g_play = 0;
-      *g_rewind = 0;
+      *g_step = 0;
     }
 
     // If the user has pressed play, start the video playing.
@@ -448,6 +521,16 @@ void myIdleFunc(void)
       g_video->pause();
     }
     last_play = *g_play;
+
+    // If the user has pressed rewind, go the the beginning of
+    // the stream and then pause (by clearing play).  This has
+    // to come after the checking for stop play above so that the
+    // video doesn't get paused.
+    if (*g_rewind) {
+      *g_play = 0;
+      *g_rewind = 0;
+      g_video->rewind();
+    }
   }
 
   //------------------------------------------------------------
@@ -458,7 +541,7 @@ void myIdleFunc(void)
   }
 
   //------------------------------------------------------------
-  // Let the VRPN objects send their reports
+  // Let the VRPN objects send their reports.
   if (g_vrpn_tracker) { g_vrpn_tracker->mainloop(); }
   if (g_vrpn_connection) { g_vrpn_connection->mainloop(); }
 
@@ -480,63 +563,123 @@ void myIdleFunc(void)
   vrpn_SleepMsecs(1);
 }
 
+// This routine finds the tracker whose coordinates are
+// the nearest to those specified, makes it the active
+// tracker, and moved it to the specified location.
+void  activate_and_drag_nearest_tracker_to(double x, double y)
+{
+  // Looks for the minimum squared distance and the tracker that is
+  // there.
+  double  minDist2 = 1e100;
+  spot_tracker	*minTracker = NULL;
+  double  dist2;
+  list<spot_tracker *>::iterator loop;
+
+  for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+    dist2 = (x - (*loop)->get_x())*(x - (*loop)->get_x()) +
+      (y - (*loop)->get_y())*(y - (*loop)->get_y());
+    if (dist2 < minDist2) {
+      minDist2 = dist2;
+      minTracker = *loop;
+    }
+  }
+  if (minTracker == NULL) {
+    fprintf(stderr, "No tracker to pick out of %d\n", g_trackers.size());
+  } else {
+    g_active_tracker = minTracker;
+    g_active_tracker->set_location(x, y);
+    g_X = g_active_tracker->get_x();
+    g_Y = g_active_tracker->get_y();
+    g_Radius = g_active_tracker->get_radius();
+  }
+}
+
 
 void mouseCallbackForGLUT(int button, int state, int x, int y) {
 
+    // Record where the button was pressed for use in the motion
+    // callback.
+    g_mousePressX = x;
+    g_mousePressY = y;
+
     switch(button) {
-	case GLUT_LEFT_BUTTON:
-	  if (state == GLUT_DOWN) {
-	    // Move the pointer to where the user clicked.
-	    // Invert Y to match the coordinate systems.
-	    g_X = x;
-	    g_Y = g_camera->get_num_rows() - 1 - y;
+      // The right button will create a new tracker and let the
+      // user specify its radius if they move far enough away
+      // from the pick point (it starts with a default of the same
+      // as the current active tracker).
+      // The new tracker becomes the active tracker.
+      case GLUT_RIGHT_BUTTON:
+	if (state == GLUT_DOWN) {
+	  g_whichDragAction = 1;
+	  g_trackers.push_back(g_active_tracker = create_appropriate_tracker());
+	  g_active_tracker->set_location(x, y);
 
-	    // Record where the button was pressed so we can change radius
-	    g_mousePressX = x;
-	    g_mousePressY = y;
+	  // Move the pointer to where the user clicked.
+	  // Invert Y to match the coordinate systems.
+	  g_X = x;
+	  g_Y = flip_y(y);
+	} else {
+	  // Turn global optimization off when we release.
+	  g_globalopt = 0;
+	}
+	break;
 
-	    // Turn off optimization while we're picking.
-	    g_opt = 0;
-	  } else {
-	    // Turn optimization on, global optimization off.
-	    g_opt = 1;
-	    g_globalopt = 0;
-	  }
-	  break;
-	case GLUT_MIDDLE_BUTTON:
-	  g_mousePressX = g_mousePressY = -1;
-	  break;
-	case GLUT_RIGHT_BUTTON:
-	  g_mousePressX = g_mousePressY = -1;
-	  break;
+      case GLUT_MIDDLE_BUTTON:
+	if (state == GLUT_DOWN) {
+	  g_whichDragAction = 0;
+	}
+	break;
+
+      // The left button will pull the closest existing tracker
+      // to the location where the mouse button was pressed, and
+      // then let the user specify the radius
+      case GLUT_LEFT_BUTTON:
+	if (state == GLUT_DOWN) {
+	  g_whichDragAction = 1;
+	  activate_and_drag_nearest_tracker_to(x,y);
+	}
+	break;
     }
 }
 
 void motionCallbackForGLUT(int x, int y) {
 
-  // Make sure the mouse press was valid
-  if ( (g_mousePressX < 0) || (g_mousePressY < 0) ) {
-    return;
-  }
+  switch (g_whichDragAction) {
 
-  // Clip the motion to stay within the window boundaries.
-  if (x < 0) { x = 0; };
-  if (y < 0) { y = 0; };
-  if (x >= (int)g_camera->get_num_columns()) { x = g_camera->get_num_columns() - 1; }
-  if (y >= (int)g_camera->get_num_rows()) { y = g_camera->get_num_rows() - 1; };
+  case 0: //< Do nothing on drag.
+    break;
 
-  // Set the radius based on how far the user has moved from click
-  double radius = sqrt( (x - g_mousePressX) * (x - g_mousePressX) + (y - g_mousePressY) * (y - g_mousePressY) );
-  if (radius >= 3) {
-    g_Radius = radius;
+  // Set the radius of the active spot if we've moved far enough
+  // from where we pressed the button.
+  case 1:
+    {
+      // Clip the motion to stay within the window boundaries.
+      if (x < 0) { x = 0; };
+      if (y < 0) { y = 0; };
+      if (x >= (int)g_camera->get_num_columns()) { x = g_camera->get_num_columns() - 1; }
+      if (y >= (int)g_camera->get_num_rows()) { y = g_camera->get_num_rows() - 1; };
+
+      // Set the radius based on how far the user has moved from click
+      double radius = sqrt( (x - g_mousePressX) * (x - g_mousePressX) + (y - g_mousePressY) * (y - g_mousePressY) );
+      if (radius >= 3) {
+	g_active_tracker->set_radius(radius);
+	g_Radius = radius;
+      }
+    }
+    break;
+
+  // Pull the closest existing tracker
+  // to the location where the mouse button was pressed, and
+  // keep pulling it around if the mouse is moved while this
+  // button is held down.
+  case 2:
+    activate_and_drag_nearest_tracker_to(x,y);
+    break;
+
+  default:
+    fprintf(stderr,"Internal Error: Unknown drag action (%d)\n", g_whichDragAction);
   }
   return;
-}
-
-void	handle_invert_change(int newvalue, void *userdata)
-{
-  delete g_tracker;
-  g_tracker = new disk_spot_tracker(g_Radius, (newvalue != 0));
 }
 
 
@@ -560,9 +703,52 @@ void  logfilename_changed(char *newvalue, void *)
 
   // Open a new connection, if we have a non-empty name.
   if (strlen(newvalue) > 0) {
+    // Make sure that the file does not exist by deleting it if it does.
+    // The Tcl code had a dialog box that asked the user if they wanted
+    // to overwrite, so this is "safe."
+    FILE *in_the_way;
+    if ( (in_the_way = fopen(g_logfilename, "r")) != NULL) {
+      fclose(in_the_way);
+      int err;
+      if ( (err=remove(g_logfilename)) != 0) {
+	fprintf(stderr,"Error: could not delete existing logfile %s\n", (char*)(g_logfilename));
+	perror("   Reason");
+	exit(-1);
+      }
+    }
+
     g_client_connection = vrpn_get_connection_by_name("Spot@localhost", newvalue);
   }
 
+}
+
+// If the value of the interpolate box changes, then create a new spot
+// tracker of the appropriate type in the same location and with the
+// same radius as the one that was used before.
+
+void  rebuild_trackers(int newvalue, void *)
+{
+  // Delete all trackers and replace with the correct types.
+  // Make sure to put them back where they came from.
+  // Re-point the active tracker at its corresponding new
+  // tracker.
+  list<spot_tracker *>::iterator  loop;
+
+  for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+    double x = (*loop)->get_x();
+    double y = (*loop)->get_y();
+    double r = (*loop)->get_radius();
+    if (g_active_tracker == *loop) {
+      delete *loop;
+      *loop = create_appropriate_tracker();
+      g_active_tracker = *loop;
+    } else {
+      delete *loop;
+      *loop = create_appropriate_tracker();
+    }
+    (*loop)->set_location(x,y);
+    (*loop)->set_radius(r);
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -677,12 +863,13 @@ int main(int argc, char *argv[])
   if (g_video) {  // Put these in a separate control panel?
     g_play = new Tclvar_int_with_button("play_video","",1);
     g_rewind = new Tclvar_int_with_button("rewind_video","");
+    g_step = new Tclvar_int_with_button("single_step_video","");
   }
 
   // Verify that the camera is working.
   if (!g_camera->working()) {
     fprintf(stderr,"Could not establish connection to camera\n");
-    delete g_camera;
+    if (g_camera) { delete g_camera; }
     exit(-1);
   }
 
@@ -695,15 +882,17 @@ int main(int argc, char *argv[])
   g_maxY = new Tclvar_float_with_scale("maxY", "", 0, g_camera->get_num_rows()-1, g_camera->get_num_rows()-1);
 
   //------------------------------------------------------------------
-  // Set up callbacks to track changes on the Tcl side
-
-  g_invert.set_tcl_change_callback(handle_invert_change, NULL);
-
-  //------------------------------------------------------------------
   // Set up the VRPN server connection and the tracker object that will
   // report the position when tracking is turned on.
   g_vrpn_connection = new vrpn_Synchronized_Connection();
-  g_vrpn_tracker = new vrpn_Tracker_Server("Spot", g_vrpn_connection);
+  g_vrpn_tracker = new vrpn_Tracker_Server("Spot", g_vrpn_connection, MAX_TRACKERS);
+
+  //------------------------------------------------------------------
+  // Set up an initial spot tracker based on the current settings.
+  g_trackers.push_front(create_appropriate_tracker());
+  g_active_tracker = g_trackers.front();
+  g_active_tracker->set_location(0,0);
+  g_active_tracker->set_radius(g_Radius);
 
   //------------------------------------------------------------------
   // Initialize GLUT and create the window that will display the
@@ -712,6 +901,9 @@ int main(int argc, char *argv[])
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
   glutInitWindowSize(g_camera->get_num_columns(), g_camera->get_num_rows());
+#ifdef DEBUG
+  printf("XXX initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());
+#endif
   glutInitWindowPosition(5, 30);
   glutCreateWindow(device_name);
   glutMotionFunc(motionCallbackForGLUT);

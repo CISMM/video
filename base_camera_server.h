@@ -22,7 +22,9 @@ public:
   /// Setting binning > 1 packs more camera pixels into each image pixel, so
   /// the maximum number of pixels has to be divided by the binning constant
   /// (the effective number of pixels is lower and pixel coordinates are set
-  /// in this reduced-count pixel space).
+  /// in this reduced-count pixel space).  This routine returns false if a
+  /// new image could not be read (for example, because of a timeout on
+  /// the reading because we're at the end of a video stream).
   virtual bool	read_image_to_memory(unsigned minX = 255, unsigned maxX = 0,
 			     unsigned minY = 255, unsigned maxY = 0,
 			     double exposure_time = 250.0) { return false; };

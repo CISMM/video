@@ -31,6 +31,7 @@ proc logging_changed { varName index op } {
     if {$logging == 1} {
 	set types { {"VRPN tracker log files" "*.vrpn"} }
 	set filename [tk_getSaveFile -filetypes $types \
+		-defaultextension ".vrpn" \
 		-initialdir $fileinfo(open_dir) \
 		-title "Name for log file"]
 	if {$filename != ""} {

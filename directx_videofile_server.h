@@ -28,6 +28,9 @@ public:
   /// Rewind the stored video to the beginning (also pauses).
   virtual void rewind(void);
 
+  /// Single-step the stored video for one frame.
+  virtual void single_step();
+
 protected:
   IMediaSeeking *_pMediaSeeking;    //< Lets us seek to positions within video
 #ifdef	REGISTER_FILTERGRAPH

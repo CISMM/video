@@ -1,3 +1,37 @@
+2003-08-04  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* base_camera_server.h : Comment changes.
+	* diaginc_server.cpp : Still trying to debug.  It seems to copy
+		with a stride that is smaller than it should be, but it
+		doesn't seem to duplicate pixels.
+	* directx_camera_server.cpp : Returns false rather than printing
+		a message when the frame times out.  Lets higher-level
+		code know, so that it can deal with it.  Also makes the
+		rewind button read one frame after going to beginning.
+	* directx_videofile_server.cpp : Makes the rewind button take a
+		single step afterwards, so the user can see the first
+		frame.
+	* directx_videofile_server.h : Same.
+	* image_wrapper.cpp : Includes a bilinear interpolation read
+		routine.
+	* image_wrapper.h : Same.
+	* spot_tracker.cpp : Added a base class spot tracker, and derived
+		disk spot tracker from it.  Derived interpolating disk
+		spot tracker from that.  Interpolating one does bilerp on
+		its pixels when optimizing, to do better at subpixel
+		accuracy.
+	* spot_tracker.h : Same.  Plus more access functions for the
+		member variables.
+	* test_spot_tracker.cpp : Added more tests.  Added interp tracker.
+	* video_spot_tracker.cpp : Added option to use interpolating
+		disk tracker.  Added the ability to put in more than one
+		spot tracker for the same image (using right mouse button).
+		Created "flip_y()" utility function.  Make rewind play
+		the first image in the video file.  Makes it not crash
+		if you ask to overwrite a file.
+	* video_spot_tracker.tcl : Added default "vrpn" extension to
+		files.
+
 2003-07-21  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* base_camera_server.h : Comments.

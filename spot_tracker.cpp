@@ -4,13 +4,18 @@
 
 //#define DEBUG
 
-disk_spot_tracker::disk_spot_tracker(double radius, bool inverted, double pixelaccuracy,
-				     double radiusaccuracy) :
+spot_tracker::spot_tracker(double radius, bool inverted, double pixelaccuracy, double radiusaccuracy) :
     _rad(radius),	      // Initial radius of the disk
     _invert(inverted),	      // Look for black disk on white surround?
     _pixelacc(pixelaccuracy), // Minimum step size in pixels to try
     _radacc(radiusaccuracy),  // Minimum step size in radius to try
     _fitness(-1e10)	      // No good position found yet!
+{
+}
+
+disk_spot_tracker::disk_spot_tracker(double radius, bool inverted, double pixelaccuracy,
+				     double radiusaccuracy) :
+    spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy)
 {
   // Make sure the parameters make sense
   if (_rad <= 0) {
@@ -112,10 +117,6 @@ bool  disk_spot_tracker::take_single_optimization_step(const image_wrapper &imag
 // for bright center, effectively causing it to seek an inverted patch that is
 // that many times as large as the radius (switches dark-on-light vs. light-on-dark
 // behavior).
-
-// XXX Assuming that we are looking at a smooth function, we should do linear
-// interpolation and sample within the space of the disk kernel, rather than
-// point-sampling the nearest pixel.
 
 double	disk_spot_tracker::check_fitness(const image_wrapper &image)
 {
@@ -223,7 +224,7 @@ void  disk_spot_tracker::optimize(const image_wrapper &image, double &x, double 
   // can't do any better.
   do {
     // Repeat the optimization steps until we can't do any better.
-    while (take_single_optimization_step(image, x, y)) {};
+    while (take_single_optimization_step(image, x, y, true, true, true)) {};
 
     // Try to see if we reducing the step sizes helps.
     if ( _pixelstep > _pixelacc ) {
@@ -259,4 +260,69 @@ void  disk_spot_tracker::optimize_xy(const image_wrapper &image, double &x, doub
       break;
     }
   } while (true);
+}
+
+disk_spot_tracker_interp::disk_spot_tracker_interp(double radius, bool inverted, double pixelaccuracy,
+				     double radiusaccuracy) :
+  disk_spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy)
+{
+}
+
+// Check the fitness of the disk against an image, at the current parameter settings.
+// Return the fitness value there.  This is done by multiplying the image values within
+// one radius of the center by 1 and the image values beyond that but within 2 radii
+// by -1 (on-center, off-surround).  If the test is inverted, then the fitness value
+// is inverted before returning it.  The fitness is normalized by the number of pixels
+// tested (pixels both within the radii and within the image).
+
+// Be careful when selecting the surround fraction below.  If the area in the off-
+// surround is larger than the on-area, the code seeks for dark surround more than
+// for bright center, effectively causing it to seek an inverted patch that is
+// that many times as large as the radius (switches dark-on-light vs. light-on-dark
+// behavior).
+
+// We assume that we are looking at a smooth function, so we do linear
+// interpolation and sample within the space of the disk kernel, rather than
+// point-sampling the nearest pixel.
+
+double	disk_spot_tracker_interp::check_fitness(const image_wrapper &image)
+{
+  int	  i,j;
+  int	  pixels = 0;			//< How many pixels we ended up using
+  double  fitness = 0.0;		//< Accumulates the fitness values
+  double  val;				//< Pixel value read from the image
+  double  surroundfac = 1.3;		//< How much larger the surround is
+  double  centerr2 = _rad * _rad;	//< Square of the center "on" disk radius
+  double  surroundr2 = centerr2*surroundfac*surroundfac;  //< Square of the surround "off" disk radius
+  double  dist2;			//< Square of the distance from the center
+
+  int range = (int)ceil(surroundfac*_rad);
+  for (i = -range; i <= range; i++) {
+    for (j = -range; j <= range; j++) {
+      dist2 = (i)*(i) + (j)*(j);
+
+      // See if we are within the inner disk
+      if ( dist2 <= centerr2 ) {
+	if (image.read_pixel_bilerp(_x+i,_y+j,val)) {
+	  pixels++;
+	  fitness += val;
+	}
+      }
+
+      // See if we are within the outer disk (surroundfac * radius)
+      else if ( dist2 <= surroundr2 ) {
+	if (image.read_pixel_bilerp(_x+i,_y+j,val)) {
+	  pixels++;
+	  fitness -= val;
+	}
+      }
+    }
+  }
+
+  if (_invert) { fitness *= -1; }
+  if (pixels > 0) {
+    fitness /= pixels;
+  }
+
+  return fitness;
 }

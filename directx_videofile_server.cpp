@@ -332,7 +332,14 @@ void  directx_videofile_server::pause(void)
   _mode = 1;  // Paused mode
 }
 
-/** Rewind the videofile to the beginning and pause it. */
+/** Read a single frame of video, then pause. */
+void  directx_videofile_server::single_step(void)
+{
+  _pMediaControl->Run();
+  _mode = 2;  // Single-step mode
+}
+
+/** Rewind the videofile to the beginning and take one step. */
 void  directx_videofile_server::rewind(void)
 {
   LONGLONG pos = 0;
@@ -341,19 +348,9 @@ void  directx_videofile_server::rewind(void)
   // Seek to the beginning
   _pMediaSeeking->SetPositions(&pos, AM_SEEKING_AbsolutePositioning,
       NULL, AM_SEEKING_NoPositioning);
-  pause();
+  single_step();
 }
 
-//---------------------------------------------------------------------
-/** For the video camera, we want to "play" by doing a single frame step
-    forward each frame, so that we get all of the frames no matter how
-    long it takes to processes them.  We do this by putting the camera
-    mode into pause, single-stepping here, and then calling the camera
-    read_one_frame function.  Since not all video interfaces support the
-    frame-step interface (apparently from some example code), we have
-    a fallback plan to run in play mode in this case.
-    XXX Fix this code.
-    */
 bool  directx_videofile_server::read_one_frame(unsigned minX, unsigned maxX,
 			      unsigned minY, unsigned maxY,
 			      unsigned exposure_millisecs)

@@ -110,7 +110,6 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
   // gone past the end of the file or otherwise gotten to a stopping point
   // and we'd wait forever for our image.
   FILTER_STATE	filter_state;
-  //XXX Need to somehow let the app know when it didn't get a frame?
   //XXX Should the app set the timeout period?
   //XXX This lets us watch a camera stream, clamping to the video rate of the
   //XXX camera.  It fails when trying to open the camera when it is allowed to
@@ -130,8 +129,14 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
 	if (_pCallback->imageReady) { break; }	// Break out of the wait if its ready
       }
       if (!_pCallback->imageReady) {
-	fprintf(stderr, "directx_camera_server::read_one_frame(): Warning -- timeout\n");
+	return false;
       }
+    }
+
+    // If we are in mode 2, then we pause the graph after we captured one image.
+    if (_mode == 2) {
+      _pMediaControl->Pause();
+      _mode = 1;
     }
 
     //XXX Get the size and stride parameters from the videoinfo header and use
@@ -604,9 +609,8 @@ bool  directx_camera_server::read_image_to_memory(unsigned minX, unsigned maxX, 
   _minX = minX; _minY = minY; _maxX = maxX; _maxY = maxY;
 
   //---------------------------------------------------------------------
-  // Set up and read one frame.
+  // Set up and read one frame, if we can.
   if (!read_one_frame(_minX, _maxX, _minY, _maxY, (int)exposure_millisecs)) {
-    fprintf(stderr, "directx_camera_server::read_image_to_memory(): Can't read image\n");
     return false;
   }
 

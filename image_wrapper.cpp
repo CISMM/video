@@ -3,6 +3,29 @@
 #include  <stdio.h>
 #include  "image_wrapper.h"
 
+bool	image_wrapper::read_pixel_bilerp(double x, double y, double &result) const
+{
+  int xlow = (int)floor(x);
+  int xhigh = xlow + 1;
+  int ylow = (int)floor(y);
+  int yhigh = ylow + 1;
+  double xhighfrac = x - xlow;
+  double xlowfrac = 1 - xhighfrac;
+  double yhighfrac = y - ylow;
+  double ylowfrac = 1 - yhighfrac;
+  double ll, lh, hl, hh;
+  if (!read_pixel(xlow, ylow, ll)) { return false; }
+  if (!read_pixel(xlow, yhigh, lh)) { return false; }
+  if (!read_pixel(xhigh, ylow, hl)) { return false; }
+  if (!read_pixel(xhigh, yhigh, hh)) { return false; }
+  result = ll * xlowfrac * ylowfrac + 
+	   lh * xlowfrac * yhighfrac +
+	   hl * xhighfrac * ylowfrac +
+	   hh * xhighfrac * yhighfrac;
+  return true;
+}
+
+
 test_image::test_image(int minx, int maxx, int miny, int maxy,
 		       double background, double noise,
 		       double diskx, double disky, double diskr,

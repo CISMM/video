@@ -1,6 +1,13 @@
 /*XXX
 1) There is a subtraction of 1 from the number of columns in the get_pixel_from_memory() routines for the spot tracker that seems to work for
   binning of 2,3,4.  I don't know why it needs to be there, which bothers me.  The whole image does seem to show up at each level of binning.
+  When I printed the step size, it was indeed one smaller than expected (657).  The region asked for is the maximum size (and if we ask for one
+  more in Y, then the request fails).  Even when binned 1x1, we get a correct-looking image.  It goes to all corners of the display.  (It looks
+  like maybe the pixels are scanned from top to bottom, given some streaking behavior.)  The number of pixels skipped is still one less than
+  expected, but the number of pixels read is the full number.  I'll be the pixel stride is wrong in the display program!  Nope -- it is copying
+  the expected pixel range and then drawing the expected size...  Pixel (0,2) is indexed by the read pixel routine as 1314, which is 2 less
+  than the 1316 (twice 658) that would be expected to be correct.  The two edges of the screen do not seem to be the same, which seems to
+  be impossible given that the indexes should match.  Check the texture coordinates in the texture writes.
 
 2) The image is upside-down somewhere.  If the image is left at full-screen, then the display works properly and the tracking works properly.
   If it is subset, then it is clear that the camera is reading flipped in Y from the way things are drawn on the screen; the other part of the
@@ -206,6 +213,7 @@ bool  diaginc_server::read_one_frame(unsigned short minX, unsigned short maxX,
     image_region.bottom = maxY;	  // Bottom is at highest index
     image_region.top = minY;	  // Top is at index zero
     SP_CHECK_RETURN(SpotSetValue(SPOT_IMAGERECT, &image_region), "SpotSetValue(Region)");
+    //XXX For some reason, this gets done each time.  It does do the whole region, though.
   }
   _last_exposure = exposure_time_millisecs;
   _last_minX = minX; _last_maxX = maxX; _last_minY = minY; _last_maxY = maxY;
@@ -542,7 +550,11 @@ bool	diaginc_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint8 &v
   vrpn_uint16	*vals = (vrpn_uint16 *)_memory;
   //XXX Why -1?
   vrpn_uint16	cols = (_maxX - _minX + 1)/_binning - 1;  // Don't use num_columns here; depends on the region size.
-  val = (vrpn_uint8)(vals[(Y-_minY/_binning)*cols + (X-_minX/_binning)] >> 4);
+  vrpn_uint32	index = (Y-_minY/_binning)*cols + (X-_minX/_binning);
+#ifdef DEBUG
+  if ( (X == 0) && (Y == 2)) { printf("XXX for pixel (%d,%d), indexing as %ld\n", X, Y, index); }
+#endif
+  val = (vrpn_uint8)(vals[index] >> 4);
   return true;
 }
 
@@ -562,7 +574,11 @@ bool	diaginc_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &
   vrpn_uint16	*vals = (vrpn_uint16 *)_memory;
   //XXX Why -1?
   vrpn_uint16	cols = (_maxX - _minX + 1)/_binning - 1;  // Don't use num_columns here; depends on the region size.
-  val = vals[(Y-_minY/_binning)*cols + (X-_minX/_binning)];
+  vrpn_uint32	index = (Y-_minY/_binning)*cols + (X-_minX/_binning);
+#ifdef DEBUG
+  if ( (X == 0) && (Y == 2)) { printf("XXX for pixel (%d,%d), indexing as %ld\n", X, Y, index); }
+#endif
+  val = vals[index];
   return true;
 }
 
