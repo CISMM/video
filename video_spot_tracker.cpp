@@ -45,7 +45,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "02.00";
+const char *Version_string = "02.01";
 
 //--------------------------------------------------------------------------
 // Some classes needed for use in the rest of the program.
@@ -99,6 +99,7 @@ public:
 // Glut wants to take over the world when it starts, so we need to make
 // global access to the objects we will be using.
 
+char  *g_device_name = NULL;			  //< Name of the device to open
 base_camera_server  *g_camera;			  //< Camera used to get an image
 image_wrapper	    *g_image;			  //< Image wrapper for the camera
 Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
@@ -142,6 +143,7 @@ int		    g_kymograph_filled = 0;	  //< How many lines of data are in there now.
 //--------------------------------------------------------------------------
 // Tcl controls and displays
 void  logfilename_changed(char *newvalue, void *);
+void  device_filename_changed(char *newvalue, void *);
 void  rebuild_trackers(int newvalue, void *);
 void  rebuild_trackers(float newvalue, void *);
 void  set_debug_visibility(int newvalue, void *);
@@ -1544,6 +1546,18 @@ void  logfilename_changed(char *newvalue, void *)
   }
 }
 
+// If the device filename becomes non-empty, then set the global
+// device name to match what it is set to.
+
+void  device_filename_changed(char *newvalue, void *)
+{
+  // Open a new connection and .csv file, if we have a non-empty name.
+  if (strlen(newvalue) > 0) {
+    g_device_name = new char[strlen(newvalue)+1];
+    strcpy(g_device_name, newvalue);
+  }
+}
+
 // If the value of the interpolate box changes, then create a new spot
 // tracker of the appropriate type in the same location and with the
 // same radius as the one that was used before.
@@ -1637,18 +1651,17 @@ void  rebuild_trackers(float newvalue, void *) {
 
 int main(int argc, char *argv[])
 {
-  char	*device_name = "directx";
-
   //------------------------------------------------------------------
   // If there is a command-line argument, treat it as the name of a
   // file that is to be loaded.
   switch (argc) {
   case 1:
-    // No arguments, so leave the camera device name alone
+    // No arguments, so ask the user for a file name
+    g_device_name = NULL;
     break;
   case 2:
     // Filename argument: open the file specified.
-    device_name = argv[1];
+    g_device_name = argv[1];
     break;
 
   default:
@@ -1735,11 +1748,46 @@ int main(int argc, char *argv[])
 	  fprintf(stderr,"Can't do init!\n");
 	  return -1;
   }
+  sprintf(command, "wm geometry . +10+10");
+  if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
+          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+                  tk_control_interp->result);
+          return(-1);
+  }
+
+  //------------------------------------------------------------------
+  // If we don't have a device name, then throw a Tcl dialog asking
+  // the user for the name of a file to use and wait until they respond.
+  if (g_device_name == NULL) {
+
+    //------------------------------------------------------------
+    // Create a callback for a variable that will hold the device
+    // name and then create a dialog box that will ask the user
+    // to either fill it in or quit.
+    Tclvar_selector filename("device_filename", NULL, NULL, "", device_filename_changed, NULL);
+    if (Tcl_Eval(tk_control_interp, "ask_user_for_filename") != TCL_OK) {
+      fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command, tk_control_interp->result);
+      exit(-1);
+    }
+
+    do {
+      //------------------------------------------------------------
+      // This pushes changes in the C variables over to Tcl.
+
+      while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
+      if (Tclvar_mainloop()) {
+	fprintf(stderr,"Tclvar Mainloop failed\n");
+      }
+    } while ( (g_device_name == NULL) && !g_quit);
+    if (g_quit) {
+      exit(0);
+    }
+  }
 
   //------------------------------------------------------------------
   // Open the camera and image wrapper.  If we have a video file, then
   // set up the Tcl controls to run it.
-  if (!get_camera_and_imager(device_name, &g_camera, &g_image, &g_video)) {
+  if (!get_camera_and_imager(g_device_name, &g_camera, &g_image, &g_video)) {
     fprintf(stderr,"Cannot open camera/imager\n");
     if (g_camera) { delete g_camera; }
     exit(-1);
@@ -1749,12 +1797,6 @@ int main(int argc, char *argv[])
     g_play = new Tclvar_int_with_button("play_video","",0);
     g_rewind = new Tclvar_int_with_button("rewind_video","",1);
     g_step = new Tclvar_int_with_button("single_step_video","");
-  }
-  sprintf(command, "wm geometry . +10+10");
-  if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
-          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
-                  tk_control_interp->result);
-          return(-1);
   }
 
   // Verify that the camera is working.
@@ -1796,7 +1838,7 @@ int main(int argc, char *argv[])
 #ifdef DEBUG
   printf("XXX initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());
 #endif
-  g_tracking_window = glutCreateWindow(device_name);
+  g_tracking_window = glutCreateWindow(g_device_name);
   glutMotionFunc(motionCallbackForGLUT);
   glutMouseFunc(mouseCallbackForGLUT);
 

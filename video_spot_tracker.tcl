@@ -102,3 +102,24 @@ proc logging_changed { varName index op } {
 	set logfilename ""
     }
 }
+
+###########################################################
+# Ask user for the name of the video file they want to open,
+# or else set the quit value.  The variable to set for the
+# name is "device_filename".
+
+set device_filename ""
+proc ask_user_for_filename { } {
+	global device_filename quit fileinfo
+		
+	set types { {"Video Files" "*.avi"} }
+	set device_filename [tk_getOpenFile -filetypes $types \
+		-defaultextension ".avi" \
+		-initialdir $fileinfo(open_dir) \
+		-title "Specify a video file to track in"]
+	# If we don't have a name, quit.
+	if {$device_filename == ""} {
+		set quit 1
+	} 	
+}
+
