@@ -118,8 +118,10 @@ public:
   virtual bool  write_to_tiff_file(const char *filename, double scale = 1.0, double offset = 0.0, bool sixteen_bits = false,
     const char *magick_files_dir = "C:/nsrg/external/pc_win32/bin/ImageMagick-5.5.7-Q16/MAGIC_DIR_PATH") const;
 
-  /// Send whole image over a vrpn connection
-  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan) {return false;};
+  /// Send whole image over a vrpn connection.  Number of channels is 3 for RGB cameras, but 1 for scientific cameras.
+  // The channels to be used must have been pre-allocated by the application; three contiguous named "red" "green" "blue"
+  // for an RGB (or BGR) camera.
+  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1) {return false;};
 };
 
 //----------------------------------------------------------------------------

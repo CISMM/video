@@ -9,12 +9,12 @@
 #include <qedit.h>
 
 // This code (and the code in the derived videofile server) is
-// based on information from the DirectX Software Developers Kit, and also
-// from the book "Programming Microsoft DirectShow for Digital Video and
-// Television, Mark D. Pesce.  Microsoft Press.  ISBN 0-7356-1821-6.  This
-// book was required reading for me to understand how the filter graphs
-// run, how to control replay rate, and how to reliably grab all of the
-// samples from a stream.  The chapter on using the Sample Grabber Filter
+// based on information the book "Programming Microsoft DirectShow
+// for Digital Video and Television", Mark D. Pesce.  Microsoft Press.
+// ISBN 0-7356-1821-6.  This book was required reading for me to
+// understand how the filter graphs run, how to control replay rate,
+// and how to reliably grab all of the samples from a stream.
+// The chapter on using the Sample Grabber Filter
 // (ch. 11) was particularly relevant.  Note that I did not break the seal
 // on the enclosed disk, which would require me to agree to licensing terms
 // that include me not providing anyone with copies of my modified versions
@@ -22,6 +22,11 @@
 // gained in the reading of the book to write by hand my own version of this
 // code.  What a sick world we live in when example code can't be freely
 // shared.
+
+// The DirectX Software Developer's Kit must be installed on your machine
+// to make this work; this code makes use of the BaseClasses library and
+// other parts of the library.  On my laptop, I've installed this on the
+// D: drive; you may need to change the BaseClasses 
 
 class directx_samplegrabber_callback; //< Forward declaration
 
@@ -48,14 +53,13 @@ public:
   virtual bool  write_memory_to_ppm_file(const char *filename, bool sixteen_bits = false) const;
 
   /// Send whole image over a vrpn connection
-  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan);
+  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1);
 
 protected:
   /// Construct but do not open camera (used by derived classes)
   directx_camera_server();
 
-  // Objects needed for DirectShow video input.  Described in the help
-  // menus for the DirectX API
+  // Objects needed for DirectShow video input.
   IGraphBuilder *_pGraph;	      // Constructs a DirectShow filter graph
   ICaptureGraphBuilder2 *_pBuilder;   // Filter graph builder
   IMediaControl *_pMediaControl;      // Handles media streaming in the filter graph

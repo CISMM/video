@@ -22,6 +22,8 @@ base_camera_server  *g_camera;	    //< The camera we're going to read from
 int		    g_bincount = 1; //< How many pixels to average into one bin in X and Y
 double		    g_exposure = 250.0;	//< How long to expose in milliseconds
 unsigned	    g_width = 320, g_height = 240;  //< Resolution for DirectX cameras
+int                 g_numchannels = 1;  //< How many channels to send (3 for RGB cameras, 1 otherwise)
+int                 g_maxval = 4095;       //< Maximum value available in a channel for this device
 
 /// Open the camera we want to use (Roper, DiagInc, or DirectX)
 bool  init_camera_code(const char *type, int which = 1)
@@ -29,6 +31,8 @@ bool  init_camera_code(const char *type, int which = 1)
   if (!strcmp(type, "roper")) {
     printf("Opening Roper Camera with binning at %d\n", g_bincount);
     g_camera = new roper_server(g_bincount);
+    g_numchannels = 1;
+    g_maxval = 4095;
     if (!g_camera->working()) {
       fprintf(stderr,"init_camera_code(): Can't open roper camera server\n");
       return false;
@@ -36,6 +40,8 @@ bool  init_camera_code(const char *type, int which = 1)
   } else if (!strcmp(type, "diaginc")) {
     printf("Opening Diagnostics Inc Camera with binning at %d\n", g_bincount);
     g_camera = new diaginc_server(g_bincount);
+    g_numchannels = 1;
+    g_maxval = 4095;
     if (!g_camera->working()) {
       fprintf(stderr,"init_camera_code(): Can't open diaginc camera server\n");
       return false;
@@ -43,6 +49,8 @@ bool  init_camera_code(const char *type, int which = 1)
   } else if (!strcmp(type, "edt")) {
     printf("Opening ETD Camera\n");
     g_camera = new edt_server();
+    g_numchannels = 1;
+    g_maxval = 255;
     if (!g_camera->working()) {
       fprintf(stderr,"init_camera_code(): Can't open EDT camera server\n");
       return false;
@@ -50,6 +58,8 @@ bool  init_camera_code(const char *type, int which = 1)
   } else if (!strcmp(type, "directx")) {
     printf("Opening DirectX Camera %d\n", which);
     g_camera = new directx_camera_server(which, g_width, g_height);
+    g_numchannels = 3; // Send RGB
+    g_maxval = 255;
     printf("Making sure camera is working\n");
     if (!g_camera->working()) {
       fprintf(stderr,"init_camera_code(): Can't open DirectX camera server\n");
@@ -58,6 +68,8 @@ bool  init_camera_code(const char *type, int which = 1)
   } else if (!strcmp(type, "directx640x480")) {
     printf("Opening DirectX Camera %d\n", which);
     g_camera = new directx_camera_server(which, 640, 480);
+    g_numchannels = 3; // Send RGB
+    g_maxval = 255;
     printf("Making sure camera is working\n");
     if (!g_camera->working()) {
       fprintf(stderr,"init_camera_code(): Can't open DirectX camera server\n");
@@ -92,7 +104,7 @@ int			      svrchan;	//< Server channel index for image data
 
 bool  init_server_code(const char *outgoing_logfile_name)
 {
-  const int PORT = 4511;
+  const int PORT = vrpn_DEFAULT_LISTEN_PORT_NO;
   if ( (svrcon = new vrpn_Synchronized_Connection(PORT, NULL, outgoing_logfile_name)) == NULL) {
     fprintf(stderr, "Could not open server connection\n");
     return false;
@@ -102,7 +114,17 @@ bool  init_server_code(const char *outgoing_logfile_name)
     fprintf(stderr, "Could not open Imager Server\n");
     return false;
   }
-  if ( (svrchan = svr->add_channel("value", "unsigned16bit", 0, (float)(pow(2,16)-1))) == -1) {
+  if ( (svrchan = svr->add_channel("red", "unknown", 0, (float)(g_maxval) )) == -1) {
+    fprintf(stderr, "Could not add channel to server image\n");
+    return false;
+  }
+  // This relies on VRPN to hand us sequential channel numbers.  This might be
+  // dangerous.
+  if ( (svr->add_channel("green", "unknown", 0, (float)(g_maxval) )) == -1) {
+    fprintf(stderr, "Could not add channel to server image\n");
+    return false;
+  }
+  if ( (svr->add_channel("blue", "unknown", 0, (float)(g_maxval) )) == -1) {
     fprintf(stderr, "Could not add channel to server image\n");
     return false;
   }
@@ -215,7 +237,7 @@ int main(int argc, char *argv[])
   if (!init_server_code(logfilename)) { return -1; }
 
   while (!g_done) {
-    g_camera->send_vrpn_image(svr,svrcon,g_exposure,svrchan);
+    g_camera->send_vrpn_image(svr,svrcon,g_exposure,svrchan, g_numchannels);
     svrcon->save_log_so_far();
 //    vrpn_SleepMsecs(1);
   }

@@ -224,7 +224,7 @@ bool  edt_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &val
 }
 
 /// Send whole image over a vrpn connection
-bool  edt_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
+bool  edt_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan, int)
 {
   // Make sure we have a valid, open device
   if (!_status) { return false; };
@@ -408,7 +408,7 @@ bool  edt_pulnix_raw_file_server::write_memory_to_ppm_file(const char *filename,
 
 /// Send whole image over a vrpn connection
 // XXX This needs to be tested
-bool  edt_pulnix_raw_file_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
+bool  edt_pulnix_raw_file_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan, int)
 {
     _minX=_minY=0;
     _maxX=_num_columns - 1;

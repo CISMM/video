@@ -547,7 +547,7 @@ bool	roper_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &va
   return true;
 }
 
-bool roper_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
+bool roper_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan, int num_chans)
 {
     _minX=_minY=0;
     _maxX=_num_columns - 1;
@@ -762,7 +762,7 @@ bool  spe_file_server::write_memory_to_ppm_file(const char *filename, int gain, 
 
 /// Send whole image over a vrpn connection
 // XXX This needs to be tested
-bool  spe_file_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
+bool  spe_file_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan, int)
 {
     _minX=_minY=0;
     _maxX=_num_columns - 1;

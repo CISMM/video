@@ -1,3 +1,27 @@
+2005-01-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* SEM_camera_server.cpp : Modified the VRPN send method to take
+		an additional parameter that is the number of channels to
+		send.
+	* SEM_camera_server.h : Same.
+	* base_camera_server.h : Same.
+	* base_camera_server.cpp : Same.
+	* diaginc_server.h : Same.
+	* diaginc_server.cpp : Same.
+	* diaginc_server.h : Same.
+	* directx_camera_server.h : Same.
+	* directx_camera_server.cpp : Same.  Also added code to let it
+		send 2 or 3 channels (r,g,b) from the camera.
+	* edt_server.h : Same.
+	* edt_server.cpp : Same.
+	* file_stack_server.h : Same.
+	* file_stack_server.cpp : Same.
+	* roper_server.h : Same.
+	* roper_server.cpp : Same.
+	* video_tempimager_server.h : Same.  Also added code to decide the
+		maximum value based on the camera.  Also added code to have it
+		write 3 channels from the DirectX camera server.
+
 2004-12-21  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Added EDT camera control, so I can
