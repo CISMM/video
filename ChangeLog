@@ -1,3 +1,12 @@
+2003-02-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* roper_server.h : Makes it possible to access the buffer holding the
+		image directly for faster access.
+	* stack_collector.cpp : Provides an image preview window.  Debugged,
+		but the final bug fix has not yet been tested (when the
+		image is a subset of the whole possible image in X).
+	* stack_collector.dsp : Same.
+
 2002-11-24  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* argonot.cpp : Modified to use new vrpn_TempImager class.
