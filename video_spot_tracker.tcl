@@ -46,6 +46,12 @@ label .kernel.y.label -text Y
 label .kernel.y.value -width 10 -textvariable y
 pack .kernel.y.label
 pack .kernel.y.value
+frame .kernel.z -relief raised -borderwidth 1
+pack .kernel.z -side left
+label .kernel.z.label -text Z
+label .kernel.z.value -width 10 -textvariable z
+pack .kernel.z.label
+pack .kernel.z.value
 frame .kernel.optimize
 pack .kernel.optimize -side left
 
@@ -154,3 +160,22 @@ proc ask_user_for_filename { } {
 	} 	
 }
 
+###########################################################
+# Ask user for the name of the PSF file they want to open,
+# or else set it to "NONE".  The variable to set for the
+# name is "psf_filename".
+
+set psf_filename "NONE"
+proc ask_user_for_psf_filename { } {
+	global psf_filename fileinfo
+		
+	set types { {"Image Stack Files" "*.avi *.tif *.bmp *.raw"} }
+	set psf_filename [tk_getOpenFile -filetypes $types \
+		-defaultextension ".tif" \
+		-initialdir $fileinfo(open_dir) \
+		-title "Specify a PSF file for Z tracking"]
+	# If we don't have a name, quit.
+	if {$psf_filename == ""} {
+		set psf_filename "NONE"
+	} 	
+}

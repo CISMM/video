@@ -126,6 +126,8 @@ checkbutton .log.button -text "Logging to file sequence named " -variable loggin
 pack .log.button -side left -fill x
 label .log.label -textvariable logfilename
 pack .log.label -side left -fill x
+checkbutton .log.psf -text "Log Point-spread" -variable pointspread_log -anchor w
+pack .log.psf -side right -fill x
 checkbutton .log.sixteenbits -text "Log 16 bits" -variable sixteenbit_log -anchor w
 pack .log.sixteenbits -side right -fill x
 

@@ -21,7 +21,7 @@ static bool file_exists(const string file_name)
 // Make a new file name by filling in the specified number
 // sequence that begins at "start" and ends at "start+len" in
 // the file name that was passed in.
-static string make_filename(const string file_name, string::size_type start, string::size_type len, int value)
+static string make_filename(const string file_name, string::size_type start, string::size_type len, unsigned long value)
 {
   // We're going to write the number into a character array using
   // sprintf(), but first we have to construct an argument to sprintf()
@@ -33,7 +33,7 @@ static string make_filename(const string file_name, string::size_type start, str
   // add the  u  that is written into the format descriptor.
   char	format_descriptor[6];
   char	num_as_chars[100];
-  sprintf(format_descriptor, "%%0%02uu", len);
+  sprintf(format_descriptor, "%%0%02uLu", len);
   sprintf(num_as_chars, format_descriptor, value);
 
   string retval = file_name;
@@ -65,7 +65,7 @@ bool  file_list(const string file_name, list <string> &file_list)
   string::size_type first_number = file_name.size();  // Start with it at the end of the string, one past the end.
   string::size_type last_number;
   unsigned num_length;
-  unsigned num_value;
+  unsigned long num_value;
   do {
 
     // Locate end of the next-closest-to-the-end block of numbers.

@@ -1,3 +1,30 @@
+2004-11-09  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* base_camera_server.cpp : Code to create radially-averaged
+		spread functions (PSF) and save them into files.
+	* base_camera_server.h : Same.
+	* cismm_video_optimizer.cpp : Code to create and save PSF
+		files along with optimized stacks.
+	* cismm_video_optimizer.tcl : Same.
+	* file_list.cpp : Enables the numbers to be unsigned longs, so we
+		can catch a wider range of files.
+	* file_stack_server.h : Put the default location for the
+		ImageMagick library in the constructor.
+	* manual_capture.C : Added "VRPN_CALLBACK" so it will compile.
+	* spot_tracker.cpp : Changed spot_tracker base class name
+		to spot_tracker_XY, and added a spot_tracker_Z base
+		class.  Added a radial_average_tracker_Z that is a
+		concrete Z tracker.
+	* spot_tracker.h : Same.
+	* test_spot_tracker.cpp : Added code to test the Z tracker.
+	* spot_tracker.dsp : Added new libraries and includes needed for
+		the new Z tracker.
+	* video.dsw : Added dependency.
+	* video_spot_tracker.cpp : Added the ability to track in Z, and
+		added Z value to display and log files.
+	* video_spot_tracker.tcl : Same.
+	* video_tempimager_server.cpp : Added ability to save a log file.
+
 2004-11-02  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* argonot.cpp : Added "VRPN_CALLBACK" as needed by new version.

@@ -3,11 +3,13 @@
 // before includeing magick/api.h.
 
 #include <stdio.h>
-
 #include "base_camera_server.h"
-
 #define QuantumLeap
 #include <magick/api.h>
+
+#ifndef	M_PI
+const double M_PI = 2*asin(1.0);
+#endif
 
 // Apply the specified gain to the value, clamp to zero and the maximum
 // possible value, and return the result.  We always clamp to 65535 rather
@@ -178,3 +180,56 @@ void  cropped_image::read_range(int &minx, int &maxx, int &miny, int &maxy) cons
   maxy = _maxy;
 }
 
+PSF_File::~PSF_File()
+{
+  // Figure out whether the image will be sixteen bits, and also
+  // the gain to apply (256 if 8-bit, 1 if 16-bit).
+  bool do_sixteen = (d_sixteen_bits == 1);
+  int bitshift_gain = 1;
+  if (!do_sixteen) { bitshift_gain = 256; }
+
+  // Write the file to the name specified, using 8 or 16 bits depending
+  // on the setting of the global flag.
+  write_to_tiff_file(d_filename.c_str(), bitshift_gain, 0.0, do_sixteen);
+
+  // Delete all allocated space
+  unsigned i;
+  for (i = 0; i < d_lines.size(); i++) {
+    delete [] d_lines[i];
+    d_lines[i] = NULL;
+  }
+  d_lines.clear();
+}
+
+bool  PSF_File::append_line(const image_wrapper &image, const double x, const double y)
+{
+  if (d_radius == 0) {
+    fprintf(stderr,"PSF_File::append_line(): Zero radius (not adding more lines)\n");
+    return false;
+  }
+
+  // Allocate the buffer for a new line and push it onto the end of the list.
+  double  *new_line = new double[d_radius+1];
+  if (new_line == NULL) {
+    fprintf(stderr,"PSF_File::append_line(): Out of memory (not adding more lines)\n");
+    return false;
+  }
+  d_lines.push_back(new_line);
+
+  // Fill in the values for the line by radially averaging around the center
+  // specified in the image.  Make sure that at the outer layer, we sample at
+  // a spacing of at least once per pixel; inner rings will be sampled with
+  // greater frequency.  Make sure that we sample evenly within each ring.
+  unsigned i, j;
+  unsigned count = (unsigned)ceil(2 * d_radius * M_PI);
+  for (i = 0; i <= d_radius; i++) {
+    double step_size = (2 * i * M_PI) / count;
+    new_line[i] = 0.0;
+    // Step around the loop and average the results
+    for (j = 0; j < count; j++) {
+      new_line[i] += image.read_pixel_bilerp_nocheck(x + i*cos(j*step_size), y + i*sin(j*step_size));
+    }
+    new_line[i] /= count;
+  }
+  return true;
+}

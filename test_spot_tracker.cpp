@@ -3,31 +3,13 @@
 #include  <stdio.h>
 #include  "spot_tracker.h"
 
-// Hacked version of gettimeofday() from VRPN.
-#ifdef	_WIN32
-#include  <winsock.h>
-#include  <sys/timeb.h>
-int gettimeofday(timeval *tp, void *)
-{
-    if (tp != NULL) {
-            struct _timeb t;
-            _ftime(&t);
-            tp->tv_sec = t.time;
-            tp->tv_usec = (long)t. millitm * 1000;
-    }
-    return 0;
-}
-#else
-#include  <sys/time.h>
-#endif
-
 static	double	duration(struct timeval t1, struct timeval t2)
 {
     return (t1.tv_usec - t2.tv_usec) / 1000000.0 +
 	   (t1.tv_sec - t2.tv_sec);
 }
 
-void  compute_disk_chase_statistics(spot_tracker &tracker, double radius, double posaccuracy,
+void  compute_disk_chase_statistics(spot_tracker_XY &tracker, double radius, double posaccuracy,
 			       int count, double &minerr, double &maxerr, double &sumerr,
 			       double &biasx, double &biasy, double &x, double &y)
 {
@@ -53,7 +35,7 @@ void  compute_disk_chase_statistics(spot_tracker &tracker, double radius, double
   }
 }
 
-void  compute_cone_chase_statistics(spot_tracker &tracker, double radius, double posaccuracy,
+void  compute_cone_chase_statistics(spot_tracker_XY &tracker, double radius, double posaccuracy,
 			       int count, double &minerr, double &maxerr, double &sumerr,
 			       double &biasx, double &biasy, double &x, double &y)
 {
@@ -428,6 +410,36 @@ int main(int, char *[])
   gettimeofday(&end, NULL);
   printf("  Time: %lg seconds per optimization\n", duration(end, start)/avgcount);
 
+  //-----------------------------------------------------------------------------------------------
+  // Testing the Z-tracking classes.
+  printf("-----------------------------------------------------------------\n");
+
+  // Construct a PSF kernel by making a number of disc images and sticking them into it.
+  disc_image  *discs[10];
+  PSF_File    *psf = new PSF_File("deleteme.tif", 25, false);
+  for (i = 0; i < 10; i++) {
+    discs[i] = new disc_image(0,128, 0,128, 0, 0.0, 64,64, i+10, 255, 4);
+    psf->append_line(*discs[i], 64, 64);
+  }
+  delete psf;
+
+  // Test the best-fit-finding code
+  radial_average_tracker_Z  Ztrack("deleteme.tif");
+  double z = 0.0;
+  Ztrack.locate_best_fit_in_depth(*discs[5], 64, 64, z);
+  printf("Z best fit should be 5, found at %lf\n", z);
+
+  // Test the optimization code
+  Ztrack.optimize(*discs[7], 64, 64, z);
+  printf("Z optimum should be 7, found at %lf\n", z);
+
+  // Test on a novel image
+  disc_image test_disc(0,128, 0,128, 0, 0.0, 64,64, 5.5+10, 255, 4);
+  Ztrack.optimize(test_disc, 64, 64, z);
+  printf("Z optimum should be 5.5, found at %lf\n", z);
+
+  // Delete the PSF file
+  _unlink("deleteme.tif");
   
   return 0;
 }

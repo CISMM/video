@@ -4,9 +4,9 @@
 #include "image_wrapper.h"
 
 //----------------------------------------------------------------------------
-// Virtual base class for spot trackers.
+// Virtual base class for spot trackers that track in X and Y.
 
-class spot_tracker {
+class spot_tracker_XY {
 public:
   // Optimize starting at the specified location to find the best-fit disk.
   // Take only one optimization step.  Return whether we ended up finding a
@@ -78,15 +78,74 @@ protected:
   double  _fitness;   //< Current value of match for the disk
   bool	  _invert;    //< Do we look for a dark spot on a black background?
 
-  spot_tracker(double radius, bool inverted = false, double pixelacurracy = 0.25, double radiusaccuracy = 0.25, double sample_separation_in_pixels = 1.0);
+  spot_tracker_XY(double radius, bool inverted = false, double pixelacurracy = 0.25, double radiusaccuracy = 0.25, double sample_separation_in_pixels = 1.0);
 };
+
+//----------------------------------------------------------------------------
+// Virtual base class for spot trackers that track in Z.
+
+class spot_tracker_Z {
+public:
+  // Optimize starting at the specified location to find the best-fit depth.
+  // Take only one optimization step.  Return whether we ended up finding a
+  // better depth or not.  Return new depth in any case.  The caller tells
+  // us where to look in X,Y on the image we are tracking in.
+  virtual bool	take_single_optimization_step(const image_wrapper &image, double x, double y, double &z);
+
+  // Same thing, but say where to start.  This means that we should measure the
+  // fitness at that location before trying the steps.
+  virtual bool  take_single_optimization_step(const image_wrapper &image, double x, double y, double &z, double startz)
+	    { set_z(startz); _fitness = check_fitness(image, x,y);
+	     return take_single_optimization_step(image, x,y,z); }
+
+  // Continue to optimize until we can't do any better (the step size drops below
+  // the minimum.  Assume that we've got a new image or position, so measure the
+  // fitness at our current location before starting.
+  virtual void	optimize(const image_wrapper &image, double x, double y, double &z);
+  // Same thing, but say where to start
+  virtual void	optimize(const image_wrapper &image, double x, double y, double &z, double startz)
+	    { set_z(startz); optimize(image, x, y, z); };
+
+  /// Find the best fit for the spot detector within the depth stack, checking each
+  // layer but not between layers.
+  virtual void	locate_best_fit_in_depth(const image_wrapper &image, double x, double y, double &z);
+
+  /// Find the best fit for the spot detector within the depth stack, checking only a
+  // subset of the layers.
+  virtual void	locate_close_fit_in_depth(const image_wrapper &image, double x, double y, double &z);
+
+  /// Check the fitness of the disk against an image, at the current parameter settings.
+  // Return the fitness value there.
+  virtual double  check_fitness(const image_wrapper &image, double x, double y) = 0;
+
+  /// Get at internal information
+  inline double  get_z(void) const { return _z; };
+  inline double  get_fitness(void) const { return _fitness; };
+
+  /// Set the location for the bead.
+  virtual void	set_z(const double z) { _z = z; };
+
+  /// Set the desired pixel accuracy
+  virtual bool	set_depth_accuracy(const double a) { if (a <= 0) { return false; } else {_depthacc = a; return true; } };
+
+protected:
+  double  _minz, _maxz;	//< The range of available Z values.
+  double  _z;		//< Current best-fit position of the tracker
+  double  _depthacc;	//< Minimum step size in Z
+  double  _depthstep;	//< Current Z step size
+  double  _fitness;	//< Current value of match for the disk
+  double  _radius;	//< Radius of the tracker
+
+  spot_tracker_Z(double minz, double maxz, double radius, double depthaccuracy = 0.25);
+};
+
 
 //----------------------------------------------------------------------------
 // This class will optimize the response of a disk-shaped kernel on an image.
 // The class is given an image to search in, and whether to search for a bright
 // spot on a dark background (the default) or a dark spot on a bright background.
 
-class disk_spot_tracker : public spot_tracker {
+class disk_spot_tracker : public spot_tracker_XY {
 public:
   // Set initial parameters of the disk search routine
   disk_spot_tracker(double radius,
@@ -114,7 +173,7 @@ protected:
 // The class is given an image to search in, and whether to search for a bright
 // spot on a dark background (the default) or a dark spot on a bright background.
 
-class disk_spot_tracker_interp : public spot_tracker {
+class disk_spot_tracker_interp : public spot_tracker_XY {
 public:
   // Set initial parameters of the disk search routine
   disk_spot_tracker_interp(double radius,
@@ -141,7 +200,7 @@ protected:
 // The class is given an image to search in, and whether to search for a bright
 // spot on a dark background (the default) or a dark spot on a bright background.
 
-class cone_spot_tracker_interp : public spot_tracker {
+class cone_spot_tracker_interp : public spot_tracker_XY {
 public:
   // Set initial parameters of the disk search routine
   cone_spot_tracker_interp(double radius,
@@ -171,7 +230,7 @@ protected:
 // The class is given an image to search in, and whether to search for a bright
 // spot on a dark background (the default) or a dark spot on a bright background.
 
-class symmetric_spot_tracker_interp : public spot_tracker {
+class symmetric_spot_tracker_interp : public spot_tracker_XY {
 public:
   // Set initial parameters of the disk search routine
   symmetric_spot_tracker_interp(double radius,
@@ -207,7 +266,7 @@ protected:
 // over a specified range to find the image whose pixel-wise least-squares
 // difference is minimized.
 
-class image_spot_tracker_interp : public spot_tracker {
+class image_spot_tracker_interp : public spot_tracker_XY {
 public:
   // Set initial parameters of the disk search routine
   image_spot_tracker_interp(double radius,
@@ -271,7 +330,7 @@ protected:
 // The class is given an image to search in, and whether to search for a bright
 // spot on a dark background (the default) or a dark spot on a bright background.
 
-class rod3_spot_tracker_interp : public spot_tracker {
+class rod3_spot_tracker_interp : public spot_tracker_XY {
 public:
   // Set initial parameters of the disk search routine.
   // Different constructors used for different subordinate tracker types.
@@ -332,14 +391,14 @@ public:
     { if (d_center == NULL) {
 	return false;
       } else {
-	return spot_tracker::set_radius(r) && d_center->set_radius(r) && d_beginning->set_radius(r) && d_end->set_radius(r);
+	return spot_tracker_XY::set_radius(r) && d_center->set_radius(r) && d_beginning->set_radius(r) && d_end->set_radius(r);
       }
     };
 
   /// Set the location for the bead.
   virtual void	set_location(const double x, const double y)
     { if (d_center && d_beginning && d_end) {
-	spot_tracker::set_location(x,y);
+	spot_tracker_XY::set_location(x,y);
 	d_center->set_location(x,y);
 	update_beginning_and_end_locations();
       }
@@ -350,7 +409,7 @@ public:
     { if (d_center == NULL) {
 	return false;
       } else {
-	return spot_tracker::set_pixel_accuracy(a) && d_center->set_pixel_accuracy(a) && d_beginning->set_pixel_accuracy(a) && d_end->set_pixel_accuracy(a);
+	return spot_tracker_XY::set_pixel_accuracy(a) && d_center->set_pixel_accuracy(a) && d_beginning->set_pixel_accuracy(a) && d_end->set_pixel_accuracy(a);
       }
     };
 
@@ -381,12 +440,34 @@ public:
 protected:
   double  d_length;	      // Full length of the rod in pixels
   double  d_orientation;      // Orientation of the rod in degrees
-  spot_tracker	*d_center;    // Tracker for the center
-  spot_tracker	*d_beginning; // Tracker for the starting end of the rod
-  spot_tracker	*d_end;	      // Tracker for the other end of the rod
+  spot_tracker_XY	*d_center;    // Tracker for the center
+  spot_tracker_XY	*d_beginning; // Tracker for the starting end of the rod
+  spot_tracker_XY	*d_end;	      // Tracker for the other end of the rod
 
   // Set the beginning and end locations based on the center location, length, and orientation.
   void update_beginning_and_end_locations(void);
+};
+
+//----------------------------------------------------------------------------
+// This class is initialized with an image that contains a radially-averaged
+// spread function for the object it should track in Z.
+// It optimizes against this image by shifting a radial average of the image
+// passed in around the specified location
+// over the specified range to find the image whose pixel-wise least-squares
+// difference is minimized.
+
+class radial_average_tracker_Z : public spot_tracker_Z {
+public:
+  // Set initial parameters of the disk search routine
+  radial_average_tracker_Z(const char *in_filename, double depth_accuracy = 0.25);
+  ~radial_average_tracker_Z() { if (d_radial_image) { delete d_radial_image; }; }
+
+  /// Check the fitness against an image, at the current parameter settings.
+  // Return the fitness value there.
+  virtual double  check_fitness(const image_wrapper &image, double x, double y);
+
+protected:
+  image_wrapper	*d_radial_image;	    //< Radial image read from file.
 };
 
 #endif

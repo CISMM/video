@@ -6,6 +6,8 @@
 #include  <vrpn_Types.h>
 #include  <vrpn_Connection.h>
 #include  <vrpn_TempImager.h>
+#include  <string>
+#include  <vector>
 
 //----------------------------------------------------------------------------
 // This class forms a basic wrapper for an image.  It treats an image as anything
@@ -396,6 +398,63 @@ protected:
     _binning = binning;
     if (_binning < 1) { _binning = 1; }
   };
+};
+
+// This class will compute an object's spread function (for a point, this
+// is called a Point-Spread Function (PSF)).  It assumes that a X,Y position
+// is tracked so that it remains in the center of the object over depth.
+// It radially averages around this center to produce a line of pixels at
+// each frame.  If the frames are equally-spaced in space from lower to
+// higher, then this will produce an image where the center of the bead is
+// along the left-hand side of the output image and the lowest plane in the
+// stack shows up at the bottom of the image.
+
+class PSF_File : public image_wrapper {
+public:
+
+  /// Pass the name of the file to write to, the radius to average over, and whether
+  // to save the file as a 16-bits-per-pixel file (8-bit if this is false).
+  PSF_File(const char *filename, const unsigned radius, const bool sixteen_bits) :
+      d_filename(filename), d_radius(radius), d_sixteen_bits(sixteen_bits) {};
+
+  /// The class stores the file when the object is destroyed.
+  ~PSF_File();
+
+  // Append a line to the ones waiting to go, calculating it radially from the
+  // specified location on the specified image.
+  bool	append_line(const image_wrapper &image, const double x, const double y);
+
+  //-------- image_wrapper methods ----------------
+  // Tell what the range is for the image.
+  virtual void	read_range(int &minx, int &maxx, int &miny, int &maxy) const
+    { minx = 0; maxx = d_radius; miny = 0; maxy = d_lines.size() - 1; }
+
+  /// Return the number of colors that the image has
+  virtual unsigned  get_num_colors() const {return 1; }
+
+  /// Read a pixel from the image into a double; return true if the pixel
+  // was in the image, false if it was not.  Assumes a stack taken bottom-to-top,
+  // so that the bottom line in the image (when drawn normally) is at the bottom.
+  virtual bool	read_pixel(int x, int y, double	&result, unsigned rgb = 0) const
+    {
+      result = 0;
+      // Ignore RGB -- return greyscale image
+      if ( (x < 0) || (y < 0) || (x > d_radius) || (y >= d_lines.size()) ) {
+	return false;
+      }
+      result = d_lines[y][x];
+      return true;
+    }
+
+  /// Read a pixel from the image into a double; Don't check boundaries.
+  virtual double read_pixel_nocheck(int x, int y, unsigned rgb = 0) const
+    { return d_lines[y][x]; }
+
+protected:
+  unsigned	      d_radius;		//< The radius around which to average
+  std::string	      d_filename;	//< Name of the file to write to
+  std::vector<double *>    d_lines;	//< Lines read from the images
+  bool		      d_sixteen_bits;	//< Store a 16-bit output file?
 };
 
 #endif

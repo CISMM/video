@@ -347,6 +347,9 @@ Package=<5>
 
 Package=<4>
 {{{
+    Begin Project Dependency
+    Project_Dep_Name file_stack_library
+    End Project Dependency
 }}}
 
 ###############################################################################

@@ -82,10 +82,10 @@ vrpn_Synchronized_Connection  *svrcon;	//< Connection for server to talk on
 vrpn_TempImager_Server	      *svr;	//< Image server to be used to send
 int			      svrchan;	//< Server channel index for image data
 
-bool  init_server_code(void)
+bool  init_server_code(const char *outgoing_logfile_name)
 {
   const int PORT = 4511;
-  if ( (svrcon = new vrpn_Synchronized_Connection(PORT)) == NULL) {
+  if ( (svrcon = new vrpn_Synchronized_Connection(PORT, NULL, outgoing_logfile_name)) == NULL) {
     fprintf(stderr, "Could not open server connection\n");
     return false;
   }
@@ -133,6 +133,7 @@ void  Usage(const char *s)
   fprintf(stderr,"       -res: Resolution in x and y (default 320 200)\n");
   fprintf(stderr,"       devicename: roper, diaginc, or directx (default is directx)\n");
   fprintf(stderr,"       devicenum: Which (starting with 1) if there are multiple (default 1)\n");
+  fprintf(stderr,"       logfilename: Name of file to store outgoing log in (default NULL)\n");
   exit(-1);
 }
 
@@ -148,6 +149,7 @@ int main(int argc, char *argv[])
   int	i, realparams;		  // How many non-flag command-line arguments
   char	*devicename = "directx";  // Name of the device to open
   int	devicenum = 1;		  // Which, if there are more than one, to open
+  char	*logfilename = NULL;	  // Outgoing log file name.
 
   realparams = 0;
   for (i = 1; i < argc; i++) {
@@ -186,6 +188,9 @@ int main(int argc, char *argv[])
       case 2:
 	devicenum = atoi(argv[i]);
 	break;
+      case 3:
+	logfilename = argv[i];
+	break;
       default:
 	Usage(argv[0]);
       }
@@ -199,10 +204,11 @@ int main(int argc, char *argv[])
 
   if (!init_camera_code(devicename, devicenum)) { return -1; }
   printf("Opened camera\n");
-  if (!init_server_code()) { return -1; }
+  if (!init_server_code(logfilename)) { return -1; }
 
   while (!g_done) {
     g_camera->send_vrpn_image(svr,svrcon,g_exposure,svrchan);
+    svrcon->save_log_so_far();
 //    vrpn_SleepMsecs(1);
   }
 

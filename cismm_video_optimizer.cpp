@@ -46,6 +46,7 @@
 // due to name expansion within the string, list, and vector classes.
 #pragma warning( disable : 4786 )
 #include <list>
+#include <vector>
 using namespace std;
 
 //#define	DEBUG
@@ -59,7 +60,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.04";
+const char *Version_string = "01.05";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -73,15 +74,15 @@ const int KERNEL_SYMMETRIC = 2;
 
 class Spot_Information {
 public:
-  Spot_Information(spot_tracker *tracker) { d_tracker = tracker; d_index = d_static_index++; }
+  Spot_Information(spot_tracker_XY *tracker) { d_tracker = tracker; d_index = d_static_index++; }
 
-  spot_tracker *tracker(void) const { return d_tracker; }
+  spot_tracker_XY *tracker(void) const { return d_tracker; }
   unsigned index(void) const { return d_index; }
 
-  void set_tracker(spot_tracker *tracker) { d_tracker = tracker; }
+  void set_tracker(spot_tracker_XY *tracker) { d_tracker = tracker; }
 
 protected:
-  spot_tracker		*d_tracker;	    //< The tracker we're keeping information for
+  spot_tracker_XY	*d_tracker;	    //< The tracker we're keeping information for
   unsigned		d_index;	    //< The index for this instance
   static unsigned	d_static_index;     //< The index to use for the next one (never to be re-used).
 };
@@ -169,14 +170,12 @@ int		    g_tracking_window;		  //< Glut window displaying tracking
 unsigned char	    *g_glut_image = NULL;	  //< Pointer to the storage for the image
 
 list <Spot_Information *>g_trackers;		  //< List of active trackers
-spot_tracker	    *g_active_tracker = NULL;	  //< The tracker that the controls refer to
-spot_tracker	    *g_second_tracker = NULL;	  //< The second tracker in the list (used for scale and/or offset)
+spot_tracker_XY	    *g_active_tracker = NULL;	  //< The tracker that the controls refer to
+spot_tracker_XY	    *g_second_tracker = NULL;	  //< The second tracker in the list (used for scale and/or offset)
 bool		    g_ready_to_display = false;	  //< Don't unless we get an image
 bool		    g_already_posted = false;	  //< Posted redisplay since the last display?
 int		    g_mousePressX, g_mousePressY; //< Where the mouse was when the button was pressed
 int		    g_whichDragAction;		  //< What action to take for mouse drag
-
-FILE		    *g_csv_file = NULL;		  //< File to save data in with .csv extension
 
 //--------------------------------------------------------------------------
 // Tcl controls and displays
@@ -195,6 +194,7 @@ Tclvar_float_with_scale	*g_minY;
 Tclvar_float_with_scale	*g_maxY;
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
 Tclvar_int_with_button	g_sixteenbits("sixteenbit_log",NULL,1);
+Tclvar_int_with_button	g_log_pointspread("pointspread_log",NULL,0);
 Tclvar_float_with_scale	g_colorIndex("red_green_blue", "", 0, 2, 0);
 Tclvar_float_with_scale	g_bitdepth("bit_depth", "", 8, 12, 8);
 Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_trackers);
@@ -219,10 +219,12 @@ double			g_orig_length, g_orig_orient;
 char			*g_logfile_base_name = NULL;
 copy_of_image		*g_log_last_image = NULL;
 unsigned		g_log_frame_number_last_logged = -1;
+PSF_File		*g_psf_file = NULL;
 bool g_video_valid = false; // Do we have a valid video frame in memory?
 
 Tclvar_float_with_scale	g_clip_high("clip_high", ".gain.high", 0, 1, 1);
 Tclvar_float_with_scale	g_clip_low("clip_low", ".gain.low", 0, 1, 0);
+
 
 //--------------------------------------------------------------------------
 // Helper routine to get the Y coordinate right when going between camera
@@ -334,7 +336,7 @@ bool  get_camera(const char *type, base_camera_server **camera,
 // given the global settings for interpolation and inversion.
 // Return NULL on failure.
 
-spot_tracker  *create_appropriate_tracker(void)
+spot_tracker_XY  *create_appropriate_tracker(void)
 {
     if (g_kernel_type == KERNEL_SYMMETRIC) {
       g_interpolate = 1;
@@ -351,6 +353,16 @@ spot_tracker  *create_appropriate_tracker(void)
 
 static	bool  save_log_frame(unsigned frame_number)
 {
+    // Add a line to the PSF file if we have one.
+    if (g_psf_file) {
+      if (!g_psf_file->append_line(*g_log_last_image,
+	    g_trackers.front()->tracker()->get_x(),
+	    g_trackers.front()->tracker()->get_y())) {
+	return false;
+      }
+    }
+
+    // Store the cropped and adjusted image.
     char  *filename = new char[strlen(g_logfile_base_name) + 15];
     if (filename == NULL) {
       fprintf(stderr, "Out of memory!\n");
@@ -466,6 +478,11 @@ static void  dirtyexit(void)
   // Done with the camera and other objects.
   printf("Exiting\n");
 
+  if (g_psf_file) {
+    delete g_psf_file;
+    g_psf_file = NULL;
+  }
+
   list<Spot_Information *>::iterator  loop;
 
   for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
@@ -476,7 +493,6 @@ static void  dirtyexit(void)
   if (g_play) { delete g_play; g_play = NULL; };
   if (g_rewind) { delete g_rewind; g_rewind = NULL; };
   if (g_step) { delete g_step; g_step = NULL; };
-  if (g_csv_file) { fclose(g_csv_file); g_csv_file = NULL; g_csv_file = NULL; };
 }
 
 static void  cleanup(void)
@@ -1086,6 +1102,8 @@ void  device_filename_changed(char *newvalue, void *)
 // file base name to the value of the file name.
 // We use the "newvalue" here rather than the file name because the
 // file name gets truncated to the maximum TCLVAR string length.
+// At the same time, check to see if we are saving a point-spread
+// function file.  If so, create a file saver for it.
 
 void  logfilename_changed(char *newvalue, void *)
 {
@@ -1099,6 +1117,10 @@ void  logfilename_changed(char *newvalue, void *)
       cleanup();
       exit(-1);
     }
+    if (g_psf_file) {
+      g_psf_file->append_line(*g_log_last_image,
+	g_trackers.front()->tracker()->get_x(), g_trackers.front()->tracker()->get_y());
+    }
   }
 
   // Stop the old logging by getting rid of the last log image
@@ -1108,6 +1130,7 @@ void  logfilename_changed(char *newvalue, void *)
     g_log_last_image = NULL;
   }
   g_log_frame_number_last_logged = -1;
+  if (g_psf_file) { delete g_psf_file; g_psf_file = NULL; }
   
   // If we have an empty name, then clear the global logging base
   // name so that no more files will be saved.
@@ -1135,6 +1158,17 @@ void  logfilename_changed(char *newvalue, void *)
   double dy = g_second_tracker->get_y() - g_trackers.front()->tracker()->get_y();
   g_orig_length = sqrt( dx*dx + dy*dy );
   g_orig_orient = atan2( dy, dx);
+
+  // Create a PSF image file object if we're saving one.  Give it the same
+  // name as the file passed in, but append ".psf.tif" to it.
+  char	*psfname = new char[strlen(g_logfile_base_name) + 9];
+  if (psfname == NULL) {
+    fprintf(stderr,"logfilename_changed(): Out of memory\n");
+    return;
+  }
+  sprintf(psfname, "%s.psf.tif", g_logfile_base_name);
+  g_psf_file = new PSF_File(psfname, ceil(g_Radius), g_sixteenbits != 0);
+  delete [] psfname;
 }
 
 void  make_appropriate_tracker_active(int newvalue, void *)
