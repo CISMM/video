@@ -3,7 +3,7 @@ Microsoft Developer Studio Workspace File, Format Version 6.00
 
 ###############################################################################
 
-Project: "BaseClasses"="D:\DXSDK\Samples\C++\DirectShow\BaseClasses\baseclasses.dsp" - Package Owner=<4>
+Project: "BaseClasses"="C:\DXSDK\Samples\C++\DirectShow\BaseClasses\baseclasses.dsp" - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -26,6 +26,21 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name BaseClasses
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name edt_library
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "GLUItake"=.\GLUItake.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
     Begin Project Dependency
     Project_Dep_Name edt_library
     End Project Dependency
