@@ -18,8 +18,8 @@
 #include <GL/gl.h>
 #include <glut.h>
 
-//#define	FAKE_ROPER
-//#define	FAKE_NIKON
+#define	FAKE_ROPER
+#define	FAKE_NIKON
 
 //--------------------------------------------------------------------------
 // Version string for this program
@@ -44,6 +44,11 @@ vrpn_Analog_Remote		*ana;
 vrpn_Analog_Output_Remote	*anaout;
 #endif
 
+// The number of ticks (counts) on the Nikon focus control to take if
+// you want to move it by a micron. Since there is one count per 50
+// nanometers, this will be 20 steps per micron (50 * 20 = 1000).
+const double  TICKS_PER_MICRON = 20;
+
 //--------------------------------------------------------------------------
 // Tcl controls and displays
 
@@ -59,7 +64,9 @@ Tclvar_float_with_scale	g_repeat("repeat", "", (float)1, 20, 1);
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
 Tclvar_float_with_scale	g_gain("gain", "", 1, 32, 1);
 Tclvar_int_with_button	g_quit("quit","");
-Tclvar_int_with_button	g_snap("snap","");
+// When the user pushes this button, the stack starts to be taken and it
+// continues until the end, then the program turns this back off.
+Tclvar_int_with_button	g_take_stack("take_stack","");
 Tclvar_int_with_button	g_sixteenbits("sixteen_bits","");
 Tclvar_int_with_button	g_preview("preview","", 0, handle_preview_change);
 
@@ -127,7 +134,7 @@ void  preview_image(roper_server *roper)
     for (x = g_minX; x <= g_maxX; x+= g_window_size_divisor) {
       // Mark the border in red
 #ifdef	FAKE_ROPER
-      int val = (x%256) * g_gain;
+      int val = ((x+y)%256) * g_gain;
       if (val > 255) { val = 255; }
       *(rgb_i++) = val;
       *(rgb_i++) = val;
@@ -225,6 +232,20 @@ void handle_focus_change(void *, const vrpn_ANALOGCB info)
   g_focus_changed = true;
 }
 
+// Where_to_go is in number of ticks, not in microns.
+void  move_nikon_focus_and_wait_until_it_gets_there(double where_to_go) {
+#ifndef	FAKE_NIKON
+	  // Request that the Nikon focus go to where we want it
+	  anaout->request_change_channel_value(0, where_to_go);
+	  // Wait until the focus gets to where we asked it to be
+	  while (g_focus != where_to_go) {
+	    nikon->mainloop();
+	    anaout->mainloop();
+	    ana->mainloop();
+	    vrpn_SleepMsecs(1);
+	  }
+#endif
+}
 
 void  cleanup(void)
 {
@@ -260,11 +281,11 @@ void myIdleFunc(void)
     }
 
     // If we've been asked to take a stack, do it.
-    if (g_snap) {
+    if (g_take_stack) {
       double  startfocus;		      //< Where the focus started at connection time
-      double  focusdown = g_focusDown * 20;   //< How far down to go when adjusting the focus (in ticks)
-      double  focusstep = g_focusStep * 20;   //< Step size of focus (in ticks)
-      double  focusup = g_focusUp * 20;	      //< How far above initial to set the focus (in ticks)
+      double  focusdown = g_focusDown * TICKS_PER_MICRON;   //< How far down to go when adjusting the focus (in ticks)
+      double  focusstep = g_focusStep * TICKS_PER_MICRON;   //< Step size to change the focus by (in ticks)
+      double  focusup = g_focusUp * TICKS_PER_MICRON;	    //< How far above initial to set the focus (in ticks)
       double  focusloop;		      //< Used to step the focus
       int     repeat;			      //< Used to enable multiple scans
 
@@ -298,15 +319,8 @@ void myIdleFunc(void)
 	for (focusloop = startfocus + focusdown; focusloop <= startfocus + focusup; focusloop += focusstep) {
 
 	  printf("Going to %ld\n", (long)focusloop);
-#ifndef	FAKE_NIKON
-	  anaout->request_change_channel_value(0, focusloop);
-	  while (g_focus != focusloop) {
-	    nikon->mainloop();
-	    anaout->mainloop();
-	    ana->mainloop();
-	    vrpn_SleepMsecs(1);
-	  }
-#endif
+	  move_nikon_focus_and_wait_until_it_gets_there(focusloop);
+
 	  // Read the image from the roper camera.  If we are previewing,
 	  // then display the image in the video window.
 #ifndef	FAKE_ROPER
@@ -332,7 +346,7 @@ void myIdleFunc(void)
 	  //------------------------------------------------------------
 	  // If the user has deselected the "snap" or pressed "quit" then
 	  // break out of the loop.
-	  if ( g_quit || !g_snap) {
+	  if ( g_quit || !g_take_stack) {
 	    break;
 	  }
 	}
@@ -350,7 +364,7 @@ void myIdleFunc(void)
       }
 #endif
       printf("Done with stack\n");
-      g_snap = 0;
+      g_take_stack = 0;
     }
 
     //------------------------------------------------------------
