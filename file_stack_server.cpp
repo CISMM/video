@@ -206,6 +206,30 @@ bool  file_stack_server::read_image_to_memory(unsigned minX, unsigned maxX,
     return false;
   }
 
+  //---------------------------------------------------------------------
+  // Set the size of the window to include all pixels the user requested.
+  _minX = minX;
+  _maxX = maxX;
+  _minY = minY;
+  _maxY = maxY;
+
+  //---------------------------------------------------------------------
+  // If the maxes are greater than the mins, set them to the size of
+  // the image.
+  if (_maxX < _minX) {
+    _minX = 0; _maxX = _num_columns - 1;
+  }
+  if (_maxY < _minY) {
+    _minY = 0; _maxY = _num_rows - 1;
+  }
+
+  //---------------------------------------------------------------------
+  // Clip collection range to the size of the sensor on the camera.
+  if (_minX < 0) { _minX = 0; };
+  if (_minY < 0) { _minY = 0; };
+  if (_maxX >= _num_columns) { _maxX = _num_columns - 1; };
+  if (_maxY >= _num_rows) { _maxY = _num_rows - 1; };
+
   // Try to read the current file.  If we fail in the read, set the mode to paused so we don't keep trying.
   // If we succeed, then set up to read the next file.
   if (!read_image_from_file(*d_whichFile)) {

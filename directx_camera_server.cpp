@@ -595,10 +595,10 @@ bool  directx_camera_server::read_image_to_memory(unsigned minX, unsigned maxX, 
   //---------------------------------------------------------------------
   // If the maxes are greater than the mins, set them to the size of
   // the image.
-  if (maxX <= minX) {
+  if (maxX < minX) {
     minX = 0; maxX = _num_columns - 1;
   }
-  if (maxY <= minY) {
+  if (maxY < minY) {
     minY = 0; maxY = _num_rows - 1;
   }
 

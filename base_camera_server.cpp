@@ -68,7 +68,7 @@ bool  image_wrapper::write_to_tiff_file(const char *filename, double gain, bool 
       // print out something to let us know we are missing the 
       // delegates.mgk or whatever if that is the problem instead of just
       // saying the file can't be written later
-      fprintf(stderr, "base_camera_server::write_memory_to_tiff_file(): %s: %s\n",
+      fprintf(stderr, "image_wrapper::write_memory_to_tiff_file(): Can't make out image: %s: %s\n",
              exception.reason,exception.description);
       return false;
   }
@@ -86,7 +86,7 @@ bool  image_wrapper::write_to_tiff_file(const char *filename, double gain, bool 
       // print out something to let us know we are missing the 
       // delegates.mgk or whatever if that is the problem instead of just
       // saying the file can't be written later
-      fprintf(stderr, "base_camera_server::write_memory_to_tiff_file(): %s: %s\n",
+      fprintf(stderr, "image_wrapper::write_memory_to_tiff_file(): WriteImage failed: %s: %s\n",
              exception.reason,exception.description);
       return false;
   }
@@ -168,3 +168,12 @@ double	copy_of_image::read_pixel_nocheck(int x, int y, unsigned rgb) const
   }
   return _image[index(x, y, rgb)];
 }
+
+void  cropped_image::read_range(int &minx, int &maxx, int &miny, int &maxy) const
+{
+  minx = _minx;
+  maxx = _maxx;
+  miny = _miny;
+  maxy = _maxy;
+}
+

@@ -1,3 +1,22 @@
+2004-10-02  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* base_camera_server.cpp : Added code to enable cropping of
+		an image.  Comment fixes.
+	* base_camera_server.h : Added code to enable cropping of an image.
+		Fixed the affine-transformed image to do the right thing
+		(math bug).
+	* cismm_video_optimizer.cpp : Lets you log 8-bit images.  Removed
+		reduntant imager object.  Added the ability to crop the
+		image.
+	* cismm_video_optimizer.tcl : Added control for 8-bit image saves.
+	* SEM_camera_server.cpp : Modified to check for less than rather
+		than less-or-equal when comparing initial region.
+	* diaginc_server.cpp : Same.
+	* directx_camera_server.cpp : Same.
+	* edt_server.cpp : Same.
+	* file_stack_server.cpp : Same.
+	* roper_server.cpp : Same.
+
 2004-09-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* SEM_camera_server.h : Removed a dangerous method.

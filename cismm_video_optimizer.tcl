@@ -85,11 +85,13 @@ set logging 0
 set logfilename ""
 toplevel .log
 wm geometry .log +185+130
-label .log.label -textvariable logfilename
-pack .log.label -side right -fill x
 trace variable logging w logging_changed
 checkbutton .log.button -text "Logging to file sequence named " -variable logging -anchor w
 pack .log.button -side left -fill x
+label .log.label -textvariable logfilename
+pack .log.label -side left -fill x
+checkbutton .log.sixteenbits -text "Log 16 bits" -variable sixteenbit_log -anchor w
+pack .log.sixteenbits -side right -fill x
 
 # Quit the program if this window is destroyed
 bind .log <Destroy> {global quit ; set quit 1} 

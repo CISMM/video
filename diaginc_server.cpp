@@ -397,10 +397,10 @@ bool  diaginc_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigne
   //---------------------------------------------------------------------
   // If the maxes are greater than the mins, set them to the size of
   // the image.
-  if (_maxX <= _minX) {
+  if (_maxX < _minX) {
     _minX = 0; _maxX = _num_columns - 1;  // Uses _num_columns rather than get_num_columns() because it is in pre-binning space.
   }
-  if (_maxY <= _minY) {
+  if (_maxY < _minY) {
     _minY = 0; _maxY = _num_rows - 1;
   }
 

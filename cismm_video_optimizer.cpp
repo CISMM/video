@@ -1,5 +1,5 @@
 //---------------------------------------------------------------------------
-// This section contains configuration settings for the Video Spot Tracker.
+// This section contains configuration settings for the Video Optimizer.
 // It is used to make it possible to compile and link the code when one or
 // more of the camera- or file- driver libraries are unavailable. First comes
 // a list of definitions.  These should all be defined when building the
@@ -59,7 +59,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.02";
+const char *Version_string = "01.03";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -160,7 +160,6 @@ public:
 
 char  *g_device_name = NULL;			  //< Name of the device to open
 base_camera_server  *g_camera;			  //< Camera used to get an image
-image_wrapper	    *g_image;			  //< Image wrapper for the camera
 copy_of_image	    *g_last_image = NULL;	  //< Copy of the last image we had, if any
 float		    g_search_radius = 0;	  //< Search radius for doing local max in before optimizing.
 Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
@@ -195,6 +194,7 @@ Tclvar_float_with_scale	*g_maxX;
 Tclvar_float_with_scale	*g_minY;
 Tclvar_float_with_scale	*g_maxY;
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
+Tclvar_int_with_button	g_sixteenbits("sixteenbit_log",NULL,1);
 Tclvar_float_with_scale	g_colorIndex("red_green_blue", "", 0, 2, 0);
 Tclvar_float_with_scale	g_bitdepth("bit_depth", "", 8, 12, 8);
 Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_trackers);
@@ -230,7 +230,7 @@ double	flip_y(double y)
 
 /// Open the wrapped camera we want to use depending on the name of the
 //  camera we're trying to open.
-bool  get_camera_and_imager(const char *type, base_camera_server **camera, image_wrapper **imager,
+bool  get_camera(const char *type, base_camera_server **camera,
 			    Controllable_Video **video)
 {
 #ifdef VST_USE_ROPER
@@ -239,7 +239,6 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
     // it fits on the screen.
     roper_server *r = new roper_server(2);
     *camera = r;
-    *imager = r;
   } else
 #endif  
   if (!strcmp(type, "diaginc")) {
@@ -247,17 +246,14 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
     // it fits on the screen.
     diaginc_server *r = new diaginc_server(2);
     *camera = r;
-    *imager = r;
     g_exposure = 80;	// Seems to be the minimum exposure for the one we have
   } else if (!strcmp(type, "directx")) {
     // Passing width and height as zero leaves it open to whatever the camera has
     directx_camera_server *d = new directx_camera_server(1,0,0);	// Use camera #1 (first one found)
     *camera = d;
-    *imager = d;
   } else if (!strcmp(type, "directx640x480")) {
     directx_camera_server *d = new directx_camera_server(1,640,480);	// Use camera #1 (first one found)
     *camera = d;
-    *imager = d;
 
   // If this is a VRPN URL for an SEM device, then open the file and set up
   // to read from that device.
@@ -265,13 +261,12 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
     SEM_Controllable_Video  *s = new SEM_Controllable_Video (type);
     *camera = s;
     *video = s;
-    *imager = s;
 
   // Unknown type, so we presume that it is a file.  Now we figure out what
   // kind of file based on the extension and open the appropriate type of
   // imager.
   } else {
-    fprintf(stderr,"get_camera_and_imager(): Assuming filename (%s)\n", type);
+    fprintf(stderr,"get_camera(): Assuming filename (%s)\n", type);
 
     // If the extension is ".raw" then we assume it is a Pulnix file and open
     // it that way.
@@ -279,7 +274,6 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       Pulnix_Controllable_Video *f = new Pulnix_Controllable_Video(type);
       *camera = f;
       *video = f;
-      *imager = f;
 
     // If the extension is ".sem" then we assume it is a VRPN-format file
     // with an SEM device in it, so we form the name of the device and open
@@ -295,7 +289,6 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       SEM_Controllable_Video *s = new SEM_Controllable_Video(name);
       *camera = s;
       *video = s;
-      *imager = s;
       delete [] name;
 
     // If the extension is ".tif" or ".tiff" or ".bmp" then we assume it is
@@ -311,7 +304,6 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       FileStack_Controllable_Video *s = new FileStack_Controllable_Video(type);
       *camera = s;
       *video = s;
-      *imager = s;
 
     // If the extension is ".stk"  then we assume it is a Metamorph file
     // to be opened by the Metamorph reader.
@@ -320,7 +312,6 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       MetamorphStack_Controllable_Video *s = new MetamorphStack_Controllable_Video(type);
       *camera = s;
       *video = s;
-      *imager = s;
 
     // File of unknown type.  We assume that it is something that DirectX knows
     // how to open.
@@ -329,7 +320,6 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       Directx_Controllable_Video *f = new Directx_Controllable_Video(type);
       *camera = f;
       *video = f;
-      *imager = f;
     }
   }
   return true;
@@ -382,37 +372,50 @@ static	bool  save_log_frame(unsigned frame_number)
 	scale = new_length/g_orig_length;
       }
     }
+
     // Make a transformed image class to re-index the copied image.
     // Use the faster, translate-only version if there is no rotation
     // or scaling.
+    image_wrapper *shifted = NULL;
     if (g_reorient || g_rescale) {
       // Specify the center of rotation and scaling as the current
       // position of the origin tracker.
-      affine_transformed_image shifted(*g_log_last_image, 
+      shifted = new affine_transformed_image(*g_log_last_image, 
 	  g_trackers.front()->tracker()->get_x() - g_log_offset_x,
 	  g_trackers.front()->tracker()->get_y() - g_log_offset_y,
 	  rotation,
 	  scale,
 	  g_trackers.front()->tracker()->get_x(),
 	  g_trackers.front()->tracker()->get_y());
-
-      if (!shifted.write_to_tiff_file(filename, 1, true)) {
-	delete [] filename;
-	return false;
-      }
     } else {
-      translated_image shifted(*g_log_last_image, 
+      shifted = new translated_image(*g_log_last_image, 
 	  g_trackers.front()->tracker()->get_x() - g_log_offset_x,
 	  g_trackers.front()->tracker()->get_y() - g_log_offset_y);
-
-      if (!shifted.write_to_tiff_file(filename, 1, true)) {
-	delete [] filename;
-	return false;
-      }
     }
+    if (shifted == NULL) {
+      delete [] filename;
+      return false;
+    }
+
+    // Figure out whether the image will be sixteen bits, and also
+    // the gain to apply (256 if 8-bit, 1 if 16-bit).
+    bool do_sixteen = (g_sixteenbits == 1);
+    int gain = 1;
+    if (!do_sixteen) { gain = 256; }
+
+    // Crop the region we want out of the image and then write it
+    // to a file.
+    cropped_image crop(*shifted, (int)(*g_minX), (int)(*g_minY), (int)(*g_maxX), (int)(*g_maxY));
+    if (!crop.write_to_tiff_file(filename, gain, do_sixteen)) {
+      delete [] filename;
+      delete shifted;
+      return false;
+    }
+
     (*g_log_last_image) = *g_camera;
 
     delete [] filename;
+    delete shifted;
     return true;
 }
 
@@ -677,9 +680,9 @@ void myIdleFunc(void)
 
   if (g_search_radius > 0) {
     if (g_last_image == NULL) {
-      g_last_image = new copy_of_image(*g_image);
+      g_last_image = new copy_of_image(*g_camera);
     } else {
-      *g_last_image = *g_image;
+      *g_last_image = *g_camera;
     }
   }
 
@@ -688,8 +691,10 @@ void myIdleFunc(void)
   // Tell Glut that it can display an image.
   // We ignore the error return if we're doing a video file because
   // this can happen due to timeouts when we're paused or at the
-  // end of a file.
-  if (!g_camera->read_image_to_memory((int)(*g_minX),(int)(*g_maxX), (int)(*g_minY),(int)(*g_maxY), g_exposure)) {
+  // end of a file.  We always read all of the image that we can:
+  // cropping happens when the file is written to avoid missing pixels
+  // that could have transformed to lie within the cropping region.
+  if (!g_camera->read_image_to_memory(0,-1, 0,-1, g_exposure)) {
     if (!g_video) {
       fprintf(stderr, "Can't read image to memory!\n");
       cleanup();
@@ -760,12 +765,12 @@ void myIdleFunc(void)
 	int x_offset, y_offset;
 	int best_x_offset = 0;
 	int best_y_offset = 0;
-	double best_value = max_find.check_fitness(*g_image);
+	double best_value = max_find.check_fitness(*g_camera);
 	for (x_offset = -floor(g_search_radius); x_offset <= floor(g_search_radius); x_offset++) {
 	  for (y_offset = -floor(g_search_radius); y_offset <= floor(g_search_radius); y_offset++) {
 	    if ( (x_offset * x_offset) + (y_offset * y_offset) <= radsq) {
 	      max_find.set_location(x_base + x_offset, y_base + y_offset);
-	      double val = max_find.check_fitness(*g_image);
+	      double val = max_find.check_fitness(*g_camera);
 	      if (val > best_value) {
 		best_x_offset = x_offset;
 		best_y_offset = y_offset;
@@ -781,7 +786,7 @@ void myIdleFunc(void)
       }
 
       // Here's where the tracker is optimized to its new location
-      (*loop)->tracker()->optimize_xy(*g_image, x, y, (*loop)->tracker()->get_x(), (*loop)->tracker()->get_y() );
+      (*loop)->tracker()->optimize_xy(*g_camera, x, y, (*loop)->tracker()->get_x(), (*loop)->tracker()->get_y() );
     }
 
     last_optimized_frame_number = g_frame_number;
@@ -1287,7 +1292,7 @@ int main(int argc, char *argv[])
   //------------------------------------------------------------------
   // Open the camera and image wrapper.  If we have a video file, then
   // set up the Tcl controls to run it.  Also, report the frame number.
-  if (!get_camera_and_imager(g_device_name, &g_camera, &g_image, &g_video)) {
+  if (!get_camera(g_device_name, &g_camera, &g_video)) {
     fprintf(stderr,"Cannot open camera/imager\n");
     if (g_camera) { delete g_camera; g_camera = NULL; }
     cleanup();

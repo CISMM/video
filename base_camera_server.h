@@ -145,6 +145,56 @@ protected:
 };
 
 //----------------------------------------------------------------------------
+// Concrete version of above virtual base class that creates itself by subsetting
+// an existing image.  It has a smaller range than the image but is otherwise
+// identical.
+
+class cropped_image: public image_wrapper {
+public:
+  cropped_image(const image_wrapper &reference_image, int minx, int miny, int maxx, int maxy) :
+      _ref(reference_image), _minx(minx), _miny(miny), _maxx(maxx), _maxy(maxy) {
+	int rminx, rmaxx, rminy, rmaxy;
+	_ref.read_range(rminx, rmaxx, rminy, rmaxy);
+
+	// If the maxes are greater than the mins, set them to the size of
+	// the image.
+	if (_maxx < _minx) {
+	  _minx = rminx; _maxx = rmaxx;
+	}
+	if (_maxy < _miny) {
+	  _miny = rminy; _maxy = rmaxy;
+	}
+
+	// Clip to the boundaries of the cropped image.
+	if (_minx < rminx) { _minx = rminx; }
+	if (_maxx > rmaxx) { _maxx = rmaxx; }
+	if (_miny < rminy) { _minx = rminy; }
+	if (_maxy > rmaxy) { _maxy = rmaxy; }
+  }
+
+  // Tell what the range is for the image.
+  virtual void	read_range(int &minx, int &maxx, int &miny, int &maxy) const;
+
+  /// Return the number of colors that the image has
+  virtual unsigned  get_num_colors() const { return _ref.get_num_colors(); }
+
+  /// Read a pixel from the image into a double; return true if the pixel
+  // was in the image, false if it was not.
+  virtual bool	read_pixel(int x, int y, double	&result, unsigned rgb = 0) const {
+    return _ref.read_pixel(x,y, result, rgb);
+  }
+
+  /// Read a pixel from the image into a double; Don't check boundaries.
+  virtual double read_pixel_nocheck(int x, int y, unsigned rgb = 0) const {
+    return _ref.read_pixel_nocheck(x, y, rgb);
+  }
+
+protected:
+  const	image_wrapper &_ref;	    //< Image to get pixels from
+  int _minx, _maxx, _miny, _maxy;   //< Coordinates for the pixels (copied from other image)
+};
+
+//----------------------------------------------------------------------------
 // Concrete version of above virtual base class that applies a translation
 // to the pixel coordinates for another image and lets you resample it.  It does a
 // bilinear interpolation on the pixel coordinates to get the values from the
@@ -157,7 +207,7 @@ public:
     _ref(reference_image), _dx(dx), _dy(dy) { };
   virtual ~translated_image() {};
 
-  // Tell what the range is for the image.
+  // Tell what the range is for the image.  XXX Should be offset.
   virtual void	read_range(int &minx, int &maxx, int &miny, int &maxy) const
   {
     _ref.read_range(minx, maxx, miny, maxy);
@@ -212,7 +262,8 @@ public:
   };
   virtual ~affine_transformed_image() {};
 
-  // Tell what the range is for the image.
+  // Tell what the range is for the image.  XXX Not clear what this means for
+  // a transformed image.
   virtual void	read_range(int &minx, int &maxx, int &miny, int &maxy) const
   {
     _ref.read_range(minx, maxx, miny, maxy);
@@ -225,13 +276,17 @@ public:
   // was in the image, false if it was not.
   virtual bool	read_pixel(int x, int y, double	&result, unsigned rgb = 0) const
   {
-    return _ref.read_pixel_bilerp(newx(x,y), newy(x,y), result, rgb);
+    double x_new, y_new;
+    newxy(x,y, x_new, y_new);
+    return _ref.read_pixel_bilerp(x_new, y_new, result, rgb);
   }
 
   /// Read a pixel from the image into a double; Don't check boundaries.
   virtual double read_pixel_nocheck(int x, int y, unsigned rgb = 0) const
   {
-    return _ref.read_pixel_bilerp_nocheck(newx(x,y), newy(x,y), rgb);
+    double x_new, y_new;
+    newxy(x,y, x_new, y_new);
+    return _ref.read_pixel_bilerp_nocheck(x_new, y_new, rgb);
   }
 
 protected:
@@ -244,36 +299,32 @@ protected:
   double  _sinrot;		    //< Sine of the rotation angle
   double  _cosrot;		    //< Cosine of the rotation angle
 
-  // Calculate the direction and length of a step in (x,y) along the
+  // Calculate the direction and length of a step of (x,y) along the
   // rotated and scaled X axis.
   inline double _scale_and_rotate_x_step(double x, double y) const {
     return _scale * (_cosrot*x - _sinrot*y);
   }
 
-  // Calculate the direction and length of a step in (x,y) along the
+  // Calculate the direction and length of a step of (x,y) along the
   // rotated and scaled Y axis.
   inline double _scale_and_rotate_y_step(double x, double y) const {
     return _scale * (_sinrot*x + _cosrot*y);
   }
 
   // These compute the new coordinates from the old coordinates.
-  inline  double  newx(double x, double y) const {
+  inline  void  newxy(double x, double y, double &x_new, double &y_new) const {
+    // Move the center of rotation and scaling to the origin
     double x_centered = x - _centerx;
     double y_centered = y - _centery;
-    double x_scaled_rot = _scale_and_rotate_x_step(x_centered, y_centered);
-    double y_scaled_rot = _scale_and_rotate_y_step(x_centered, y_centered);
-    double x_putback = x_scaled_rot + _centerx;
-    double y_putback = y_scaled_rot + _centery;
-    return x_putback + _dx;
-  }
-  inline  double  newy(double x, double y) const {
-    double x_centered = x - _centerx;
-    double y_centered = y - _centery;
-    double x_scaled_rot = _scale_and_rotate_x_step(x_centered, y_centered);
-    double y_scaled_rot = _scale_and_rotate_y_step(x_centered, y_centered);
-    double x_putback = x_scaled_rot + _centerx;
-    double y_putback = y_scaled_rot + _centery;
-    return y_putback + _dy;
+
+    // Figure out the center-relative location of the desired point,
+    // offset by its translation
+    double x_scaled_rot = _scale_and_rotate_x_step(x_centered + _dx, y_centered + _dy);
+    double y_scaled_rot = _scale_and_rotate_y_step(x_centered + _dx, y_centered + _dy);
+
+    // Put the center of rotation and scaling back where it started
+    x_new = x_scaled_rot + _centerx;
+    y_new = y_scaled_rot + _centery;
   }
 };
 
