@@ -61,7 +61,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "03.02";
+const char *Version_string = "03.03";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -79,6 +79,8 @@ public:
 
   spot_tracker *tracker(void) const { return d_tracker; }
   unsigned index(void) const { return d_index; }
+
+  void set_tracker(spot_tracker *tracker) { d_tracker = tracker; }
 
 protected:
   spot_tracker		*d_tracker;	    //< The tracker we're keeping information for
@@ -1119,7 +1121,11 @@ void myIdleFunc(void)
 
 	// Rotation about the Z axis, reported in radians.
 	q_from_euler(quat, orient * (M_PI/180),0,0);
-	g_vrpn_tracker->report_pose((*loop)->index(), now, pos, quat);
+	if (g_vrpn_tracker->report_pose((*loop)->index(), now, pos, quat) != 0) {
+	  fprintf(stderr,"Error: Could not log tracker number %d\n", (*loop)->index());
+	  cleanup();
+	  exit(-1);
+	}
 
 	// Also, write the data to the .csv file if one is open.
 	if (g_csv_file) {
@@ -1495,6 +1501,14 @@ void mouseCallbackForGLUT(int button, int state, int x, int y)
       // The new tracker becomes the active tracker.
       case GLUT_LEFT_BUTTON:
 	if (state == GLUT_DOWN) {
+	  // Make sure that we don't have too many trackers.  If we do, then don't do anything.
+	  // The number is limited for purposes of logging to the maximum number of sensors in
+	  // a VRPN tracker.
+	  if (g_trackers.size() >= vrpn_TRACKER_MAX_SENSORS) {
+	    fprintf(stderr, "Too many trackers, only %d allowed\n", vrpn_TRACKER_MAX_SENSORS);
+	    return;
+	  }
+
 	  g_whichDragAction = 1;
 	  g_trackers.push_back(new Spot_Information(g_active_tracker = create_appropriate_tracker()));
 	  g_active_tracker->set_location(x, y);
@@ -1691,15 +1705,15 @@ void  rebuild_trackers(int newvalue, void *)
     double y = (*loop)->tracker()->get_y();
     double r = (*loop)->tracker()->get_radius();
 
+    // Be sure to delete only the trackers and not the indices when
+    // rebuilding the trackers.
     if (g_active_tracker == (*loop)->tracker()) {
       delete (*loop)->tracker();
-      delete *loop;
-      *loop = new Spot_Information(create_appropriate_tracker());
+      (*loop)->set_tracker(create_appropriate_tracker());
       g_active_tracker = (*loop)->tracker();
     } else {
       delete (*loop)->tracker();
-      delete *loop;
-      *loop = new Spot_Information(create_appropriate_tracker());
+      (*loop)->set_tracker(create_appropriate_tracker());
     }
     (*loop)->tracker()->set_location(x,y);
     (*loop)->tracker()->set_radius(r);
