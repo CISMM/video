@@ -231,14 +231,13 @@ Tclvar_int_with_button	g_rescale("rescale","",0, make_appropriate_tracker_active
 Tclvar_int_with_button	g_round_cursor("round_cursor","");
 Tclvar_int_with_button	g_full_area("full_area","");
 Tclvar_int_with_button	g_mark("show_tracker","",1);
-Tclvar_int_with_button	g_show_gain_control("show_gain_control","",0);
-Tclvar_int_with_button	g_show_imagemix_control("show_imagemix_control","",1);
+Tclvar_int_with_button	g_show_imagemix_control("show_imagemix_control","",0);
+Tclvar_int_with_button	g_display_which_image("display",NULL,0, display_which_image_changed);
 Tclvar_int_with_button	g_subtract("subtract",NULL,0, subtract_changed);
 Tclvar_int_with_button	g_accumulate_min("accumulate_min_image",".imagemix.statistics",0, accumulate_min_changed);
 Tclvar_int_with_button	g_accumulate_max("accumulate_max_image",".imagemix.statistics",0, accumulate_max_changed);
 Tclvar_int_with_button	g_accumulate_mean("accumulate_mean_image",".imagemix.statistics",0, accumulate_mean_changed);
 Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
-Tclvar_int_with_button	g_display_which_image("display",NULL,0, display_which_image_changed);
 Tclvar_int_with_button	g_quit("quit", NULL);
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
@@ -250,6 +249,8 @@ unsigned		g_log_frame_number_last_logged = -1;
 PSF_File		*g_psf_file = NULL;
 bool g_video_valid = false; // Do we have a valid video frame in memory?
 
+Tclvar_int_with_button	g_show_gain_control("show_gain_control","",0);
+Tclvar_int_with_button	g_auto_gain("auto_gain",NULL,0);
 Tclvar_float_with_scale	g_clip_high("clip_high", ".gain.high", 0, 1, 1);
 Tclvar_float_with_scale	g_clip_low("clip_low", ".gain.low", 0, 1, 0);
 
@@ -887,6 +888,24 @@ void myIdleFunc(void)
     exit(-1);
   }
 
+  // If we've been asked to do auto-gain, set the
+  // clip values to the minimum and maximum pixel intensities present.
+  if (g_auto_gain) {
+    vrpn_uint16 clamp = (1 << ((unsigned)(g_bitdepth))) - 1;
+    int x,y;
+    double  min, max;
+    max = min = g_image_to_display->read_pixel_nocheck(0, 0, g_colorIndex);
+    for (x = *g_minX; x <= *g_maxX; x++) {
+      for (y = *g_minY; y <= *g_maxY; y++) {
+	double val = g_image_to_display->read_pixel_nocheck(x, y, g_colorIndex);
+	if (val < min) { min = val; }
+	if (val > max) { max = val; }
+      }
+    }
+    g_clip_low = min / clamp;
+    g_clip_high = max / clamp;
+  }
+
   // If we've gotten a new valid frame, then it is time to store the image
   // for the previous frame and get a copy of the current frame so that we
   // can store it next time around.  We do this after saving the previous
@@ -1338,11 +1357,25 @@ void  set_maximum_search_radius(int newvalue, void *)
 // Deletes the subtraction image and sets it to null when the button is turned off.
 // Also sets the image bit depth up one level when subtraction is turned on and
 // down one level when it is turned off (because there can be twice as many values
-// when subtracting).
+// when subtracting).  Also make sure that we are accumulating the type of image
+// we are trying to subtract.
 
 void  subtract_changed(int newvalue, void *)
 {
-  g_bitdepth = (float)g_bitdepth - 1;
+  static  int bit_depth_bump = 0;
+
+  if (newvalue == SUBTRACT_NONE) {
+    if (bit_depth_bump == 1) {
+      g_bitdepth = (float)g_bitdepth - 1;
+      bit_depth_bump = 0;
+    }
+  } else {
+    if (bit_depth_bump == 0) {
+      g_bitdepth = (float)g_bitdepth + 1;
+      bit_depth_bump = 1;
+    }
+  }
+
   if (g_subtract_image) {
     delete g_subtract_image;
     g_subtract_image = NULL;
@@ -1350,8 +1383,11 @@ void  subtract_changed(int newvalue, void *)
   if (newvalue == SUBTRACT_SINGLE) {
     g_subtract_image = new copy_of_image(*g_camera);
   }
-  if (newvalue != SUBTRACT_NONE) {
-    g_bitdepth = (float)g_bitdepth + 1;
+
+  switch (newvalue) {
+    case SUBTRACT_MIN : g_accumulate_min = 1; break;
+    case SUBTRACT_MAX : g_accumulate_max = 1; break;
+    case SUBTRACT_MEAN : g_accumulate_mean = 1; break;
   }
 }
 
@@ -1366,9 +1402,12 @@ void  accumulate_min_changed(int newvalue, void *)
   if (newvalue == 1) {
     g_min_image = new minimum_image(*g_camera);
   } else {
-    // Make sure we're not trying to display the minimum
+    // Make sure we're not trying to display or subtract the minimum
     if (g_display_which_image == DISPLAY_MIN) {
       g_display_which_image = DISPLAY_COMPUTED;
+    }
+    if (g_subtract == SUBTRACT_MIN) {
+      g_subtract = SUBTRACT_NONE;
     }
   }
 }
@@ -1384,9 +1423,12 @@ void  accumulate_max_changed(int newvalue, void *)
   if (newvalue == 1) {
     g_max_image = new maximum_image(*g_camera);
   } else {
-    // Make sure we're not trying to display the maximum
+    // Make sure we're not trying to display or subtract the maximum
     if (g_display_which_image == DISPLAY_MAX) {
       g_display_which_image = DISPLAY_COMPUTED;
+    }
+    if (g_subtract == SUBTRACT_MAX) {
+      g_subtract = SUBTRACT_NONE;
     }
   }
 }
@@ -1402,9 +1444,12 @@ void  accumulate_mean_changed(int newvalue, void *)
   if (newvalue == 1) {
     g_mean_image = new mean_image(*g_camera);
   } else {
-    // Make sure we're not trying to display the mean
+    // Make sure we're not trying to display or subtract the mean
     if (g_display_which_image == DISPLAY_MEAN) {
       g_display_which_image = DISPLAY_COMPUTED;
+    }
+    if (g_subtract == SUBTRACT_MEAN) {
+      g_subtract = SUBTRACT_NONE;
     }
   }
 }

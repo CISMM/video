@@ -1,6 +1,5 @@
 #############################################################################
-# Sets up the control panel for the CISMM Video Optimizer program.
-# XXX Eventually, it should handle all of the controls.
+# Sets up the control panels for the CISMM Video Optimizer program.
 
 # Global variable to remember where they are saving files.
 set fileinfo(open_dir) "C:\\"
@@ -97,6 +96,8 @@ frame .gain.low
 pack .gain.low -side left
 frame .gain.high
 pack .gain.high -side left
+checkbutton .gain.auto -text auto -variable auto_gain
+pack .gain.auto -side left
 
 trace variable show_gain_control w update_gain_window_visibility
 
