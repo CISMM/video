@@ -318,6 +318,13 @@ directx_videofile_server::directx_videofile_server(const char *filename) :
 
 void  directx_videofile_server::close_device(void)
 {
+  // Pause the graph so that its state is known.
+  pause();
+
+  // Clear out the buffered frame.  If we don't do this, the code
+  // can hang when all of the buffers fill up in the filter graph.
+  read_one_frame(0, _num_columns, 0, _num_rows, 1);
+
   if (_pMediaSeeking) { _pMediaSeeking->Release(); }
 #ifdef REGISTER_FILTERGRAPH
   if (_dwGraphRegister) {
@@ -357,6 +364,14 @@ void  directx_videofile_server::single_step(void)
 void  directx_videofile_server::rewind(void)
 {
   LONGLONG pos = 0;
+
+  // Stop the stream so that we get the state to where we can jump
+  // around.
+  pause();
+
+  // Clear out the buffered frame.  If we don't do this, the code
+  // can hang when all of the buffers fill up in the filter graph.
+  read_one_frame(0, _num_columns, 0, _num_rows, 1);
 
   // Seek to the beginning
   _pMediaSeeking->SetPositions(&pos, AM_SEEKING_AbsolutePositioning,

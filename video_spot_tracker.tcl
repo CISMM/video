@@ -26,6 +26,9 @@ pack .kernel.radius -side left
 frame .kernel.optimize
 pack .kernel.optimize -side left
 
+# Quit the program if this window is destroyed
+bind .kernel <Destroy> {global quit ; set quit 1} 
+
 ###########################################################
 # Put the places for the controls for the rod kernels.
 # This window should only be visible when rod3 is turned on.
@@ -81,6 +84,9 @@ pack .log.button -side top -fill x
 label .log.label -textvariable logfilename
 pack .log.label -side top -fill x
 trace variable logging w logging_changed
+
+# Quit the program if this window is destroyed
+bind .log <Destroy> {global quit ; set quit 1} 
 
 proc logging_changed { varName index op } {
     global logging logfilename fileinfo

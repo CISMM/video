@@ -1,3 +1,17 @@
+2004-03-02  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* directx_videofile_server.cpp : Make the destructor and the
+		rewind buttons each wait for the filter graph to
+		finish (by reading an extra frame).  This prevents
+		the code from hanging when it is rewound or quit
+		while playing and tracking.
+	* video_spot_tracker.cpp : Makes the program exit cleanly when
+		the OpenGL window is closed, and when the one of the initial
+		Tcl/Tk windows are closed.  Should also exit somewhat
+		cleanly if the job is killed some other way.
+	* video_spot_tracker.html : Described the changes, bumped the
+		version number.
+
 2004-02-16  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Modified to use a new version of the

@@ -38,6 +38,9 @@ using namespace std;
 
 //#define	DEBUG
 
+static void cleanup();
+static void dirtyexit();
+
 const int MAX_TRACKERS = 100; // How many trackers can exist (for VRPN's tracker object)
 #ifndef	M_PI
 const double M_PI = 2*asin(1.0);
@@ -45,7 +48,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "02.02";
+const char *Version_string = "02.03";
 
 //--------------------------------------------------------------------------
 // Some classes needed for use in the rest of the program.
@@ -392,7 +395,8 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       char *name;
       if ( NULL == (name = new char[strlen(type) + 20]) ) {
 	fprintf(stderr,"Out of memory when allocating file name\n");
-	exit(-1);
+	cleanup();
+        exit(-1);
       }
       sprintf(name, "SEM@file:%s", type);
       SEM_imager *s = new SEM_imager(name);
@@ -475,8 +479,20 @@ void drawStringAtXY(double x, double y, char *string)
 }
 
 
-static void  cleanup(void)
+// This is called when someone kills the task by closing Glut or some
+// other means we don't have control over.  If we try to delete the VRPN
+// objects here, we get a seg fault for some reason.  VRPN must have already
+// cleaned up our stuff for us.
+static void  dirtyexit(void)
 {
+  static bool did_already = false;
+
+  if (did_already) {
+    return;
+  } else {
+    did_already = true;
+  }
+
   // Done with the camera and other objects.
   printf("Exiting\n");
 
@@ -486,18 +502,36 @@ static void  cleanup(void)
     delete *loop;
   }
   delete g_camera;
-  if (g_glut_image) { delete [] g_glut_image; };
-  if (g_beadseye_image) { delete [] g_beadseye_image; };
-  if (g_landscape_image) { delete [] g_landscape_image; };
-  if (g_landscape_floats) { delete [] g_landscape_floats; };
-  if (g_play) { delete g_play; };
-  if (g_rewind) { delete g_rewind; };
-  if (g_step) { delete g_step; };
-  if (g_vrpn_tracker) { delete g_vrpn_tracker; };
-  if (g_vrpn_connection) { delete g_vrpn_connection; };
-  if (g_client_tracker) { delete g_client_tracker; };
-  if (g_client_connection) { delete g_client_connection; };
-  if (g_csv_file) { fclose(g_csv_file); g_csv_file = NULL; };
+  if (g_glut_image) { delete [] g_glut_image; g_glut_image = NULL; };
+  if (g_beadseye_image) { delete [] g_beadseye_image; g_beadseye_image = NULL; };
+  if (g_landscape_image) { delete [] g_landscape_image; g_landscape_image = NULL; };
+  if (g_landscape_floats) { delete [] g_landscape_floats; g_landscape_floats = NULL; };
+  if (g_play) { delete g_play; g_play = NULL; };
+  if (g_rewind) { delete g_rewind; g_rewind = NULL; };
+  if (g_step) { delete g_step; g_step = NULL; };
+  if (g_csv_file) { fclose(g_csv_file); g_csv_file = NULL; g_csv_file = NULL; };
+}
+
+static void  cleanup(void)
+{
+  static bool cleaned_up_already = false;
+
+  if (cleaned_up_already) {
+    return;
+  } else {
+    cleaned_up_already = true;
+  }
+
+  // Done with the camera and other objects.
+  printf("Cleanly ");
+
+  // Do the dirty-exit stuff, then clean up VRPN stuff.
+  dirtyexit();
+
+  if (g_vrpn_tracker) { delete g_vrpn_tracker; g_vrpn_tracker = NULL; };
+  if (g_vrpn_connection) { delete g_vrpn_connection; g_vrpn_connection = NULL; };
+  if (g_client_tracker) { delete g_client_tracker; g_client_tracker = NULL; };
+  if (g_client_connection) { delete g_client_connection; g_client_connection = NULL; };
 }
 
 void myDisplayFunc(void)
@@ -524,7 +558,7 @@ void myDisplayFunc(void)
 	if (!g_camera->get_pixel_from_memory(c, r, uns_pix, g_colorIndex)) {
 	  fprintf(stderr, "Cannot read pixel from region\n");
 	  cleanup();
-	  exit(-1);
+      	  exit(-1);
 	}
 
 	// This assumes that the pixels are actually 8-bit values
@@ -1510,6 +1544,7 @@ void  logfilename_changed(char *newvalue, void *)
       if ( (err=remove(g_logfilename)) != 0) {
 	fprintf(stderr,"Error: could not delete existing logfile %s\n", (char*)(g_logfilename));
 	perror("   Reason");
+	cleanup();
 	exit(-1);
       }
     }
@@ -1534,6 +1569,7 @@ void  logfilename_changed(char *newvalue, void *)
       if ( (err=remove(csvname)) != 0) {
 	fprintf(stderr,"Error: could not delete existing logfile %s\n", (char*)(csvname));
 	perror("   Reason");
+	cleanup();
 	exit(-1);
       }
     }
@@ -1669,6 +1705,11 @@ int main(int argc, char *argv[])
     exit(-1);
   };
 
+  // Set up exit handler to make sure we clean things up no matter
+  // how we are quit.  We hope that we exit in a good way and so
+  // cleanup() gets called, but if not then we do a dirty exit.
+  atexit(dirtyexit);
+
   //------------------------------------------------------------------
   // VRPN state setting so that we don't try to preload a video file
   // when it is opened, which wastes time.  Also tell it not to
@@ -1774,6 +1815,7 @@ int main(int argc, char *argv[])
     Tclvar_selector filename("device_filename", NULL, NULL, "", device_filename_changed, NULL);
     if (Tcl_Eval(tk_control_interp, "ask_user_for_filename") != TCL_OK) {
       fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command, tk_control_interp->result);
+      cleanup();
       exit(-1);
     }
 
@@ -1787,6 +1829,7 @@ int main(int argc, char *argv[])
       }
     } while ( (g_device_name == NULL) && !g_quit);
     if (g_quit) {
+      cleanup();
       exit(0);
     }
   }
@@ -1797,6 +1840,7 @@ int main(int argc, char *argv[])
   if (!get_camera_and_imager(g_device_name, &g_camera, &g_image, &g_video)) {
     fprintf(stderr,"Cannot open camera/imager\n");
     if (g_camera) { delete g_camera; }
+    cleanup();
     exit(-1);
   }
   if (g_video) {  // Put these in a separate control panel?
@@ -1810,6 +1854,7 @@ int main(int argc, char *argv[])
   if (!g_camera->working()) {
     fprintf(stderr,"Could not establish connection to camera\n");
     if (g_camera) { delete g_camera; }
+    cleanup();
     exit(-1);
   }
 
@@ -1859,6 +1904,7 @@ int main(int argc, char *argv[])
     fprintf(stderr,"Out of memory when allocating image!\n");
     fprintf(stderr,"  (Image is %u by %u)\n", g_camera->get_num_columns(), g_camera->get_num_rows());
     delete g_camera;
+    cleanup();
     exit(-1);
   }
 
@@ -1879,6 +1925,7 @@ int main(int argc, char *argv[])
     fprintf(stderr,"Out of memory when allocating beads-eye image!\n");
     fprintf(stderr,"  (Image is %u by %u)\n", g_beadseye_size, g_beadseye_size);
     delete g_camera;
+    cleanup();
     exit(-1);
   }
 
@@ -1896,6 +1943,7 @@ int main(int argc, char *argv[])
     fprintf(stderr,"Out of memory when allocating landscape float buffer!\n");
     fprintf(stderr,"  (Image is %u by %u)\n", g_landscape_size, g_landscape_size);
     delete g_camera;
+    cleanup();
     exit(-1);
   }
 
@@ -1909,6 +1957,7 @@ int main(int argc, char *argv[])
     fprintf(stderr,"Out of memory when allocating landscape image!\n");
     fprintf(stderr,"  (Image is %u by %u)\n", g_landscape_size, g_landscape_size);
     delete g_camera;
+    cleanup();
     exit(-1);
   }
 
@@ -1955,8 +2004,10 @@ int main(int argc, char *argv[])
   glutDisplayFunc(mykymographCenterDisplayFunc);
   glutHideWindow();
   glutIdleFunc(myIdleFunc);
-  glutMainLoop();
 
-  cleanup();
+  glutMainLoop();
+  // glutMainLoop() NEVER returns.  Wouldn't it be nice if it did when Glut was done?
+  // Nope: Glut calls exit(0);
+
   return 0;
 }
