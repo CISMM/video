@@ -1,353 +1,1061 @@
-<title>CISMM Video Optimizer v01.01</title>
-
-
-
-<h1>CISMM Video Optimizer v01.01</h1>
-
-
-
-<p>The <dfn>CISMM Video Optimizer</dfn> program is used to optimize video frames 
-  from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible 
-  video file, from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible 
-  camera, from a <a href="http://roperscientific.com">Roper Scientific</a> camera, 
-  from a <a href="http://diaginc.com">DiagInc</a> SPOT camera, or from a set of 
-  TIFF or BMP files (it can read other, compressed file formats but these are 
-  not included in the default set because these file formats distort images in 
-  ways that affect tracking accuracy). The program currently runs only on Windows, 
-  but it uses the portable openGL library for rendering, the portable Tcl/Tk for 
-  user interface control, and the portable ImageMagick package for reading images.</p>
-<p>The first (so far the only) function of the program is to remove shifts between 
-  frames in the images. It provides an optimizable fiducial mark that can be placed 
-  on the same image feature in each frame of the video. The video is resampled 
-  to keep this point stable in the output log, which is a set of TIFF files that 
-  have the video stabilized.</p>
-<p>Planned features include setting a subregion of the video to store, contrast/gain 
-  adjustment, and removal of imaging artifacts.</p>
-
-
-
-<h2>Running the program</h2>
-
-
-
-<p>The program is run by dragging a video file or image file onto the desktop 
-  icon that was created when the program was installed. To select a stack of image 
-  files that are numbered consecutively, drag any one of the files onto the icon. 
-  It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
-  Menu/All Programs/NSRG/CISMM Video Optimizer v01.01</b></i>. If you run the 
-  program directly by double-clicking on the icon, it will ask for a video or 
-  image file (AVI, TIF, or BMP) that it should open.</p>
-
-
-
-<h2><img src="GUI.jpg" width="173" height="632" align="right">Using the program</h2>
-
-
-
-<p>When the program is run and a file is selected, four windows will appear. The 
-
-  image window that appears on the lower right contains the first image within 
-
-  the video file or a continually-updating image from a live camera feed. The 
-
-  control panel named <b><i>tk</i></b> that appears on the left when the program 
-
-  is run (shown here to the right) contains a number of interaction widgets that 
-
-  control the operation of the program. The <b><i>kernel</i></b> control panel 
-
-  that appears above the image window (described later) controls the type of tracking 
-
-  kernel being used. The <b><i>log</i></b> control panel is described later.</p>
-
-
-
-<h3>Selecting the color channel to use</h3>
-
-
-
-<p><img src="red_green_blue.jpg" width="156" height="60" align="left">If the video 
-
-
-
-  file (or video camera) contains different data sets in the red, green, and blue 
-
-
-
-  channels then you will need to select the one you want to view. By default, 
-
-
-
-  the red channel (channel 0) is selected. To select a different channel, click 
-
-
-
-  on the &quot;0&quot; beneath the <i><b>red_green_blue </b></i>slider and type 
-
-
-
-  its number into the dialog box that appears. Enter 1 for green and 2 for blue. 
-
-
-
-  The video window should change to display the selected channel.</p>
-
-
-
-<h3>Selecting the Image bit depth</h3>
-
-
-
-<p>A <i>bit</i> is a computer term for an entity that can take on two values, 
-  stored as zero and one. Using several bits in parallel enables the encoding 
-  of integers: binary notations is like decimal notation but each digit can only 
-  have the value zero or one before wrapping around. Counting proceeds as follows: 
-  000, 001, 010, 011, 100 corresponds to decimal 0,1,2,3,4. Stacking 8 bits together 
-  (a bit depth of 8) covers the range 0-255. Stacking 12 bits covers the range 
-  0-4095. The default bit depth in <i>CISMM Video Optimizer </i> is 8 bits per 
-  pixel. This is correct for AVI files and many common file formats. Most scientific 
-  cameras, however, operate at 12 bits per pixel. When such an image is loaded 
-  into CISMM Video Optimizer, it produces a strange-looking image with dark spots 
-  where there should be bright spots, or bands of dark and light. While this will 
-  not interfere with the tracking (it is only a problem of mapping 12 bits of 
-  color to 8 bits of displayable color on the screen), it looks unappealing. By 
-  adjusting the bit depth to exceed the number of bits that are used in the image, 
-  these colors can be brought into range. If you load a 16-bit image, this can 
-  be handled by clicking on the number below the slider and typing in 16; even 
-  though it exceeds the maximum slider value, it can be set in this manner. To 
-  repeat, <b><i>this setting has no effect on tracking, only on the images shown 
-  on the screen</i></b>.</p>
-
-
-
-<h3>Moving the fiducial mark</h3>
-
-
-
-<p>To select the fiducial feature in the first image, click on its center with 
-  the left mouse button. A red plus sign will move to the location you have selected. 
-  If you want to adjust its radius, click on the number beneath the <i><b>radius</b></i> 
-  slider within the <b><i>kernel</i></b> control panel and enter it into the dialog 
-  box that appears or by move the <b><i>radius</i></b> slider.</p>
-
-
-
-<p>Note that when optimization is turned on, the tracker will always jump to the 
-  optimum location nearest the current location of the mouse cursor.</p>
-
-
-
-<p>If you prefer to not have the centers of the tracked objects obscured by the 
-  tracking markers, select the <b><i>round_cursor</i></b> checkbox from the <b><i>tk</i></b> 
-  control panel. This will replace the plus signs with a circle around the center 
-  at twice the radius that the kernel is set to use.</p>
-
-
-
-<h3>Selecting the type of tracker</h3>
-
-
-
-<p><img src="kernel.jpg" width="528" height="117"></p>
-
-
-
-<p>There are three types of tracking kernels available in version 1.01, disc, 
-  cone, and symmetric. Their properties are controlled using interface widgets 
-  in the <cite>kernel</cite> control panel.</p>
-
-<p>For tracking spots that are even in intensity, or which have uneven intensities 
-
-  within them but a defined circular edge, the <cite><strong>disc</strong></cite> 
-
-  kernel should be used. The radius should be set to match the radius of the spots 
-
-  you wish to track. The <cite><strong>interpolate</strong></cite> checkbox should 
-
-  be set for more accuracy and cleared for more speed.</p>
-
-<p>For tracking spots that are brighter in the center and drop off to dim (or 
-
-  darkest in the center and ramp up to bright), the <cite><strong>cone</strong></cite> 
-
-  kernel should be used. For cone tracking, the radius should be set about 1/3 
-
-  larger than the spots you want to track (giving the kernel a good sampling of 
-
-  the background as well as the spot). The setting of the <cite>interpolate</cite> 
-
-  check box does not matter for the cone tracker (this tracker always interpolates).</p>
-
-<p></p>
-
-<p>A parameter relevant for both the disc and cone kernel is whether the spots 
-
-  are dark points in a lighter background (the default) or lighter points in a 
-
-  dark background). This is controlled using the <dfn><strong>dark_spot</strong></dfn> 
-
-  check box located at the top of the user interface. You should set this for 
-
-  the type of spot you are seeking.</p>
-
-
-
-<p>If the bead profile is changing over time, or if it does not fit well into 
-  one of the above categories, then the <cite><strong>symmetric</strong></cite> 
-  tracker should be chosen. This tracker operates by locating the minimum variance 
-  in concentric rings around the bead center. It sums the variance in circles 
-  of radius 1, 2, 3, ... up to the radius setting and divides each circle's radius 
-  by its circumference to provide even weights for each ring. The radius should 
-  be set to be at least slighly larger than the bead that is to be tracked; setting 
-  it larger will not harm tracking except to make the program run more slowly. 
-  The setting on the <cite>dark_spot</cite> check box has no effect when symmetric 
-  tracker is chosen.</p>
-
-
-
-<h3>Enabling the fiducial to follow jumps in bead position</h3>
-
-<p></p>
-
-<p>The <strong><cite>follow_jumps</cite></strong> check-box activates a more-robust 
-
-  tracking algorithm that first looks for the best image match within 2 radiii 
-
-  of the prior position and then performs the standard kernel match. This makes 
-
-  the tracking run more slowly, but is more robust to bead motion between frames. 
-
-  It does not affect the accuracy or the style of the main optimization for the 
-
-  kernel, it is only used to initialize the new search location between frames.</p>
-
-<h3>Activating the fiducial tracker</h3>
-
-
-
-<p></p>
-
-
-
-<p>Once you have selected the type of tracker to use, and have selected the fiducial 
-  track, you can check the <cite>optimize</cite> checkbox. When you do this, the 
-  fiducial will move to the centers of the spots it was started on. You do not 
-  have to turn on this optimization for the offset to work; if you select a fiducial 
-  that is not a spot, you should not turn it on. You should then move the fiducial 
-  mark to its new location after single-stepping through each video frame.</p>
-
-
-
-<h3>Reading the position of the fiducial</h3>
-
-
-
-<p>The location of the fiducial mark is shown in the <b><i>x</i></b>, <b><i>y</i></b>, 
-  and <b><i>radius</i></b> displays in the kernel window. Note that these may 
-  show subpixel positions and radii. You can control the minimum step size that 
-  the optimizer will use by adjusting the <b><i>precision</i></b> slider within 
-  the <b><i>tk</i></b> control panel. Smaller values make the program run more 
-  slowly but will result in the program attempting to find the position with greater 
-  precision (this will not necessarily correspond to greater accuracy, due to 
-  noise and possibly aliasing).</p>
-
-
-
-<h3>Saving the optimized video</h3>
-
-
-
-<p><img src="log.jpg" width="201" height="61" align="right">You can record the 
-  motion of the trackers by checking the <b><i>Logging</i></b> checkbox within 
-  the <b><i>log</i></b> control panel (shown to the right). This will bring up 
-  a dialog box that will let you select a filename. Once you have selected a file 
-  name, you check the <b><i>play_video</i></b> checkbox to begin going through 
-  the video file, or you can use the <b><i>single_step_video</i></b> repeatedly 
-  to step through a frame at a time. When you are finished with the section of 
-  tracking that you are interested in, uncheck the Logging checkbox to stop the 
-  logging. You can then go forward to another section, turn on logging, and save 
-  a different file sequence if you like. The files that are stored will have the 
-  format: <dfn>filename</dfn>.opt.<dfn>nnnn</dfn>.tif, where filename is the name 
-  selected above, and nnnn is replaced by the frame number from the video (starts 
-  at frame 0 and goes up by one for each single_step).</p>
-
-
-
-<p>Logging will not occur while the file is paused, or when the end of the video 
-  has been reached (the last frame is stored either when you quit the program 
-  or when you stop logging). This is done so that you can place the trackers back 
-  onto spots that have jumped too far between frames when single-stepping through 
-  the video and still get an accurate record of where the spots went. There will 
-  be one file per frame of video stepped through or played through. <b><i>Note</i></b>: 
-  Some video files have a 30 frame/second playback but have three copies of the 
-  same video frame to produce an overall update of 10 frames/second; this will 
-  produce repeated location reports for each of the identical frames.</p>
-
-
-
-<h3>Controlling playback</h3>
-
-
-
-<p>Whether logging is turned on or not (for previewing to see how well the fiducial 
-  mark tracks, for instance), the video can be played by checking the <b><i>play_video</i></b> 
-  checkbox, and paused by unchecking it. The <b><i>single_step_video</i></b> checkbox 
-  will step forwards one video frame each time it is pressed. The <b><i>rewind</i></b> 
-  checkbox causes the video to rewind to the beginning, play the first frame of 
-  the video, and then pause. The <cite>FrameNum</cite> display shows which frame 
-  of a video file is currently being displayed.</p>
-
-
-
-<h3>Downloading and installing the program</h3>
-
-
-
-<p>This program is brought to you courtesy of the National Institutes of Health 
-
-
-
-  <a href="http://www.nibib.nih.gov/">National Institute for Biomedical Imaging 
-
-
-
-  and Bioengineering</a> through its National Research Resource in <a href="http://www.cs.unc.edu/nano/cismm">Computer-Integrated 
-
-
-
-  Systems for Microscopy and Manipulation</a> at the University of North Carolina 
-
-
-
-  at Chapel Hill.</p>
-
-
-
-<h2></h2>
-
-
-
-<p>An installer for the program and manual can be downloaded from the <a href="http://www.cs.unc.edu/Research/nano/cismm/download/index.html">CISMM 
-  software download page</a>. To run it, you must also download and install <b><u>version 
-  01.05 or higher</u> </b>of the <i>NSRG Runtime</i> package, which is also available 
-  on that page. It also requires <a href="http://www.microsoft.com/directx">Microsoft 
-  <i>Direct X</i></a> version 9.0a or higher. If you want to open sets of TIFF 
-  files or other image file sets, you also need <a href="ftp://ftp.imagemagick.org/pub/ImageMagick/binaries/ImageMagick-5.5.7-Q16-windows-dll.exe">the 
-  16-bit version of ImageMagick version 5.5.7</a>. These packages can be installed 
-  in any order. The ImageMagick installer is included as part of the CISMM Video 
-  Optimizer installer.</p>
-
-
-
-<h2>Version Information</h2>
-
-
-
-<h3>Version 01.01:</h3>
-
-<ul>
-  <li> Original version.</li>
-</ul>
-
-
-
+<title>CISMM Video Optimizer v01.02</title>
+
+
+
+
+
+
+
+
+
+
+
+<h1>CISMM Video Optimizer v01.02</h1>
+
+
+
+
+
+
+
+
+
+
+
+<p>The <dfn>CISMM Video Optimizer</dfn> program is used to optimize video frames 
+
+
+  from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible 
+
+
+  video file, from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible 
+
+
+  camera, from a <a href="http://roperscientific.com">Roper Scientific</a> camera, 
+
+
+  from a <a href="http://diaginc.com">DiagInc</a> SPOT camera, or from a set of 
+
+
+  TIFF or BMP files (it can read other, compressed file formats but these are 
+
+
+  not included in the default set because these file formats distort images in 
+
+
+  ways that affect tracking accuracy). The program currently runs only on Windows, 
+
+
+  but it uses the portable openGL library for rendering, the portable Tcl/Tk for 
+
+
+  user interface control, and the portable ImageMagick package for reading images.</p>
+
+
+<p>The first (so far the only) function of the program is to remove shifts between 
+  frames in the images. It provides one or two optimizable fiducial marks that 
+  can be placed on the same image feature in each frame of the video. The video 
+  is resampled to keep these points stable in the output log, which is a set of 
+  TIFF files that have the video stabilized.</p>
+
+
+<p>Planned features include setting a subregion of the video to store, contrast/gain 
+
+
+  adjustment, and removal of imaging artifacts.</p>
+
+
+
+
+
+
+
+
+
+
+
+<h2>Running the program</h2>
+
+
+
+
+
+
+
+
+
+
+
+<p>The program is run by dragging a video file or image file onto the desktop 
+
+
+  icon that was created when the program was installed. To select a stack of image 
+
+
+  files that are numbered consecutively, drag any one of the files onto the icon. 
+
+
+  It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
+
+
+  Menu/All Programs/NSRG/CISMM Video Optimizer v01.02</b></i>. If you run the 
+
+
+  program directly by double-clicking on the icon, it will ask for a video or 
+
+
+  image file (AVI, TIF, or BMP) that it should open.</p>
+
+
+
+
+
+
+
+
+
+
+
+<h2><img src="GUI.jpg" width="170" height="566" align="right">Using the program</h2>
+
+
+
+
+
+
+
+
+
+
+
+<p>When the program is run and a file is selected, four windows will appear. The 
+
+
+
+
+
+  image window that appears on the lower right contains the first image within 
+
+
+
+
+
+  the video file or a continually-updating image from a live camera feed. The 
+
+
+
+
+
+  control panel named <b><i>tk</i></b> that appears on the left when the program 
+
+
+
+
+
+  is run (shown here to the right) contains a number of interaction widgets that 
+
+
+
+
+
+  control the operation of the program. The <b><i>kernel</i></b> control panel 
+
+
+
+
+
+  that appears above the image window (described later) controls the type of tracking 
+
+
+
+
+
+  kernel being used. The <b><i>log</i></b> control panel is described later.</p>
+
+
+
+
+
+
+
+
+
+
+
+<h3>Selecting the color channel to use</h3>
+
+
+
+
+
+
+
+
+
+
+
+<p><img src="red_green_blue.jpg" width="156" height="60" align="left">If the video 
+
+
+
+
+
+
+
+
+
+
+
+  file (or video camera) contains different data sets in the red, green, and blue 
+
+
+
+
+
+
+
+
+
+
+
+  channels then you will need to select the one you want to view. By default, 
+
+
+
+
+
+
+
+
+
+
+
+  the red channel (channel 0) is selected. To select a different channel, click 
+
+
+
+
+
+
+
+
+
+
+
+  on the &quot;0&quot; beneath the <i><b>red_green_blue </b></i>slider and type 
+
+
+
+
+
+
+
+
+
+
+
+  its number into the dialog box that appears. Enter 1 for green and 2 for blue. 
+
+
+
+
+
+
+
+
+
+
+
+  The video window should change to display the selected channel.</p>
+
+
+
+
+
+
+
+
+
+
+
+<h3>Selecting the Image bit depth</h3>
+
+
+
+
+
+
+
+
+
+
+
+<p>A <i>bit</i> is a computer term for an entity that can take on two values, 
+
+
+  stored as zero and one. Using several bits in parallel enables the encoding 
+
+
+  of integers: binary notations is like decimal notation but each digit can only 
+
+
+  have the value zero or one before wrapping around. Counting proceeds as follows: 
+
+
+  000, 001, 010, 011, 100 corresponds to decimal 0,1,2,3,4. Stacking 8 bits together 
+
+
+  (a bit depth of 8) covers the range 0-255. Stacking 12 bits covers the range 
+
+
+  0-4095. The default bit depth in <i>CISMM Video Optimizer </i> is 8 bits per 
+
+
+  pixel. This is correct for AVI files and many common file formats. Most scientific 
+
+
+  cameras, however, operate at 12 bits per pixel. When such an image is loaded 
+
+
+  into CISMM Video Optimizer, it produces a strange-looking image with dark spots 
+
+
+  where there should be bright spots, or bands of dark and light. While this will 
+
+
+  not interfere with the tracking (it is only a problem of mapping 12 bits of 
+
+
+  color to 8 bits of displayable color on the screen), it looks unappealing. By 
+
+
+  adjusting the bit depth to exceed the number of bits that are used in the image, 
+
+
+  these colors can be brought into range. If you load a 16-bit image, this can 
+
+
+  be handled by clicking on the number below the slider and typing in 16; even 
+
+
+  though it exceeds the maximum slider value, it can be set in this manner. To 
+
+
+  repeat, <b><i>this setting has no effect on tracking, only on the images shown 
+
+
+  on the screen</i></b>.</p>
+
+
+
+
+
+
+
+
+
+
+
+<h3>Selecting the type of optimization</h3>
+<p>By default, the CISMM Video Optimizer only applies a translation to successive 
+  frames in the image and only provides one fiducial mark, which follows a point 
+  on the images that is to remain fixed in the output video.</p>
+<p>If either or both of the <cite>reorient</cite> and <cite>rescale</cite> check-boxes 
+  in the Tcl menu are checked, a second fiducial mark appears. This mark is to 
+  be placed on a second point in each image that is to be kept at the same relative 
+  location compared to the (moving) first point. If reorient is selected, the 
+  images are rotated in-plane so that it points in always lies in the same direction 
+  from the first fiducial. If rescale is selected, the images are uniformly scaled 
+  so that it always lies at the same distance from the (moving) first point.</p>
+<h3>Moving the fiducial marks</h3>
+
+
+
+
+
+
+
+
+
+
+
+<p>To select the fiducial feature in the first image, click on its center with 
+  the left mouse button. A red plus sign will move to the location you have selected. 
+  If you want to adjust its radius, click on the number beneath the <i><b>radius</b></i> 
+  slider within the <b><i>kernel</i></b> control panel and enter it into the dialog 
+  box that appears or by move the <b><i>radius</i></b> slider. When there are 
+  two fiducials shown, the nearest one will move to the location where the mouse 
+  button is pressed.</p>
+
+
+
+
+
+
+
+
+
+
+
+<p>Note that when optimization is turned on, the tracker will always jump to the 
+
+
+  optimum location nearest the current location of the mouse cursor.</p>
+
+
+
+
+
+
+
+
+
+
+
+<p>If you prefer to not have the centers of the tracked objects obscured by the 
+
+
+  tracking markers, select the <b><i>round_cursor</i></b> checkbox from the <b><i>tk</i></b> 
+
+
+  control panel. This will replace the plus signs with a circle around the center 
+
+
+  at twice the radius that the kernel is set to use.</p>
+
+
+
+
+
+
+
+
+
+
+
+<h3>Selecting the type of tracker</h3>
+
+
+
+
+
+
+
+
+
+
+
+<p><img src="kernel.jpg" width="528" height="117"></p>
+
+
+
+
+
+
+
+
+
+
+
+<p>There are three types of tracking kernels available in version 1.02, disc, 
+
+
+  cone, and symmetric. Their properties are controlled using interface widgets 
+
+
+  in the <cite>kernel</cite> control panel.</p>
+
+
+
+
+
+<p>For tracking spots that are even in intensity, or which have uneven intensities 
+
+
+
+
+
+  within them but a defined circular edge, the <cite><strong>disc</strong></cite> 
+
+
+
+
+
+  kernel should be used. The radius should be set to match the radius of the spots 
+
+
+
+
+
+  you wish to track. The <cite><strong>interpolate</strong></cite> checkbox should 
+
+
+
+
+
+  be set for more accuracy and cleared for more speed.</p>
+
+
+
+
+
+<p>For tracking spots that are brighter in the center and drop off to dim (or 
+
+
+
+
+
+  darkest in the center and ramp up to bright), the <cite><strong>cone</strong></cite> 
+
+
+
+
+
+  kernel should be used. For cone tracking, the radius should be set about 1/3 
+
+
+
+
+
+  larger than the spots you want to track (giving the kernel a good sampling of 
+
+
+
+
+
+  the background as well as the spot). The setting of the <cite>interpolate</cite> 
+
+
+
+
+
+  check box does not matter for the cone tracker (this tracker always interpolates).</p>
+
+
+
+
+
+<p></p>
+
+
+
+
+
+<p>A parameter relevant for both the disc and cone kernel is whether the spots 
+
+
+
+
+
+  are dark points in a lighter background (the default) or lighter points in a 
+
+
+
+
+
+  dark background). This is controlled using the <dfn><strong>dark_spot</strong></dfn> 
+
+
+
+
+
+  check box located at the top of the user interface. You should set this for 
+
+
+
+
+
+  the type of spot you are seeking.</p>
+
+
+
+
+
+
+
+
+
+
+
+<p>If the bead profile is changing over time, or if it does not fit well into 
+
+
+  one of the above categories, then the <cite><strong>symmetric</strong></cite> 
+
+
+  tracker should be chosen. This tracker operates by locating the minimum variance 
+
+
+  in concentric rings around the bead center. It sums the variance in circles 
+
+
+  of radius 1, 2, 3, ... up to the radius setting and divides each circle's radius 
+
+
+  by its circumference to provide even weights for each ring. The radius should 
+
+
+  be set to be at least slighly larger than the bead that is to be tracked; setting 
+
+
+  it larger will not harm tracking except to make the program run more slowly. 
+
+
+  The setting on the <cite>dark_spot</cite> check box has no effect when symmetric 
+
+
+  tracker is chosen.</p>
+
+
+
+
+
+
+
+
+
+
+
+<h3>Enabling the fiducial to follow jumps in bead position</h3>
+
+
+
+
+
+<p></p>
+
+
+
+
+
+<p>The <strong><cite>follow_jumps</cite></strong> check-box activates a more-robust 
+
+
+
+
+
+  tracking algorithm that first looks for the best image match within 2 radiii 
+
+
+
+
+
+  of the prior position and then performs the standard kernel match. This makes 
+
+
+
+
+
+  the tracking run more slowly, but is more robust to bead motion between frames. 
+
+
+
+
+
+  It does not affect the accuracy or the style of the main optimization for the 
+
+
+
+
+
+  kernel, it is only used to initialize the new search location between frames.</p>
+
+
+
+
+
+<h3>Activating the fiducial tracker</h3>
+
+
+
+
+
+
+
+
+
+
+
+<p></p>
+
+
+
+
+
+
+
+
+
+
+
+<p>Once you have selected the type of tracker to use, and have selected the fiducial 
+
+
+  track, you can check the <cite>optimize</cite> checkbox. When you do this, the 
+
+
+  fiducial will move to the centers of the spots it was started on. You do not 
+
+
+  have to turn on this optimization for the offset to work; if you select a fiducial 
+
+
+  that is not a spot, you should not turn it on. You should then move the fiducial 
+
+
+  mark to its new location after single-stepping through each video frame.</p>
+
+
+
+
+
+
+
+
+
+
+
+<h3>Reading the position of the fiducial</h3>
+
+
+
+
+
+
+
+
+
+
+
+<p>The location of the fiducial mark is shown in the <b><i>x</i></b>, <b><i>y</i></b>, 
+
+
+  and <b><i>radius</i></b> displays in the kernel window. Note that these may 
+
+
+  show subpixel positions and radii. You can control the minimum step size that 
+
+
+  the optimizer will use by adjusting the <b><i>precision</i></b> slider within 
+
+
+  the <b><i>tk</i></b> control panel. Smaller values make the program run more 
+
+
+  slowly but will result in the program attempting to find the position with greater 
+
+
+  precision (this will not necessarily correspond to greater accuracy, due to 
+
+
+  noise and possibly aliasing).</p>
+
+
+
+
+
+
+
+
+
+
+
+<h3>Saving the optimized video</h3>
+
+
+
+
+
+
+
+
+
+
+
+<p><img src="log.jpg" width="201" height="61" align="right">You can record the 
+
+
+  motion of the trackers by checking the <b><i>Logging</i></b> checkbox within 
+
+
+  the <b><i>log</i></b> control panel (shown to the right). This will bring up 
+
+
+  a dialog box that will let you select a filename. Once you have selected a file 
+
+
+  name, you check the <b><i>play_video</i></b> checkbox to begin going through 
+
+
+  the video file, or you can use the <b><i>single_step_video</i></b> repeatedly 
+
+
+  to step through a frame at a time. When you are finished with the section of 
+
+
+  tracking that you are interested in, uncheck the Logging checkbox to stop the 
+
+
+  logging. You can then go forward to another section, turn on logging, and save 
+
+
+  a different file sequence if you like. The files that are stored will have the 
+
+
+  format: <dfn>filename</dfn>.opt.<dfn>nnnn</dfn>.tif, where filename is the name 
+
+
+  selected above, and nnnn is replaced by the frame number from the video (starts 
+
+
+  at frame 0 and goes up by one for each single_step).</p>
+
+
+
+
+
+
+
+
+
+
+
+<p>Logging will not occur while the file is paused, or when the end of the video 
+
+
+  has been reached (the last frame is stored either when you quit the program 
+
+
+  or when you stop logging). This is done so that you can place the trackers back 
+
+
+  onto spots that have jumped too far between frames when single-stepping through 
+
+
+  the video and still get an accurate record of where the spots went. There will 
+
+
+  be one file per frame of video stepped through or played through. <b><i>Note</i></b>: 
+
+
+  Some video files have a 30 frame/second playback but have three copies of the 
+
+
+  same video frame to produce an overall update of 10 frames/second; this will 
+
+
+  produce repeated location reports for each of the identical frames.</p>
+
+
+
+
+
+
+
+
+
+
+
+<h3>Controlling playback</h3>
+
+
+
+
+
+
+
+
+
+
+
+<p>Whether logging is turned on or not (for previewing to see how well the fiducial 
+
+
+  mark tracks, for instance), the video can be played by checking the <b><i>play_video</i></b> 
+
+
+  checkbox, and paused by unchecking it. The <b><i>single_step_video</i></b> checkbox 
+
+
+  will step forwards one video frame each time it is pressed. The <b><i>rewind</i></b> 
+
+
+  checkbox causes the video to rewind to the beginning, play the first frame of 
+
+
+  the video, and then pause. The <cite>FrameNum</cite> display shows which frame 
+
+
+  of a video file is currently being displayed.</p>
+
+
+
+
+
+
+
+
+
+
+
+<h3>Downloading and installing the program</h3>
+
+
+
+
+
+
+
+
+
+
+
+<p>This program is brought to you courtesy of the National Institutes of Health 
+
+
+
+
+
+
+
+
+
+
+
+  <a href="http://www.nibib.nih.gov/">National Institute for Biomedical Imaging 
+
+
+
+
+
+
+
+
+
+
+
+  and Bioengineering</a> through its National Research Resource in <a href="http://www.cs.unc.edu/nano/cismm">Computer-Integrated 
+
+
+
+
+
+
+
+
+
+
+
+  Systems for Microscopy and Manipulation</a> at the University of North Carolina 
+
+
+
+
+
+
+
+
+
+
+
+  at Chapel Hill.</p>
+
+
+
+
+
+
+
+
+
+
+
+<h2></h2>
+
+
+
+
+
+
+
+
+
+
+
+<p>An installer for the program and manual can be downloaded from the <a href="http://www.cs.unc.edu/Research/nano/cismm/download/index.html">CISMM 
+
+
+  software download page</a>. To run it, you must also download and install <b><u>version 
+
+
+  01.05 or higher</u> </b>of the <i>NSRG Runtime</i> package, which is also available 
+
+
+  on that page. It also requires <a href="http://www.microsoft.com/directx">Microsoft 
+
+
+  <i>Direct X</i></a> version 9.0a or higher. If you want to open sets of TIFF 
+
+
+  files or other image file sets, you also need <a href="ftp://ftp.imagemagick.org/pub/ImageMagick/binaries/ImageMagick-5.5.7-Q16-windows-dll.exe">the 
+
+
+  16-bit version of ImageMagick version 5.5.7</a>. These packages can be installed 
+
+
+  in any order. The ImageMagick installer is included as part of the CISMM Video 
+
+
+  Optimizer installer.</p>
+
+
+
+
+
+
+
+
+
+
+
+<h2>Version Information</h2>
+
+
+
+
+
+
+
+
+
+
+
+<h3>Version 01.02:</h3>
+<ul>
+  <li> Adds the ability to rotate and/or scale images based on the location of 
+    two tracked points in the image.</li>
+</ul>
+<h3>Version 01.01:</h3>
+
+
+
+
+
+<ul>
+
+
+  <li> Original version.</li>
+
+
+</ul>
+
+
+
+
+
+
+
+
+
+
+
