@@ -1,3 +1,13 @@
+2003-11-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* edt_server.h : Class to read from raw Pulnix files gotten through
+		the EDT writer.
+	* edt_server.cpp : Same.
+	* edt_library.dsp : Same.
+	* video_spot_tracker.cpp : Same, plus refactoring to enable multiple
+		types of replayable files (not just DirectShow).
+	* base_camera_server.h : Whitespace changes.
+
 2003-11-18  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* airy_maker : Installer for the Airy-disk maker program.

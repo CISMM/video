@@ -1,7 +1,7 @@
 #ifndef	BASE_CAMERA_SERVER_H
 #define	BASE_CAMERA_SERVER_H
 
-#include <vrpn_Types.h>
+#include  <vrpn_Types.h>
 #include  <vrpn_Connection.h>
 #include  <vrpn_TempImager.h>
 

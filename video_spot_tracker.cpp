@@ -1,6 +1,5 @@
 //XXX Put in times based on video timestamps for samples rather than real time when we have them.
 //XXX Would like to have a .ini file or something to set the starting "save" directory.
-//XXX Nice to tag each tracker with its sensor number.
 //XXX Would like to be able to specify the microns-per-pixel value
 //    and have it stored in the log file.
 //XXX Off-by-1 somewhere in Roper when binning (top line dark)
@@ -16,6 +15,7 @@
 #include "directx_camera_server.h"
 #include "directx_videofile_server.h"
 #include "diaginc_server.h"
+#include "edt_server.h"
 #include "image_wrapper.h"
 #include "spot_tracker.h"
 #include <tcl.h>
@@ -36,9 +36,48 @@ const int MAX_TRACKERS = 100; // How many trackers can exist (for VRPN's tracker
 #ifndef	M_PI
 const double M_PI = 2*asin(1.0);
 #endif
+
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.19";
+const char *Version_string = "01.20";
+
+//--------------------------------------------------------------------------
+// Some classes needed for use in the rest of the program.
+
+class Controllable_Video {
+public:
+  /// Start the stored video playing.
+  virtual void play(void) = 0;
+
+  /// Pause the stored video
+  virtual void pause(void) = 0;
+
+  /// Rewind the stored video to the beginning (also pauses).
+  virtual void rewind(void) = 0;
+
+  /// Single-step the stored video for one frame.
+  virtual void single_step() = 0;
+};
+
+class Directx_Controllable_Video : public Controllable_Video , public directx_videofile_server {
+public:
+  Directx_Controllable_Video(const char *filename) : directx_videofile_server(filename) {};
+  virtual ~Directx_Controllable_Video() {};
+  void play(void) { directx_videofile_server::play(); }
+  void pause(void) { directx_videofile_server::pause(); }
+  void rewind(void) { directx_videofile_server::rewind(); }
+  void single_step(void) { directx_videofile_server::single_step(); }
+};
+
+class Pulnix_Controllable_Video : public Controllable_Video, public edt_pulnix_raw_file_server {
+public:
+  Pulnix_Controllable_Video(const char *filename) : edt_pulnix_raw_file_server(filename) {};
+  virtual ~Pulnix_Controllable_Video() {};
+  void play(void) { edt_pulnix_raw_file_server::play(); }
+  void pause(void) { edt_pulnix_raw_file_server::pause(); }
+  void rewind(void) { edt_pulnix_raw_file_server::rewind(); }
+  void single_step(void) { edt_pulnix_raw_file_server::single_step(); }
+};
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -46,7 +85,7 @@ const char *Version_string = "01.19";
 
 base_camera_server  *g_camera;	    //< Camera used to get an image
 image_wrapper	    *g_image;	    //< Image wrapper for the camera
-directx_videofile_server  *g_video = NULL;  //< Video controls, if we have them
+Controllable_Video  *g_video = NULL;  //< Video controls, if we have them
 unsigned char	    *g_glut_image = NULL; //< Pointer to the storage for the image
 list <spot_tracker *>g_trackers;    //< List of active trackers
 spot_tracker  *g_active_tracker = NULL;	//< The tracker that the controls refer to
@@ -174,10 +213,33 @@ public:
   }
 };
 
-class directx_file_imager: public directx_videofile_server, public image_wrapper
+class directx_file_imager: public Directx_Controllable_Video, public image_wrapper
 {
 public:
-  directx_file_imager(const char *fn) : directx_videofile_server(fn), image_wrapper() {};
+  directx_file_imager(const char *fn) : Directx_Controllable_Video(fn), image_wrapper() {};
+  virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
+    minx = _minX; miny = _minY; maxx = _maxX; maxy = _maxY;
+  }
+  virtual bool	read_pixel(int x, int y, double &result) const {
+    uns16 val;
+    if (get_pixel_from_memory(x, flip_y(y), val, g_colorIndex)) {
+      result = val;
+      return true;
+    } else {
+      return false;
+    }
+  }
+  virtual double read_pixel_nocheck(int x, int y) const {
+    uns16 val;
+    get_pixel_from_memory(x, flip_y(y), val);
+    return val;
+  }
+};
+
+class pulnix_file_imager: public Pulnix_Controllable_Video, public image_wrapper
+{
+public:
+  pulnix_file_imager(const char *fn) : Pulnix_Controllable_Video(fn), image_wrapper() {};
   virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
     minx = _minX; miny = _minY; maxx = _maxX; maxy = _maxY;
   }
@@ -199,7 +261,7 @@ public:
 
 /// Open the wrapped camera we want to use (Roper, DiagInc or DirectX)
 bool  get_camera_and_imager(const char *type, base_camera_server **camera, image_wrapper **imager,
-			    directx_videofile_server **video)
+			    Controllable_Video **video)
 {
   if (!strcmp(type, "roper")) {
     roper_imager *r = new roper_imager();
@@ -225,11 +287,22 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
     g_shift = 0;
   } else {
     fprintf(stderr,"get_camera_and_imager(): Assuming filename (%s)\n", type);
-    directx_file_imager	*f = new directx_file_imager(type);
-    *camera = f;
-    *video = f;
-    *imager = f;
-    g_shift = 0;
+
+    // If the extension is ".raw", then we assume it is a Pulnix file and open
+    // it that way.  Otherwise, we assume it is something that DirectX can open.
+    if (strcmp(".raw", &type[strlen(type)-4]) == 0) {
+      pulnix_file_imager *f = new pulnix_file_imager(type);
+      *camera = f;
+      *video = f;
+      *imager = f;
+      g_shift = 0;
+    } else {
+      directx_file_imager *f = new directx_file_imager(type);
+      *camera = f;
+      *video = f;
+      *imager = f;
+      g_shift = 0;
+    }
   }
   return true;
 }
