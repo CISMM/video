@@ -22,6 +22,9 @@
 #include <quat.h>
 #include <vrpn_Connection.h>
 #include <vrpn_Tracker.h>
+// This pragma tells the compiler not to tell us about truncated debugging info
+// due to name expansion within the string, list, and vector classes.
+#pragma warning( disable : 4786 )
 #include <list>
 using namespace std;
 
@@ -37,7 +40,14 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "03.00";
+const char *Version_string = "03.01";
+
+//--------------------------------------------------------------------------
+// Global constants
+
+const int KERNEL_DISC = 0;	  //< These must match the values used in video_spot_tracker.tcl.
+const int KERNEL_CONE = 1;
+const int KERNEL_SYMMETRIC = 2;
 
 //--------------------------------------------------------------------------
 // Some classes needed for use in the rest of the program.
@@ -104,33 +114,35 @@ public:
 char  *g_device_name = NULL;			  //< Name of the device to open
 base_camera_server  *g_camera;			  //< Camera used to get an image
 image_wrapper	    *g_image;			  //< Image wrapper for the camera
+copy_of_image	    *g_last_image = NULL;	  //< Copy of the last image we had, if any
+float		    g_search_radius = 0;	  //< Search radius for doing local max in before optimizing.
 Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
+Tclvar_int_with_button	g_frame_number("frame_number",NULL,-1);  //< Keeps track of video frame number
 
 int		    g_tracking_window;		  //< Glut window displaying tracking
 unsigned char	    *g_glut_image = NULL;	  //< Pointer to the storage for the image
 
 list <spot_tracker *>g_trackers;		  //< List of active trackers
-spot_tracker  *g_active_tracker = NULL;		  //< The tracker that the controls refer to
+spot_tracker	    *g_active_tracker = NULL;	  //< The tracker that the controls refer to
 bool		    g_ready_to_display = false;	  //< Don't unless we get an image
 bool		    g_already_posted = false;	  //< Posted redisplay since the last display?
 int		    g_mousePressX, g_mousePressY; //< Where the mouse was when the button was pressed
 int		    g_whichDragAction;		  //< What action to take for mouse drag
 
-vrpn_Connection	*g_vrpn_connection = NULL;    //< Connection to send position over
-vrpn_Tracker_Server *g_vrpn_tracker = NULL;   //< Tracker server to send positions
-vrpn_Connection	*g_client_connection = NULL;  //< Connection on which to perform logging
-vrpn_Tracker_Remote *g_client_tracker = NULL; //< Client tracker object to case ping/pong server messages
-FILE	*g_csv_file = NULL;		      //< File to save data in with .csv extension
-
+vrpn_Connection	    *g_vrpn_connection = NULL;    //< Connection to send position over
+vrpn_Tracker_Server *g_vrpn_tracker = NULL;	  //< Tracker server to send positions
+vrpn_Connection	    *g_client_connection = NULL;  //< Connection on which to perform logging
+vrpn_Tracker_Remote *g_client_tracker = NULL;	  //< Client tracker object to case ping/pong server messages
+FILE		    *g_csv_file = NULL;		  //< File to save data in with .csv extension
 
 unsigned char	    *g_beadseye_image = NULL;	  //< Pointer to the storage for the beads-eye image
 unsigned char	    *g_landscape_image = NULL;	  //< Pointer to the storage for the fitness landscape image
 float		    *g_landscape_floats = NULL;	  //< Pointer to the storage for the fitness landscape raw values
-int	g_beadseye_window;		//< Glut window showing view from active bead
-int	g_beadseye_size = 121;		//< Size of beads-eye-view window XXX should be dynamic
-int	g_landscape_window;		//< Glut window showing local landscape of fitness func
-int	g_landscape_size = 25;		//< Size of optimization landscape window
-int	g_landscape_strip_width = 101;	//< Additional size of the graph showing X cross section
+int		    g_beadseye_window;		  //< Glut window showing view from active bead
+int		    g_beadseye_size = 121;	  //< Size of beads-eye-view window XXX should be dynamic
+int		    g_landscape_window;		  //< Glut window showing local landscape of fitness func
+int		    g_landscape_size = 25;	  //< Size of optimization landscape window
+int		    g_landscape_strip_width = 101;//< Additional size of the graph showing X cross section
 
 int		    g_kymograph_width;		  //< Width of the kymograph window (computed at creation time)
 const int	    g_kymograph_height = 512;	  //< Height of the kymograph window
@@ -148,6 +160,7 @@ void  rebuild_trackers(int newvalue, void *);
 void  rebuild_trackers(float newvalue, void *);
 void  set_debug_visibility(int newvalue, void *);
 void  set_kymograph_visibility(int newvalue, void *);
+void  set_maximum_search_radius(int newvalue, void *);
 Tclvar_float		g_X("x");
 Tclvar_float		g_Y("y");
 Tclvar_float_with_scale	g_Radius("radius", ".kernel.radius", 1, 30, 5);
@@ -160,10 +173,10 @@ Tclvar_float_with_scale	g_colorIndex("red_green_blue", "", 0, 2, 0);
 Tclvar_float_with_scale	g_bitdepth("bit_depth", "", 8, 12, 8);
 Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_trackers);
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
-Tclvar_int_with_button	g_invert("dark_spot",".kernel.invert",1, rebuild_trackers);
-Tclvar_int_with_button	g_interpolate("interpolate",".kernel.interp",1, rebuild_trackers);
-Tclvar_int_with_button	g_cone("cone",".kernel.cone",0, rebuild_trackers);
-Tclvar_int_with_button	g_symmetric("symmetric",".kernel.symmetric",0, rebuild_trackers);
+Tclvar_int_with_button	g_invert("dark_spot",NULL,1, rebuild_trackers);
+Tclvar_int_with_button	g_interpolate("interpolate",NULL,1, rebuild_trackers);
+Tclvar_int_with_button	g_areamax("areamax",NULL,0, set_maximum_search_radius);
+Tclvar_int_with_button	g_kernel_type("kerneltype", NULL, KERNEL_SYMMETRIC, rebuild_trackers);
 Tclvar_int_with_button	g_rod("rod3",".kernel.rod3",0, rebuild_trackers);
 Tclvar_float_with_scale	g_length("length", ".rod3", 10, 50, 20);
 Tclvar_float_with_scale	g_orientation("orient", ".rod3", 0, 359, 0);
@@ -457,12 +470,11 @@ spot_tracker  *create_appropriate_tracker(void)
   // If we are using the oriented-rod kernel, we create a new one depending on the type
   // of subordinate spot tracker that is being used.
   if (g_rod) {
-    if (g_symmetric) {
+    if (g_kernel_type == KERNEL_SYMMETRIC) {
       symmetric_spot_tracker_interp *notused = NULL;
       g_interpolate = 1;
-      g_cone = 0;
       return new rod3_spot_tracker_interp(notused, g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing, g_length, 0.0);
-    } else if (g_cone) {
+    } else if (g_kernel_type == KERNEL_CONE) {
       cone_spot_tracker_interp *notused = NULL;
       g_interpolate = 1;
       return new rod3_spot_tracker_interp(notused, g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing, g_length, 0.0);
@@ -476,11 +488,10 @@ spot_tracker  *create_appropriate_tracker(void)
 
   // Not building a compound kernel, so just make a simple kernel of the appropriate type.
   } else {
-    if (g_symmetric) {
+    if (g_kernel_type == KERNEL_SYMMETRIC) {
       g_interpolate = 1;
-      g_cone = 0;
       return new symmetric_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
-    } else if (g_cone) {
+    } else if (g_kernel_type == KERNEL_CONE) {
       g_interpolate = 1;
       return new cone_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
     } else if (g_interpolate) {
@@ -576,10 +587,10 @@ void myDisplayFunc(void)
   glClear(GL_COLOR_BUFFER_BIT);
 
   if (g_show_video) {
-    // Copy pixels into the image buffer.  XXX Flip the image over in
+    // Copy pixels into the image buffer.  Flip the image over in
     // Y so that the image coordinates display correctly in OpenGL.
 #ifdef DEBUG
-    printf("XXX Filling pixels %d,%d through %d,%d\n", (int)(*g_minX),(int)(*g_minY), (int)(*g_maxX), (int)(*g_maxY));
+    printf("Filling pixels %d,%d through %d,%d\n", (int)(*g_minX),(int)(*g_minY), (int)(*g_maxX), (int)(*g_maxY));
 #endif
     int shift = g_bitdepth - 8;
     for (r = *g_minY; r <= *g_maxY; r++) {
@@ -617,7 +628,7 @@ void myDisplayFunc(void)
     // corner, which is at (-1,-1)).
     glRasterPos2f(-1, -1);
 #ifdef DEBUG
-    printf("XXX Drawing %dx%d pixels\n", g_camera->get_num_columns(), g_camera->get_num_rows());
+    printf("Drawing %dx%d pixels\n", g_camera->get_num_columns(), g_camera->get_num_rows());
 #endif
     glDrawPixels(g_camera->get_num_columns(),g_camera->get_num_rows(),
       GL_RGBA, GL_UNSIGNED_BYTE, g_glut_image);
@@ -915,7 +926,7 @@ void myLandscapeDisplayFunc(void)
     g_active_tracker->set_location(start_x, start_y);
 
     // Copy pixels into the image buffer.
-    // XXX Scale and offset them to fit in the range 0-255.
+    // Scale and offset them to fit in the range 0-255.
     double scale = 255 / (max_val - min_val);
     double offset = min_val * scale;
     int	    int_val;
@@ -987,14 +998,14 @@ void mykymographCenterDisplayFunc(void)
     int i;
 
     // Draw the centerline for the image and indicators for grids off-center.
-    glColor3f(1,1,1);
+    glColor3f(0.5,0.5,0.5);
     glBegin(GL_LINES);
       glVertex2f(0, 1);
       glVertex2f(0,-1);
     glEnd();
 
     // Draw a dim mark every ten pixels
-    glColor3f(0.3,0.3,0.3);
+    glColor3f(0.1,0.1,0.1);
     glBegin(GL_LINES);
     for (i = 10; i < 500; i += 10) {
 	glVertex2f(i * (2.0/g_kymograph_width), 1);
@@ -1006,7 +1017,7 @@ void mykymographCenterDisplayFunc(void)
     glEnd();
 
     // Draw a brighter mark every hundred pixels
-    glColor3f(0.6,0.6,0.6);
+    glColor3f(0.2,0.2,0.2);
     glBegin(GL_LINES);
     for (i = 100; i < 500; i += 100) {
 	glVertex2f(i * (2.0/g_kymograph_width), 1);
@@ -1051,6 +1062,10 @@ void mykymographDisplayFunc(void)
     glRasterPos2f(-1, -1);
     glDrawPixels(g_kymograph_width, g_kymograph_height,
       GL_RGBA, GL_UNSIGNED_BYTE, g_kymograph_image);
+
+    // Draw a tiny red dot at the center position just below the
+    // last line of pixels.
+
   }
 
   // Swap buffers so we can see it.
@@ -1131,6 +1146,17 @@ void myIdleFunc(void)
     if ((*g_maxY) >= g_camera->get_num_rows()) { (*g_maxY) = g_camera->get_num_rows() - 1; }
   }
 
+  // If we're doing a search for local maximum during optimization, then make a
+  // copy of the previous image before reading a new one.
+
+  if (g_search_radius > 0) {
+    if (g_last_image == NULL) {
+      g_last_image = new copy_of_image(*g_image);
+    } else {
+      *g_last_image = *g_image;
+    }
+  }
+
   // Read an image from the camera into memory, within a structure that
   // is wrapped by an image_wrapper object that the tracker can use.
   // Tell Glut that it can display an image.
@@ -1147,8 +1173,9 @@ void myIdleFunc(void)
       g_video_valid = false;
     }
   } else {
-    // Got a valid video frame; can log it.
+    // Got a valid video frame; can log it.  Add to the frame number.
     g_video_valid = true;
+    g_frame_number++;
   }
   g_ready_to_display = true;
 
@@ -1171,7 +1198,7 @@ void myIdleFunc(void)
     // optimize loop means that we're reporting the PREVIOUS values of
     // the optimizer (the ones for the frame just ending) rather than
     // the CURRENT values.  This means we'll not write a value for the
-    // last frame.  Before, we weren't writing a value for the first
+    // last frame in a video.  Before, we weren't writing a value for the first
     // frame.  The way it is now, the user can single-step through a
     // file and move the trackers around to line up on each frame before
     // their values are saved.
@@ -1211,22 +1238,78 @@ void myIdleFunc(void)
       }
     }
 
+    // This variable is used to determine if we should consider doing maximum fits,
+    // by determining if the frame number has changed since last time.
+    static int last_optimized_frame_number = -1000;
+
     // Optimize to find the best fit starting from last position for each tracker.
     // Invert the Y values on the way in and out.
     // Don't let it adjust the radius here (otherwise it gets too
     // jumpy).
-    // If we are running a kymograph, then we don't optimize any trackers
-    // past the first two because they are only there as markers in the
-    // image for cell boundaries.
     int kymocount = 0;
     for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+
+      // If the frame-number has changed, and we are doing global searches
+      // within a radius, then create an image-based tracker at the last
+      // location for the current tracker on the last frame; scan all locations
+      // within radius and find the maximum fit on this frame; move the tracker
+      // location to that maximum before doing the optimization.  We use the
+      // image-based tracker for this because other trackers may have maximum
+      // fits outside the region where the bead is -- the symmetric tracker often
+      // has a local maximum at best fit and global maxima elsewhere.
+      if ( g_last_image && (g_search_radius > 0) && (last_optimized_frame_number != g_frame_number) ) {
+
+	double x_base = (*loop)->get_x();
+	double y_base = (*loop)->get_y();
+
+	// Create an image spot tracker and initize it at the location where the current
+	// tracker is, but in the last image.  Grab enough of the image that we will be able
+	// to check over the g_search_radius for a match.
+	image_spot_tracker_interp max_find((*loop)->get_radius(), (g_invert != 0), g_precision,
+	  0.1, g_sampleSpacing);
+	max_find.set_location(x_base, y_base);
+	max_find.set_image(*g_last_image, x_base, y_base, (*loop)->get_radius() + g_search_radius);
+
+	// Loop over the pixels within g_search_radius of the initial location and find the
+	// location with the best match over all of these points.  Do this in the current image.
+	double radsq = g_search_radius * g_search_radius;
+	int x_offset, y_offset;
+	int best_x_offset = 0;
+	int best_y_offset = 0;
+	double best_value = max_find.check_fitness(*g_image);
+	for (x_offset = -floor(g_search_radius); x_offset <= floor(g_search_radius); x_offset++) {
+	  for (y_offset = -floor(g_search_radius); y_offset <= floor(g_search_radius); y_offset++) {
+	    if ( (x_offset * x_offset) + (y_offset * y_offset) <= radsq) {
+	      max_find.set_location(x_base + x_offset, y_base + y_offset);
+	      double val = max_find.check_fitness(*g_image);
+	      if (val > best_value) {
+		best_x_offset = x_offset;
+		best_y_offset = y_offset;
+		best_value = val;
+	      }
+	    }
+	  }
+	}
+
+	// Put the tracker at the location of the maximum, so that it will find the
+	// total maximum when it finds the local maximum.
+	(*loop)->set_location(x_base + best_x_offset, y_base + best_y_offset);
+      }
+
+      // Here's where the tracker is optimized to its new location
       (*loop)->optimize_xy(*g_image, x, y, (*loop)->get_x(), (*loop)->get_y() );
+
+      // If we are running a kymograph, then we don't optimize any trackers
+      // past the first two because they are only there as markers in the
+      // image for cell boundaries.
       if (g_kymograph) {
 	if (++kymocount == 2) {
 	  break;
 	}
       }
     }
+
+    last_optimized_frame_number = g_frame_number;
 
     // Update the kymograph if it is active and if we have a new video frame.
     // This must be done AFTER the optimization because we need to find the right
@@ -1348,7 +1431,7 @@ void myIdleFunc(void)
       *g_step = 0;
     }
 
-    // If the user has pressed play, start the video playing.
+    // If the user has pressed play, start the video playing
     if (!last_play && *g_play) {
       g_video->play();
       *g_rewind = 0;
@@ -1363,11 +1446,13 @@ void myIdleFunc(void)
     // If the user has pressed rewind, go the the beginning of
     // the stream and then pause (by clearing play).  This has
     // to come after the checking for stop play above so that the
-    // video doesn't get paused.
+    // video doesn't get paused.  Also, reset the frame count
+    // when we rewind.
     if (*g_rewind) {
       *g_play = 0;
       *g_rewind = 0;
       g_video->rewind();
+      g_frame_number = -1;
     }
   }
 
@@ -1516,7 +1601,7 @@ void mouseCallbackForGLUT(int button, int state, int x, int y)
 	if (state == GLUT_DOWN) {
 	  g_whichDragAction = 1;
 	  g_trackers.push_back(g_active_tracker = create_appropriate_tracker());
-	  g_active_tracker->set_location(x, (y));
+	  g_active_tracker->set_location(x, y);
 
 	  // Move the pointer to where the user clicked.
 	  // Invert Y to match the coordinate systems.
@@ -1782,6 +1867,14 @@ void  rebuild_trackers(float newvalue, void *) {
   rebuild_trackers((int)newvalue, NULL);
 }
 
+// Sets the radius as the check-box is turned on (1) and off (0);
+// it will be set to the current bead radius
+void  set_maximum_search_radius(int newvalue, void *)
+{
+  g_search_radius = g_Radius * newvalue;
+}
+
+
 //--------------------------------------------------------------------------
 
 int main(int argc, char *argv[])
@@ -1935,7 +2028,7 @@ int main(int argc, char *argv[])
 
   //------------------------------------------------------------------
   // Open the camera and image wrapper.  If we have a video file, then
-  // set up the Tcl controls to run it.
+  // set up the Tcl controls to run it.  Also, report the frame number.
   if (!get_camera_and_imager(g_device_name, &g_camera, &g_image, &g_video)) {
     fprintf(stderr,"Cannot open camera/imager\n");
     if (g_camera) { delete g_camera; }
@@ -1947,6 +2040,30 @@ int main(int argc, char *argv[])
     g_play = new Tclvar_int_with_button("play_video","",0);
     g_rewind = new Tclvar_int_with_button("rewind_video","",1);
     g_step = new Tclvar_int_with_button("single_step_video","");
+    sprintf(command, "label .frametitle -text FrameNum");
+    if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
+	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+		    tk_control_interp->result);
+	    return(-1);
+    }
+    sprintf(command, "pack .frametitle");
+    if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
+	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+		    tk_control_interp->result);
+	    return(-1);
+    }
+    sprintf(command, "label .framevalue -textvariable frame_number");
+    if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
+	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+		    tk_control_interp->result);
+	    return(-1);
+    }
+    sprintf(command, "pack .framevalue");
+    if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
+	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+		    tk_control_interp->result);
+	    return(-1);
+    }
   }
 
   // Verify that the camera is working.
@@ -1980,7 +2097,7 @@ int main(int argc, char *argv[])
   glutInitWindowPosition(175, 220);
   glutInitWindowSize(g_camera->get_num_columns(), g_camera->get_num_rows());
 #ifdef DEBUG
-  printf("XXX initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());
+  printf("initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());
 #endif
   g_tracking_window = glutCreateWindow(g_device_name);
   glutMotionFunc(motionCallbackForGLUT);

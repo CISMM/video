@@ -2,7 +2,6 @@
 # Sets up the control panel for the Video Spot Tracker program.
 # XXX Eventually, it should handle all of the controls.
 
-
 # Global variable to remember where they are saving files.
 set fileinfo(open_dir) "C:\\"
 
@@ -11,14 +10,22 @@ set fileinfo(open_dir) "C:\\"
 
 toplevel .kernel
 wm geometry .kernel +170+10
-frame .kernel.invert
-pack .kernel.invert -side left
-frame .kernel.interp
-pack .kernel.interp -side left
-frame .kernel.cone
-pack .kernel.cone -side left
-frame .kernel.symmetric
-pack .kernel.symmetric -side left
+frame .kernel.options
+checkbutton .kernel.options.invert -text dark_spot -variable dark_spot
+pack .kernel.options.invert -anchor w
+checkbutton .kernel.options.interp -text interpolate -variable interpolate
+pack .kernel.options.interp -anchor w
+checkbutton .kernel.options.areamax -text follow_jumps -variable areamax
+pack .kernel.options.areamax -anchor w
+pack .kernel.options -side left
+frame .kernel.type -relief raised -borderwidth 1
+radiobutton .kernel.type.disc -variable kerneltype -text disc -value 0
+radiobutton .kernel.type.cone -variable kerneltype -text cone -value 1
+radiobutton .kernel.type.symmetric -variable kerneltype -text symmetric -value 2
+pack .kernel.type.disc -anchor w
+pack .kernel.type.cone -anchor w
+pack .kernel.type.symmetric -anchor w
+pack .kernel.type -side left
 frame .kernel.rod3
 pack .kernel.rod3 -side left
 frame .kernel.radius
@@ -132,7 +139,7 @@ set device_filename ""
 proc ask_user_for_filename { } {
 	global device_filename quit fileinfo
 		
-	set types { {"Image Stack Files" "*.avi *.tif *.bmp"} }
+	set types { {"Image Stack Files" "*.avi *.tif *.bmp .raw"} }
 	set device_filename [tk_getOpenFile -filetypes $types \
 		-defaultextension ".avi" \
 		-initialdir $fileinfo(open_dir) \

@@ -142,7 +142,7 @@ public:
 		    double radiusaccuracy = 0.25,
 		    double sample_separation_in_pixels = 1.0);
 
-  /// Check the fitness of the disk against an image, at the current parameter settings.
+  /// Check the fitness against an image, at the current parameter settings.
   // Return the fitness value there.
   virtual double  check_fitness(const image_wrapper &image);
 
@@ -173,7 +173,7 @@ public:
 		    double sample_separation_in_pixels = 1.0);
   symmetric_spot_tracker_interp::~symmetric_spot_tracker_interp();
 
-  /// Check the fitness of the disk against an image, at the current parameter settings.
+  /// Check the fitness against an image, at the current parameter settings.
   // Return the fitness value there.
   virtual double  check_fitness(const image_wrapper &image);
 
@@ -191,6 +191,39 @@ protected:
     double x, y;
   } offset;
   offset  **_radius_lists; //< List of offset values, stored in an array
+};
+
+//----------------------------------------------------------------------------
+// This class is initialized with an image that it should track, and then
+// it will optimize against this initial image by shifting
+// over a specified range to find the image whose pixel-wise least-squares
+// difference it minimized.
+
+class image_spot_tracker_interp : public spot_tracker {
+public:
+  // Set initial parameters of the disk search routine
+  image_spot_tracker_interp(double radius,
+		    bool inverted = false,
+		    double pixelaccuracy = 0.25,
+		    double radiusaccuracy = 0.25,
+		    double sample_separation_in_pixels = 1.0);
+  image_spot_tracker_interp::~image_spot_tracker_interp();
+
+  // Initialize with the image that we are trying to match and the
+  // position in the image we are to check.  The image is resampled
+  // at sub-pixel resolution around the location.  Returns true on
+  // success and false on failure.
+  virtual bool	set_image(const image_wrapper &image, double x, double y, double rad);
+
+  /// Check the fitness against an image, at the current parameter settings.
+  // Return the fitness value there.
+  virtual double  check_fitness(const image_wrapper &image);
+
+protected:
+  double  *_testimage;	  //< The image to test for fitness against
+  int	  _testrad;	  //< The radius of pixels stored from the test image
+  int	  _testsize;	  //< The size of the stored image (2 * _testrad + 1)
+  int	  _testx, _testy;  //< The center of the image for testing point of view
 };
 
 //----------------------------------------------------------------------------

@@ -95,7 +95,7 @@ public:
   disc_image(int minx = 0, int maxx = 255, int miny = 0, int maxy = 255,
 	     double background = 127.0, double noise = 0.0,
 	     double diskx = 127.25, double disky = 127.75, double diskr = 18.5,
-	     double diskintensity = 250);
+	     double diskintensity = 250, int oversample = 1);
   ~disc_image();
 
   // Tell what the range is for the image.
@@ -109,6 +109,7 @@ public:
 
 protected:
   int	  _minx, _maxx, _miny, _maxy;
+  int	  _oversample;
   double  *_image;
 
   // Index the specified pixel, returning false if out of range
@@ -132,7 +133,7 @@ public:
   cone_image(int minx = 0, int maxx = 255, int miny = 0, int maxy = 255,
 	     double background = 127.0, double noise = 0.0,
 	     double diskx = 127.25, double disky = 127.75, double diskr = 18.5,
-	     double centerintensity = 250);
+	     double centerintensity = 250, int oversample = 1);
   ~cone_image();
 
   // Tell what the range is for the image.
@@ -146,6 +147,7 @@ public:
 
 protected:
   int	  _minx, _maxx, _miny, _maxy;
+  int	  _oversample;
   double  *_image;
 
   // Index the specified pixel, returning false if out of range
@@ -158,6 +160,30 @@ protected:
       index = (x-_minx) + (y-_miny)*(_maxx-_minx+1);
       return true;
     }
+};
+
+class copy_of_image: public image_wrapper {
+public:
+  copy_of_image(const image_wrapper &copyfrom);
+  ~copy_of_image();
+
+  // Tell what the range is for the image.
+  virtual void	read_range(int &minx, int &maxx, int &miny, int &maxy) const;
+
+  /// Read a pixel from the image into a double; return true if the pixel
+  // was in the image, false if it was not.
+  virtual bool	read_pixel(int x, int y, double	&result) const;
+
+  /// Read a pixel from the image into a double; Don't check boundaries.
+  virtual double read_pixel_nocheck(int x, int y) const;
+
+  /// Copy new values from the image that is passed in, reallocating if needed
+  void	operator= (const image_wrapper &copyfrom);
+
+protected:
+  int _minx, _maxx, _miny, _maxy;   //< Coordinates for the pixels (copied from other image)
+  int _numx, _numy;		    //< Calculated based on the above min/max values
+  double  *_image;		    //< Holds the values copied from the other image
 };
 
 #endif

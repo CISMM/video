@@ -1,3 +1,32 @@
+2004-08-03  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* file_stack_library.dsp : Making things compile with most stuff
+		installed on D: rather than C: due to hard drive crash.
+	* roper_library.dsp : Same.
+	* video_spot_tracker.dsp : Same.
+	* video.dsw : Same.  Added project file for test image program.
+	* image_wrapper.cpp : Extra error checking.  Changes in the way
+		the disc test image is made to support oversampling.
+		New "Copy_of_image" class that will copy itself from
+		any wrapped class and then report the copied values.
+		This is used for the image-based tracker.
+	* image_wrapper.h : Same.
+	* spot_tracker.cpp : Made a new image-based spot tracker that
+		does least-squares differences between two images to
+		determine the error.  This is used by the new code in
+		the video spot tracker program that tries to follow
+		bead jumps between frames.
+	* spot_tracker.h : Same.
+	* video_spot_tracker.cpp : Turned off compiler warning about too-long
+		symbol names.  Changed the way the kernel is chosen so that
+		it uses a switch statement rather than a set of checkboxes.
+		Moved some GUI code into the Tcl script from the C code.
+		Added code to do image-based search for maximum within one
+		radius of a bead, so that it could track faster bead motion.
+		Added frame-number counter when using video.
+	* video_spot_tracker.tcl : Moved some GUI code into here, made the
+		kernel window display clearer.
+
 2004-03-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* diaginc_library.dsp : Making it build without the ..\external dir.

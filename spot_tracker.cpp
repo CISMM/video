@@ -540,6 +540,151 @@ double	symmetric_spot_tracker_interp::check_fitness(const image_wrapper &image)
   return fitness;
 }
 
+image_spot_tracker_interp::image_spot_tracker_interp(double radius, bool inverted, double pixelaccuracy,
+				     double radiusaccuracy, double sample_separation_in_pixels) :
+    spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)
+{
+  // Make sure the parameters make sense
+  if (_rad <= 0) {
+    fprintf(stderr, "image_spot_tracker::image_spot_tracker(): Invalid radius, using 1.0\n");
+    _rad = 1.0;
+  }
+  if (_pixelacc <= 0) {
+    fprintf(stderr, "image_spot_tracker::image_spot_tracker(): Invalid pixel accuracy, using 0.25\n");
+    _pixelacc = 0.25;
+  }
+  if (_radacc <= 0) {
+    fprintf(stderr, "image_spot_tracker::image_spot_tracker(): Invalid radius accuracy, using 0.25\n");
+    _radacc = 0.25;
+  }
+  if (_samplesep <= 0) {
+    fprintf(stderr, "image_spot_tracker::image_spot_tracker(): Invalid sample spacing, using 1.00\n");
+    _samplesep = 1.0;
+  }
+
+  // Set the initial step sizes for radius and pixels
+  _pixelstep = 2.0; if (_pixelstep < 4*_pixelacc) { _pixelstep = 4*_pixelacc; };
+  _radstep = 2.0; if (_radstep < 4*_radacc) { _radstep = 4*_radacc; };
+
+  // No test image yet
+  _testimage = NULL;
+}
+
+image_spot_tracker_interp::~image_spot_tracker_interp()
+{
+  if (_testimage != NULL) {
+    delete [] _testimage;
+    _testimage = NULL;
+  }
+}
+
+bool	image_spot_tracker_interp::set_image(const image_wrapper &image, double x, double y, double rad)
+{
+  // Find out the desired test radius and make sure it is valid.
+  int desired_rad = (int)ceil(rad);
+  if (desired_rad <= 0) {
+    fprintf(stderr,"image_spot_tracker_interp::set_image(): Non-positive radius, giving up\n");
+    if (_testimage) {
+      delete [] _testimage;
+      _testimage = NULL;
+    }
+    return false;
+  }
+
+  // Make sure that the section of the image we are going to grab fits within
+  // the image itself
+  int minx, maxx, miny, maxy;
+  image.read_range(minx, maxx, miny, maxy);
+  if ( (x - desired_rad < minx) || (x + desired_rad > maxx) ||
+       (y - desired_rad < miny) || (y + desired_rad > maxy) ) {
+    fprintf(stderr,"image_spot_tracker_interp::set_image(): Test region goes outside of image, giving up\n");
+    if (_testimage) {
+      delete [] _testimage;
+      _testimage = NULL;
+    }
+    return false;
+  }
+
+  // If we have a test image already whose radius is too small, then
+  // delete the existing image.
+  if (_testrad && (desired_rad > _testrad)) {
+    delete [] _testimage;
+    _testimage = NULL;
+  }
+
+  // Set the parameters for the test image.  The x and y values are set to
+  // point at the pixel in the middle of the stored test image, NOT at the locations
+  // in the original image.
+  _testrad = desired_rad;
+  _testx = desired_rad;
+  _testy = desired_rad;
+  _testsize = 2 * desired_rad + 1;
+
+  // If we have not test image (we may have just deleted it), then
+  // allocate space to store a new one.
+  if ( (_testimage = new double[_testsize*_testsize]) == NULL) {
+    fprintf(stderr,"image_spot_tracker_interp::set_image(): Out of memory allocating image (%dx%d)\n", _testsize, _testsize);
+    return false;
+  }
+
+  // Sample the input image into the test image, interpolating between pixels.
+  int xsamp, ysamp;
+  for (xsamp = -desired_rad; xsamp <= desired_rad; xsamp++) {
+    for (ysamp = -desired_rad; ysamp <= desired_rad; ysamp++) {
+      _testimage[_testx + xsamp + _testsize * (_testy + ysamp)] = image.read_pixel_bilerp_nocheck(x + xsamp, y + ysamp);
+    }
+  }
+
+  return true;
+}
+
+// Check the fitness of the disk against an image, at the current parameter settings.
+// Return the fitness value there.
+
+// We assume that we are looking at a smooth function, so we do linear
+// interpolation and sample within the space of the kernel, rather than
+// point-sampling the nearest pixel.
+
+double	image_spot_tracker_interp::check_fitness(const image_wrapper &image)
+{
+  double  val;				//< Pixel value read from the image
+  double  pixels = 0;			//< How many pixels we ended up using (used in floating-point calculations only)
+  double  fitness = 0.0;		//< Accumulates the fitness values
+  double  x, y;				//< Loops over coordinates, distance from the center.
+
+  // If we haven't ever gotten the original image, go aheand and grab it now from
+  // the image we've been asked to optimize from.
+  if (_testimage == NULL) {
+    fprintf(stderr,"image_spot_tracker_interp::check_fitness(): Called before set_image() succeeded (grabbing from image)\n");
+    set_image(image, get_x(), get_y(), get_radius());
+    if (_testimage == NULL) {
+      return 0;
+    }
+  }
+
+  for (x = -_testrad; x <= _testrad; x++) {
+    for (y = -_testrad; y <= _testrad; y++) {
+      if (image.read_pixel_bilerp(get_x()+x,get_y()+y,val)) {
+	double myval = _testimage[(int)(_testx+x) + _testsize * (int)(_testy+y)];
+	double squarediff = (val-myval) * (val-myval);
+	fitness -= squarediff;
+	pixels++;
+      }
+
+    }
+  }
+
+  // Normalize the fitness value by the number of pixels we have chosen,
+  // or leave it at zero if we never found any.
+  if (pixels) {
+    fitness /= pixels;
+  }
+
+  // We never invert the fitness: we don't care whether it is a dark
+  // or bright spot.
+  return fitness;
+}
+
 rod3_spot_tracker_interp::rod3_spot_tracker_interp(const disk_spot_tracker *,
 			    double radius, bool inverted,
 			    double pixelaccuracy, double radiusaccuracy,
