@@ -1,3 +1,8 @@
+2003-06-16  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* stack_collector.dsp : Changed to compile with files in new
+		locations.
+
 2003-06-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* directx_camera_server.cpp : Made it so that if you ask for a

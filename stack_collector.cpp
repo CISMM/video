@@ -16,10 +16,10 @@
 #include <windows.h>
 #endif
 #include <GL/gl.h>
-#include <glut.h>
+#include <GL/glut.h>
 
-#define	FAKE_ROPER
-#define	FAKE_NIKON
+//#define	FAKE_ROPER
+//#define	FAKE_NIKON
 
 //--------------------------------------------------------------------------
 // Version string for this program
