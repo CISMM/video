@@ -1,4 +1,11 @@
-2002-10-27  Russell M. Taylor II  <taylorr@cs.unc.edu>
+2002-11-04  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* argonot.cpp : Modified the gain and offset settings to be clamp
+		values (matches the way the Argus system works).
+		Added command-line argument to tell which device to
+		connect to (default is at localhost).
+
+2002-11-04  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* directx_camera_server.cpp : Changing buffers from signed to
 		unsigned characters to avoid sign-extension before

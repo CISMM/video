@@ -9,7 +9,7 @@
 //   XXX Base the gain and offset on the image based on a histogram display
 //
 // XXX It assumes that the size of the imager does not change during the run.
-// XXX It assumes that the pixels are actually 8-bit values (it will clip if they are larger).
+// XXX Its settings and ranges assume that the pixels are actually 8-bit values.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,8 +43,8 @@ int	  g_window_id;			//< Window ID to destroy when done
 
 //--------------------------------------------------------------------------
 // Tcl controls and displays
-Tclvar_float_with_scale	g_intensity_gain("gain", "", 0, 5, 1);
-Tclvar_float_with_scale	g_intensity_offset("offset", "", 0, 255, 0);
+Tclvar_float_with_scale	g_clip_high("clip_high", "", 0, 255, 255);
+Tclvar_float_with_scale	g_clip_low("clip_low", "", 0, 255, 0);
 Tclvar_int_with_button	g_subtract_background("subtract_background", "");
 Tclvar_int_with_button	g_average_background("average_background", "");
 Tclvar_int_with_button	g_quit("quit","");
@@ -81,8 +81,17 @@ void  handle_region_change(void *, const vrpn_IMAGERREGIONCB info)
     int ir;		//< Inverted Row
     int offset,RegionOffset;
     const vrpn_TempImager_Region* region=info.region;
-    double  intensity_gain = g_intensity_gain;
-    double  intensity_offset = g_intensity_offset;
+    double  intensity_gain;
+    double  intensity_offset;
+
+    // Compute gain and offset so that pixels at or below the low-clip value are
+    // set to zero and pixels at or above the high-clip value are set to 255.
+    // First, make sure we've got legal settings.
+    if (g_clip_high <= g_clip_low) {
+      g_clip_high = g_clip_low + 1;
+    }
+    intensity_gain = 255.0/(g_clip_high-g_clip_low);
+    intensity_offset = g_clip_low;
 
     int infoLineSize=region->cMax-region->cMin+1;
     vrpn_int32 nCols=g_ti->nCols();
@@ -285,6 +294,25 @@ int main(int argc, char **argv)
   int	i;
 
   //------------------------------------------------------------------
+  // Initialize GLUT so that it fixes the command-line arguments.
+
+  glutInit(&argc, argv);
+
+  //------------------------------------------------------------------
+  // Read command-line arguments for the program.
+
+  switch (argc) {
+  case 1: break;
+  case 2:
+    device_name = argv[1];
+    break;
+  default:
+    fprintf(stderr,"Usage: %s [device_to_connect_to]\n", argv[0]);
+    fprintf(stderr,"       device_to_connect_to: Default TestImage@localhost:4511\n");
+    exit(-1);
+  }
+
+  //------------------------------------------------------------------
   // Generic Tcl startup.  Getting and interpreter and mainwindow.
 
   char		command[256];
@@ -380,15 +408,15 @@ int main(int argc, char **argv)
   g_ready_for_region = true;
   printf("Receiving images at size %dx%d\n", g_ti->nCols(), g_ti->nRows());
 
-  // Initialize GLUT and create the window that will display the
+  //------------------------------------------------------------------
+  // Initialize GLUT display modes and create the window that will display the
   // video -- name the window after the device that has been
   // opened in VRPN.
-  glutInit(&argc, argv);
+
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
   glutInitWindowSize(g_ti->nCols(), g_ti->nRows());
   glutInitWindowPosition(100, 100);
   g_window_id = glutCreateWindow(vrpn_copy_service_name(device_name));
-
   // Set the display function and idle function for GLUT (they
   // will do all the work) and then give control over to GLUT.
   glutDisplayFunc(myDisplayFunc);
