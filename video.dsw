@@ -174,6 +174,18 @@ Package=<4>
 
 ###############################################################################
 
+Project: "swap_ppm_lines"=.\swap_ppm_lines.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
 Project: "tempimager_directx_dll"=.\tempimager_directx_dll.dsp - Package Owner=<4>
 
 Package=<5>

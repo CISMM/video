@@ -1,3 +1,12 @@
+2003-10-05  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+        * edt_video_take.cpp : Added command-line option to swap every other
+                line in the image to fix a bug in the EDT Pulnix driver.
+        * swap_ppm_lines.cpp : Program to read in PPM file, swap every other
+                line, and then write it back out again.
+        * swap_ppm_lines.dsp : Project file to build it.
+        * video.dsw : Adding swap_ppm_lines project.
+
 2003-09-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* EDT capture to C_test_avi.GRF : Replaced with the following.

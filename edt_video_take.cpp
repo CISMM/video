@@ -5,9 +5,10 @@
 // for the original comments from the file.  This program will only
 // work on Windows (boo!)
 
-// XXX We can't capture at 120 Hz -- we only get around 80 Hz.  Add a
+// On IDE drives, we can't capture at 120 Hz -- we only get around 80 Hz.  Add a
 // flag to skip a number of samples before saving each.  Looks like we
-// might get away with only 2.
+// might get away with only 2.  This is not a problem for fast enough SCSI
+// drives.
 
 /*
  * simple_take.c
@@ -32,7 +33,7 @@
  */
 #include "edtinc.h"
 
-const char VERSION_STRING[] = "01.01";
+const char VERSION_STRING[] = "01.03";
 
 void
 usage(char *progname)
@@ -50,6 +51,7 @@ usage(char *progname)
     printf("  -l loops        number of loops (images to take)\n");
     printf("  -N numbufs      number of ring buffers (see users guide) (default 4)\n");
     printf("  -u unit         %s unit number (default 0)\n", EDT_INTERFACE);
+    printf("  -~	      swap every pair of lines before writing the file (bug work-around)\n");
     printf("  -s skipframes   write every Nth frame (default 1)\n");
 }
 
@@ -75,7 +77,8 @@ int main(int argc, char **argv)
     char    devname[128];
     int     channel = 0;
     double  dtime;
-    int	    skipframes = 1;
+    int	    skipframes = 1;	//< Skip frames to reduce required disk bandwidth
+    bool    swaplines = false;	//< Swap every pair of lines (bug fix for EDT driver for Pulnix)
 
     devname[0] = '\0';
     *filename = '\0';
@@ -115,6 +118,10 @@ int main(int argc, char **argv)
 	    ++argv;
 	    --argc;
 	    skipframes = atoi(argv[0]);
+	    break;
+
+	case '~':
+	    swaplines = true;
 	    break;
 
 	case 'b':		/* bitmap save filename */
@@ -174,6 +181,16 @@ int main(int argc, char **argv)
     height = pdv_get_height(pdv_p);
     depth = pdv_get_depth(pdv_p);
     cameratype = pdv_get_cameratype(pdv_p);
+
+    if (swaplines && (height % 2 != 0)) {
+      fprintf(stderr,"Cannot swap lines with odd-height image (%d)\n", height);
+      return(-1);
+    }
+    unsigned char *swapbuf = new unsigned char[width];
+    if (swapbuf == NULL) {
+      fprintf(stderr, "Out of memory trying to allocate swap buffer\n");
+      return(-1);
+    }
 
     // Make sure we have an 8-bit camera.  Otherwise, bail.
     if (depth != 8) {
@@ -257,6 +274,20 @@ int main(int argc, char **argv)
 	// Add this image into the raw video file unless this is a frame
 	// that we are skipping.
 	if ( (i % skipframes) == 0) {
+
+	  // If we're supposed to swap every other line, do that here.
+	  // The image lines are swapped in place.
+	  if (swaplines) {
+	    int j;    // Indexes into the lines, skipping every other.
+
+	    for (j = 0; j < height; j += 2) {
+	      memcpy(swapbuf, image_p + j*width, width);
+	      memcpy(image_p + (j+1)*width, image_p + j*width, width);
+	      memcpy(image_p + (j+1)*width, swapbuf, width);
+	    }
+	  }
+
+	  // Write the image to the file
 	  if (fwrite(image_p, width*height, 1, outfile) != 1) {
 	    perror("Failed to write image to file");
 	    pdv_close(pdv_p);
