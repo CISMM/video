@@ -3,6 +3,7 @@
 
 #include <windows.h>
 #include "directx_camera_server.h"
+#define	REGISTER_FILTERGRAPH
 
 // Include files for DirectShow video input
 #include <dshow.h>
@@ -28,7 +29,15 @@ public:
   virtual void rewind(void);
 
 protected:
-  IMediaSeeking *_pMediaSeeking;
+  IMediaSeeking *_pMediaSeeking;    //< Lets us seek to positions within video
+  IVideoFrameStep *_pFrameStep;	    //< Lets us single-step or take other steps in video
+#ifdef	REGISTER_FILTERGRAPH
+  DWORD     _dwGraphRegister;	    //< Let us register our graph so we can see with the edtior
+#endif
+
+  virtual bool	read_one_frame(unsigned minX, unsigned maxX,
+			unsigned minY, unsigned maxY,
+			unsigned exposure_millisecs);
   virtual bool	open_and_find_parameters(const char *filename);
 };
 

@@ -5,6 +5,7 @@
 #include <vrpn_BaseClass.h>
 
 //#define HACK_TO_REOPEN
+//#define	DEBUG
 
 //-----------------------------------------------------------------------
 // Helper functions for editing the filter graph:
@@ -58,7 +59,7 @@ static HRESULT ConnectTwoFilters(IGraphBuilder *pGraph, IBaseFilter *pFirst, IBa
     */
 bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
 			      unsigned minY, unsigned maxY,
-			      unsigned exposure_time)
+			      unsigned exposure_millisecs)
 {
   long	scrap;	//< Parameter we don't need to know the value of
   HRESULT hr;
@@ -183,10 +184,16 @@ bool directx_camera_server::open_and_find_parameters(const int which)
   // Create COM and DirectX objects needed to access a video stream.
 
   // Initialize COM.  This must have a matching uninitialize in
-  // the descructor.
+  // the destructor.
+#ifdef	DEBUG
+  printf("directx_camera_server::open_and_find_parameters(): Before CoInitialize\n");
+#endif
   CoInitialize(NULL);
 
   // Create the filter graph manager
+#ifdef	DEBUG
+  printf("directx_camera_server::open_and_find_parameters(): Before CoCreateInstance FilterGraph\n");
+#endif
   CoCreateInstance(CLSID_FilterGraph, NULL, CLSCTX_INPROC_SERVER, 
 		      IID_IGraphBuilder, (void **)&_pGraph);
   if (_pGraph == NULL) {
@@ -197,6 +204,9 @@ bool directx_camera_server::open_and_find_parameters(const int which)
   _pGraph->QueryInterface(IID_IMediaEvent, (void **)&_pEvent);
 
   // Create the Capture Graph Builder.
+#ifdef	DEBUG
+  printf("directx_camera_server::open_and_find_parameters(): Before CoCreateInstance CaptureGraphBuilder2\n");
+#endif
   CoCreateInstance(CLSID_CaptureGraphBuilder2, NULL, CLSCTX_INPROC, 
       IID_ICaptureGraphBuilder2, (void **)&_pBuilder);
   if (_pBuilder == NULL) {
@@ -205,13 +215,19 @@ bool directx_camera_server::open_and_find_parameters(const int which)
   }
 
   // Associate the graph with the builder.
-  _pBuilder->SetFiltergraph(_pGraph);    
+#ifdef	DEBUG
+  printf("directx_camera_server::open_and_find_parameters(): Before SetFilterGraph\n");
+#endif
+  _pBuilder->SetFiltergraph(_pGraph);
 
   //-------------------------------------------------------------------
   // Go find a video device to use: in this case, we are using the first
   // one we find.
 
   // Create the system device enumerator.
+#ifdef	DEBUG
+  printf("directx_camera_server::open_and_find_parameters(): Before CoCreateInstance SystemDeviceEnum\n");
+#endif
   ICreateDevEnum *pDevEnum = NULL;
   CoCreateInstance(CLSID_SystemDeviceEnum, NULL, CLSCTX_INPROC, 
       IID_ICreateDevEnum, (void **)&pDevEnum);
@@ -221,6 +237,9 @@ bool directx_camera_server::open_and_find_parameters(const int which)
   }
 
   // Create an enumerator for video capture devices.
+#ifdef	DEBUG
+  printf("directx_camera_server::open_and_find_parameters(): Before CreateClassEnumerator\n");
+#endif
   IEnumMoniker *pClassEnum = NULL;
   pDevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory, &pClassEnum, 0);
   if (pClassEnum == NULL) {
@@ -229,6 +248,9 @@ bool directx_camera_server::open_and_find_parameters(const int which)
     return false;
   }
 
+#ifdef	DEBUG
+  printf("directx_camera_server::open_and_find_parameters(): Before Loop over enumerators\n");
+#endif
   ULONG cFetched;
   IMoniker *pMoniker = NULL;
   IBaseFilter *pSrc = NULL;
@@ -255,18 +277,30 @@ bool directx_camera_server::open_and_find_parameters(const int which)
   pClassEnum->Release();
   pDevEnum->Release();
 
-
   //-------------------------------------------------------------------
   // Construct the sample grabber that will be used to snatch images from
   // the video stream as they go by.
 
   // Create the Sample Grabber.
+#ifdef	DEBUG
+  printf("directx_camera_server::open_and_find_parameters(): Before CoCreateInstance SampleGrabber\n");
+#endif
   CoCreateInstance(CLSID_SampleGrabber, NULL, CLSCTX_INPROC_SERVER,
       IID_IBaseFilter, reinterpret_cast<void**>(&_pSampleGrabberFilter));
+  if (_pSampleGrabberFilter == NULL) {
+    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't get SampleGrabber filter (not DirectX 8.1?)\n");
+    return false;
+  }
+#ifdef	DEBUG
+  printf("directx_camera_server::open_and_find_parameters(): Before QueryInterface\n");
+#endif
   _pSampleGrabberFilter->QueryInterface(IID_ISampleGrabber,
       reinterpret_cast<void**>(&_pGrabber));
 
   // Set the media type to video
+#ifdef	DEBUG
+  printf("directx_camera_server::open_and_find_parameters(): Before SetMediaType\n");
+#endif
   AM_MEDIA_TYPE mt;
   ZeroMemory(&mt, sizeof(AM_MEDIA_TYPE));
   mt.majortype = MEDIATYPE_Video;	  // Ask for video media producers
@@ -277,6 +311,9 @@ bool directx_camera_server::open_and_find_parameters(const int which)
   // Create a NULL renderer that will be used to discard the video frames
   // on the output pin of the sample grabber
 
+#ifdef	DEBUG
+  printf("directx_camera_server::open_and_find_parameters(): Before CoCreateInstance NullRenderer\n");
+#endif
   IBaseFilter *pNull = NULL;
   CoCreateInstance(CLSID_NullRenderer, NULL, CLSCTX_INPROC_SERVER,
       IID_IBaseFilter, reinterpret_cast<void**>(&pNull));
@@ -355,7 +392,7 @@ bool directx_camera_server::open_and_find_parameters(const int which)
 }
 
 /// Construct but do not open a camera
-directx_camera_server::directx_camera_server(void) :
+directx_camera_server::directx_camera_server() :
   _pGraph(NULL),
   _pBuilder(NULL),
   _pMediaControl(NULL),
@@ -369,7 +406,7 @@ directx_camera_server::directx_camera_server(void) :
 }
 
 /// Open nth available camera.
-directx_camera_server::directx_camera_server(const int which) :
+directx_camera_server::directx_camera_server(int which) :
   _pGraph(NULL),
   _pBuilder(NULL),
   _pMediaControl(NULL),
@@ -380,7 +417,6 @@ directx_camera_server::directx_camera_server(const int which) :
   _mode(0)
 {
   //---------------------------------------------------------------------
-
   if (!open_and_find_parameters(which)) {
     fprintf(stderr, "directx_camera_server::directx_camera_server(): Cannot open camera\n");
     _status = false;
@@ -428,7 +464,7 @@ directx_camera_server::~directx_camera_server(void)
 }
 
 bool  directx_camera_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned minY, unsigned maxY,
-					 double exposure_time)
+					 double exposure_millisecs)
 {
   if (!_status) { return false; };
 
@@ -459,7 +495,7 @@ bool  directx_camera_server::read_image_to_memory(unsigned minX, unsigned maxX, 
 
   //---------------------------------------------------------------------
   // Set up and read one frame.
-  if (!read_one_frame(_minX, _maxX, _minY, _maxY, (int)exposure_time)) {
+  if (!read_one_frame(_minX, _maxX, _minY, _maxY, (int)exposure_millisecs)) {
     fprintf(stderr, "directx_camera_server::read_image_to_memory(): Can't read image\n");
     return false;
   }
@@ -487,7 +523,7 @@ bool  directx_camera_server::write_memory_to_ppm_file(const char *filename, bool
   //---------------------------------------------------------------------
   // If we've collected only a subset of the image, this version of the code
   // won't work.
-  if ( (_minX != 0) || (_maxX != (int)_num_columns-1) || (_minY != 0) || (_maxY != (int)_num_rows-1) ) {
+  if ( (_minX != 0) || (_maxX != _num_columns-1) || (_minY != 0) || (_maxY != _num_rows-1) ) {
     fprintf(stderr, "directx_camera_server::write_memory_to_ppm_file(): Can't write subset (not implemented)\n");
     return false;
   }
@@ -517,7 +553,7 @@ bool  directx_camera_server::write_memory_to_ppm_file(const char *filename, bool
   return true;
 }
 
-bool	directx_camera_server::get_pixel_from_memory(int X, int Y, vrpn_uint8 &val, int RGB) const
+bool	directx_camera_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint8 &val, int RGB) const
 {
   if (!_status) { return false; };
 
@@ -534,7 +570,7 @@ bool	directx_camera_server::get_pixel_from_memory(int X, int Y, vrpn_uint8 &val,
   return true;
 }
 
-bool	directx_camera_server::get_pixel_from_memory(int X, int Y, vrpn_uint16 &val, int RGB) const
+bool	directx_camera_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &val, int RGB) const
 {
   if (!_status) { return false; };
 

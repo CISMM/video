@@ -1,3 +1,21 @@
+2002-10-14  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* base_camera_server.h : Added concept of binning.
+				 Changed coordinates to unsigned from int.
+				 Removed un-needed function prototypes.
+	* directx_camera_server.cpp : Added debugging information.
+				      Added check and new print for failure.
+				      Clarified that exposure is in milliseconds.
+				      Changed ints to unsigneds for coordinates.
+	* directx_videofile_server.cpp : Added the filter graph to the object
+		table so that DirectX graph editor can edit it.  Helpful when
+		debugging failure to play some video files.  Still debugging
+		that...  Trying to do single-step through video files, but can't
+		get interface (other example code can...)
+	* roper_server.cpp : Added support for binning.
+	* video_tempimager_server.cpp : Added command-line options for exposure
+		and binning, and which camera to use.
+
 2002-10-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* roper_server.cpp : Changes to make it work now that it is derived from

@@ -90,6 +90,8 @@ bool  roper_server::read_one_frame(const int16 camera_handle,
        PL_CHECK_RETURN(pl_exp_start_seq(camera_handle, _buffer), "pl_exp_start_seq");
        gettimeofday(&start, NULL);
      }
+     // Check at 1ms intervals to avoid eating the whole CPU
+     vrpn_SleepMsecs(1);
 
   } while (progress != READOUT_COMPLETE);
 
@@ -132,7 +134,8 @@ bool roper_server::open_and_find_parameters(void)
   return true;
 }
 
-roper_server::roper_server(void)
+roper_server::roper_server(unsigned binning) :
+  base_camera_server(binning)
 {
   //---------------------------------------------------------------------
   // Initialize the PVCAM software, open the camera, and find out what its
@@ -182,28 +185,27 @@ bool  roper_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned 
 {
   //---------------------------------------------------------------------
   // In case we fail, clear these
-  _minX = _minY = _maxX = _maxY = 0;
+  _minX = minX * _binning;
+  _maxX = maxX * _binning;
+  _minY = minY * _binning;
+  _maxY = maxY * _binning;
 
   //---------------------------------------------------------------------
   // If the maxes are greater than the mins, set them to the size of
   // the image.
-  if (maxX <= minX) {
-    minX = 0; maxX = _num_columns - 1;
+  if (_maxX <= _minX) {
+    _minX = 0; _maxX = _num_columns - 1;
   }
-  if (maxY <= minY) {
-    minY = 0; maxY = _num_rows - 1;
+  if (_maxY <= _minY) {
+    _minY = 0; _maxY = _num_rows - 1;
   }
 
   //---------------------------------------------------------------------
   // Clip collection range to the size of the sensor on the camera.
-  if (minX < 0) { minX = 0; };
-  if (minY < 0) { minY = 0; };
-  if (maxX >= _num_columns) { maxX = _num_columns - 1; };
-  if (maxY >= _num_rows) { maxY = _num_rows - 1; };
-
-  //---------------------------------------------------------------------
-  // Store image size for later use
-  _minX = minX; _minY = minY; _maxX = maxX; _maxY = maxY;
+  if (_minX < 0) { _minX = 0; };
+  if (_minY < 0) { _minY = 0; };
+  if (_maxX >= _num_columns) { _maxX = _num_columns - 1; };
+  if (_maxY >= _num_rows) { _maxY = _num_rows - 1; };
 
   //---------------------------------------------------------------------
   // Set up and read one frame.
@@ -212,8 +214,8 @@ bool  roper_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned 
   region_description.s2 = _maxX;
   region_description.p1 = _minY;
   region_description.p2 = _maxY;
-  region_description.sbin = 1;
-  region_description.pbin = 1;
+  region_description.sbin = _binning;
+  region_description.pbin = _binning;
   PL_CHECK_RETURN(read_one_frame(_camera_handle, region_description, (int)exposure_time_millisecs),
     "read_one_frame");
 
@@ -243,8 +245,8 @@ bool  roper_server::write_memory_to_ppm_file(const char *filename, bool sixteen_
     unsigned r,c;
     uns16 minimum = vals[0];
     uns16 maximum = vals[0];
-    uns16	cols = (_maxX - _minX) + 1;
-    uns16	rows = (_maxY - _minY) + 1;
+    uns16 cols = (_maxX - _minX)/_binning + 1;
+    uns16 rows = (_maxY - _minY)/_binning + 1;
     for (r = 0; r < rows; r++) {
       for (c = 0; c < cols; c++) {
 	if (vals[r*cols + c] < minimum) { minimum = vals[r*cols+c]; }
@@ -271,8 +273,8 @@ bool  roper_server::write_memory_to_ppm_file(const char *filename, bool sixteen_
     unsigned r,c;
     uns16 minimum = vals[0];
     uns16 maximum = vals[0];
-    uns16 cols = (_maxX - _minX) + 1;
-    uns16 rows = (_maxY - _minY) + 1;
+    uns16 cols = (_maxX - _minX)/_binning + 1;
+    uns16 rows = (_maxY - _minY)/_binning + 1;
     for (r = 0; r < rows; r++) {
       for (c = 0; c < cols; c++) {
 	if (vals[r*cols + c] < minimum) { minimum = vals[r*cols+c]; }
@@ -290,7 +292,7 @@ bool  roper_server::write_memory_to_ppm_file(const char *filename, bool sixteen_
 
 //---------------------------------------------------------------------
 // Map the 12 bits to the range 0-255, and return the result
-bool	roper_server::get_pixel_from_memory(int X, int Y, vrpn_uint8 &val, int RGB) const
+bool	roper_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint8 &val, int RGB) const
 {
   if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
     fprintf(stderr,"roper_server::get_pixel_from_memory(): No image in memory\n");
@@ -300,16 +302,16 @@ bool	roper_server::get_pixel_from_memory(int X, int Y, vrpn_uint8 &val, int RGB)
     fprintf(stderr,"roper_server::get_pixel_from_memory(): Can't select other than 0th color\n");
     return false;
   }
-  if ( (X < _minX) || (X > _maxX) || (Y < _minY) || (Y > _maxY) ) {
+  if ( (X < _minX/_binning) || (X > _maxX/_binning) || (Y < _minY/_binning) || (Y > _maxY/_binning) ) {
     return false;
   }
   uns16	*vals = (uns16 *)_memory;
-  uns16	cols = (_maxX - _minX) + 1;
-  val = (vrpn_uint8)(vals[Y*cols + X] * 255.0/4095.0);
+  uns16	cols = (_maxX - _minX)/_binning + 1;
+  val = (vrpn_uint8)(vals[Y*cols + X] >> 4);
   return true;
 }
 
-bool	roper_server::get_pixel_from_memory(int X, int Y, vrpn_uint16 &val, int RGB) const
+bool	roper_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &val, int RGB) const
 {
   if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
     fprintf(stderr,"roper_server::get_pixel_from_memory(): No image in memory\n");
@@ -319,12 +321,11 @@ bool	roper_server::get_pixel_from_memory(int X, int Y, vrpn_uint16 &val, int RGB
     fprintf(stderr,"roper_server::get_pixel_from_memory(): Can't select other than 0th color\n");
     return false;
   }
-  if ( (X < _minX) || (X > _maxX) || (Y < _minY) || (Y > _maxY) ) {
+  if ( (X < _minX/_binning) || (X > _maxX/_binning) || (Y < _minY/_binning) || (Y > _maxY/_binning) ) {
     return false;
   }
   uns16	*vals = (uns16 *)_memory;
-  uns16	cols = (_maxX - _minX) + 1;
+  uns16	cols = (_maxX - _minX)/_binning + 1;
   val = vals[Y*cols + X];
   return true;
 }
-

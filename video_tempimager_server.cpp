@@ -16,19 +16,24 @@ const int MINOR_VERSION = 3;
 // values.  The server code reads values from the camera and sends
 // them over the network.
 
-base_camera_server  *g_camera;	//< The camera we're going to read from
+base_camera_server  *g_camera;	    //< The camera we're going to read from
+int		    g_bincount = 1; //< How many pixels to average into one bin in X and Y
+double		    g_exposure = 250.0;	//< How long to expose in milliseconds
 
 /// Open the camera we want to use (Roper or DirectX)
 bool  init_camera_code(const char *type, int which = 1)
 {
   if (!strcmp(type, "roper")) {
-    g_camera = new roper_server();
+    printf("Opening Roper Camera with binning at %d\n", g_bincount);
+    g_camera = new roper_server(g_bincount);
     if (!g_camera->working()) {
       fprintf(stderr,"init_camera_code(): Can't open roper camera server\n");
       return false;
     }
   } else if (!strcmp(type, "directx")) {
+    printf("Opening DirectX Camera %d\n", which);
     g_camera = new directx_camera_server(which);
+    printf("Making sure camera is working\n");
     if (!g_camera->working()) {
       fprintf(stderr,"init_camera_code(): Can't open DirectX camera server\n");
       return false;
@@ -50,7 +55,7 @@ void  teardown_camera_code(void)
 // XXX Later, would like to put it into continuous mode, most likely
 void  mainloop_camera_code(void)
 {
-  g_camera->read_image_to_memory();
+  g_camera->read_image_to_memory(0,0,0,0,g_exposure);
 }
 
 //-----------------------------------------------------------------
@@ -133,6 +138,16 @@ void handle_cntl_c(int) {
   g_done = true;
 }
 
+void  Usage(const char *s)
+{
+  fprintf(stderr,"Usage: %s [-expose msecs] [-bin count] [devicename [devicenum]]\n",s);
+  fprintf(stderr,"       -expose: Exposure time in milliseconds (default 250)\n");
+  fprintf(stderr,"       -bin: How many pixels to average in x and y (default 1)\n");
+  fprintf(stderr,"       devicename: roper or directx (default is directx)\n");
+  fprintf(stderr,"       devicenum: Which (starting with 1) if there are multiple (default 1)\n");
+  exit(-1);
+}
+
 //-----------------------------------------------------------------
 // Mostly just calls the above functions; split into client and
 // server parts is done clearly to help people who want to use this
@@ -140,29 +155,46 @@ void handle_cntl_c(int) {
 // the main() program body without trouble (except for the callback
 // handler, of course).
 
-int main(unsigned argc, char *argv[])
+int main(int argc, char *argv[])
 {
-  char	*devicename;	  // Name of the device to open
-  int	devicenum;	  // Which, if there are more than one, to open
-  if (argc == 1) {
-    devicename = "directx";
-    devicenum = 1;
-  } else if (argc == 2) {
-    devicename = argv[1];
-    devicenum = 1;
-  } else if (argc == 3) {
-    devicename = argv[1];
-    devicenum = atoi(argv[2]);
-  } else {
-    fprintf(stderr,"Usage: %s [devicename [devicenum]]\n",argv[0]);
-    fprintf(stderr,"       devicename: roper or directx\n");
-    fprintf(stderr,"       devicenum: Which one to use (starting with 1) if there are multiple\n");
-    exit(-1);
+  int	i, realparams;		  // How many non-flag command-line arguments
+  char	*devicename = "directx";  // Name of the device to open
+  int	devicenum = 1;		  // Which, if there are more than one, to open
+
+  realparams = 0;
+  for (i = 1; i < argc; i++) {
+    if (!strncmp(argv[i], "-bin", strlen("-bin"))) {
+      if (++i > argc) { Usage(argv[0]); }
+      g_bincount = atoi(argv[i]);
+      if ( (g_bincount < 1) || (g_bincount > 16) ) {
+	fprintf(stderr,"Invalid bincount (1-16 allowed, %d entered)\n", g_bincount);
+	exit(-1);
+      }
+    } else if (!strncmp(argv[i], "-expose", strlen("-expose"))) {
+      if (++i > argc) { Usage(argv[0]); }
+      g_exposure = atof(argv[i]);
+      if ( (g_exposure < 1) || (g_exposure > 4000) ) {
+	fprintf(stderr,"Invalid exposure (1-4000 allowed, %f entered)\n", g_exposure);
+	exit(-1);
+      }
+    } else {
+      switch (++realparams) {
+      case 1:
+	devicename = argv[i];
+	break;
+      case 2:
+	devicenum = atoi(argv[i]);
+	break;
+      default:
+	Usage(argv[0]);
+      }
+    }
   }
     
   printf("video_tempImager_server version %02d.%02d\n", MAJOR_VERSION, MINOR_VERSION);
 
   if (!init_camera_code(devicename, devicenum)) { return -1; }
+  printf("Opened camera\n");
   if (!init_server_code()) { return -1; }
 
   // Set up handler for all these signals to set done

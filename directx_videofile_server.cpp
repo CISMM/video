@@ -45,6 +45,44 @@ static HRESULT ConnectTwoFilters(IGraphBuilder *pGraph, IBaseFilter *pFirst, IBa
     return hr;
 }
 
+#ifdef REGISTER_FILTERGRAPH
+
+HRESULT AddGraphToRot(IUnknown *pUnkGraph, DWORD *pdwRegister) 
+{
+    IMoniker * pMoniker;
+    IRunningObjectTable *pROT;
+    if (FAILED(GetRunningObjectTable(0, &pROT))) 
+    {
+        return E_FAIL;
+    }
+
+    WCHAR wsz[128];
+    wsprintfW(wsz, L"FilterGraph %08x pid %08x", (DWORD_PTR)pUnkGraph, 
+              GetCurrentProcessId());
+
+    HRESULT hr = CreateItemMoniker(L"!", wsz, &pMoniker);
+    if (SUCCEEDED(hr)) 
+    {
+        hr = pROT->Register(0, pUnkGraph, pMoniker, pdwRegister);
+        pMoniker->Release();
+    }
+
+    pROT->Release();
+    return hr;
+}
+
+void RemoveGraphFromRot(DWORD pdwRegister)
+{
+    IRunningObjectTable *pROT;
+
+    if (SUCCEEDED(GetRunningObjectTable(0, &pROT))) 
+    {
+        pROT->Revoke(pdwRegister);
+        pROT->Release();
+    }
+}
+
+#endif
 
 //---------------------------------------------------------------------
 // Open the file and determine the image size and such.
@@ -137,6 +175,7 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
   
   //-------------------------------------------------------------------
   // Find the control that lets you seek in the media (rewind uses this).
+  // Find the control that lets us single-step the media and make sure it works.
 
   if (FAILED(_pGraph->QueryInterface(IID_IMediaSeeking, (void **)&_pMediaSeeking))) {
     fprintf(stderr,"directx_videofile_server::open_and_find_parameters(): Can't create media seeker\n");
@@ -144,6 +183,20 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
     pNull->Release();
     return false;
   }
+  if (FAILED(_pGraph->QueryInterface(IID_IVideoFrameStep, (void **)&_pFrameStep))) {
+    fprintf(stderr,"directx_videofile_server::open_and_find_parameters(): Can't create frame stepper\n");
+    pSrc->Release();
+    pNull->Release();
+    return false;
+  }
+  if (S_OK != _pFrameStep->CanStep(0L, NULL)) {
+    _pFrameStep->Release();
+    _pFrameStep = NULL;
+    fprintf(stderr,"directx_videofile_server::open_and_find_parameters(): Warning: Can't use single-step on this file, frames may be lost\n");
+  }
+  // XXX Why does this fail on some video files when it always works on the
+  // "play" example application?  Another note: the video plays all the way
+  // to the end right away when I look at it in the graph editor.
 
   //-------------------------------------------------------------------
   // Find _num_rows and _num_columns, which is the maximum size.
@@ -201,7 +254,8 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
 }
 
 directx_videofile_server::directx_videofile_server(const char *filename) :
-  _pMediaSeeking(NULL)
+  _pMediaSeeking(NULL),
+  _pFrameStep(NULL)
 {
   //---------------------------------------------------------------------
   if (!open_and_find_parameters(filename)) {
@@ -210,6 +264,15 @@ directx_videofile_server::directx_videofile_server(const char *filename) :
     _status = false;
     return;
   }
+
+  //---------------------------------------------------------------------
+  // Let the graph editor connect and view this graph
+#ifdef REGISTER_FILTERGRAPH
+  if (FAILED(AddGraphToRot(_pGraph, &_dwGraphRegister))) {
+      fprintf(stderr,"Failed to register filter graph with ROT!\n");
+      _dwGraphRegister = 0;
+  }
+#endif
 
   //---------------------------------------------------------------------
   // Allocate a buffer that is large enough to read the maximum-sized
@@ -237,6 +300,13 @@ directx_videofile_server::directx_videofile_server(const char *filename) :
 void  directx_videofile_server::close_device(void)
 {
   if (_pMediaSeeking) { _pMediaSeeking->Release(); }
+  if (_pFrameStep) { _pFrameStep->Release(); }
+#ifdef REGISTER_FILTERGRAPH
+  if (_dwGraphRegister) {
+      RemoveGraphFromRot(_dwGraphRegister);
+      _dwGraphRegister = 0;
+  }
+#endif
 }
   
 directx_videofile_server::~directx_videofile_server(void)
@@ -273,4 +343,26 @@ void  directx_videofile_server::rewind(void)
   _pMediaSeeking->SetPositions(&pos, AM_SEEKING_AbsolutePositioning,
       NULL, AM_SEEKING_NoPositioning);
   pause();
+}
+
+//---------------------------------------------------------------------
+/** For the video camera, we want to "play" by doing a single frame step
+    forward each frame, so that we get all of the frames no matter how
+    long it takes to processes them.  We do this by putting the camera
+    mode into pause, single-stepping here, and then calling the camera
+    read_one_frame function.  Since not all video interfaces support the
+    frame-step interface (apparently from some example code), we have
+    a fallback plan to run in play mode in this case.
+    */
+bool  directx_videofile_server::read_one_frame(unsigned minX, unsigned maxX,
+			      unsigned minY, unsigned maxY,
+			      unsigned exposure_millisecs)
+{
+  if (_pFrameStep) {
+    _mode = 1;
+    _pFrameStep->Step(1, NULL);
+    return directx_camera_server::read_one_frame(minX, maxX, minY, maxY, exposure_millisecs);
+  } else {
+    return directx_camera_server::read_one_frame(minX, maxX, minY, maxY, exposure_millisecs);
+  }
 }
