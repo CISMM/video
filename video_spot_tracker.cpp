@@ -1,3 +1,5 @@
+//XXX Figure out mouse input so you can click on a place for it to go
+//XXX At least with the roper, it crashes when you pick a sub-image
 //XXX Image is inverted in Y...
 //XXX PerfectOrbit video doesn't seem to play once it has been loaded!
 //    Pausing does make it jump to the end, like other videos
@@ -39,7 +41,7 @@ base_camera_server  *g_camera;	    //< Camera used to get an image
 image_wrapper	    *g_image;	    //< Image wrapper for the camera
 directx_videofile_server  *g_video = NULL;  //< Video controls, if we have them
 unsigned char	    *g_glut_image = NULL; //< Pointer to the storage for the image
-disk_spot_tracker   g_tracker(5,true);   //< Follows the bead around.  Dark bead on light
+disk_spot_tracker   g_tracker(5,true);   //< Follows the bead around.  Dark bead on light when this is true
 bool		    g_ready_to_display = false;	//< Don't unless we get an image
 
 //--------------------------------------------------------------------------
@@ -63,6 +65,9 @@ Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL;
 class roper_imager: public roper_server, public image_wrapper
 {
 public:
+  // XXX Starts with binning of 2 to get the processor load down to
+  // where the update is around 1 Hz.
+  roper_imager::roper_imager() : roper_server(2), image_wrapper() {} ;
   virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
     minx = _minX; miny = _minY; maxx = _maxX; maxy = _maxY;
   }
@@ -173,9 +178,9 @@ void myDisplayFunc(void)
       // This assumes that the pixels are actually 8-bit values
       // and will clip if they go above this.  It also writes pixels
       // from the first channel into all colors of the image.
-      g_glut_image[0 + 3 * (c + g_camera->get_num_columns() * ir)] = uns_pix;
-      g_glut_image[1 + 3 * (c + g_camera->get_num_columns() * ir)] = uns_pix;
-      g_glut_image[2 + 3 * (c + g_camera->get_num_columns() * ir)] = uns_pix;
+      g_glut_image[0 + 3 * (c + g_camera->get_num_columns() * ir)] = uns_pix >> 4;
+      g_glut_image[1 + 3 * (c + g_camera->get_num_columns() * ir)] = uns_pix >> 4;
+      g_glut_image[2 + 3 * (c + g_camera->get_num_columns() * ir)] = uns_pix >> 4;
     }
   }
 
@@ -443,7 +448,7 @@ int main(int argc, char *argv[])
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
   glutInitWindowSize(g_camera->get_num_columns(), g_camera->get_num_rows());
-  glutInitWindowPosition(100, 100);
+  glutInitWindowPosition(5, 30);
   glutCreateWindow(device_name);
 
   // Create the buffer that Glut will use to send to the screen

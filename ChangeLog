@@ -1,3 +1,16 @@
+2003-03-04  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* base_camera_server.h : Adding a gain parameter when saving image.
+	* roper_server.h : Same.
+	* roper_server.cpp : Scales image values by gain and clips to the
+		maximum value when saving.
+	* stack_collecter.cpp: Added gain parameter when viewing and saving.
+		Added ability to take multiple stacks.
+		Changed output file to include gain and sequence #.
+		Made things that should be integers truncate to do so.
+		Made a new window for clipping controls.
+	* video_spot_tracker.cpp : Switched to 12-bit values for Roper.
+
 2003-02-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* stack_collector.cpp : Fixed where the right and top lines are to

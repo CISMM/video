@@ -20,7 +20,7 @@ public:
   virtual bool	get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &val, int RGB = 0) const;
 
   /// Store the memory image to a PPM file.
-  virtual bool  write_memory_to_ppm_file(const char *filename, bool sixteen_bits = false) const;
+  virtual bool  write_memory_to_ppm_file(const char *filename, int gain = 1, bool sixteen_bits = false) const;
 
   /// Send whole image over a vrpn connection
   virtual bool  send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan);

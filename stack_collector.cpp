@@ -18,7 +18,7 @@
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.03";
+const char *Version_string = "01.04";
 double  g_focus = 0;    // Current setting for the microscope focus
 bool	g_focus_changed = false;
 roper_server  *g_roper = NULL;
@@ -42,14 +42,16 @@ vrpn_Analog_Output_Remote	*anaout;
 // Tcl controls and displays
 
 void  handle_preview_change(int newvalue, void *);
-Tclvar_float_with_scale	g_minX("left", "", 0, 1391, 0);
-Tclvar_float_with_scale	g_maxX("right", "", 0, 1391, 1391);
-Tclvar_float_with_scale	g_minY("bottom", "", 0, 1039, 0);
-Tclvar_float_with_scale	g_maxY("top", "", 0, 1039, 1039);
+Tclvar_float_with_scale	g_minX("left", ".clip", 0, 1391, 0);
+Tclvar_float_with_scale	g_maxX("right", ".clip", 0, 1391, 1391);
+Tclvar_float_with_scale	g_minY("bottom", ".clip", 0, 1039, 0);
+Tclvar_float_with_scale	g_maxY("top", ".clip", 0, 1039, 1039);
 Tclvar_float_with_scale	g_focusDown("focus_lower_microns", "", -20, 0, -5);
 Tclvar_float_with_scale	g_focusUp("focus_raise_microns", "", 0, 20, 5);
 Tclvar_float_with_scale	g_focusStep("focus_step_microns", "", (float)0.05, 5, 1);
+Tclvar_float_with_scale	g_repeat("repeat", "", (float)1, 20, 1);
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
+Tclvar_float_with_scale	g_gain("gain", "", 1, 32, 1);
 Tclvar_int_with_button	g_quit("quit","");
 Tclvar_int_with_button	g_snap("snap","");
 Tclvar_int_with_button	g_sixteenbits("sixteen_bits","");
@@ -119,14 +121,14 @@ void  preview_image(roper_server *roper)
     for (x = g_minX; x <= g_maxX; x+= g_window_size_divisor) {
       // Mark the border in red
 #ifdef	FAKE_ROPER
-      *(rgb_i++) = x % 256;
-      *(rgb_i++) = x % 256;
-      *(rgb_i++) = x % 256;
+      int val = (x%256) * g_gain;
+      if (val > 255) { val = 255; }
+      *(rgb_i++) = val;
+      *(rgb_i++) = val;
+      *(rgb_i++) = val;
 #else
-      //XXX Draws diagonally for some settings of minX
-      //XXX It doesn't do the diagonals for the test image, only with the real camera
-      //XXX Tried to fix it below by changing the scope of the int casts.
-      unsigned val = imageptr[x-(int)g_minX + ((int)(g_maxX) - (int)(g_minX) + 1) * (y - (int)g_minY)] >> 4;
+      int val = (int)(g_gain * imageptr[x-(int)g_minX + ((int)(g_maxX) - (int)(g_minX) + 1) * (y - (int)g_minY)]) >> 4;
+      if (val > 255) { val = 255; }
       *(rgb_i++) = val;
       *(rgb_i++) = val;
       *(rgb_i++) = val;
@@ -186,11 +188,12 @@ void myIdleFunc(void)
 
     // If we've been asked to take a stack, do it.
     if (g_snap) {
-      double  startfocus;		      // Where the focus started at connection time
-      double  focusdown = g_focusDown * 20;   // How far down to go when adjusting the focus (in ticks)
-      double  focusstep = g_focusStep * 20;   // Step size of focus (in ticks)
-      double  focusup = g_focusUp * 20;	      // How far above initial to set the focus (in ticks)
-      double  focusloop;		      // Used to step the focus
+      double  startfocus;		      //< Where the focus started at connection time
+      double  focusdown = g_focusDown * 20;   //< How far down to go when adjusting the focus (in ticks)
+      double  focusstep = g_focusStep * 20;   //< Step size of focus (in ticks)
+      double  focusup = g_focusUp * 20;	      //< How far above initial to set the focus (in ticks)
+      double  focusloop;		      //< Used to step the focus
+      int     repeat;			      //< Used to enable multiple scans
 
       // Verify that the Roper camera is working.
 #ifndef	FAKE_ROPER
@@ -216,45 +219,49 @@ void myIdleFunc(void)
       printf("  (Initial focus found at %ld)\n", (long)g_focus);
       startfocus = g_focus;
 
-      // Loop through the requested focus levels and read images.
-      for (focusloop = startfocus + focusdown; focusloop <= startfocus + focusup; focusloop += focusstep) {
+      // Loop through the number of repeats we have been asked to do
+      for (repeat = 0; repeat < g_repeat; repeat++) {
+	// Loop through the requested focus levels and read images.
+	for (focusloop = startfocus + focusdown; focusloop <= startfocus + focusup; focusloop += focusstep) {
 
-	printf("Going to %ld\n", (long)focusloop);
+	  printf("Going to %ld\n", (long)focusloop);
 #ifndef	FAKE_NIKON
-	anaout->request_change_channel_value(0, focusloop);
-	while (g_focus != focusloop) {
-	  nikon->mainloop();
-	  anaout->mainloop();
-	  ana->mainloop();
-	  vrpn_SleepMsecs(1);
-	}
+	  anaout->request_change_channel_value(0, focusloop);
+	  while (g_focus != focusloop) {
+	    nikon->mainloop();
+	    anaout->mainloop();
+	    ana->mainloop();
+	    vrpn_SleepMsecs(1);
+	  }
 #endif
-	// Read the image from the roper camera.  If we are previewing,
-	// then display the image in the video window.
+	  // Read the image from the roper camera.  If we are previewing,
+	  // then display the image in the video window.
 #ifndef	FAKE_ROPER
-	g_roper->read_image_to_memory((int)g_minX,(int)g_maxX, (int)g_minY,(int)g_maxY, g_exposure);
-	if (g_preview) {
-	  preview_image(g_roper);
-	  myDisplayFunc();
-	}
-
-	// Write the image to a PPM file.
-	char name[1024];
-	sprintf(name, "output_image_%ld.pgm", (long)focusloop);
-	printf("Writing image to %s\n", name);
-	g_roper->write_memory_to_ppm_file(name, g_sixteenbits != 0);
+	  g_roper->read_image_to_memory((int)g_minX,(int)g_maxX, (int)g_minY,(int)g_maxY, g_exposure);
+	  if (g_preview) {
+	    preview_image(g_roper);
+	    myDisplayFunc();
+	  }
 #endif
-	//------------------------------------------------------------
-	// This must be done in any Tcl app, to allow Tcl/Tk to handle
-	// events.
+	  // Write the image to a PPM file.
+	  char name[1024];
+	  sprintf(name, "output_image_G%03dR%02dNM%07ld.pgm", (int)g_gain, repeat, (long)focusloop*50);
+	  printf("Writing image to %s\n", name);
+#ifndef	FAKE_ROPER
+	  g_roper->write_memory_to_ppm_file(name, (int)g_gain, g_sixteenbits != 0);
+#endif
+	  //------------------------------------------------------------
+	  // This must be done in any Tcl app, to allow Tcl/Tk to handle
+	  // events.
 
-	while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
+	  while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
 
-	//------------------------------------------------------------
-	// If the user has deselected the "snap" or pressed "quit" then
-	// break out of the loop.
-	if ( g_quit || !g_snap) {
-	  break;
+	  //------------------------------------------------------------
+	  // If the user has deselected the "snap" or pressed "quit" then
+	  // break out of the loop.
+	  if ( g_quit || !g_snap) {
+	    break;
+	  }
 	}
       }
 
@@ -288,13 +295,24 @@ void myIdleFunc(void)
 	    exit(-1);
     }
 
+    //------------------------------------------------------------
     // Make sure the constraints on the image locations are met
     if (g_minX < 0) { g_minX = 0; }
     if (g_minY < 0) { g_minY = 0; }
-    if (g_maxX >= g_max_image_width) { g_maxX = g_max_image_width-1; }
-    if (g_maxY >= g_max_image_height) { g_maxY = g_max_image_height-1; }
-    if (g_minX >= g_maxX) { g_minX = g_maxX - 1; }
-    if (g_minY >= g_maxY) { g_minY = g_maxY - 1; }
+    if (g_maxX > g_max_image_width) { g_maxX = g_max_image_width-1; }
+    if (g_maxY > g_max_image_height) { g_maxY = g_max_image_height-1; }
+    if (g_minX >= g_maxX) { g_minX = g_maxX-1; }
+    if (g_minY >= g_maxY) { g_minY = g_maxY-1; }
+
+    //------------------------------------------------------------
+    // Make sure the values that should be integers are integers
+    g_exposure = floor(g_exposure);
+    g_minX = floor(g_minX);
+    g_maxX = floor(g_maxX);
+    g_minY = floor(g_minY);
+    g_maxY = floor(g_maxY);
+    g_repeat = floor(g_repeat);
+    g_gain = floor(g_gain);
 
     // Sleep a bit so as not to eat the whole CPU
     vrpn_SleepMsecs(5);
@@ -366,6 +384,12 @@ int main(int argc, char *argv[])
   /* Load the Tcl scripts that handle widget definition and
    * variable controls */
   sprintf(command, "source russ_widgets.tcl");
+  if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
+          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+                  tk_control_interp->result);
+          return(-1);
+  }
+  sprintf(command, "toplevel .clip");
   if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
           fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
                   tk_control_interp->result);

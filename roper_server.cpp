@@ -404,7 +404,14 @@ bool  roper_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned 
   return true;
 }
 
-bool  roper_server::write_memory_to_ppm_file(const char *filename, bool sixteen_bits) const
+static	uns16 clamp_gain(uns16 val, double gain, double clamp = 65535.0)
+{
+  double result = val * gain;
+  if (result > clamp) { result = clamp; }
+  return (uns16)result;
+}
+
+bool  roper_server::write_memory_to_ppm_file(const char *filename, int gain, bool sixteen_bits) const
 {
   //---------------------------------------------------------------------
   // Make sure the region is non-zero (so we've read an image)
@@ -425,22 +432,22 @@ bool  roper_server::write_memory_to_ppm_file(const char *filename, bool sixteen_
       return false;
     }
     unsigned r,c;
-    uns16 minimum = vals[0];
-    uns16 maximum = vals[0];
+    uns16 minimum = clamp_gain(vals[0],gain);
+    uns16 maximum = clamp_gain(vals[0],gain);
     uns16 cols = (_maxX - _minX)/_binning + 1;
     uns16 rows = (_maxY - _minY)/_binning + 1;
     for (r = 0; r < rows; r++) {
       for (c = 0; c < cols; c++) {
-	if (vals[r*cols + c] < minimum) { minimum = vals[r*cols+c]; }
-	if (vals[r*cols + c] > maximum) { maximum= vals[r*cols+c]; }
+	if (clamp_gain(vals[r*cols + c],gain) < minimum) { minimum = clamp_gain(vals[r*cols+c],gain, 4095); }
+	if (clamp_gain(vals[r*cols + c],gain) > maximum) { maximum= clamp_gain(vals[r*cols+c],gain, 4095); }
       }
     }
     printf("Minimum = %d, maximum = %d\n", minimum, maximum);
     uns16 offset = 0;
-    double scale = 255.0 / 4095.0;
+    double scale = gain;
     for (r = 0; r < rows; r++) {
       for (c = 0; c < cols; c++) {
-	pixels[r*cols + c] = (unsigned char)((vals[r*cols+c] - offset) * scale);
+	pixels[r*cols + c] = clamp_gain(vals[r*cols+c] - offset, scale, 4095) >> 4;
       }
     }
     FILE *of = fopen(filename, "wb");
@@ -453,21 +460,35 @@ bool  roper_server::write_memory_to_ppm_file(const char *filename, bool sixteen_
   } else {
     uns16 *vals = (uns16 *)_memory;
     unsigned r,c;
-    uns16 minimum = vals[0];
-    uns16 maximum = vals[0];
+    vrpn_uint16 *pixels;
+    // This buffer will be oversized if min and max don't span the whole window.
+    if ( (pixels = new vrpn_uint16[_buflen]) == NULL) {
+      fprintf(stderr, "Can't allocate memory for stored image\n");
+      return false;
+    }
+    uns16 minimum = clamp_gain(vals[0],gain);
+    uns16 maximum = clamp_gain(vals[0],gain);
     uns16 cols = (_maxX - _minX)/_binning + 1;
     uns16 rows = (_maxY - _minY)/_binning + 1;
     for (r = 0; r < rows; r++) {
       for (c = 0; c < cols; c++) {
-	if (vals[r*cols + c] < minimum) { minimum = vals[r*cols+c]; }
-	if (vals[r*cols + c] > maximum) { maximum= vals[r*cols+c]; }
+	if (clamp_gain(vals[r*cols + c],gain) < minimum) { minimum = clamp_gain(vals[r*cols+c],gain); }
+	if (clamp_gain(vals[r*cols + c],gain) > maximum) { maximum = clamp_gain(vals[r*cols+c],gain); }
       }
     }
     printf("Minimum = %d, maximum = %d\n", minimum, maximum);
+    uns16 offset = 0;
+    double scale = gain;
+    for (r = 0; r < rows; r++) {
+      for (c = 0; c < cols; c++) {
+	pixels[r*cols + c] = clamp_gain(vals[r*cols+c] - offset, scale);
+      }
+    }
     FILE *of = fopen(filename, "wb");
     fprintf(of, "P5\n%d %d\n%d\n", cols, rows, 4095);
-    fwrite(vals, sizeof(uns16), cols*rows, of);
+    fwrite(pixels, sizeof(uns16), cols*rows, of);
     fclose(of);
+    delete [] pixels;
   }
   return true;
 }
