@@ -47,7 +47,7 @@
 #include <windows.h>
 #endif
 #include <GL/gl.h>
-#include <glut.h>
+#include <GL/glut.h>
 #include <vrpn_Connection.h>
 #include <vrpn_Tracker.h>
 

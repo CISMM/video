@@ -1,3 +1,8 @@
+2003-06-17  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Lets it compile in the new-better
+		build environment where everything comes from external.
+
 2003-06-16  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : File-saving dialog box to let the
