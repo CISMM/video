@@ -27,20 +27,47 @@ static	double	duration(struct timeval t1, struct timeval t2)
 	   (t1.tv_sec - t2.tv_sec);
 }
 
-void  compute_chase_statistics(spot_tracker &tracker, double radius, double posaccuracy,
+void  compute_disk_chase_statistics(spot_tracker &tracker, double radius, double posaccuracy,
 			       int count, double &minerr, double &maxerr, double &sumerr,
 			       double &biasx, double &biasy, double &x, double &y)
 {
   int i;
   tracker.set_radius(radius);
   tracker.set_pixel_accuracy(posaccuracy);
+  tracker.set_location(x,y);
   minerr = 1000; maxerr = 0; sumerr = 0;
   biasx = 0; biasy = 0;
   for (i = 0; i < count; i++) {
-    double testx = x + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (radius/2);
-    double testy = y + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (radius/2);
+    double testx = x + ( (rand()/(double)(RAND_MAX)) - 0.5) * (radius/2);
+    double testy = y + ( (rand()/(double)(RAND_MAX)) - 0.5) * (radius/2);
     {
-      test_image image2(0,255, 0,255, 127, 5, testx, testy, radius, 250);
+      disc_image image2(0,255, 0,255, 127, 5, testx, testy, radius, 250);
+      tracker.optimize_xy(image2, x, y);
+      double err = sqrt( (x-testx)*(x-testx) + (y-testy)*(y-testy) );
+      if (err < minerr) { minerr = err; }
+      if (err > maxerr) { maxerr = err; }
+      sumerr += err;
+      biasx += x - testx;
+      biasy += y - testy;
+    }
+  }
+}
+
+void  compute_cone_chase_statistics(spot_tracker &tracker, double radius, double posaccuracy,
+			       int count, double &minerr, double &maxerr, double &sumerr,
+			       double &biasx, double &biasy, double &x, double &y)
+{
+  int i;
+  tracker.set_radius(radius);
+  tracker.set_pixel_accuracy(posaccuracy);
+  tracker.set_location(x,y);
+  minerr = 1000; maxerr = 0; sumerr = 0;
+  biasx = 0; biasy = 0;
+  for (i = 0; i < count; i++) {
+    double testx = x + ( (rand()/(double)(RAND_MAX)) - 0.5) * (radius/2);
+    double testy = y + ( (rand()/(double)(RAND_MAX)) - 0.5) * (radius/2);
+    {
+      cone_image image2(0,255, 0,255, 127, 5, testx, testy, radius, 250);
       tracker.optimize_xy(image2, x, y);
       double err = sqrt( (x-testx)*(x-testx) + (y-testy)*(y-testy) );
       if (err < minerr) { minerr = err; }
@@ -63,7 +90,7 @@ int main(int, char *[])
   double  biasx, biasy;
 
   printf("Generating default test image with radius %lg disk at %lg, %lg\n", testrad, testx, testy);
-  test_image  image(0,255, 0,255, 127, 5, testx, testy, testrad, 250);
+  disc_image  image(0,255, 0,255, 127, 5, testx, testy, testrad, 250);
 
   printf("-----------------------------------------------------------------\n");
   printf("Generating default spot tracker\n");
@@ -94,7 +121,7 @@ int main(int, char *[])
     testx += ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2);
     testy += ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2);
     {
-      test_image image2(0,255, 0,255, 127, 5, testx, testy, testrad, 250);
+      disc_image image2(0,255, 0,255, 127, 5, testx, testy, testrad, 250);
       tracker.optimize(image2, x, y);
       rad = tracker.get_radius();
       fit = tracker.get_fitness();
@@ -119,8 +146,13 @@ int main(int, char *[])
   testrad = 5.5;
   pixacc = 0.05;
   avgcount = 50;
-  printf("Chasing around a slightly noisy spot of known radius %g to %g pixel\n", testrad, pixacc);
-  compute_chase_statistics(tracker, testrad, pixacc, avgcount, minerr, maxerr, sumerr, biasx, biasy, x,y);
+  x = 120.5; y = 120;
+  printf("Chasing around a slightly noisy disk of known radius %g to %g pixel\n", testrad, pixacc);
+  compute_disk_chase_statistics(tracker, testrad, pixacc, avgcount, minerr, maxerr, sumerr, biasx, biasy, x,y);
+  printf("Pos err: min=%g, max=%g, mean=%g, xbias = %g, ybias = %g\n", minerr, maxerr, sumerr/avgcount, biasx/avgcount, biasy/avgcount);
+  x = 120.5; y = 120;
+  printf("Chasing around a slightly noisy cone of known radius %g to %g pixel\n", testrad, pixacc);
+  compute_cone_chase_statistics(tracker, testrad, pixacc, avgcount, minerr, maxerr, sumerr, biasx, biasy, x,y);
   printf("Pos err: min=%g, max=%g, mean=%g, xbias = %g, ybias = %g\n", minerr, maxerr, sumerr/avgcount, biasx/avgcount, biasy/avgcount);
 
   pixacc = 0.05;
@@ -166,7 +198,7 @@ int main(int, char *[])
     testx += ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2);
     testy += ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2);
     {
-      test_image image2(0,255, 0,255, 127, 5, testx, testy, testrad, 250);
+      disc_image image2(0,255, 0,255, 127, 5, testx, testy, testrad, 250);
       interptracker.optimize(image2, x, y);
       rad = interptracker.get_radius();
       fit = interptracker.get_fitness();
@@ -191,15 +223,20 @@ int main(int, char *[])
   testrad = 5.5;
   pixacc = 0.05;
   avgcount = 50;
-  printf("Chasing around a slightly noisy spot of known radius %g to %g pixel\n", testrad, pixacc);
-  compute_chase_statistics(interptracker, testrad, pixacc, avgcount, minerr, maxerr, sumerr, biasx,biasy, x,y);
+  x = 120.5; y = 120;
+  printf("Chasing around a slightly noisy disk of known radius %g to %g pixel\n", testrad, pixacc);
+  compute_disk_chase_statistics(interptracker, testrad, pixacc, avgcount, minerr, maxerr, sumerr, biasx,biasy, x,y);
+  printf("Pos err: min=%g, max=%g, mean=%g, xbias = %g, ybias = %g\n", minerr, maxerr, sumerr/avgcount, biasx/avgcount, biasy/avgcount);
+  x = 120.5; y = 120;
+  printf("Chasing around a slightly noisy cone of known radius %g to %g pixel\n", testrad, pixacc);
+  compute_cone_chase_statistics(interptracker, testrad, pixacc, avgcount, minerr, maxerr, sumerr, biasx,biasy, x,y);
   printf("Pos err: min=%g, max=%g, mean=%g, xbias = %g, ybias = %g\n", minerr, maxerr, sumerr/avgcount, biasx/avgcount, biasy/avgcount);
 
   testrad = 5.5;
   pixacc = 0.05;
   x = 120.5; y = 120;
-  test_image image3(0,255,0,255,127,0,x,y,testrad, 250);
-  printf("Optimizing a slightly noisy spot of known radius %g at %g,%g\n", testrad, x,y);
+  disc_image image3(0,255,0,255,127,0,x,y,testrad, 250);
+  printf("Optimizing a slightly noisy disk of known radius %g at %g,%g\n", testrad, x,y);
   interptracker.optimize_xy(image3, x, y, floor(x), ceil(y));
   printf("  Found a spot of radius %g at %g,%g\n", interptracker.get_radius(), interptracker.get_x(), interptracker.get_y());
 
@@ -245,7 +282,7 @@ int main(int, char *[])
     testx += ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2);
     testy += ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2);
     {
-      test_image image2(0,255, 0,255, 127, 5, testx, testy, testrad, 250);
+      disc_image image2(0,255, 0,255, 127, 5, testx, testy, testrad, 250);
       conetracker.optimize(image2, x, y);
       rad = conetracker.get_radius();
       fit = conetracker.get_fitness();
@@ -270,16 +307,22 @@ int main(int, char *[])
   testrad = 5.5;
   pixacc = 0.05;
   avgcount = 50;
-  printf("Chasing around a slightly noisy spot of known radius %g to %g pixel\n", testrad, pixacc);
+  x = 120.5; y = 120;
+  printf("Chasing around a slightly noisy disk of known radius %g to %g pixel\n", testrad, pixacc);
   // Make the radius slightly larger than the radius of the spot.
-  compute_chase_statistics(conetracker, 1.3*testrad, pixacc, avgcount, minerr, maxerr, sumerr, biasx,biasy, x,y);
+  compute_disk_chase_statistics(conetracker, 1.3*testrad, pixacc, avgcount, minerr, maxerr, sumerr, biasx,biasy, x,y);
+  printf("Pos err: min=%g, max=%g, mean=%g, xbias = %g, ybias = %g\n", minerr, maxerr, sumerr/avgcount, biasx/avgcount, biasy/avgcount);
+  x = 120.5; y = 120;
+  printf("Chasing around a slightly noisy cone of known radius %g to %g pixel\n", testrad, pixacc);
+  // Make the radius slightly larger than the radius of the spot.
+  compute_cone_chase_statistics(conetracker, 1.3*testrad, pixacc, avgcount, minerr, maxerr, sumerr, biasx,biasy, x,y);
   printf("Pos err: min=%g, max=%g, mean=%g, xbias = %g, ybias = %g\n", minerr, maxerr, sumerr/avgcount, biasx/avgcount, biasy/avgcount);
 
   testrad = 5.5;
   pixacc = 0.05;
   x = 120.5; y = 120;
-  test_image image4(0,255,0,255,127,0,x,y,testrad, 250);
-  printf("Optimizing a slightly noisy spot of known radius %g at %g,%g\n", testrad, x,y);
+  disc_image image4(0,255,0,255,127,0,x,y,testrad, 250);
+  printf("Optimizing a slightly noisy disk of known radius %g at %g,%g\n", testrad, x,y);
   conetracker.optimize_xy(image4, x, y, floor(x), ceil(y));
   printf("  Found a spot of radius %g at %g,%g\n", conetracker.get_radius(), conetracker.get_x(), conetracker.get_y());
 
@@ -325,7 +368,7 @@ int main(int, char *[])
     testx += ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2);
     testy += ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2);
     {
-      test_image image2(0,255, 0,255, 127, 5, testx, testy, testrad, 250);
+      disc_image image2(0,255, 0,255, 127, 5, testx, testy, testrad, 250);
       symmetrictracker.optimize(image2, x, y);
       rad = symmetrictracker.get_radius();
       fit = symmetrictracker.get_fitness();
@@ -348,18 +391,25 @@ int main(int, char *[])
   printf("Rad err: min=%g, max=%g, mean=%g\n", minraderr, maxraderr, sumraderr/avgcount);
 
   testrad = 5.5;
-  pixacc = 0.05;
+  pixacc = 0.01;
   avgcount = 50;
-  printf("Chasing around a slightly noisy spot of known radius %g to %g pixel\n", testrad, pixacc);
+  x = 120.5; y = 120;
+  printf("Chasing around a slightly noisy disk of known radius %g to %g pixel\n", testrad, pixacc);
   // Make the radius slightly larger than the radius of the spot.
-  compute_chase_statistics(symmetrictracker, 1.3*testrad, pixacc, avgcount, minerr, maxerr, sumerr, biasx,biasy, x,y);
+  compute_disk_chase_statistics(symmetrictracker, 1.3*testrad, pixacc, avgcount, minerr, maxerr, sumerr, biasx,biasy, x,y);
+  printf("Pos err: min=%g, max=%g, mean=%g, xbias = %g, ybias = %g\n", minerr, maxerr, sumerr/avgcount, biasx/avgcount, biasy/avgcount);
+
+  x = 120.5; y = 120;
+  printf("Chasing around a slightly noisy cone of known radius %g to %g pixel\n", testrad, pixacc);
+  // Make the radius slightly larger than the radius of the spot.
+  compute_disk_chase_statistics(symmetrictracker, 1.3*testrad, pixacc, avgcount, minerr, maxerr, sumerr, biasx,biasy, x,y);
   printf("Pos err: min=%g, max=%g, mean=%g, xbias = %g, ybias = %g\n", minerr, maxerr, sumerr/avgcount, biasx/avgcount, biasy/avgcount);
 
   testrad = 5.5;
   pixacc = 0.05;
   x = 120.5; y = 120;
-  test_image image5(0,255,0,255,127,0,x,y,testrad, 250);
-  printf("Optimizing a slightly noisy spot of known radius %g at %g,%g\n", testrad, x,y);
+  disc_image image5(0,255,0,255,127,0,x,y,testrad, 250);
+  printf("Optimizing a slightly noisy disk of known radius %g at %g,%g\n", testrad, x,y);
   symmetrictracker.optimize_xy(image5, x, y, floor(x), ceil(y));
   printf("  Found a spot of radius %g at %g,%g\n", symmetrictracker.get_radius(), symmetrictracker.get_x(), symmetrictracker.get_y());
 

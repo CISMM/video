@@ -45,7 +45,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.27";
+const char *Version_string = "01.28";
 
 //--------------------------------------------------------------------------
 // Some classes needed for use in the rest of the program.
@@ -131,11 +131,13 @@ int	g_landscape_window;		//< Glut window showing local landscape of fitness func
 int	g_landscape_size = 25;		//< Size of optimization landscape window
 int	g_landscape_strip_width = 101;	//< Additional size of the graph showing X cross section
 
-unsigned char	    *g_kinograph_image = NULL;	  //< Pointer to the storage for the kinograph image
-int		    g_kinograph_window;		  //< Glut window showing kinograph data
-int		    g_kinograph_width;		  //< Width of the kinograph window (computed at creation time)
-const int	    g_kinograph_height = 512;	  //< Height of the kinograph window
-int		    g_kinograph_filled = 0;	  //< How many lines of data are in there now.
+int		    g_kymograph_width;		  //< Width of the kymograph window (computed at creation time)
+const int	    g_kymograph_height = 512;	  //< Height of the kymograph window
+unsigned char	    *g_kymograph_image = NULL;	  //< Pointer to the storage for the kymograph image
+float		    g_kymograph_centers[g_kymograph_height];  //< Where the cell-coordinate center of the spindle is.
+int		    g_kymograph_window;		  //< Glut window showing kymograph lines stacked into an image
+int		    g_kymograph_center_window;	  //< Glut window showing kymograph center-tracking
+int		    g_kymograph_filled = 0;	  //< How many lines of data are in there now.
 
 //--------------------------------------------------------------------------
 // Tcl controls and displays
@@ -143,7 +145,7 @@ void  logfilename_changed(char *newvalue, void *);
 void  rebuild_trackers(int newvalue, void *);
 void  rebuild_trackers(float newvalue, void *);
 void  set_debug_visibility(int newvalue, void *);
-void  set_kinograph_visibility(int newvalue, void *);
+void  set_kymograph_visibility(int newvalue, void *);
 //XXX X and Y range should match the image range, like the region size controls do.
 Tclvar_float_with_scale	g_X("x", "", 0, 1391, 0);
 Tclvar_float_with_scale	g_Y("y", "", 0, 1039, 0);
@@ -171,7 +173,7 @@ Tclvar_int_with_button	g_mark("show_tracker","",1);
 Tclvar_int_with_button	g_show_video("show_video","",1);
 Tclvar_int_with_button	g_show_debug("show_debug","",0, set_debug_visibility);
 Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
-Tclvar_int_with_button	g_kinograph("kinograph","",0, set_kinograph_visibility);
+Tclvar_int_with_button	g_kymograph("kymograph","",0, set_kymograph_visibility);
 Tclvar_int_with_button	g_quit("quit","");
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
@@ -605,8 +607,16 @@ void myDisplayFunc(void)
 	glEnd();
       }
       // Label the marker with its index
+      // If we are doing a kymograph, then label posterior and anterior
       char numString[10];
       sprintf(numString,"%d", i);
+      if (g_kymograph) {
+	switch (i) {
+	case 2: sprintf(numString,"P"); break;
+	case 3: sprintf(numString,"A"); break;
+	default: break;
+	}
+      }
       drawStringAtXY(x+dx,y, numString);
     }
   }
@@ -629,9 +639,9 @@ void myDisplayFunc(void)
 	      -1 + 2*((*g_minY-1) / (g_camera->get_num_rows()-1)) , 0.0 );
   glEnd();
 
-  // If we are running a kinograph, draw a green line through the first two
-  // trackers to show where we're collecting it from.
-  if (g_kinograph && (g_trackers.size() >= 2)) {
+  // If we are running a kymograph, draw a green line through the first two
+  // trackers to show where we're collecting it from
+  if (g_kymograph && (g_trackers.size() >= 2)) {
     list<spot_tracker *>::iterator  loop = g_trackers.begin();
     double x0 = -1.0 + (*loop)->get_x() * (2.0/g_camera->get_num_columns());
     double y0 = -1.0 + flip_y((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
@@ -639,11 +649,63 @@ void myDisplayFunc(void)
     double x1 = -1.0 + (*loop)->get_x() * (2.0/g_camera->get_num_columns());
     double y1 = -1.0 + flip_y((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
 
+    // Draw the line between them
     glColor3f(0.5,0.9,0.5);
     glBegin(GL_LINES);
       glVertex2f(x0,y0);
       glVertex2f(x1,y1);
     glEnd();
+
+    // Find the center of the two (origin of cell coordinates) and the unit vector (dx,dy)
+    // going towards the second from the first.
+    double xcenter = (x0 + x1) / 2;
+    double ycenter = (y0 + y1) / 2;
+    double dist = sqrt( (x1-x0)*(x1-x0) + (y1-y0)*(y1-y0) );
+    if (dist == 0) { dist = 1; }  //< Avoid divide-by-zero below.
+    double dx = (x1 - x0) / dist;
+    double dy = (y1 - y0) / dist;
+
+    // Find the perpendicular to the line between them
+    double px = dy  * g_camera->get_num_rows() / g_camera->get_num_columns();
+    double py = -dx * g_camera->get_num_columns() / g_camera->get_num_rows();
+
+    // Draw the perpendicular line
+    glColor3f(0.5,0.9,0.5);
+    glBegin(GL_LINES);
+      glVertex2f(xcenter + 0.05 * px, ycenter + 0.05 * py);
+      glVertex2f(xcenter - 0.05 * px, ycenter - 0.05 * py);
+    glEnd();
+
+    // If we have the anterior and posterior, draw the perpendicular to
+    // the line between them through their center.
+    if (g_trackers.size() >= 4) {
+      // Find the two tracked points to use.
+      loop++; // Skip to the third point.
+      double cx0 = -1.0 + (*loop)->get_x() * (2.0/g_camera->get_num_columns());
+      double cy0 = -1.0 + flip_y((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
+      loop++;
+      double cx1 = -1.0 + (*loop)->get_x() * (2.0/g_camera->get_num_columns());
+      double cy1 = -1.0 + flip_y((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
+
+      // Find the center of the two (origin of cell coordinates) and the unit vector (dx,dy)
+      // going towards the second from the first.
+      double cxcenter = (cx0 + cx1) / 2;
+      double cycenter = (cy0 + cy1) / 2;
+      double cdist = sqrt( (cx1-cx0)*(cx1-cx0) + (cy1-cy0)*(cy1-cy0) );
+      if (cdist == 0) { cdist = 1; }  //< Avoid divide-by-zero below.
+      double cdx = (cx1 - cx0) / cdist;
+      double cdy = (cy1 - cy0) / cdist;
+
+      // Find the perpendicular to the line between them
+      double cpx = cdy  * g_camera->get_num_rows() / g_camera->get_num_columns();
+      double cpy = -cdx * g_camera->get_num_columns() / g_camera->get_num_rows();
+
+      // Draw the line
+      glBegin(GL_LINES);
+	glVertex2f(cxcenter + 500 * cpx, cycenter + 500 * cpy);
+	glVertex2f(cxcenter - 500 * cpx, cycenter - 500 * cpy);
+      glEnd();
+    }
   }
 
   // Swap buffers so we can see it.
@@ -844,11 +906,72 @@ void myLandscapeDisplayFunc(void)
   glutSwapBuffers();
 }
 
-// Draw the kinograph image.
+// This draws the graph of how the spindle center moves with
+// respect to the cell anterior-posterior axis.  This axis is
+// defined by trackers 2 and 3 (the third and fourth trackers),
+// which do not get optimized when the kymograph is run but
+// rather stay put in the image.
+void mykymographCenterDisplayFunc(void)
+{
+  // Clear the window and prepare to draw in the back buffer
+  glDrawBuffer(GL_BACK);
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  if (g_show_video) {
+    int i;
+
+    // Draw the centerline for the image and indicators for grids off-center.
+    glColor3f(1,1,1);
+    glBegin(GL_LINES);
+      glVertex2f(0, 1);
+      glVertex2f(0,-1);
+    glEnd();
+
+    // Draw a dim mark every ten pixels
+    glColor3f(0.3,0.3,0.3);
+    glBegin(GL_LINES);
+    for (i = 10; i < 500; i += 10) {
+	glVertex2f(i * (2.0/g_kymograph_width), 1);
+	glVertex2f(i * (2.0/g_kymograph_width),-1);
+
+	glVertex2f(-i * (2.0/g_kymograph_width), 1);
+	glVertex2f(-i * (2.0/g_kymograph_width),-1);
+    }
+    glEnd();
+
+    // Draw a brighter mark every hundred pixels
+    glColor3f(0.6,0.6,0.6);
+    glBegin(GL_LINES);
+    for (i = 100; i < 500; i += 100) {
+	glVertex2f(i * (2.0/g_kymograph_width), 1);
+	glVertex2f(i * (2.0/g_kymograph_width),-1);
+
+	glVertex2f(-i * (2.0/g_kymograph_width), 1);
+	glVertex2f(-i * (2.0/g_kymograph_width),-1);
+    }
+    glEnd();
+
+    // Draw each center entry into the image.
+    glColor3f(1,1,0);
+    glBegin(GL_LINE_STRIP);
+      for (i = 0; i < g_kymograph_filled; i++) {
+	  double  x = g_kymograph_centers[i] * (2.0/g_kymograph_width);
+	  double  y = 1.0 - i * (2.0/g_kymograph_height);
+	  glVertex2f(x,y);
+      }
+    glEnd();
+  }
+
+  // Swap buffers so we can see it.
+  glutSwapBuffers();
+}
+
+// Draw the kymograph image.
 // This uses the interpolating read function on the
 // image objects to provide as accurate a representation of what the
 // line between the first two tracked spots looks like.
-void myKinographDisplayFunc(void)
+void mykymographDisplayFunc(void)
 {
   // Clear the window and prepare to draw in the back buffer
   glDrawBuffer(GL_BACK);
@@ -861,8 +984,8 @@ void myKinographDisplayFunc(void)
     // so that they cover the entire image (starting from lower-left
     // corner, which is at (-1,-1)).
     glRasterPos2f(-1, -1);
-    glDrawPixels(g_kinograph_width, g_kinograph_height,
-      GL_RGBA, GL_UNSIGNED_BYTE, g_kinograph_image);
+    glDrawPixels(g_kymograph_width, g_kymograph_height,
+      GL_RGBA, GL_UNSIGNED_BYTE, g_kymograph_image);
   }
 
   // Swap buffers so we can see it.
@@ -1024,8 +1147,17 @@ void myIdleFunc(void)
     // Invert the Y values on the way in and out.
     // Don't let it adjust the radius here (otherwise it gets too
     // jumpy).
+    // If we are running a kymograph, then we don't optimize any trackers
+    // past the first two because they are only there as markers in the
+    // image for cell boundaries.
+    int kymocount = 0;
     for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
       (*loop)->optimize_xy(*g_image, x, y, (*loop)->get_x(), (*loop)->get_y() );
+      if (g_kymograph) {
+	if (++kymocount == 2) {
+	  break;
+	}
+      }
     }
 
     // Make the GUI track the result for the active tracker
@@ -1038,14 +1170,14 @@ void myIdleFunc(void)
       g_length = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_length();
     }
 
-    // Update the Kinograph if it is active and if we have a new video frame.
+    // Update the kymograph if it is active and if we have a new video frame.
     // This must be done AFTER the optimization because we need to find the right
     // trace through the NEW image.  If we lost tracking, too bad...
-    if (g_kinograph && g_video_valid) {
+    if (g_kymograph && g_video_valid) {
       // Make sure we have at least two trackers, which will define the
-      // frame of reference for the kinograph.  Also make sure that we are
-      // not out of display room in the kinograph.
-      if ( (g_trackers.size() >= 2) && (g_kinograph_filled+1 < g_kinograph_height) ) {
+      // frame of reference for the kymograph.  Also make sure that we are
+      // not out of display room in the kymograph.
+      if ( (g_trackers.size() >= 2) && (g_kymograph_filled+1 < g_kymograph_height) ) {
 
 	// Find the two tracked points to use.
 	list<spot_tracker *>::iterator  loop = g_trackers.begin();
@@ -1055,7 +1187,7 @@ void myIdleFunc(void)
 	double x1 = (*loop)->get_x();
 	double y1 = (*loop)->get_y();
 
-	// Find the center of the two (origin of kinograph coordinates) and the unit vector (dx,dy)
+	// Find the center of the two (origin of kymograph coordinates) and the unit vector (dx,dy)
 	// going towards the second from the first.
 	double xcenter = (x0 + x1) / 2;
 	double ycenter = (y0 + y1) / 2;
@@ -1068,37 +1200,64 @@ void myIdleFunc(void)
 	// and fill in the samples image values at these locations.
 	double step;
 	double double_pix;
-	for (step = -g_kinograph_width/2.0; step <= g_kinograph_width / 2.0; step++) {
+	for (step = -g_kymograph_width/2.0; step <= g_kymograph_width / 2.0; step++) {
 
 	  // Figure out where to look in the image
 	  double x = xcenter + step * dx;
 	  double y = ycenter + step * dy;
 
-	  // Figure out where to put this in the kinograph
-	  int kx = (int)(step + g_kinograph_width/2.0);
-	  int ky = g_kinograph_filled;
+	  // Figure out where to put this in the kymograph
+	  int kx = (int)(step + g_kymograph_width/2.0);
+	  int ky = g_kymograph_filled;
 
-	  // Look up the pixel in the image and put it into the kinograph if we get a reading.
+	  // Look up the pixel in the image and put it into the kymograph if we get a reading.
 	  if (!g_image->read_pixel_bilerp(x, y, double_pix)) {
-	    g_kinograph_image[0 + 4 * (kx + g_kinograph_width * (g_kinograph_height - 1 - ky))] = 0;
-	    g_kinograph_image[1 + 4 * (kx + g_kinograph_width * (g_kinograph_height - 1 - ky))] = 0;
-	    g_kinograph_image[2 + 4 * (kx + g_kinograph_width * (g_kinograph_height - 1 - ky))] = 0;
-	    g_kinograph_image[3 + 4 * (kx + g_kinograph_width * (g_kinograph_height - 1 - ky))] = 255;
+	    g_kymograph_image[0 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
+	    g_kymograph_image[1 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
+	    g_kymograph_image[2 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
+	    g_kymograph_image[3 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 255;
 	  } else {
 	    // This assumes that the pixels are actually 8-bit values
 	    // and will clip if they go above this.  It also writes pixels
 	    // from the first channel into all colors of the image.  It uses
 	    // RGBA so that we don't have to worry about byte-alignment problems
 	    // that plagued us when using RGB pixels.
-	    g_kinograph_image[0 + 4 * (kx + g_kinograph_width * (g_kinograph_height - 1 - ky))] = (int)(double_pix) >> g_shift;
-	    g_kinograph_image[1 + 4 * (kx + g_kinograph_width * (g_kinograph_height - 1 - ky))] = (int)(double_pix) >> g_shift;
-	    g_kinograph_image[2 + 4 * (kx + g_kinograph_width * (g_kinograph_height - 1 - ky))] = (int)(double_pix) >> g_shift;
-	    g_kinograph_image[3 + 4 * (kx + g_kinograph_width * (g_kinograph_height - 1 - ky))] = 255;
+	    g_kymograph_image[0 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (int)(double_pix) >> g_shift;
+	    g_kymograph_image[1 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (int)(double_pix) >> g_shift;
+	    g_kymograph_image[2 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (int)(double_pix) >> g_shift;
+	    g_kymograph_image[3 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 255;
 	  }
 	}
 
-	// We've added another line to the kinograph!
-	g_kinograph_filled++;
+	// Figure out the coordinates of the kymograph center in the coordinate system
+	// of the cell, where the third tracker (#2) is the posterior end and the fourth
+	// is the anterior end.
+	if (g_trackers.size() >= 4) {
+	  // Find the two tracked points to use.
+	  loop++; // Skip to the third point.
+	  double cx0 = (*loop)->get_x();
+	  double cy0 = (*loop)->get_y();
+	  loop++;
+	  double cx1 = (*loop)->get_x();
+	  double cy1 = (*loop)->get_y();
+
+	  // Find the center of the two (origin of cell coordinates) and the unit vector (dx,dy)
+	  // going towards the second from the first.
+	  double cxcenter = (cx0 + cx1) / 2;
+	  double cycenter = (cy0 + cy1) / 2;
+	  double cdist = sqrt( (cx1-cx0)*(cx1-cx0) + (cy1-cy0)*(cy1-cy0) );
+	  if (cdist == 0) { cdist = 1; }  //< Avoid divide-by-zero below.
+	  double cdx = (cx1 - cx0) / cdist;
+	  double cdy = (cy1 - cy0) / cdist;
+
+	  // Find the dot product between the spindle center and the cell center,
+	  // which is the value of the cell-centered ordinate.
+	  g_kymograph_centers[g_kymograph_filled] = 
+	    (xcenter - cxcenter) * cdx + (ycenter - cycenter) * cdy;
+	}
+
+	// We've added another line to the kymograph!
+	g_kymograph_filled++;
       }
     } 
   }
@@ -1149,7 +1308,9 @@ void myIdleFunc(void)
     glutPostRedisplay();
     glutSetWindow(g_landscape_window);
     glutPostRedisplay();
-    glutSetWindow(g_kinograph_window);
+    glutSetWindow(g_kymograph_window);
+    glutPostRedisplay();
+    glutSetWindow(g_kymograph_center_window);
     glutPostRedisplay();
     g_already_posted = true;
   }
@@ -1432,33 +1593,37 @@ void  set_debug_visibility(int newvalue, void *)
   }
 }
 
-void  initializeKinograph(void) {
-  // Mark the kinograph as not filled.
-  g_kinograph_filled = 0;
+void  initializekymograph(void) {
+  // Mark the kymograph as not filled.
+  g_kymograph_filled = 0;
 
   // Fill the image buffer with black
   int x,y;
-  for (x = 0; x < g_kinograph_width; x++) {
-    for (y = 0; y < g_kinograph_height; y++) {
-      g_kinograph_image[0 + 4 * (x + g_kinograph_width * (g_kinograph_height - 1 - y))] = 0;
-      g_kinograph_image[1 + 4 * (x + g_kinograph_width * (g_kinograph_height - 1 - y))] = 0;
-      g_kinograph_image[2 + 4 * (x + g_kinograph_width * (g_kinograph_height - 1 - y))] = 0;
-      g_kinograph_image[3 + 4 * (x + g_kinograph_width * (g_kinograph_height - 1 - y))] = 255;
+  for (x = 0; x < g_kymograph_width; x++) {
+    for (y = 0; y < g_kymograph_height; y++) {
+      g_kymograph_image[0 + 4 * (x + g_kymograph_width * (g_kymograph_height - 1 - y))] = 0;
+      g_kymograph_image[1 + 4 * (x + g_kymograph_width * (g_kymograph_height - 1 - y))] = 0;
+      g_kymograph_image[2 + 4 * (x + g_kymograph_width * (g_kymograph_height - 1 - y))] = 0;
+      g_kymograph_image[3 + 4 * (x + g_kymograph_width * (g_kymograph_height - 1 - y))] = 255;
     }
   }
 }
 
 
-// Hide or show the kinograph windows
-void  set_kinograph_visibility(int newvalue, void *)
+// Hide or show the kymograph windows
+void  set_kymograph_visibility(int newvalue, void *)
 {
   if (g_ready_to_display) {
     if (newvalue) {
-      initializeKinograph();
-      glutSetWindow(g_kinograph_window);
+      initializekymograph();
+      glutSetWindow(g_kymograph_window);
+      glutShowWindow();
+      glutSetWindow(g_kymograph_center_window);
       glutShowWindow();
     } else {
-      glutSetWindow(g_kinograph_window);
+      glutSetWindow(g_kymograph_center_window);
+      glutHideWindow();
+      glutSetWindow(g_kymograph_window);
       glutHideWindow();
     }
   }
@@ -1700,28 +1865,30 @@ int main(int argc, char *argv[])
   }
 
   //------------------------------------------------------------------
-  // Create the window that will be used for the kinograph
+  // Create the window that will be used for the kymograph
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(200, 200);
-  initializeKinograph();
+  glutInitWindowPosition(190 + g_camera->get_num_columns(), 140);
+  initializekymograph();
 
-  // Figure out how wide the kinograph needs to be based on the window size.
-  g_kinograph_width = g_camera->get_num_columns();
+  // Figure out how wide the kymograph needs to be based on the window size.
+  g_kymograph_width = g_camera->get_num_columns();
 
-  // Create the buffer that Glut will use to send to the kinograph window.  This is allocating an
+  // Create the buffer that Glut will use to send to the kymograph window.  This is allocating an
   // RGBA buffer.  It needs to be 4-byte aligned, so we allocated it as a group of
   // words and then cast it to the right type.  We're using RGBA rather than just RGB
   // because it also solves the 4-byte alignment problem caused by funky sizes of image
   // that are RGB images.
-  if ( (g_kinograph_image = (unsigned char *)(void*)new vrpn_uint32
-      [g_kinograph_width * g_kinograph_height]) == NULL) {
-    fprintf(stderr,"Out of memory when allocating kinograph image!\n");
-    fprintf(stderr,"  (Image is %u by %u)\n", g_kinograph_width, g_kinograph_height);
+  if ( (g_kymograph_image = (unsigned char *)(void*)new vrpn_uint32
+      [g_kymograph_width * g_kymograph_height]) == NULL) {
+    fprintf(stderr,"Out of memory when allocating kymograph image!\n");
+    fprintf(stderr,"  (Image is %u by %u)\n", g_kymograph_width, g_kymograph_height);
     cleanup();
     exit(-1);
   }
-  glutInitWindowSize(g_kinograph_width, g_kinograph_height);
-  g_kinograph_window = glutCreateWindow("Kinograph");
+  glutInitWindowSize(g_kymograph_width, g_kymograph_height);
+  g_kymograph_window = glutCreateWindow("kymograph");
+  glutInitWindowPosition(190 + g_camera->get_num_columns(), 440);
+  g_kymograph_center_window = glutCreateWindow("kymograph_center");
 
   // Set the display functions for each window and idle function for GLUT (they
   // will do all the work) and then give control over to GLUT.
@@ -1733,8 +1900,11 @@ int main(int argc, char *argv[])
   glutSetWindow(g_landscape_window);
   glutDisplayFunc(myLandscapeDisplayFunc);
   glutHideWindow();
-  glutSetWindow(g_kinograph_window);
-  glutDisplayFunc(myKinographDisplayFunc);
+  glutSetWindow(g_kymograph_window);
+  glutDisplayFunc(mykymographDisplayFunc);
+  glutHideWindow();
+  glutSetWindow(g_kymograph_center_window);
+  glutDisplayFunc(mykymographCenterDisplayFunc);
   glutHideWindow();
   glutIdleFunc(myIdleFunc);
   glutMainLoop();
