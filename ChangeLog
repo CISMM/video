@@ -1,5 +1,17 @@
 2002-09-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* video_tempimager_server.cpp : First-pass server to send video.
+	* video_tempimager_server.dsp : Built file for same.
+	* base_camera_server.h : Debugging and features for tempimager_server.
+	* directx_camera_server.h : Same.
+	* directx_camera_server.cpp : Same.
+	* roper_server.h : Same.
+	* roper_server.cpp : Same.
+	* test_directx_library.cpp : Saves a bunch of images now.
+	* video.dsw : Added build file above.
+
+2002-09-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
         * base_camera_server.h : Base for Roper and DirectX video inputs.
 	* directx_camera_server.h : DirectX video input class.
 	* directx_camera_server.cpp : Same.

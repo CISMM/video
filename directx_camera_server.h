@@ -21,6 +21,7 @@ public:
 
   /// Get pixels out of the memory buffer, RGB indexes the colors
   virtual bool	get_pixel_from_memory(int X, int Y, vrpn_uint8 &val, int RGB = 0) const;
+  virtual bool	get_pixel_from_memory(int X, int Y, vrpn_uint16 &val, int RGB = 0) const;
 
   /// Store the memory image to a PPM file.
   virtual bool  write_memory_to_ppm_file(const char *filename) const;

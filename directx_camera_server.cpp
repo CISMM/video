@@ -54,6 +54,7 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
 			      unsigned exposure_time)
 {
   long	scrap;	//< Parameter we don't need
+  HRESULT hr;
 
   if (!_status) { return false; };
 
@@ -65,10 +66,28 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
 
   // Run the graph and wait until it captures a frame into its buffer
   //XXX do we need this? pMediaFilter->SetSyncSource(NULL); // Turn off the reference clock.
-  _pMediaControl->Run(); // Run the graph.
-  // Wait until done or 1 second has passed (timeout)
-  if (S_OK != _pEvent->WaitForCompletion(1000, &scrap)) {
-    fprintf(stderr,"directx_camera_server::read_one_frame(): Timeout\n");
+
+  hr = _pMediaControl->Run();
+  if ( (hr != S_OK) && (hr != S_FALSE) ){
+    fprintf(stderr,"directx_camera_server::read_one_frame(): Can't run filter graph\n");
+    _status = false;
+    return false;
+  }
+
+  // Wait until done or 1 second has passed (timeout).
+  // XXX We seem to be okay if the wait for completion returns okay or
+  // returns "Wrong state" -- which I think may mean that it has already
+  // finished.  Check to see if we are losing frames when this happens.
+  hr = _pEvent->WaitForCompletion(1000, &scrap);
+  if ( (hr != S_OK) && (hr != VFW_E_WRONG_STATE) ) {
+    if (hr == E_ABORT) {
+      fprintf(stderr,"directx_camera_server::read_one_frame(): Timeout\n");
+    } else if (hr == VFW_E_WRONG_STATE) {
+      fprintf(stderr,"directx_camera_server::read_one_frame(): Filter not running\n");
+    } else {
+      fprintf(stderr,"directx_camera_server::read_one_frame(): Unknown failure to read\n");
+    }
+    _status = false;
     return false;
   }
 
@@ -82,7 +101,11 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
     _status = false;
     return false;
   }
-  _pGrabber->GetCurrentBuffer(&vidbuflen, reinterpret_cast<long*>(_buffer));
+  if (S_OK != _pGrabber->GetCurrentBuffer(&vidbuflen, reinterpret_cast<long*>(_buffer))) {
+    fprintf(stderr,"directx_camera_server::read_one_frame(): Can't get the buffer!\n");
+    _status = false;
+    return false;
+  }
 
   return true;
 }
@@ -102,12 +125,20 @@ bool directx_camera_server::open_and_find_parameters(void)
   // Create the filter graph manager
   CoCreateInstance(CLSID_FilterGraph, NULL, CLSCTX_INPROC_SERVER, 
 		      IID_IGraphBuilder, (void **)&_pGraph);
+  if (_pGraph == NULL) {
+    fprintf(stderr, "directx_camera_server::open_and_find_parameters(): Can't create graph manager\n");
+    return false;
+  }
   _pGraph->QueryInterface(IID_IMediaControl, (void **)&_pMediaControl);
   _pGraph->QueryInterface(IID_IMediaEvent, (void **)&_pEvent);
 
   // Create the Capture Graph Builder.
   CoCreateInstance(CLSID_CaptureGraphBuilder2, NULL, CLSCTX_INPROC, 
       IID_ICaptureGraphBuilder2, (void **)&_pBuilder);
+  if (_pBuilder == NULL) {
+    fprintf(stderr, "directx_camera_server::open_and_find_parameters(): Can't create graph builder\n");
+    return false;
+  }
 
   // Associate the graph with the builder.
   _pBuilder->SetFiltergraph(_pGraph);    
@@ -120,10 +151,19 @@ bool directx_camera_server::open_and_find_parameters(void)
   ICreateDevEnum *pDevEnum = NULL;
   CoCreateInstance(CLSID_SystemDeviceEnum, NULL, CLSCTX_INPROC, 
       IID_ICreateDevEnum, (void **)&pDevEnum);
+  if (pDevEnum == NULL) {
+    fprintf(stderr, "directx_camera_server::open_and_find_parameters(): Can't create device enumerator\n");
+    return false;
+  }
 
   // Create an enumerator for video capture devices.
   IEnumMoniker *pClassEnum = NULL;
   pDevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory, &pClassEnum, 0);
+  if (pClassEnum == NULL) {
+    fprintf(stderr, "directx_camera_server::open_and_find_parameters(): Can't create video enumerator (no cameras?)\n");
+    pDevEnum->Release();
+    return false;
+  }
 
   ULONG cFetched;
   IMoniker *pMoniker = NULL;
@@ -218,7 +258,13 @@ bool directx_camera_server::open_and_find_parameters(void)
   return true;
 }
 
-directx_camera_server::directx_camera_server(void)
+directx_camera_server::directx_camera_server(void) :
+  _pGraph(NULL),
+  _pBuilder(NULL),
+  _pMediaControl(NULL),
+  _pEvent(NULL),
+  _pSampleGrabberFilter(NULL),
+  _pGrabber(NULL)
 {
   //---------------------------------------------------------------------
 
@@ -251,12 +297,12 @@ directx_camera_server::directx_camera_server(void)
 directx_camera_server::~directx_camera_server(void)
 {
   // Clean up.
-  _pGrabber->Release();
-  _pSampleGrabberFilter->Release();
-  _pEvent->Release();
-  _pMediaControl->Release();
-  _pBuilder->Release();
-  _pGraph->Release();
+  if (_pGrabber) { _pGrabber->Release(); };
+  if (_pSampleGrabberFilter) { _pSampleGrabberFilter->Release(); };
+  if (_pEvent) { _pEvent->Release(); };
+  if (_pMediaControl) { _pMediaControl->Release(); };
+  if (_pBuilder) { _pBuilder->Release(); };
+  if (_pGraph) { _pGraph->Release(); };
   CoUninitialize();
 }
 
@@ -347,6 +393,23 @@ bool  directx_camera_server::write_memory_to_ppm_file(const char *filename) cons
 }
 
 bool	directx_camera_server::get_pixel_from_memory(int X, int Y, vrpn_uint8 &val, int RGB) const
+{
+  if (!_status) { return false; };
+
+  // XXX This will depend on what kind of pixels we have!
+  if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
+    fprintf(stderr,"directx_camera_server::get_pixel_from_memory(): No image in memory\n");
+    return false;
+  }
+  if ( (X < _minX) || (X > _maxX) || (Y < _minY) || (Y > _maxY) ) {
+    return false;
+  }
+  unsigned  cols = (_maxX - _minX) + 1;
+  val = _buffer[ (Y*cols + X) * 3 + RGB ];
+  return true;
+}
+
+bool	directx_camera_server::get_pixel_from_memory(int X, int Y, vrpn_uint16 &val, int RGB) const
 {
   if (!_status) { return false; };
 

@@ -9,6 +9,8 @@ class base_camera_server {
 public:
   /// Is the camera working properly?
   bool working(void) const { return _status; };
+  unsigned  get_num_rows(void) { return _num_rows; };
+  unsigned  get_num_columns(void) { return _num_columns; };
 
   /// Read an image to a memory buffer.  Max < min means "whole range"
   virtual bool	read_image_to_memory(unsigned minX = 255, unsigned maxX = 0,
@@ -17,6 +19,7 @@ public:
 
   /// Get pixels out of the memory buffer, RGB indexes the colors
   virtual bool	get_pixel_from_memory(int X, int Y, vrpn_uint8 &val, int RGB = 0) const { return false; };
+  virtual bool	get_pixel_from_memory(int X, int Y, vrpn_uint16 &val, int RGB = 0) const { return false; };
 
   /// Return the number of colors that the device has
   virtual unsigned  get_num_colors() const { return 0; };

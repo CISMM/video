@@ -264,10 +264,35 @@ bool  roper_server::write_memory_to_ppm_file(const char *filename) const
   return true;
 }
 
-bool	roper_server::get_pixel_from_memory(int X, int Y, uns16 &val) const
+//---------------------------------------------------------------------
+// Map the 12 bits to the range 0-255, and return the result
+bool	roper_server::get_pixel_from_memory(int X, int Y, vrpn_uint8 &val, int RGB) const
 {
   if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
     fprintf(stderr,"roper_server::get_pixel_from_memory(): No image in memory\n");
+    return false;
+  }
+  if (RGB != 0) {
+    fprintf(stderr,"roper_server::get_pixel_from_memory(): Can't select other than 0th color\n");
+    return false;
+  }
+  if ( (X < _minX) || (X > _maxX) || (Y < _minY) || (Y > _maxY) ) {
+    return false;
+  }
+  uns16	*vals = (uns16 *)_memory;
+  uns16	cols = (_maxX - _minX) + 1;
+  val = (vrpn_uint8)(vals[Y*cols + X] * 255.0/4095.0);
+  return true;
+}
+
+bool	roper_server::get_pixel_from_memory(int X, int Y, vrpn_uint16 &val, int RGB) const
+{
+  if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
+    fprintf(stderr,"roper_server::get_pixel_from_memory(): No image in memory\n");
+    return false;
+  }
+  if (RGB != 0) {
+    fprintf(stderr,"roper_server::get_pixel_from_memory(): Can't select other than 0th color\n");
     return false;
   }
   if ( (X < _minX) || (X > _maxX) || (Y < _minY) || (Y > _maxY) ) {
@@ -278,3 +303,4 @@ bool	roper_server::get_pixel_from_memory(int X, int Y, uns16 &val) const
   val = vals[Y*cols + X];
   return true;
 }
+
