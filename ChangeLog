@@ -1,3 +1,15 @@
+2003-09-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* EDT capture to C_test_avi.GRF : Replaced with the following.
+	* EDT capture to D_jcribb_data.GRF : Replaces the above.
+	* EDT camera viewer.GRF : Replaced the test graph (100x100 image)
+		with the running graph (connected to a camera).
+	* EDT_directx_dll.cpp : Debugging messages added
+	* edt_raw_video_store.cpp : Program to save raw video frames into an
+		output file using the EDT sample code.
+	* edt_raw_video_store.dsp : Project file for above.
+	* video.dsw : Added raw video store project.
+
 2003-09-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* EDT_directx_dll.cpp : Added timing information so we can store

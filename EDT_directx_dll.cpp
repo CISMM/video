@@ -121,10 +121,7 @@ CEDTPushPin::CEDTPushPin(HRESULT *phr, CSource *pFilter)
   // for new data and for information about the size of
   // the image.
 #ifdef	DEBUG_ON
-  { char out[1024];
-    sprintf(out, "Opening %s\n", device_name);
-    dialog("CEDTPushPin::CEDTPushPin", out);
-  }
+  dialog("CEDTPushPin::CEDTPushPin", "opening device");
 #endif
 
   // Open the device and read its parameters.
@@ -204,6 +201,12 @@ HRESULT CEDTPushPin::GetMediaType(CMediaType *pMediaType)
   mt.subtype = MEDIASUBTYPE_RGB24;	  // Ask for 24-bit RGB
   *pMediaType = mt;
 
+#ifdef	DEBUG_ON
+  { char size[1024];
+    sprintf(size, "Size %d by %d", m_nCols, m_nRows);
+    dialog("CEDTPushPin::GetMediaType", size);
+  }
+#endif
   ZeroMemory(&mt, sizeof(AM_MEDIA_TYPE));
   mt.majortype = MEDIATYPE_Video;	  // Ask for video media producers
   mt.subtype = MEDIASUBTYPE_RGB24;	  // Ask for 24-bit RGB
