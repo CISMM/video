@@ -1,0 +1,184 @@
+[General]
+FileVersion=1.1
+FileType=QSetupIniFile
+ComposerVersion=3.5.0.3
+
+[Project]
+ProjectName=stack_collector
+ProjectDirectory=F:\taylorr\STM\src\video\stack_collector
+MediaFileName=stack_collector_01_06
+CopyMediaToFName=
+ProgramDescriptiveName=Stack Collector v1.06
+ProgramVersion=01.06
+CompanyName=www.cs.unc.edu/nano
+ProgVerLiveUpdate=0
+RegisterAsApp=1
+LanguageFlag=1
+LanguageNames=|
+
+[Display]
+AddSetupBackground=1
+TopLabel=1
+TopLabelVer=1
+TopLabel2=0
+BottomLabel=0
+TopLabelText="Stack Collector"
+TopLabel2Text=""
+BottomLabelText="Copyright © 2003"
+TopBackgroundColor=16711680
+BottomBackgroundColor=0
+AddBottomColor=1
+DlgBmp3DFrame=1
+AddDialogBitmap=0
+DialogBitmapFileName=
+AddBackgroundBitmap=0
+BackgroundBitmapFileName=
+BackgroundBitmapLocation=|Top/Left|0|0|
+BgBmpTransparent=0
+TopLabelSide=Left
+TopLabel2Side=Left
+BottomLabelSide=Left
+DialogLocation=|Center|0|0|
+TopLabelFont=|Tahoma|36|16777215|1|2|
+TopLabel2Font=|Tahoma|18|16777215|1|2|
+BottomLabelFont=|Tahoma|10|16777215|1|0|
+CompanyUrl=www.cs.unc.edu/nano
+
+[TargetExe]
+TargetDirectory=<AbsoluteDir>C:\NSRG\bin\stack_collector v1.06
+CommonDirectory=<CommonFilesDir>
+AuxDirectory=<FontDir>
+TargetExeName=<Application Folder>\stack_collector.bat
+RunTimeDir_1=|||||||1||||1||1|<ProgramFilesDir>|||||
+RunTimeDir_2=|||||||1||||1||1|<ProgramFilesDir>|||||
+RunTimeDir_3=|||||||1||||1||1|<ProgramFilesDir>|||||
+
+[Dialogs]
+SelectedDialogs=*Welcome,License,*Readme,User Information,*Destination,Setup Type,Custom,Associate,*Shortcuts,*Confirm Setup,*Copy Files,*Complete
+LicenseTextFile=
+ReadmeTextFile=F:\taylorr\STM\src\video\Intallation_README.txt
+ReadmeTextFile2=
+RequestUserName=1
+RequestCompanyName=1
+RequestSerialNumberAlso=0
+RequestSerialCheckDLL=0
+SerialCheckDll=
+RequestPredefinedSerial=0
+CaseSensitiveSerial=0
+PredefinedSerialText=
+ShowCompactSetupAlso=1
+ProposeReadme=0
+ProposeLaunch=0
+ProposeRestart=0
+ProposeReadmeChecked=0
+ProposeLaunchChecked=0
+ShowCloseRecommendation=1
+ShowAdwareDisclaimer=0
+
+[Shortcuts]
+ProgramLinkFolder=NSRG\Stack Collector v1.06
+ProgramLinkName=Stack_collector
+ProgramLinkParam=
+ProgramLinkWorkDir=<Application Folder>
+ProgramLinkIconFile=
+ProgramLinkIconNum=0
+StartMenuLinkName=Stack Collector v1.06
+DesktopLinkName=Stack Collector v1.06
+SendToLinkName=Stack Collector v1.06
+StartUpLinkName=Stack Collector v1.06
+StartMenuCheckBox=0
+DesktopCheckBox=0
+SendToCheckBox=0
+StartUpCheckBox=0
+StartMenuChecked=1
+DesktopChecked=1
+SendToChecked=1
+StartUpChecked=1
+SetAllUsers=1
+AddUninstallShortcut=1
+
+[Billboard]
+AddBillboard=1
+Item-000=|1|0|0|1|0|Center|0|0|8388608|16711680|Verdana|14|16777215|1|0|360|360|0|1|
+
+[SplitSetup]
+SplitSetup=0
+ForceDownload=1
+DownloadURL_SPLIT=http://
+ConfirmSplitDownload=0
+
+[AutoUpdate]
+AutoUpdate=0
+RunAutoUpdate=0
+AddAutoUpdateShortcut=0
+ReqConfirmDownload=0
+ReqConfirmInstall=0
+ShutDownMethod=Don't Shut Down
+BackgroundUpdate=0
+RestartProcess=0
+InformFinish=0
+UpdateProjectFName=
+DownloadURL_UPDATE=http://
+NameOfUpdateFile=
+RunningProcess=
+VersionOriginal=1
+ValidVersions=
+VersionNew=1
+ReAskDays=0
+AutoUpdateProbeSpin=1
+AutoUpdateProbeText=Only at Startup
+
+[Switches]
+OperatingSystems=All,95,98,ME,NT,2000,XP
+OverwriteFlag=1
+CreateUnInstall=1
+SilentSetup=0
+CreateLogFile=0
+ConfirmExtract=0
+TestAdminRights=1
+
+[Registry]
+
+[IniFile]
+
+[Environment]
+
+[Association]
+OpenWith=0
+OpenWithName=
+OpenWithMenuText=Open with 
+OpenWithExtensions=
+
+[VerInfo]
+CopyFromExe=0
+DefineManually=0
+Item-001=|Comments||
+Item-002=|CompanyName||
+Item-003=|FileDescription||
+Item-004=|FileVersion||
+Item-005=|InternalName||
+Item-006=|LegalCopyright||
+Item-007=|LegalTrademarks||
+Item-008=|OriginalFilename||
+Item-009=|ProductName||
+Item-010=|ProductVersion||
+CopyIconFromTargetExe=0
+CopyIconFromOtherApp=0
+OtherIconAppFileName=
+Spin1=0
+Spin2=0
+
+[Execute]
+ExecuteDllCheckBox=0
+ExecutionDllFileName=
+
+[GroupNames]
+Group-000=Main Group
+
+[Group-000]
+TypicalCompactData=3
+Description=
+Item-000=Fol*<Application Folder>[0]
+Item-001=Fil*F:\taylorr\STM\src\video\Release\stack_collector.exe
+Item-002=Fil*F:\taylorr\STM\src\video\russ_widgets.tcl
+Item-003=Fil*F:\taylorr\STM\src\video\stack_collector.bat
