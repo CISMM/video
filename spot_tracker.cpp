@@ -158,6 +158,8 @@ void  spot_tracker::optimize(const image_wrapper &image, double &x, double &y)
 // the minimum.  Only try moving in X and Y, not changing the radius,
 void  spot_tracker::optimize_xy(const image_wrapper &image, double &x, double &y)
 {
+  int optsteps_tried = 0;
+
   // Set the step sizes to a large value to start with
   _pixelstep = 2;
 
@@ -167,8 +169,9 @@ void  spot_tracker::optimize_xy(const image_wrapper &image, double &x, double &y
   // Try with ever-smaller steps until we reach the smallest size and
   // can't do any better.
   do {
+    optsteps_tried += 4;
     // Repeat the optimization steps until we can't do any better.
-    while (take_single_optimization_step(image, x, y, true, true, false)) {};
+    while (take_single_optimization_step(image, x, y, true, true, false)) {optsteps_tried += 4;};
 
     // Try to see if we reducing the step sizes helps, until it gets too small.
     if ( _pixelstep <= _pixelacc ) {
@@ -176,6 +179,84 @@ void  spot_tracker::optimize_xy(const image_wrapper &image, double &x, double &y
     }
     _pixelstep /= 2;
   } while (true);
+#ifdef	DEBUG
+  printf("%d optimization steps tried\n", optsteps_tried);
+#endif
+}
+
+/// Optimize in X and Y by solving separately for the best-fit parabola in X and Y
+// to three samples starting from the center and separated by the sample distance.
+// The minimum for the parabola is the best location (if it has a minimum; otherwise
+// just stay where we started because it is hopeless).
+void  spot_tracker::optimize_xy_parabolafit(const image_wrapper &image, double &x, double &y)
+{
+  double xn = get_x() - _samplesep;
+  double x0 = get_x();
+  double xp = get_x() + _samplesep;
+
+  double yn = get_y() - _samplesep;
+  double y0 = get_y();
+  double yp = get_y() + _samplesep;
+
+  // Check all of the fitness values at and surrounding the center.
+  double fx0 = check_fitness(image);
+  double fy0 = fx0;
+  set_location(xn, y0);
+  double fxn = check_fitness(image);
+  set_location(xp, y0);
+  double fxp = check_fitness(image);
+  set_location(x0, yn);
+  double fyn = check_fitness(image);
+  set_location(x0, yp);
+  double fyp = check_fitness(image);
+
+  // Put the location back at the center, in case we can't do any
+  // better.
+  set_location(x0,y0);
+
+  // Find parabola in X that passes through the three points.  If it has
+  // a maximum, set the location to that maximum.
+  // Equation is f(x) = ax^2 + bx + c; to simplify things, we decide that
+  // the x0 location is at x = 0 (which means we'll be solving for an offset
+  // in x).  We also decide that we're going to take unit steps to make it easier
+  // to solve the equations; this means that we need to scale the offser by
+  // _samplesep.  This makes c = fx0.  Then we get two equations:
+  // fxp = a + b + fx0, fxn = a - b + fx0.  (fxp-fx0) = a + b, (fxn-fx0) = a - b;
+  // (fxp-fx0) + (fxn-fx0) = 2a; a = ((fxp-fx0) + (fxn-fx0)) / 2, a = (fxp+fxn)/2 - fx0;
+  // Plugging back in gives us b = (fxp-fx0) - a.  There is a maximum of a < 0.
+  // The maximum is located at the zero of the derivative of f(x): f'(x) = 2ax + b;
+  // 0 = 2ax + b; 2ax = -b; x = -b/(2a).
+  double c = fx0;
+  double a = (fxp+fxn)/2 - fx0;
+  if (a < 0) {
+    double b = (fxp-fx0) - a;
+    double xmax = -b / (2*a);
+    // Don't move more than 1.5 _samplesep units in one step, that's too much
+    // extrapolation
+    if ( fabs(xmax) <= 1.5) {
+      set_location(get_x() + xmax * _samplesep, get_y());
+    }
+  }
+
+  // Find parabola in Y that passes through the three points.  If it has
+  // a maximum, set the location to that maximum.
+  // Use the same equations as above, but putting y in place of x and fy in
+  // place of fx.
+  c = fy0;
+  a = (fyp+fyn)/2 - fy0;
+  if (a < 0) {
+    double b = (fyp-fy0) - a;
+    double ymax = -b / (2*a);
+    // Don't move more than 1.5 _samplesep units in one step, that's too much
+    // extrapolation
+    if ( fabs(ymax) <= 1.5) {
+      set_location(get_x(), get_y() + ymax * _samplesep);
+    }
+  }
+
+  // Report where we ended up.
+  x = get_x();
+  y = get_y();
 }
 
 disk_spot_tracker::disk_spot_tracker(double radius, bool inverted, double pixelaccuracy,
@@ -641,7 +722,7 @@ bool	image_spot_tracker_interp::set_image(const image_wrapper &image, double x, 
   return true;
 }
 
-// Check the fitness of the disk against an image, at the current parameter settings.
+// Check the fitness of the stored image against another image, at the current parameter settings.
 // Return the fitness value there.
 
 // We assume that we are looking at a smooth function, so we do linear
@@ -655,7 +736,7 @@ double	image_spot_tracker_interp::check_fitness(const image_wrapper &image)
   double  fitness = 0.0;		//< Accumulates the fitness values
   double  x, y;				//< Loops over coordinates, distance from the center.
 
-  // If we haven't ever gotten the original image, go aheand and grab it now from
+  // If we haven't ever gotten the original image, go ahead and grab it now from
   // the image we've been asked to optimize from.
   if (_testimage == NULL) {
     fprintf(stderr,"image_spot_tracker_interp::check_fitness(): Called before set_image() succeeded (grabbing from image)\n");
@@ -674,6 +755,59 @@ double	image_spot_tracker_interp::check_fitness(const image_wrapper &image)
 	pixels++;
       }
 
+    }
+  }
+
+  // Normalize the fitness value by the number of pixels we have chosen,
+  // or leave it at zero if we never found any.
+  if (pixels) {
+    fitness /= pixels;
+  }
+
+  // We never invert the fitness: we don't care whether it is a dark
+  // or bright spot.
+  return fitness;
+}
+
+// Check the fitness of the stored image against another image, at the current parameter settings.
+// Return the fitness value there.
+
+// We assume that we are looking at a smooth function, so we do linear
+// interpolation and sample within the space of the kernel, rather than
+// point-sampling the nearest pixel.
+
+double	twolines_image_spot_tracker_interp::check_fitness(const image_wrapper &image)
+{
+  double  val;				//< Pixel value read from the image
+  double  pixels = 0;			//< How many pixels we ended up using (used in floating-point calculations only)
+  double  fitness = 0.0;		//< Accumulates the fitness values
+  double  x, y;				//< Loops over coordinates, distance from the center.
+
+  // If we haven't ever gotten the original image, go ahead and grab it now from
+  // the image we've been asked to optimize from.
+  if (_testimage == NULL) {
+    fprintf(stderr,"image_spot_tracker_interp::check_fitness(): Called before set_image() succeeded (grabbing from image)\n");
+    set_image(image, get_x(), get_y(), get_radius());
+    if (_testimage == NULL) {
+      return 0;
+    }
+  }
+
+  // Check the X cross section through the center, then the Y.
+  for (x = -_testrad; x <= _testrad; x++) {
+    if (image.read_pixel_bilerp(get_x()+x,get_y(),val)) {
+      double myval = _testimage[(int)(_testx+x) + _testsize * (int)(_testy)];
+      double squarediff = (val-myval) * (val-myval);
+      fitness -= squarediff;
+      pixels++;
+    }
+  }
+  for (y = -_testrad; y <= _testrad; y++) {
+    if (image.read_pixel_bilerp(get_x(),get_y()+y,val)) {
+      double myval = _testimage[(int)(_testx) + _testsize * (int)(_testy+y)];
+      double squarediff = (val-myval) * (val-myval);
+      fitness -= squarediff;
+      pixels++;
     }
   }
 

@@ -36,6 +36,14 @@ public:
   virtual void	optimize_xy(const image_wrapper &image, double &x, double &y, double startx, double starty)
 	    { set_location(startx, starty); optimize_xy(image, x, y); };
 
+  /// Optimize in X and Y by solving separately for the best-fit parabola in X and Y
+  // to three samples starting from the center and separated by the sample distance.
+  // The minimum for the parabola is the best location (if it has a minimum; otherwise
+  // just stay where we started because it is hopeless).
+  virtual void	optimize_xy_parabolafit(const image_wrapper &image, double &x, double &y);
+  virtual void	optimize_xy_parabolafit(const image_wrapper &image, double &x, double &y, double startx, double starty)
+	    { set_location(startx, starty); optimize_xy_parabolafit(image, x, y); };
+
   /// Find the best fit for the spot detector within the image, taking steps
   // that are 1/4 of the bead's radius.
   virtual void	locate_good_fit_in_image(const image_wrapper &image, double &x, double &y);
@@ -197,7 +205,7 @@ protected:
 // This class is initialized with an image that it should track, and then
 // it will optimize against this initial image by shifting
 // over a specified range to find the image whose pixel-wise least-squares
-// difference it minimized.
+// difference is minimized.
 
 class image_spot_tracker_interp : public spot_tracker {
 public:
@@ -223,7 +231,34 @@ protected:
   double  *_testimage;	  //< The image to test for fitness against
   int	  _testrad;	  //< The radius of pixels stored from the test image
   int	  _testsize;	  //< The size of the stored image (2 * _testrad + 1)
-  int	  _testx, _testy;  //< The center of the image for testing point of view
+  int	  _testx, _testy; //< The center of the image for testing point of view
+};
+
+//----------------------------------------------------------------------------
+// This class is initialized with an image that it should track, and then
+// it will optimize against this initial image by shifting
+// over a specified range to find the image whose pixel-wise least-squares
+// difference is minimized.  It is like the image_spot_tracker_interp above,
+// except that it only checks two lines of pixels, one horizontal and one
+// vertical, each through the center of the image.  This subsetting is done
+// to make it faster.
+
+class twolines_image_spot_tracker_interp : public image_spot_tracker_interp {
+public:
+  // Set initial parameters of the disk search routine
+  twolines_image_spot_tracker_interp(double radius,
+		    bool inverted = false,
+		    double pixelaccuracy = 0.25,
+		    double radiusaccuracy = 0.25,
+		    double sample_separation_in_pixels = 1.0) :
+	    image_spot_tracker_interp(radius, inverted, pixelaccuracy,
+	      radiusaccuracy, sample_separation_in_pixels) {};
+
+  /// Check the fitness against an image, at the current parameter settings.
+  // Return the fitness value there.
+  virtual double  check_fitness(const image_wrapper &image);
+
+protected:
 };
 
 //----------------------------------------------------------------------------

@@ -61,7 +61,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "03.03";
+const char *Version_string = "03.04";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -75,16 +75,27 @@ const int KERNEL_SYMMETRIC = 2;
 
 class Spot_Information {
 public:
-  Spot_Information(spot_tracker *tracker) { d_tracker = tracker; d_index = d_static_index++; }
+  Spot_Information(spot_tracker *tracker) {
+    d_tracker = tracker;
+    d_index = d_static_index++;
+    d_velocity[0] = d_acceleration[0] = d_velocity[1] = d_acceleration[1] = 0;
+  }
 
   spot_tracker *tracker(void) const { return d_tracker; }
   unsigned index(void) const { return d_index; }
 
   void set_tracker(spot_tracker *tracker) { d_tracker = tracker; }
 
+  void get_velocity(double velocity[2]) const { velocity[0] = d_velocity[0]; velocity[1] = d_velocity[1]; }
+  void set_velocity(const double velocity[2]) { d_velocity[0] = velocity[0]; d_velocity[1] = velocity[1]; }
+  void get_acceleration(double acceleration[2]) const { acceleration[0] = d_acceleration[0]; acceleration[1] = d_acceleration[1]; }
+  void set_acceleration(const double acceleration[2]) { d_acceleration[0] = acceleration[0]; d_acceleration[1] = acceleration[1]; }
+
 protected:
   spot_tracker		*d_tracker;	    //< The tracker we're keeping information for
   unsigned		d_index;	    //< The index for this instance
+  double		d_velocity[2];	    //< The velocity of the particle
+  double		d_acceleration[2];  //< The acceleration of the particle
   static unsigned	d_static_index;     //< The index to use for the next one (never to be re-used).
 };
 unsigned  Spot_Information::d_static_index = 0;	  //< Start the first instance of a Spot_Information index at zero.
@@ -224,9 +235,11 @@ Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_t
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
 Tclvar_int_with_button	g_invert("dark_spot",NULL,1, rebuild_trackers);
 Tclvar_int_with_button	g_interpolate("interpolate",NULL,1, rebuild_trackers);
+Tclvar_int_with_button	g_parabolafit("parabolafit",NULL,0);
 Tclvar_int_with_button	g_areamax("areamax",NULL,0, set_maximum_search_radius);
+Tclvar_int_with_button	g_predict("predict",NULL,0);
 Tclvar_int_with_button	g_kernel_type("kerneltype", NULL, KERNEL_SYMMETRIC, rebuild_trackers);
-Tclvar_int_with_button	g_rod("rod3",".kernel.rod3",0, rebuild_trackers);
+Tclvar_int_with_button	g_rod("rod3",NULL,0, rebuild_trackers);
 Tclvar_float_with_scale	g_length("length", ".rod3", 10, 50, 20);
 Tclvar_float_with_scale	g_orientation("orient", ".rod3", 0, 359, 0);
 Tclvar_int_with_button	g_opt("optimize",".kernel.optimize");
@@ -244,6 +257,7 @@ Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_change
 Tclvar_int		g_log_relative("logging_relative");
 double			g_log_offset_x, g_log_offset_y;
 bool g_video_valid = false; // Do we have a valid video frame in memory?
+unsigned		g_log_frame_number_last_logged = -1;
 
 //--------------------------------------------------------------------------
 // Helper routine to get the Y coordinate right when going between camera
@@ -474,6 +488,57 @@ static void  cleanup(void)
   if (g_client_connection) { delete g_client_connection; g_client_connection = NULL; };
 }
 
+static	double	timediff(struct timeval t1, struct timeval t2)
+{
+	return (t1.tv_usec - t2.tv_usec) / 1e6 +
+	       (t1.tv_sec - t2.tv_sec);
+}
+
+// XXX The start time needs to be reset whenever a new file is opened, probably,
+// rather than once at the first logged message.
+static	bool  save_log_frame(unsigned frame_number)
+{
+  static struct timeval start;
+  static bool first_time = true;
+  struct timeval now; gettimeofday(&now, NULL);
+
+  g_log_frame_number_last_logged = frame_number;
+
+  list<Spot_Information *>::iterator loop;
+  for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+    vrpn_float64  pos[3] = {(*loop)->tracker()->get_x() - g_log_offset_x, flip_y((*loop)->tracker()->get_y()) - g_log_offset_y, 0};
+    vrpn_float64  quat[4] = { 0, 0, 0, 1};
+    double orient = 0.0;
+    double length = 0.0;
+
+    // If we are tracking rods, then we adjust the orientation to match.
+    if (g_rod) {
+      // Horrible hack to make this work with rod type
+      orient = static_cast<rod3_spot_tracker_interp*>((*loop)->tracker())->get_orientation();
+      length = static_cast<rod3_spot_tracker_interp*>((*loop)->tracker())->get_length();
+    }
+
+    // Rotation about the Z axis, reported in radians.
+    q_from_euler(quat, orient * (M_PI/180),0,0);
+    if (g_vrpn_tracker->report_pose((*loop)->index(), now, pos, quat) != 0) {
+      fprintf(stderr,"Error: Could not log tracker number %d\n", (*loop)->index());
+      return false;
+    }
+
+    // Also, write the data to the .csv file if one is open.
+    if (g_csv_file) {
+      if (first_time) {
+	start.tv_sec = now.tv_sec; start.tv_usec = now.tv_usec;
+	first_time = false;
+      }
+      double interval = timediff(now, start);
+      fprintf(g_csv_file, "%lf, %d, %lf,%lf,%lf, %lf, %lf,%lf\n", interval, (*loop)->index(), pos[0], pos[1], pos[2], (*loop)->tracker()->get_radius(), orient, length);
+    }
+  }
+  return true;
+}
+
+
 void myDisplayFunc(void)
 {
   unsigned  r,c;
@@ -483,8 +548,10 @@ void myDisplayFunc(void)
 
   // Clear the window and prepare to draw in the back buffer
   glDrawBuffer(GL_BACK);
-  glClearColor(0.0, 0.0, 0.0, 0.0);
-  glClear(GL_COLOR_BUFFER_BIT);
+  if (g_show_video || g_mark) {
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClear(GL_COLOR_BUFFER_BIT);
+  }
 
   if (g_show_video) {
     // Copy pixels into the image buffer.  Flip the image over in
@@ -685,7 +752,9 @@ void myDisplayFunc(void)
   }
 
   // Swap buffers so we can see it.
-  glutSwapBuffers();
+  if (g_show_video || g_mark) {
+    glutSwapBuffers();
+  }
 
   // Capture timing information and print out how many frames per second
   // are being drawn.
@@ -972,12 +1041,6 @@ void mykymographDisplayFunc(void)
   glutSwapBuffers();
 }
 
-static	double	timediff(struct timeval t1, struct timeval t2)
-{
-	return (t1.tv_usec - t2.tv_usec) / 1e6 +
-	       (t1.tv_sec - t2.tv_sec);
-}
-
 void myIdleFunc(void)
 {
   list<Spot_Information *>::iterator loop;
@@ -1087,59 +1150,34 @@ void myIdleFunc(void)
       static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->set_length(g_length);
       static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->set_orientation(g_orientation);
     }
-  }
-  if (g_opt && g_active_tracker) {
-    double  x, y;
 
     // Update the VRPN tracker position for each tracker and report it
     // using the same time value for each.  Don't do the update if we
     // don't currently have a valid video frame.  Sensors are indexed
-    // by their position in the list.  XXX Putting this here before the
+    // by their position in the list.  Putting this here before the
     // optimize loop means that we're reporting the PREVIOUS values of
     // the optimizer (the ones for the frame just ending) rather than
     // the CURRENT values.  This means we'll not write a value for the
     // last frame in a video.  Before, we weren't writing a value for the first
     // frame.  The way it is now, the user can single-step through a
     // file and move the trackers around to line up on each frame before
-    // their values are saved.
+    // their values are saved.  To fix this, we put in a log save at
+    // program exit and logfile name change.
     // Remember to invert the Y value so that it logs based on the
     // upper-left corner of the image.
+    // We log even if we aren't optimizing, because the user may be moving
+    // the dots around by hand.
     if (g_vrpn_tracker && g_video_valid) {
-      static struct timeval start;
-      static bool first_time = true;
-      struct timeval now; gettimeofday(&now, NULL);
-      for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-	vrpn_float64  pos[3] = {(*loop)->tracker()->get_x() - g_log_offset_x, flip_y((*loop)->tracker()->get_y()) - g_log_offset_y, 0};
-	vrpn_float64  quat[4] = { 0, 0, 0, 1};
-	double orient = 0.0;
-	double length = 0.0;
-
-	// If we are tracking rods, then we adjust the orientation to match.
-	if (g_rod) {
-	  // Horrible hack to make this work with rod type
-	  orient = static_cast<rod3_spot_tracker_interp*>((*loop)->tracker())->get_orientation();
-	  length = static_cast<rod3_spot_tracker_interp*>((*loop)->tracker())->get_length();
-	}
-
-	// Rotation about the Z axis, reported in radians.
-	q_from_euler(quat, orient * (M_PI/180),0,0);
-	if (g_vrpn_tracker->report_pose((*loop)->index(), now, pos, quat) != 0) {
-	  fprintf(stderr,"Error: Could not log tracker number %d\n", (*loop)->index());
-	  cleanup();
-	  exit(-1);
-	}
-
-	// Also, write the data to the .csv file if one is open.
-	if (g_csv_file) {
-	  if (first_time) {
-	    start.tv_sec = now.tv_sec; start.tv_usec = now.tv_usec;
-	    first_time = false;
-	  }
-	  double interval = timediff(now, start);
-	  fprintf(g_csv_file, "%lf, %d, %lf,%lf,%lf, %lf, %lf,%lf\n", interval, (*loop)->index(), pos[0], pos[1], pos[2], (*loop)->tracker()->get_radius(), orient, length);
-	}
+      if (!save_log_frame(g_frame_number-1)) {
+	fprintf(stderr,"Could not save data to log file\n");
+	cleanup();
+	exit(-1);
       }
     }
+
+  }
+  if (g_opt && g_active_tracker) {
+    double  x, y;
 
     // This variable is used to determine if we should consider doing maximum fits,
     // by determining if the frame number has changed since last time.
@@ -1151,6 +1189,20 @@ void myIdleFunc(void)
     // jumpy).
     int kymocount = 0;
     for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+      double last_pos[2];
+      last_pos[0] = (*loop)->tracker()->get_x();
+      last_pos[1] = (*loop)->tracker()->get_y();
+      double last_vel[2];
+      (*loop)->get_velocity(last_vel);
+
+      // If we are doing prediction, apply the estimated last velocity to
+      // move the estimated position to a new location
+      if ( g_predict && (last_optimized_frame_number != g_frame_number) ) {
+	double new_pos[2];
+	new_pos[0] = last_pos[0] + last_vel[0];
+	new_pos[1] = last_pos[1] + last_vel[1];
+	(*loop)->tracker()->set_location(new_pos[0], new_pos[1]);
+      }
 
       // If the frame-number has changed, and we are doing global searches
       // within a radius, then create an image-based tracker at the last
@@ -1165,23 +1217,35 @@ void myIdleFunc(void)
 	double x_base = (*loop)->tracker()->get_x();
 	double y_base = (*loop)->tracker()->get_y();
 
-	// Create an image spot tracker and initize it at the location where the current
-	// tracker is, but in the last image.  Grab enough of the image that we will be able
-	// to check over the g_search_radius for a match.
-	image_spot_tracker_interp max_find((*loop)->tracker()->get_radius(), (g_invert != 0), g_precision,
-	  0.1, g_sampleSpacing);
-	max_find.set_location(x_base, y_base);
-	max_find.set_image(*g_last_image, x_base, y_base, (*loop)->tracker()->get_radius() + g_search_radius);
+	// If we are doing prediction, reduce the search radius to 3 because we rely
+	// on the prediction to get us close to the global maximum.  If we make it 2.5,
+	// it starts to lose track with an accuracy of 1 pixel for a bead on cilia in
+	// pulnix video (acquired at 120 frames/second).
+	double used_search_radius = g_search_radius;
+	if ( g_predict && (g_search_radius > 3) ) {
+	  used_search_radius = 3;
+	}
 
-	// Loop over the pixels within g_search_radius of the initial location and find the
-	// location with the best match over all of these points.  Do this in the current image.
-	double radsq = g_search_radius * g_search_radius;
+	// Create an image spot tracker and initize it at the location where the current
+	// tracker started this frame (before prediction), but in the last image.  Grab enough
+	// of the image that we will be able to check over the used_search_radius for a match.
+	// Use the faster twolines version of the image-based tracker.
+	twolines_image_spot_tracker_interp max_find((*loop)->tracker()->get_radius(), (g_invert != 0), g_precision,
+	  0.1, g_sampleSpacing);
+	max_find.set_location(last_pos[0], last_pos[1]);
+	max_find.set_image(*g_last_image, last_pos[0], last_pos[1], (*loop)->tracker()->get_radius() + used_search_radius);
+
+	// Loop over the pixels within used_search_radius of the initial location and find the
+	// location with the best match over all of these points.  Do this in the current image,
+	// at the (possibly-predicted) starting location and find the offset from the (possibly
+	// predicted) current location to get to the right place.
+	double radsq = used_search_radius * used_search_radius;
 	int x_offset, y_offset;
 	int best_x_offset = 0;
 	int best_y_offset = 0;
 	double best_value = max_find.check_fitness(*g_image);
-	for (x_offset = -floor(g_search_radius); x_offset <= floor(g_search_radius); x_offset++) {
-	  for (y_offset = -floor(g_search_radius); y_offset <= floor(g_search_radius); y_offset++) {
+	for (x_offset = -floor(used_search_radius); x_offset <= floor(used_search_radius); x_offset++) {
+	  for (y_offset = -floor(used_search_radius); y_offset <= floor(used_search_radius); y_offset++) {
 	    if ( (x_offset * x_offset) + (y_offset * y_offset) <= radsq) {
 	      max_find.set_location(x_base + x_offset, y_base + y_offset);
 	      double val = max_find.check_fitness(*g_image);
@@ -1200,7 +1264,38 @@ void myIdleFunc(void)
       }
 
       // Here's where the tracker is optimized to its new location
-      (*loop)->tracker()->optimize_xy(*g_image, x, y, (*loop)->tracker()->get_x(), (*loop)->tracker()->get_y() );
+      if (g_parabolafit) {
+	(*loop)->tracker()->optimize_xy_parabolafit(*g_image, x, y, (*loop)->tracker()->get_x(), (*loop)->tracker()->get_y() );
+      } else {
+	(*loop)->tracker()->optimize_xy(*g_image, x, y, (*loop)->tracker()->get_x(), (*loop)->tracker()->get_y() );
+      }
+
+      // If we are doing prediction, update the estimated velocity based on the
+      // step taken.
+      if ( g_predict && (last_optimized_frame_number != g_frame_number) ) {
+	const double vel_frac_to_use = 0.9; //< 0.85-0.95 seems optimal for cilia in pulnix; 1 is too much, 0.83 is too little
+	const double acc_frac_to_use = 0.0; //< Due to the noise, acceleration estimation makes things worse
+
+	// Compute the new velocity estimate as the subtraction of the
+	// last position from the current position.
+	double new_vel[2];
+	new_vel[0] = ((*loop)->tracker()->get_x() - last_pos[0]) * vel_frac_to_use;
+	new_vel[1] = ((*loop)->tracker()->get_y() - last_pos[1]) * vel_frac_to_use;
+
+	// Compute the new acceleration estimate as the subtraction of the new
+	// estimate from the old.
+	double new_acc[2];
+	new_acc[0] = (new_vel[0] - last_vel[0]) * acc_frac_to_use;
+	new_acc[1] = (new_vel[1] - last_vel[1]) * acc_frac_to_use;
+
+	// Re-estimate the new velocity by taking into account the acceleration.
+	new_vel[0] += new_acc[0];
+	new_vel[1] += new_acc[1];
+
+	// Store the quantities for use next time around.
+	(*loop)->set_velocity(new_vel);
+	(*loop)->set_acceleration(new_acc);
+      }
 
       // If we are running a kymograph, then we don't optimize any trackers
       // past the first two because they are only there as markers in the
@@ -1393,12 +1488,26 @@ void myIdleFunc(void)
   //------------------------------------------------------------
   // Time to quit?
   if (g_quit) {
+    // If we have been logging, then see if we have saved the
+    // current frame's image.  If not, go ahead and do it now.
+    if (g_vrpn_tracker && (g_log_frame_number_last_logged != g_frame_number)) {
+      if (!save_log_frame(g_frame_number)) {
+	fprintf(stderr, "logfile_changed: Could not save log frame\n");
+	cleanup();
+	exit(-1);
+      }
+    }
+
     cleanup();
     exit(0);
   }
   
   // Sleep a little while so that we don't eat the whole CPU.
+#ifdef	_WIN32
+  vrpn_SleepMsecs(0);
+#else
   vrpn_SleepMsecs(1);
+#endif
 }
 
 bool  delete_active_tracker(void)
@@ -1463,6 +1572,11 @@ void  activate_and_drag_nearest_tracker_to(double x, double y)
     g_active_tracker->set_location(x, y);
     g_X = g_active_tracker->get_x();
     g_Y = flip_y(g_active_tracker->get_y());
+    // Set the velocity and acceleration estimates to zero
+    double zeroes[2] = { 0, 0 };
+    minTracker->set_velocity(zeroes);
+    minTracker->set_acceleration(zeroes);
+
     g_Radius = g_active_tracker->get_radius();
     if (g_rod) {
       // Horrible hack to make this work with rod type
@@ -1602,6 +1716,16 @@ void motionCallbackForGLUT(int x, int y) {
 
 void  logfilename_changed(char *newvalue, void *)
 {
+  // If we have been logging, then see if we have saved the
+  // current frame's image.  If not, go ahead and do it now.
+  if (g_vrpn_tracker && (g_log_frame_number_last_logged != g_frame_number)) {
+    if (!save_log_frame(g_frame_number)) {
+      fprintf(stderr, "logfile_changed: Could not save log frame\n");
+      cleanup();
+      exit(-1);
+    }
+  }
+
   // Close the old connection, if there was one.
   if (g_client_tracker != NULL) {
     delete g_client_tracker;

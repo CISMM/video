@@ -15,8 +15,6 @@ checkbutton .kernel.options.invert -text dark_spot -variable dark_spot
 pack .kernel.options.invert -anchor w
 checkbutton .kernel.options.interp -text interpolate -variable interpolate
 pack .kernel.options.interp -anchor w
-checkbutton .kernel.options.areamax -text follow_jumps -variable areamax
-pack .kernel.options.areamax -anchor w
 pack .kernel.options -side left
 frame .kernel.type -relief raised -borderwidth 1
 radiobutton .kernel.type.disc -variable kerneltype -text disc -value 0
@@ -26,8 +24,14 @@ pack .kernel.type.disc -anchor w
 pack .kernel.type.cone -anchor w
 pack .kernel.type.symmetric -anchor w
 pack .kernel.type -side left
-frame .kernel.rod3
-pack .kernel.rod3 -side left
+frame .kernel.options2
+checkbutton .kernel.options2.areamax -text follow_jumps -variable areamax
+pack .kernel.options2.areamax -anchor w
+checkbutton .kernel.options2.predict -text predict -variable predict
+pack .kernel.options2.predict -anchor w
+checkbutton .kernel.options2.rod3 -text rod3 -variable rod3
+pack .kernel.options2.rod3 -anchor w
+pack .kernel.options2 -side left
 frame .kernel.radius
 pack .kernel.radius -side left
 frame .kernel.x -relief raised -borderwidth 1

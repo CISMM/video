@@ -1,3 +1,20 @@
+2004-09-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* spot_tracker.cpp : Adds a parabolic really-fast tracking
+		optimization technique that fails spectacularly.
+		Adds a much-faster twolines_ version of the image-based
+		spot tracker that is much faster and seems to be almost
+		as robust as the full-image one.
+	* spot_tracker.h : Same.
+	* video_spot_tracker.cpp : Puts the faster image spot tracker
+		in, swapping it out for the slower one.  Now logs the
+		last frame's tracker positions when the program is quit
+		or log-file closed.  Adds the ability to do velocity-
+		based prediction on tracker position updates that lets
+		us really reduce the radius for the jump_test kernel
+		and improve tracking speed.
+	* video_spot_tracker.tcl : US code for the above changes.
+
 2004-09-21  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* base_camera_server.cpp : Returns black outside of image borders
