@@ -7,10 +7,10 @@ ComposerVersion=4.0.0.4
 ProjectName=EDT_directx_dll
 ProjectDirectory=F:\taylorr\STM\src\video\EDT_directx_dll
 NonSFXDirectory=F:\taylorr\STM\src\video\EDT_directx_dll\NonSFX
-MediaFileName=EDT_DirectShow_Camera_Driver_v01.00
+MediaFileName=EDT_DirectShow_Camera_Driver_v01_02
 CopyMediaToFName=
 ProgramDescriptiveName=EDT DirectShow Camera Driver
-ProgramVersion=01.00
+ProgramVersion=01.02
 CompanyName=UNC Nanoscale Science Research Group
 ProgVerLiveUpdate=0
 RegisterAsApp=0
@@ -58,8 +58,8 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|
 CompanyUrl=www.cs.unc.edu/nano
 
 [TargetExe]
-TargetDirectory=<ProgramFilesDir>NSRG\EDT_DirectShow_Camera_Driver_v01.00
-CommonDirectory=<CommonFilesDir>NSRG\EDT_DirectShow_Camera_Driver_v01.00
+TargetDirectory=<AbsoluteDir>C:\NSRG\bin\EDT_DirectShow_Camera_Driver_v01.02
+CommonDirectory=<CommonFilesDir>NSRG\EDT_DirectShow_Camera_Driver_v01.02
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\EDT camera viewer.GRF
 RunTimeDir_1=|||||||1||||1||1|<ProgramFilesDir>|||||
@@ -99,7 +99,7 @@ ShowCopyrightWarning=1
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=NSRG\EDT DirectShow Camera Driver v01.00
+ProgramLinkFolder=NSRG\EDT DirectShow Camera Driver v01.02
 ProgramLinkName=EDT camera viewer
 ProgramLinkParam=
 ProgramLinkWorkDir=
@@ -123,7 +123,8 @@ StartUpChecked=1
 QuickLaunchChecked=1
 SetAllUsers=1
 AddUninstallShortcut=1
-Item-000=*|EDT capture to C_test_avi|<Application Folder>\EDT capture to C_test_avi.GRF|NSRG\EDT DirectShow Camera Driver v01.00||C:\|Normal Window||0|
+Item-000=*|EDT capture to D_jcribb_data|<Application Folder>\EDT capture to D_jcribb_data.GRF|NSRG\EDT DirectShow Camera Driver v01.02||C:\|Normal Window||0|
+Item-001=*|Raw video capture for Jeremy at 40fps|<Application Folder>\edt_raw_video_store.exe|NSRG\EDT DirectShow Camera Driver v01.02|-s 3 -N 300 -l 7200 -b D:\jcribb\data\pulnix_40fps_60sec.raw||Normal Window||0|
 
 [Billboard]
 AddBillboard=1
@@ -220,6 +221,11 @@ Arg-001-10==
 Arg-001-13="<InstallDir>unregister.bat"
 Arg-001-14="<InstallDir>EDTSource.ax"
 Arg-001-15=SW_SHOW
+Exec-002=*||Wait for file to not be used|UnInstall Start|10|UnConditional|0|0|File Found||0||0|File Found||0||0|File Found||1|Wait (MS)||0|Delete File(s)||0|Delete File(s)||0|Delete File(s)||
+Arg-002-2==
+Arg-002-6==
+Arg-002-10==
+Arg-002-13=5000
 
 [GroupNames]
 Group-000=Main Group
@@ -229,6 +235,7 @@ TypicalCompactData=15
 Description=This is the main group of files
 Item-000=Fol*<Application Folder>[0]
 Item-001=Fil*F:\taylorr\STM\src\video\EDT camera viewer.GRF
-Item-002=Fil*F:\taylorr\STM\src\video\EDT capture to C_test_avi.GRF
+Item-002=Fil*F:\taylorr\STM\src\video\EDT capture to D_jcribb_data.GRF
 Item-003=Fil*F:\taylorr\STM\src\video\EDT_directx_dll\unregister.bat
-Item-004=Fil*F:\taylorr\STM\src\video\Release\EDTSource.ax
+Item-004=Fil*F:\taylorr\STM\src\video\Release\edt_raw_video_store.exe
+Item-005=Fil*F:\taylorr\STM\src\video\Release\EDTSource.ax
