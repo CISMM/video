@@ -123,9 +123,9 @@ StartUpChecked=1
 QuickLaunchChecked=1
 SetAllUsers=1
 AddUninstallShortcut=1
-Item-000=*|Roper imager server binned 1x1|<Application Folder>\video_tempimager_server.exe|NSRG\video_tempimager_server_v01_01|-bin 1 -expose 1 roper|<Application Folder>|Normal Window||0|
-Item-001=*|Roper imager server binned 2x2|<Application Folder>\video_tempimager_server.exe|NSRG\video_tempimager_server_v01_01|-expose 1 -bin 2 roper|<Application Folder>|Normal Window||0|
-Item-002=*|Roper imager server binned 3x3|<Application Folder>\video_tempimager_server.exe|NSRG\video_tempimager_server_v01_01|-expose 1 -bin 3 roper|<Application Folder>|Normal Window||0|
+Item-000=*|Roper imager server binned 1x1|<Application Folder>\video_tempimager_server.exe||-bin 1 -expose 1 roper|<Application Folder>|Normal Window||0|
+Item-001=*|Roper imager server binned 2x2|<Application Folder>\video_tempimager_server.exe||-expose 1 -bin 2 roper|<Application Folder>|Normal Window||0|
+Item-002=*|Roper imager server binned 3x3|<Application Folder>\video_tempimager_server.exe||-expose 1 -bin 3 roper|<Application Folder>|Normal Window||0|
 
 [Billboard]
 AddBillboard=1
