@@ -34,11 +34,11 @@ TopBackgroundColor=16711680
 BottomBackgroundColor=0
 AddBottomColor=1
 DlgBmp3DFrame=1
-DialogStyle=Classic
-AddDialogBitmap=0
-DialogBitmapFileName=
-AddBackgroundBitmap=1
-BackgroundBitmapFileName=
+DialogStyle=Modern
+AddDialogBitmap=1
+DialogBitmapFileName=F:\taylorr\STM\src\video\video_spot_tracker\icon64.bmp
+AddBackgroundBitmap=0
+BackgroundBitmapFileName=F:\taylorr\STM\src\video\video_spot_tracker\icon64.bmp
 BackgroundBitmapLocation=|Top/Left|0|0|
 AddBackgroundWave=0
 BgBmpTransparent=0
@@ -104,7 +104,7 @@ ProgramLinkName=Video_spot_tracker
 ProgramLinkParam=
 ProgramLinkWorkDir=<Application Folder>
 ProgramLinkRun=Minimized
-ProgramLinkIconFile=
+ProgramLinkIconFile=<Application Folder>\icons.ico
 ProgramLinkIconNum=0
 StartMenuLinkName=Video Spot Tracker v01.03
 DesktopLinkName=Video Spot Tracker v01.18
@@ -125,10 +125,10 @@ SetAllUsers=1
 AddUninstallShortcut=1
 Item-000=*|VRPN to Matlab|<Application Folder>\vrpnLogToMatlab.exe|||<Application Folder>|Minimized||0|
 Item-001=*|Video Spot Tracker Documentation|<Application Folder>\video_spot_tracker.html|||<Application Folder>|Normal Window||0|
-Item-002=*|Roper Camera Spot Tracker|<Application Folder>\video_spot_tracker.bat||roper|<Application Folder>|Minimized||0|
-Item-003=*|SPOT Camera Video Tracker|<Application Folder>\video_spot_tracker.bat||diaginc|<Application Folder>|Minimized||0|
-Item-004=*|DirectX Video Camera Tracker 640x480|<Application Folder>\video_spot_tracker.bat||directx640x480|<Application Folder>|Minimized||0|
-Item-005=*|DirectX Video Camera Tracker any res|<Application Folder>\video_spot_tracker.bat||directx|<Application Folder>|Minimized||0|
+Item-002=*|Roper Camera Spot Tracker|<Application Folder>\video_spot_tracker.bat||roper|<Application Folder>|Minimized|<Application Folder>\icons.ico|0|
+Item-003=*|SPOT Camera Video Tracker|<Application Folder>\video_spot_tracker.bat||diaginc|<Application Folder>|Minimized|<Application Folder>\icons.ico|0|
+Item-004=*|DirectX Video Camera Tracker 640x480|<Application Folder>\video_spot_tracker.bat||directx640x480|<Application Folder>|Minimized|<Application Folder>\icons.ico|0|
+Item-005=*|DirectX Video Camera Tracker any res|<Application Folder>\video_spot_tracker.bat||directx|<Application Folder>|Minimized|<Application Folder>\icons.ico|0|
 Item-006=*|VRPN to Matlab|<Application Folder>\vrpnLogToMatlab.exe|<Desktop>|||Minimized||0|
 
 [Billboard]
@@ -163,7 +163,7 @@ AutoUpdateProbeSpin=1
 AutoUpdateProbeText=Only at Agent Start
 
 [Switches]
-OperatingSystems=All,95,98,ME,NT,2000,XP
+OperatingSystems=98,ME,NT,2000,XP
 OverwriteFlag=1
 CreateUnInstall=1
 ScrambleUnInstallData=0
@@ -205,8 +205,8 @@ Item-008=|OriginalFilename||
 Item-009=|ProductName||
 Item-010=|ProductVersion||
 CopyIconFromTargetExe=0
-CopyIconFromOtherApp=0
-OtherIconAppFileName=
+CopyIconFromOtherApp=1
+OtherIconAppFileName=F:\taylorr\STM\src\video\video_spot_tracker\icons.ico
 Spin1=0
 Spin2=0
 
@@ -227,6 +227,7 @@ Item-001=Fil*F:\taylorr\STM\src\video\Release\video_spot_tracker.exe
 Item-002=Fil*F:\taylorr\STM\src\video\russ_widgets.tcl
 Item-003=Fil*F:\taylorr\STM\src\video\video_spot_tracker.bat
 Item-004=Fil*F:\taylorr\STM\src\video\video_spot_tracker.tcl
+Item-005=Fil*F:\taylorr\STM\src\video\video_spot_tracker\icons.ico
 
 [Group-001]
 TypicalCompactData=3
