@@ -1,3 +1,8 @@
+2004-02-07  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Fixed crashing bug when saving CSV file.
+	* video_spot_tracker.html : Bumped version number.
+
 2004-02-06  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.html : Updated to describe kymograph.

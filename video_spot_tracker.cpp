@@ -45,7 +45,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.28";
+const char *Version_string = "02.00";
 
 //--------------------------------------------------------------------------
 // Some classes needed for use in the rest of the program.
@@ -1518,13 +1518,13 @@ void  logfilename_changed(char *newvalue, void *)
     // Make sure that the file does not exist by deleting it if it does.
     // The Tcl code had a dialog box that asked the user if they wanted
     // to overwrite, so this is "safe."
-    char *csvname = new char[strlen(g_logfilename)];
+    char *csvname = new char[strlen(g_logfilename)+1];	// Remember the closing '\0'
     if (csvname == NULL) {
       fprintf(stderr, "Out of memory when allocating CSV file name\n");
       cleanup();
       exit(-1);
     }
-    strcpy(csvname, g_logfilename);
+    strcpy(csvname, g_logfilename.mystring);
     strcpy(&csvname[strlen(csvname)-5], ".csv");
     if ( (in_the_way = fopen(csvname, "r")) != NULL) {
       fclose(in_the_way);
@@ -1542,7 +1542,6 @@ void  logfilename_changed(char *newvalue, void *)
     }
     delete [] csvname;
   }
-
 }
 
 // If the value of the interpolate box changes, then create a new spot
