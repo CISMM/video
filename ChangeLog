@@ -1,3 +1,15 @@
+2003-09-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video.dsw : Adding projects for building EDT video capture
+		card DirectShow source filters.
+	* edt_library.dsp : Includes files from the EDT SDK.
+	* EDT_directx_dll.cpp : Source code for EDT video capture.
+	* EDT_directx_dll.dsp : Project file for EDT video capture.
+	* EDTSource.def : Definition file for DLL build.
+	* EDT camera viewer.GRF : DirectShow GraphEdit graph.
+	* EDT capture to C_test_avi.GRF : DirectShow GraphEdit graph.
+	* EDT_directx_dll : Directory containing installer.
+
 2003-08-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* image_wrapper.h : Speeding up bilerp function a bit.
