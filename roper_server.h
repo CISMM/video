@@ -1,0 +1,43 @@
+#include <windows.h>
+
+// Include files for Roper PPK
+#include <master.h>
+#include <pvcam.h>
+
+class roper_server {
+public:
+  roper_server(void);
+  ~roper_server(void);
+
+  /// Is the camera working properly?
+  bool working(void) const { return _status; };
+
+
+  /// Read an image to a memory buffer
+  bool	read_image_to_memory(int minX = 0, int maxX = -1,
+			     int minY = 0, int maxY = -1,
+			     double exposure_time = 250.0);
+
+  /// Get pixels out of the memory buffer
+  bool	get_pixel_from_memory(int X, int Y, uns16 &val) const;
+
+  /// Store the memory image to a PPM file.
+  bool  write_memory_to_ppm_file(const char *filename) const;
+
+protected:
+  bool	  _status;		      // True is working, false is not
+  int16	  _camera_handle;
+  uns16	  _num_rows, _num_columns;    // Size of the memory buffer
+  int	  _minX, _minY, _maxX, _maxY; // Region of the image in memory
+
+  // Global Memory Pointers used to get non-virtual memory
+  HGLOBAL _buffer;   // Global memory-locked buffer
+  void	  *_memory;  // Pointer to that buffer
+  uns32	  _buflen;   // Length of that buffer
+
+  bool	  open_and_find_parameters(void);
+  boolean read_one_frame(const int16 camera_handle,
+		       const rgn_type &region_description,
+		       const uns32 exposure_time,
+		       void *buffer, uns32 buflen);
+};
