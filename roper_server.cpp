@@ -46,10 +46,9 @@ static	unsigned long	duration(struct timeval t1, struct timeval t2)
 
 //-----------------------------------------------------------------------
 
-boolean	roper_server::read_one_frame(const int16 camera_handle,
+bool  roper_server::read_one_frame(const int16 camera_handle,
 		       const rgn_type &region_description,
-		       const uns32 exposure_time,
-		       void *buffer, uns32 buflen) {
+		       const uns32 exposure_time) {
   int16	progress = EXPOSURE_IN_PROGRESS;
   uns32	trash;
   uns32	buffer_size;	// Size required to hold the data
@@ -60,13 +59,13 @@ boolean	roper_server::read_one_frame(const int16 camera_handle,
   PL_CHECK_RETURN(pl_exp_init_seq(), "pl_exp_init_seq");
   PL_CHECK_RETURN(pl_exp_setup_seq(camera_handle, 1, 1,
     &region_description, TIMED_MODE, exposure_time, &buffer_size), "pl_exp_setup_seq");
-  if (buffer_size > buflen) {
+  if (buffer_size > _buflen) {
     fprintf(stderr,"read_one_frame: Buffer passed in too small\n");
     return FALSE;
   }
 
   // Start it reading one exposure
-  PL_CHECK_RETURN(pl_exp_start_seq(camera_handle, buffer), "pl_exp_start_seq");
+  PL_CHECK_RETURN(pl_exp_start_seq(camera_handle, _buffer), "pl_exp_start_seq");
 
   // Wait for it to be done reading
   const double READ_TIMEOUT = 1.0;
@@ -88,7 +87,7 @@ boolean	roper_server::read_one_frame(const int16 camera_handle,
        // XXX Should return an error and let the above code decide to retry
        fprintf(stderr,"roper_server::read_one_frame(): Timeout, retrying\n");
        PL_CHECK_WARN(pl_exp_abort(camera_handle, CCS_HALT), "pl_exp_abort");
-       PL_CHECK_RETURN(pl_exp_start_seq(camera_handle, buffer), "pl_exp_start_seq");
+       PL_CHECK_RETURN(pl_exp_start_seq(camera_handle, _buffer), "pl_exp_start_seq");
        gettimeofday(&start, NULL);
      }
 
@@ -212,8 +211,8 @@ bool  roper_server::read_image_to_memory(int minX, int maxX, int minY, int maxY,
   region_description.p2 = _maxY;
   region_description.sbin = 1;
   region_description.pbin = 1;
-  PL_CHECK_RETURN(read_one_frame(_camera_handle, region_description, (int)exposure_time,
-    _memory, _buflen), "read_one_frame");
+  PL_CHECK_RETURN(read_one_frame(_camera_handle, region_description, (int)exposure_time),
+    "read_one_frame");
 
   return true;
 }

@@ -1,0 +1,12 @@
+2002-09-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+        * base_camera_server.h : Base for Roper and DirectX video inputs.
+	* directx_camera_server.h : DirectX video input class.
+	* directx_camera_server.cpp : Same.
+	* test_directx_library.cpp : Test program for above.
+	* test_directx_library.dsp : Build for test program
+	* roper_server.h : Modified to depend on base class.
+	* roper_server.cpp : Same.
+	* roper_library.dsp : Builds library for inclusion in multiple apps.
+	* video.dsw : Dependency changes and new projects.
+

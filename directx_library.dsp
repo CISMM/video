@@ -1,24 +1,24 @@
-# Microsoft Developer Studio Project File - Name="roper_library" - Package Owner=<4>
+# Microsoft Developer Studio Project File - Name="directx_library" - Package Owner=<4>
 # Microsoft Developer Studio Generated Build File, Format Version 6.00
 # ** DO NOT EDIT **
 
 # TARGTYPE "Win32 (x86) Static Library" 0x0104
 
-CFG=roper_library - Win32 Debug
+CFG=directx_library - Win32 Debug
 !MESSAGE This is not a valid makefile. To build this project using NMAKE,
 !MESSAGE use the Export Makefile command and run
 !MESSAGE 
-!MESSAGE NMAKE /f "roper_library.mak".
+!MESSAGE NMAKE /f "directx_library.mak".
 !MESSAGE 
 !MESSAGE You can specify a configuration when running NMAKE
 !MESSAGE by defining the macro CFG on the command line. For example:
 !MESSAGE 
-!MESSAGE NMAKE /f "roper_library.mak" CFG="roper_library - Win32 Debug"
+!MESSAGE NMAKE /f "directx_library.mak" CFG="directx_library - Win32 Debug"
 !MESSAGE 
 !MESSAGE Possible choices for configuration are:
 !MESSAGE 
-!MESSAGE "roper_library - Win32 Release" (based on "Win32 (x86) Static Library")
-!MESSAGE "roper_library - Win32 Debug" (based on "Win32 (x86) Static Library")
+!MESSAGE "directx_library - Win32 Release" (based on "Win32 (x86) Static Library")
+!MESSAGE "directx_library - Win32 Debug" (based on "Win32 (x86) Static Library")
 !MESSAGE 
 
 # Begin Project
@@ -28,7 +28,7 @@ CFG=roper_library - Win32 Debug
 CPP=cl.exe
 RSC=rc.exe
 
-!IF  "$(CFG)" == "roper_library - Win32 Release"
+!IF  "$(CFG)" == "directx_library - Win32 Release"
 
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 0
@@ -51,12 +51,12 @@ LIB32=link.exe -lib
 # ADD BASE LIB32 /nologo
 # ADD LIB32 /nologo
 
-!ELSEIF  "$(CFG)" == "roper_library - Win32 Debug"
+!ELSEIF  "$(CFG)" == "directx_library - Win32 Debug"
 
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "roper_library___Win32_Debug"
-# PROP BASE Intermediate_Dir "roper_library___Win32_Debug"
+# PROP BASE Output_Dir "directx_library___Win32_Debug"
+# PROP BASE Intermediate_Dir "directx_library___Win32_Debug"
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 1
@@ -64,7 +64,7 @@ LIB32=link.exe -lib
 # PROP Intermediate_Dir "Debug"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
-# ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "C:\Program Files\Roper Scientific\PVCAM" /I "..\vrpn" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
+# ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "..\vrpn" /I "C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /FR /YX /FD /GZ /c
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe
@@ -78,14 +78,14 @@ LIB32=link.exe -lib
 
 # Begin Target
 
-# Name "roper_library - Win32 Release"
-# Name "roper_library - Win32 Debug"
+# Name "directx_library - Win32 Release"
+# Name "directx_library - Win32 Debug"
 # Begin Group "Source Files"
 
 # PROP Default_Filter "cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 # Begin Source File
 
-SOURCE=.\roper_server.cpp
+SOURCE=.\directx_camera_server.cpp
 # End Source File
 # End Group
 # Begin Group "Header Files"
@@ -97,7 +97,7 @@ SOURCE=.\base_camera_server.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\roper_server.h
+SOURCE=.\directx_camera_server.h
 # End Source File
 # End Group
 # End Target

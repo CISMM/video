@@ -1,17 +1,14 @@
 #include <windows.h>
+#include "base_camera_server.h"
 
 // Include files for Roper PPK
 #include <master.h>
 #include <pvcam.h>
 
-class roper_server {
+class roper_server : public base_camera_server {
 public:
   roper_server(void);
   ~roper_server(void);
-
-  /// Is the camera working properly?
-  bool working(void) const { return _status; };
-
 
   /// Read an image to a memory buffer
   bool	read_image_to_memory(int minX = 0, int maxX = -1,
@@ -35,9 +32,8 @@ protected:
   void	  *_memory;  // Pointer to that buffer
   uns32	  _buflen;   // Length of that buffer
 
-  bool	  open_and_find_parameters(void);
-  boolean read_one_frame(const int16 camera_handle,
+  virtual bool open_and_find_parameters(void);
+  virtual bool read_one_frame(const int16 camera_handle,
 		       const rgn_type &region_description,
-		       const uns32 exposure_time,
-		       void *buffer, uns32 buflen);
+		       const uns32 exposure_time);
 };
