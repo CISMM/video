@@ -33,10 +33,12 @@ using namespace std;
 
 //#define	DEBUG
 const int MAX_TRACKERS = 100; // How many trackers can exist (for VRPN's tracker object)
-
+#ifndef	M_PI
+const double M_PI = 2*asin(1.0);
+#endif
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.18";
+const char *Version_string = "01.19";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -79,6 +81,7 @@ Tclvar_int_with_button	g_cone("cone",".kernel.cone",0, rebuild_trackers);
 Tclvar_int_with_button	g_symmetric("symmetric",".kernel.symmetric",0, rebuild_trackers);
 Tclvar_int_with_button	g_opt("optimize",".kernel.optimize");
 Tclvar_int_with_button	g_globalopt("global_optimize_now","",0);
+Tclvar_int_with_button	g_round_cursor("round_cursor","");
 Tclvar_int_with_button	g_small_area("small_area","");
 Tclvar_int_with_button	g_full_area("full_area","");
 Tclvar_int_with_button	g_mark("show_tracker","",1);
@@ -255,6 +258,19 @@ spot_tracker  *create_appropriate_tracker(void)
 //--------------------------------------------------------------------------
 // Glut callback routines.
 
+void drawStringAtXY(double x, double y, char *string)
+{
+  void *font = GLUT_BITMAP_TIMES_ROMAN_24;
+  int len, i;
+
+  glRasterPos2f(x, y);
+  len = (int) strlen(string);
+  for (i = 0; i < len; i++) {
+    glutBitmapCharacter(font, string[i]);
+  }
+}
+
+
 static void  cleanup(void)
 {
   // Done with the camera and other objects.
@@ -279,6 +295,7 @@ void myDisplayFunc(void)
 {
   unsigned  r,c;
   vrpn_uint16  uns_pix;
+  int i;  //< Indexes the trackers.
 
   if (!g_ready_to_display) { return; }
 
@@ -336,10 +353,13 @@ void myDisplayFunc(void)
 
   // If we have been asked to show the tracking markers, draw them.
   // The active one is drawn in red and the others are drawn in blue.
+  // The markers may be either cross-hairs with a radius matching the
+  // bead radius or a circle with a radius twice that of the bead; the
+  // marker type depends on the g_round_cursor variable.
   if (g_mark) {
     list <spot_tracker *>::iterator loop;
     glEnable(GL_LINE_SMOOTH); //< Use smooth lines here to avoid aliasing showing spot in wrong place
-    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+    for (loop = g_trackers.begin(), i = 0; loop != g_trackers.end(); loop++, i++) {
       // Normalize center and radius so that they match the coordinates
       // (-1..1) in X and Y.
       double  x = -1.0 + (*loop)->get_x() * (2.0/g_camera->get_num_columns());
@@ -352,12 +372,27 @@ void myDisplayFunc(void)
       } else {
 	glColor3f(0,0,1);
       }
-      glBegin(GL_LINES);
-	glVertex2f(x-dx,y);
-	glVertex2f(x+dx,y);
-	glVertex2f(x,y-dy);
-	glVertex2f(x,y+dy);
-      glEnd();
+      if (g_round_cursor) {
+	double stepsize = M_PI / (*loop)->get_radius();
+	double runaround;
+	glBegin(GL_LINE_STRIP);
+	  for (runaround = 0; runaround <= 2*M_PI; runaround += stepsize) {
+	    glVertex2f(x + 2*dx*cos(runaround),y + 2*dy*sin(runaround));
+	  }
+	  glVertex2f(x + 2*dx, y);  // Close the circle
+	glEnd();
+      } else {
+	glBegin(GL_LINES);
+	  glVertex2f(x-dx,y);
+	  glVertex2f(x+dx,y);
+	  glVertex2f(x,y-dy);
+	  glVertex2f(x,y+dy);
+	glEnd();
+      }
+      // Label the marker with its index
+      char numString[10];
+      sprintf(numString,"%d", i);
+      drawStringAtXY(x+dx,y, numString);
     }
   }
 
@@ -523,7 +558,8 @@ void myIdleFunc(void)
 
     // Update the VRPN tracker position for each tracker and report it
     // using the same time value for each.  Don't do the update if we
-    // don't currently have a valid video frame.
+    // don't currently have a valid video frame.  Sensors are indexed
+    // by their position in the list.
     if (g_vrpn_tracker && g_video_valid) {
       int i = 0;
       struct timeval now; gettimeofday(&now, NULL);

@@ -42,8 +42,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
-# ADD CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "..\external\pc_win32\include" /I "C:\Program Files\Roper Scientific\PVCAM" /I "..\vrpn" /I "C:\DXSDK\include" /I "C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses" /I "../glut" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c /Tp
-# SUBTRACT CPP /Fr
+# ADD CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "..\external\pc_win32\include" /I "C:\Program Files\Roper Scientific\PVCAM" /I "..\vrpn" /I "C:\DXSDK\include" /I "C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses" /I "../glut" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /Fr /YX /FD /c /Tp
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe

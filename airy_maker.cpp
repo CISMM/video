@@ -49,6 +49,7 @@ Tclvar_float_with_scale	g_Radius("aperture_nm", "", 1000, 3000, 1000);
 Tclvar_float_with_scale	g_PixelXOffset("x_offset_pix", "", -1, 1, 0);
 Tclvar_float_with_scale	g_PixelYOffset("y_offset_pix", "", -1, 1, 0);
 Tclvar_float_with_scale	g_SampleCount("samples", "", 64, 256, 64);
+Tclvar_int_with_button	g_ShowSqrt("show_sqrt","", 1);
 Tclvar_int_with_button	g_quit("quit","");
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
 
@@ -92,7 +93,7 @@ void drawSideViewVsPixels(
   // Obscure that portion of the pattern that lies behind the hidden parts
   // of the pixels.  It starts on pixel boundaries and draws quads to hide
   // the portion of the pixel that can't be seen.
-  glColor3f(0.5,0.5,0.5);   // Set to the background color
+  glColor3f(0.4,0.4,0.4);   // Set to the background color
   double pixelStepInScreen = 1/(width/2.0) * (pixelSpacing/1e9) * units;
   for (loop = pixelStepInScreen/2; loop <= 1.0; loop += pixelStepInScreen) {
     // Draw a quad to obscure the middle of this pixel.  Draw one for positive side of
@@ -123,6 +124,22 @@ void drawSideViewVsPixels(
 		0.0 );
   }
   glEnd();
+
+  // Draw a dimmer green curve tracing out the square root of the diffraction
+  // pattern as it goes radially away from the center.  This is a
+  // normalized diffraction pattern, such that the peak is always at
+  // 1.
+  if (g_ShowSqrt) {
+    glDisable(GL_LINE_SMOOTH);
+    glColor3f(0.5,0.7,0.5);
+    glBegin(GL_LINE_STRIP);
+    for (loop = -1; loop <= 1.0; loop += 1/(width/2.0)) {
+      glVertex3f( loop,
+		  sqrt(FraunhoferIntensity(g_Radius/1e9, loop + airyOffsetMatchingPixelOffset, g_Wavelength/1e9,1.0) / valAtZero),
+		  0.0 );
+    }
+    glEnd();
+  }
 
   // Draw tick marks showing the spacing of the pixels, and an axis.
   // Note that the pixel boundaries are offset one half pixel from the center.
@@ -261,11 +278,30 @@ void drawPixelBarGraphs(
   }
 }
 
+void drawCrossHairs(
+  double width,		//< Width in pixels of the screen (assumed isotropic in X and Y
+  double units,		//< Converts from Pixel units to screen-space units
+  double pixelSpacing,	//< How far in screen pixels between imager pixels
+  double xOffset,	//< How far from the center (and which direction) to offset Airy pattern in X in capture device units
+  double yOffset)	//< How far from the center (and which direction) to offset Airy pattern in Y in capture device units
+{
+  double airyOffsetMatchingPixelOffsetX = -xOffset / width * pixelSpacing * 2;
+  double airyOffsetMatchingPixelOffsetY = yOffset / width * pixelSpacing * 2;
+
+  glColor3f(0.8, 0.6, 0.6);
+  glBegin(GL_LINES);
+    glVertex3f( -1.0, -airyOffsetMatchingPixelOffsetY, 0.0 );
+    glVertex3f(  1.0, -airyOffsetMatchingPixelOffsetY, 0.0 );
+    glVertex3f( -airyOffsetMatchingPixelOffsetX, -1.0, 0.0 );
+    glVertex3f( -airyOffsetMatchingPixelOffsetX,  1.0, 0.0 );
+  glEnd();
+}
+
 void myDisplayFunc(void)
 {
   // Clear the window and prepare to draw in the back buffer
   glDrawBuffer(GL_BACK);
-  glClearColor(0.5, 0.5, 0.5, 0.0);
+  glClearColor(0.4, 0.4, 0.4, 0.0);
   glClear(GL_COLOR_BUFFER_BIT);
 
   // Draw the curve vs. the X axis.
@@ -281,17 +317,17 @@ void myDisplayFunc(void)
   glRotatef(-90, 0,0,1);
   drawSideViewVsPixels(Window_Size_X, Window_Units_X, g_PixelSpacing, g_PixelHidden, g_PixelYOffset);
 
-  // Draw the pixel grid.
+  // Draw the pixel grid in the lower-left portion of the screen.
   glLoadIdentity();
   glScalef(0.5,0.5,1.0);
   glTranslatef(-1.0, -1.0, 0.0);
   drawPixelGrid(Window_Size_X, Window_Units_X, g_PixelSpacing);
 
   // Draw the bar graphs for the lower-left portion of the screen.
-  glLoadIdentity();
-  glScalef(0.5,0.5,1.0);
-  glTranslatef(-1.0, -1.0, 0.0);
   drawPixelBarGraphs(Window_Size_X, Window_Units_X, g_PixelSpacing, g_PixelHidden, g_PixelXOffset, g_PixelYOffset);
+
+  // Draw the cross-hairs to show the pixel center in the lower-left portion of the screen.
+  drawCrossHairs(Window_Size_X, Window_Units_X, g_PixelSpacing, g_PixelXOffset, g_PixelYOffset);
 
   // Swap buffers so we can see it.
   glutSwapBuffers();

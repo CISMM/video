@@ -1,3 +1,13 @@
+2003-11-18  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* airy_maker : Installer for the Airy-disk maker program.
+	* airy_maker.cpp : Adds sqrt() display above Airy cross-section.
+		Draws cross-hairs to show pixel center.
+	* video_spot_tracker.cpp : Adds option to tag tracked spots using
+		larger circles around them rather than cross-hairs through
+		them.  Tags each tracked marker with a number that matches
+		their sensor number in the VRPN log file.
+
 2003-11-15  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* airy_maker.cpp : Shows probability distribution within the pixels
