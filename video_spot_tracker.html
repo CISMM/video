@@ -1,18 +1,21 @@
 <title>Video Spot Tracker v02.03</title>
-<h1>Video Spot Tracker version 02.03</h1>
+<h1>Video Spot Tracker version 02.03b</h1>
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
   DirectShow</a>-compatible video file, from a <a href="http://www.microsoft.com/directx">Microsoft 
   DirectShow</a>-compatible camera, from a <a href="http://roperscientific.com">Roper 
-  Scientific</a> camera, or from a <a href="http://diaginc.com">DiagInc</a> SPOT 
-  camera. The program currently runs only on Windows, but it uses the portable 
-  openGL library for rendering and the portable Tcl/Tk for user interface control.</p>
+  Scientific</a> camera, from a <a href="http://diaginc.com">DiagInc</a> SPOT 
+  camera, or from a set of TIFF or BMP files. The program currently runs only 
+  on Windows, but it uses the portable openGL library for rendering, the portable 
+  Tcl/Tk for user interface control, and the portable ImageMagick package for 
+  reading images.</p>
 <h2>Running the program</h2>
 <p>The program is run by dragging a video file onto the desktop icon that was 
   created when the program was installed. It can also be run by selecting one 
   of the camera-specific shortcuts from <i><b>Start Menu/All Programs/NSRG/Video 
   Spot Tracker v02.03</b></i>. If you run the program directly by double-clicking 
-  on the icon, it will ask for a video (AVI) file that it should open.</p>
+  on the icon, it will ask for a video or image file (AVI, TIF, or BMP) that it 
+  should open.</p>
 <h2><img src="GUI.jpg" width="161" height="751" align="right">Using the program</h2>
 <p>When the program is run, four windows will appear. The image window that appears 
   to the lower right contains the first image within the video file or a continually-updating 
@@ -237,9 +240,16 @@
   software download page</a>. To run it, you must also download and install <b><u>version 
   01.05 or higher</u> </b>of the <i>NSRG Runtime</i> package, which is also available 
   on that page. It also requires <a href="http://www.microsoft.com/directx">Microsoft 
-  <i>Direct X</i></a> version 9.0a or higher. These packages can be installed 
+  <i>Direct X</i></a> version 9.0a or higher. If you want to open sets of TIFF 
+  files or other image file sets, you also need <a href="ftp://ftp.imagemagick.org/pub/ImageMagick/binaries/ImageMagick-5.5.7-Q16-windows-dll.exe">the 
+  16-bit version of ImageMagick version 5.5.7</a>. These packages can be installed 
   in any order.</p>
 <h2>Version Information</h2>
+<h3>Version 2.03b:</h3>
+<ul>
+  <li>Only the web page and installer have changed. They mention that you need 
+    to have the 16-bit version of ImageMagick 5.5.7 to load image stacks.</li>
+</ul>
 <h3>Version 2.03:</h3>
 <ul>
   <li>Is able to load a series of TIFF (or .BMP, or other image file format) files 
