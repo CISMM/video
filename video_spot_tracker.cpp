@@ -75,6 +75,7 @@ vrpn_Connection	*g_client_connection = NULL;//< Connection on which to perform l
 //--------------------------------------------------------------------------
 // Tcl controls and displays
 void  logfilename_changed(char *newvalue, void *);
+//XXX X and Y range should match the image range, like the region size controls are.
 Tclvar_float_with_scale	g_X("x", "", 0, 1391, 0);
 Tclvar_float_with_scale	g_Y("y", "", 0, 1039, 0);
 Tclvar_float_with_scale	g_Radius("radius", "", 1, 30, 5);
@@ -99,8 +100,8 @@ Tclvar_selector		g_logfilenname("logfilename", NULL, NULL, "", logfilename_chang
 class roper_imager: public roper_server, public image_wrapper
 {
 public:
-  // XXX Starts with binning of 2 to get the processor load down to
-  // where the update is around 1 Hz.
+  // XXX Starts with binning of 2 to get the image size down so that
+  // it fits on the screen.
   roper_imager::roper_imager() : roper_server(2), image_wrapper() {} ;
   virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
     minx = _minX; miny = _minY; maxx = _maxX; maxy = _maxY;
@@ -119,8 +120,9 @@ public:
 class diaginc_imager: public diaginc_server, public image_wrapper
 {
 public:
-  // XXX Start with binning of 2 to get the processor load down
-  diaginc_imager::diaginc_imager() : diaginc_server(1), image_wrapper() {} ;
+  // XXX Starts with binning of 2 to get the image size down so that
+  // it fits on the screen.
+  diaginc_imager::diaginc_imager() : diaginc_server(2), image_wrapper() {} ;
   virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
     minx = _minX; miny = _minY; maxx = _maxX; maxy = _maxY;
   }
@@ -238,7 +240,7 @@ void myDisplayFunc(void)
   glClear(GL_COLOR_BUFFER_BIT);
 
   if (g_show_video) {
-    // Copy pixels into the image buffer.  Flip the image over in
+    // Copy pixels into the image buffer.  XXX Flip the image over in
     // Y so that the image coordinates display correctly in OpenGL.
     for (r = *g_minY; r <= *g_maxY; r++) {
       for (c = *g_minX; c <= *g_maxX; c++) {
@@ -247,13 +249,16 @@ void myDisplayFunc(void)
 	  cleanup();
 	  exit(-1);
 	}
-      
+
 	// This assumes that the pixels are actually 8-bit values
 	// and will clip if they go above this.  It also writes pixels
-	// from the first channel into all colors of the image.
-	g_glut_image[0 + 3 * (c + g_camera->get_num_columns() * r)] = uns_pix >> g_shift;
-	g_glut_image[1 + 3 * (c + g_camera->get_num_columns() * r)] = uns_pix >> g_shift;
-	g_glut_image[2 + 3 * (c + g_camera->get_num_columns() * r)] = uns_pix >> g_shift;
+	// from the first channel into all colors of the image.  It uses
+	// RGBA so that we don't have to worry about byte-alignment problems
+	// that plagued us when using RGB pixels.
+	g_glut_image[0 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> g_shift;
+	g_glut_image[1 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> g_shift;
+	g_glut_image[2 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> g_shift;
+	g_glut_image[3 + 4 * (c + g_camera->get_num_columns() * r)] = 255;
       }
     }
 
@@ -262,7 +267,7 @@ void myDisplayFunc(void)
     // corner, which is at (-1,-1)).
     glRasterPos2f(-1, -1);
     glDrawPixels(g_camera->get_num_columns(),g_camera->get_num_rows(),
-      GL_RGB, GL_UNSIGNED_BYTE, g_glut_image);
+      GL_RGBA, GL_UNSIGNED_BYTE, g_glut_image);
   }
 
   // If we have been asked to show the tracking marker, draw it.
@@ -356,7 +361,7 @@ void myIdleFunc(void)
     *g_minX = 0;
     *g_minY = 0;
     *g_maxX = g_camera->get_num_columns() - 1;
-    *g_maxY = g_camera->get_num_rows() -1;
+    *g_maxY = g_camera->get_num_rows() - 1;
     g_full_area = 0;
   }
 
@@ -579,7 +584,7 @@ int main(int argc, char *argv[])
     break;
 
   default:
-    fprintf(stderr, "Usage: %s [roper|directx|directx640x480|filename]\n", argv[0]);
+    fprintf(stderr, "Usage: %s [roper|diaginc|directx|directx640x480|filename]\n", argv[0]);
     exit(-1);
   };
 
@@ -689,7 +694,6 @@ int main(int argc, char *argv[])
   g_minY = new Tclvar_float_with_scale("minY", "", 0, g_camera->get_num_rows()-1, 0);
   g_maxY = new Tclvar_float_with_scale("maxY", "", 0, g_camera->get_num_rows()-1, g_camera->get_num_rows()-1);
 
-
   //------------------------------------------------------------------
   // Set up callbacks to track changes on the Tcl side
 
@@ -713,9 +717,13 @@ int main(int argc, char *argv[])
   glutMotionFunc(motionCallbackForGLUT);
   glutMouseFunc(mouseCallbackForGLUT);
 
-  // Create the buffer that Glut will use to send to the screen
-  if ( (g_glut_image = new unsigned char
-      [g_camera->get_num_columns() * g_camera->get_num_rows() * 3]) == NULL) {
+  // Create the buffer that Glut will use to send to the screen.  This is allocating an
+  // RGBA buffer.  It needs to be 4-byte aligned, so we allocated it as a group of
+  // words and then cast it to the right type.  We're using RGBA rather than just RGB
+  // because it also solves the 4-byte alignment problem caused by funky sizes of image
+  // that are RGB images.
+  if ( (g_glut_image = (unsigned char *)(void*)new vrpn_uint32
+      [g_camera->get_num_columns() * g_camera->get_num_rows()]) == NULL) {
     fprintf(stderr,"Out of memory when allocating image!\n");
     fprintf(stderr,"  (Image is %u by %u)\n", g_camera->get_num_columns(), g_camera->get_num_rows());
     delete g_camera;

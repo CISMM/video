@@ -11,6 +11,10 @@ public:
 
   /// Is the camera working properly?
   bool working(void) const { return _status; };
+
+  // These functions should be used to determine the stride in the
+  // image when skipping lines.  They are in terms of the full-screen
+  // number of pixels with the current binning level.
   unsigned  get_num_rows(void) const { return _num_rows / _binning; };
   unsigned  get_num_columns(void) const { return _num_columns / _binning; };
 

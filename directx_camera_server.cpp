@@ -187,6 +187,8 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
 
 bool directx_camera_server::open_and_find_parameters(const int which, unsigned width, unsigned height)
 {
+  HRESULT hr;
+
   //-------------------------------------------------------------------
   // Create COM and DirectX objects needed to access a video stream.
 
@@ -401,7 +403,34 @@ bool directx_camera_server::open_and_find_parameters(const int which, unsigned w
 
   // Connect the output of the sample grabber to the NULL renderer input
   ConnectTwoFilters(_pGraph, _pSampleGrabberFilter, pNull);
+
+  //-------------------------------------------------------------------
+  // XXX See if this is a video tuner card by querying for that interface.
+  // Set it to read the video channel if it is one.
+  IAMTVTuner  *pTuner = NULL;
+  hr = _pBuilder->FindInterface(NULL, NULL, pSrc, IID_IAMTVTuner, (void**)&pTuner);
+  if (pTuner != NULL) {
+#ifdef	DEBUG
+    printf("directx_camera_server::open_and_find_parameters(): Found a TV Tuner!\n");
+#endif
+
+    //XXX Put code here.
+    // Set the first input pin to use the cable as input
+    hr = pTuner->put_InputType(0, TunerInputCable);
+    if (FAILED(hr)) {
+      fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't set input to cable\n");
+    }
+
+    // Set the channel on the video to be baseband (is this channel zero?)
+    hr = pTuner->put_Channel(0, -1, -1);
+    if (FAILED(hr)) {
+      fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't set channel\n");
+    }
+
+    pTuner->Release();
+  }
   
+
   //-------------------------------------------------------------------
   // Find _num_rows and _num_columns, which is the maximum size.
   _pGrabber->GetConnectedMediaType(&mt);

@@ -1,3 +1,12 @@
+/*XXX
+1) There is a subtraction of 1 from the number of columns in the get_pixel_from_memory() routines for the spot tracker that seems to work for
+  binning of 2,3,4.  I don't know why it needs to be there, which bothers me.  The whole image does seem to show up at each level of binning.
+
+2) The image is upside-down somewhere.  If the image is left at full-screen, then the display works properly and the tracking works properly.
+  If it is subset, then it is clear that the camera is reading flipped in Y from the way things are drawn on the screen; the other part of the
+  image shows up in the green square, updated.  Tracking doesn't like it much when this happens.
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include "diaginc_server.h"
@@ -5,6 +14,8 @@
 
 // Include files for Diagnostic Instruments, Inc.
 #include  "spotCam.h"
+
+#define	DEBUG
 
 static	unsigned long	duration(struct timeval t1, struct timeval t2)
 {
@@ -166,6 +177,8 @@ bool  roper_server::read_continuous(const int16 camera_handle,
 */
 
 //-----------------------------------------------------------------------
+// The min and max coordinates specified here should be without regard to
+// binning.  That is, they should be in the full-resolution device coordinates.
 
 bool  diaginc_server::read_one_frame(unsigned short minX, unsigned short maxX,
 				     unsigned short minY, unsigned short maxY,
@@ -198,7 +211,7 @@ bool  diaginc_server::read_one_frame(unsigned short minX, unsigned short maxX,
   _last_minX = minX; _last_maxX = maxX; _last_minY = minY; _last_maxY = maxY;
 
   // Get the picture into the memory buffer
-  // XXX There seems to be confusion over the byte ordering in this buffer.
+  // XXX There seems to be an off-by-one problem somewhere when reading this.
   SP_CHECK_RETURN(SpotGetImage(_bitDepth, false, 0, _buffer, NULL, NULL, NULL),"SpotGetImage()");
 
   return true;
@@ -240,7 +253,6 @@ bool diaginc_server::open_and_find_parameters(void)
   SP_CHECK_RETURN(SpotSetValue(SPOT_BITDEPTH, &bitdepth), "SpotGetvalue(Bitdepth)");
 
   // Find out the parameters available on this camera
-  //XXX Got 24 bits when wanted 12, even though I tried to disable the color above.
   SP_CHECK_RETURN(SpotGetValue(SPOT_BITDEPTH, &bitdepth), "SpotGetvalue(Bitdepth)");
   if (bitdepth != 12) {
     fprintf(stderr,"diagnc_server::open_and_find_parameters(): Got depth %d, wanted 12\n", bitdepth);
@@ -254,6 +266,10 @@ bool diaginc_server::open_and_find_parameters(void)
   _maxY = image_region.bottom;	    // This is the largest Y value
   _num_rows = _maxY - _minY + 1;
   _num_columns = _maxX - _minX + 1;
+#ifdef	DEBUG
+  printf("diaginc_server::open_and_find_parameters(): Region (%d,%d) to (%d,%d), size (%d,%d)\n",
+    _minX,_minY, _maxX,_maxY, _num_columns,_num_rows);
+#endif
   _circbuffer_on = false;
   SP_CHECK_RETURN(SpotGetValue(SPOT_BINSIZELIMITS, &(binRange[0])), "SpotGetValue(BinLimits)");
   _binMin = binRange[0];
@@ -300,7 +316,7 @@ diaginc_server::diaginc_server(unsigned binning) :
   //---------------------------------------------------------------------
   // Allocate a buffer that is large enough to read the maximum-sized
   // image with no binning.
-  _buflen = (vrpn_uint32)(_num_rows * _num_columns * 2);	// Two bytes per pixel
+  _buflen = (vrpn_uint32)(_num_rows* _num_columns * 2);	// Two bytes per pixel
   if ( (_buffer = GlobalAlloc( GMEM_ZEROINIT, _buflen)) == NULL) {
     fprintf(stderr,"diaginc_server::diaginc_server(): Cannot allocate enough locked memory for buffer (%dx%d)\n",
       _num_columns, _num_rows);
@@ -358,22 +374,30 @@ diaginc_server::~diaginc_server(void)
   }
 }
 
+// The min/max coordinates here are in post-binned space.  That is, the maximum should be
+// the edge of the image produced, taking into account the binning of the full resolution.
+
 bool  diaginc_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned minY, unsigned maxY,
 					 double exposure_time_millisecs)
 {
   //---------------------------------------------------------------------
-  // In case we fail, clear these
-  //XXX This will miss the last pixel(s) when binning since they are past the max.
+  // Set the size of the window to include all pixels if there were not
+  // any binning.  This means adding all but 1 of the binning back at
+  // the end to cover the pixels that are within that bin.
   _minX = minX * _binning;
-  _maxX = maxX * _binning;
+  _maxX = maxX * _binning + (_binning-1);
   _minY = minY * _binning;
-  _maxY = maxY * _binning;
+  _maxY = maxY * _binning + (_binning-1);
+#ifdef	DEBUG
+  printf("diaginc_server::read_image_to_memory(): Setting window from (%d,%d) to (%d,%d)\n",
+    _minX, _minY, _maxX, _maxY);
+#endif
 
   //---------------------------------------------------------------------
   // If the maxes are greater than the mins, set them to the size of
   // the image.
   if (_maxX <= _minX) {
-    _minX = 0; _maxX = _num_columns - 1;
+    _minX = 0; _maxX = _num_columns - 1;  // Uses _num_columns rather than get_num_columns() because it is in pre-binning space.
   }
   if (_maxY <= _minY) {
     _minY = 0; _maxY = _num_rows - 1;
@@ -383,8 +407,14 @@ bool  diaginc_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigne
   // Clip collection range to the size of the sensor on the camera.
   if (_minX < 0) { _minX = 0; };
   if (_minY < 0) { _minY = 0; };
-  if (_maxX >= _num_columns) { _maxX = _num_columns - 1; };
-  if (_maxY >= _num_rows) { _maxY = _num_rows - 1; };
+  if (_maxX >= _num_columns) {	  // Uses _num_columns rather than get_num_columns() because it is in pre-binning space.
+    fprintf(stderr,"diaginc_server::read_image_to_memory(): Clipping maxX\n");
+    _maxX = _num_columns - 1;
+  };
+  if (_maxY >= _num_rows) {
+    fprintf(stderr,"diaginc_server::read_image_to_memory(): Clipping maxY\n");
+    _maxY = _num_rows - 1;
+  };
 
   //---------------------------------------------------------------------
   // Set up and read one frame at a time if the circular-buffer code is
@@ -395,7 +425,7 @@ bool  diaginc_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigne
     fprintf(stderr,"diaginc_server::read_image_to_memory(): Circular buffer not implemented\n");
     return false;
   } else {
-    if (!read_one_frame(minX, maxX, minY, maxY, (unsigned long)exposure_time_millisecs)) {
+    if (!read_one_frame(_minX, _maxX, _minY, _maxY, (unsigned long)exposure_time_millisecs)) {
       fprintf(stderr, "diagnc_server::read_image_to_memory(): Could not read frame\n");
       return false;
     }
@@ -411,6 +441,7 @@ static	vrpn_uint16 clamp_gain(vrpn_uint16 val, double gain, double clamp = 65535
   return (vrpn_uint16)result;
 }
 
+//XXX This routine needs to be tested.
 bool  diaginc_server::write_memory_to_ppm_file(const char *filename, int gain, bool sixteen_bits) const
 {
   //---------------------------------------------------------------------
@@ -509,7 +540,8 @@ bool	diaginc_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint8 &v
     return false;
   }
   vrpn_uint16	*vals = (vrpn_uint16 *)_memory;
-  vrpn_uint16	cols = (_maxX - _minX + 1)/_binning;
+  //XXX Why -1?
+  vrpn_uint16	cols = (_maxX - _minX + 1)/_binning - 1;  // Don't use num_columns here; depends on the region size.
   val = (vrpn_uint8)(vals[(Y-_minY/_binning)*cols + (X-_minX/_binning)] >> 4);
   return true;
 }
@@ -528,7 +560,8 @@ bool	diaginc_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &
     return false;
   }
   vrpn_uint16	*vals = (vrpn_uint16 *)_memory;
-  vrpn_uint16	cols = (_maxX - _minX + 1)/_binning;
+  //XXX Why -1?
+  vrpn_uint16	cols = (_maxX - _minX + 1)/_binning - 1;  // Don't use num_columns here; depends on the region size.
   val = vals[(Y-_minY/_binning)*cols + (X-_minX/_binning)];
   return true;
 }
@@ -556,7 +589,7 @@ bool diaginc_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchroniz
     unsigned y;
     for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
       svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1,
-	(vrpn_uint16 *)_memory, 1, _num_columns);
+	(vrpn_uint16 *)_memory, 1, get_num_columns());
       svr->mainloop();
     }
 

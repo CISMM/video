@@ -360,6 +360,7 @@ bool  roper_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned 
   //---------------------------------------------------------------------
   // In case we fail, clear these
   //XXX This will miss the last pixel(s) when binning since they are past the max.
+  //XXX Copy from the Spot code if it works.
   _minX = minX * _binning;
   _maxX = maxX * _binning;
   _minY = minY * _binning;

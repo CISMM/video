@@ -1,3 +1,19 @@
+2003-07-21  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* base_camera_server.h : Comments.
+	* diaginc_server.cpp : Made the code work better than it did
+		before.  It works, but has a strange subtraction of one
+		line per column that I don't know why it needs.  It also
+		reads the video upside-down.  Wanted to check it in because
+		of the changes in the tracking program.
+	* diaginc_server.h : Comments.
+	* directx_camera_server.cpp : Some attempts to make this work with
+		TV tuner cards.
+	* roper_server.cpp : Comments.
+	* video_spot_tracker.cpp : Use RGBA rather than RGB texture to
+		avoid trouble with word alignment.  Also ensure that it is
+		allocated on a 4-byte boundary.
+
 2003-07-18  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* directx_camera_server.cpp : Changed the code to use the callback

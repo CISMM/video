@@ -42,6 +42,9 @@ protected:
   void	      *_memory; //< Pointer to either the global buffer (for single-frame) or the circular buffer
 
   virtual bool open_and_find_parameters(void);
+
+  // The min and max coordinates specified here should be without regard to
+  // binning.  That is, they should be in the full-resolution device coordinates.
   virtual bool read_one_frame(unsigned short minX, unsigned short maxX, unsigned short minY, unsigned short maxY, unsigned exposure_time_millisecs);
 //  virtual bool read_continuous(int minX, int maxX, int minY, int maxY, unsigned	exposure_time_millisecs);
 };
