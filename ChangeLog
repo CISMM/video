@@ -1,3 +1,13 @@
+2003-08-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* argonot.dsp : Lots changed, not sure why.  It seems to work.
+	* video.dsw : Added build for tempimager_directx_dll project.
+	* tempimager_directx_dll.cpp : Source code for a DirectShow video
+		filter that will read from a VRPN connection and export
+		the video from it so that it can be loaded into DirectX.
+		Not yet fully tested, but I wanted to get it in here.
+	* tempimager_directx_dll.dsp : Project file for same.
+
 2003-08-15  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* argonot.cpp : Making it compile with the newer libraries.

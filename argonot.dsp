@@ -39,6 +39,7 @@ RSC=rc.exe
 # PROP Use_Debug_Libraries 0
 # PROP Output_Dir "Release"
 # PROP Intermediate_Dir "Release"
+# PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
 # ADD CPP /nologo /MD /W3 /GX /O2 /I "..\vrpn" /I "..\glut" /I "..\external\pc_win32\include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /FR /YX /FD /c /Tp
@@ -104,6 +105,122 @@ SOURCE=.\Tcl_Linkvar.h
 # Begin Group "Resource Files"
 
 # PROP Default_Filter "ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
+# End Group
+# Begin Group "Header Files No. 1"
+
+# PROP Default_Filter "h;hpp;hxx;hm;inl"
+# Begin Source File
+
+SOURCE=.\activex.rcv
+# End Source File
+# Begin Source File
+
+SOURCE=.\activex.ver
+# End Source File
+# Begin Source File
+
+SOURCE=.\dllsetup.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\dsschedule.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\fourcc.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\measure.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\msgthrd.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\mtype.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\outputq.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\pstream.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\pullpin.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\refclock.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\reftime.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\renbase.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\seekpt.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\source.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\streams.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\strmctl.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\sysclock.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\transfrm.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\transip.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\videoctl.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\vtrans.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\winctrl.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\winutil.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\wxdebug.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\wxlist.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\wxutil.h
+# End Source File
 # End Group
 # End Target
 # End Project

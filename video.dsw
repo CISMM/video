@@ -3,7 +3,7 @@ Microsoft Developer Studio Workspace File, Format Version 6.00
 
 ###############################################################################
 
-Project: "BaseClasses"=C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses\baseclasses.dsp - Package Owner=<4>
+Project: "BaseClasses"="C:\DXSDK\Samples\C++\DirectShow\BaseClasses\baseclasses.dsp" - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -129,6 +129,21 @@ Package=<4>
 
 ###############################################################################
 
+Project: "tempimager_directx_dll"=.\tempimager_directx_dll.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name BaseClasses
+    End Project Dependency
+}}}
+
+###############################################################################
+
 Project: "test_directx_library"=.\test_directx_library.dsp - Package Owner=<4>
 
 Package=<5>
@@ -198,13 +213,16 @@ Package=<5>
 Package=<4>
 {{{
     Begin Project Dependency
+    Project_Dep_Name BaseClasses
+    End Project Dependency
+    Begin Project Dependency
     Project_Dep_Name directx_library
     End Project Dependency
     Begin Project Dependency
-    Project_Dep_Name roper_library
+    Project_Dep_Name diaginc_library
     End Project Dependency
     Begin Project Dependency
-    Project_Dep_Name diaginc_library
+    Project_Dep_Name roper_library
     End Project Dependency
 }}}
 
