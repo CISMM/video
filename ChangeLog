@@ -1,3 +1,17 @@
+2004-03-04  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* file_list.h : Function to produce a list of the files in a
+		directory that are in a numbered sequence given
+		the name of one of the files.
+	* file_list.cpp : Same.
+	* file_stack_server.h : Image server that reads a stack of
+		images and spits them out as if they were a video.
+		Currently only works with 8-bit images because it
+		links with the nano-compiled version of ImageMagick.
+	* file_stack_server.cpp : Same.
+	* video.dsw : Adding project to read image stacks
+	* video_spot_tracker.cpp : Same
+
 2004-03-02  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* directx_videofile_server.cpp : Make the destructor and the

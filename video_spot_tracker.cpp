@@ -23,6 +23,7 @@
 #include "diaginc_server.h"
 #include "edt_server.h"
 #include "SEM_camera_server.h"
+#include "file_stack_server.h"
 #include "image_wrapper.h"
 #include "spot_tracker.h"
 #ifdef	_WIN32
@@ -86,6 +87,16 @@ public:
   void pause(void) { edt_pulnix_raw_file_server::pause(); }
   void rewind(void) { pause(); edt_pulnix_raw_file_server::rewind(); }
   void single_step(void) { edt_pulnix_raw_file_server::single_step(); }
+};
+
+class FileStack_Controllable_Video : public Controllable_Video, public file_stack_server {
+public:
+  FileStack_Controllable_Video(const char *filename) : file_stack_server(filename) {};
+  virtual ~FileStack_Controllable_Video() {};
+  void play(void) { file_stack_server::play(); }
+  void pause(void) { file_stack_server::pause(); }
+  void rewind(void) { pause(); file_stack_server::rewind(); }
+  void single_step(void) { file_stack_server::single_step(); }
 };
 
 class SEM_Controllable_Video : public Controllable_Video, public SEM_camera_server {
@@ -313,6 +324,29 @@ public:
   }
 };
 
+class FileStack_imager: public FileStack_Controllable_Video, public image_wrapper
+{
+public:
+  FileStack_imager(const char *fn) : FileStack_Controllable_Video(fn), image_wrapper() {};
+  virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
+    minx = _minX; miny = _minY; maxx = _maxX; maxy = _maxY;
+  }
+  virtual bool	read_pixel(int x, int y, double &result) const {
+    uns16 val;
+    if (get_pixel_from_memory(x, flip_y(y), val, g_colorIndex)) {
+      result = val;
+      return true;
+    } else {
+      return false;
+    }
+  }
+  virtual double read_pixel_nocheck(int x, int y) const {
+    uns16 val;
+    get_pixel_from_memory(x, flip_y(y), val);
+    return val;
+  }
+};
+
 class SEM_imager: public SEM_Controllable_Video, public image_wrapper
 {
 public:
@@ -380,7 +414,7 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
     fprintf(stderr,"get_camera_and_imager(): Assuming filename (%s)\n", type);
 
     // If the extension is ".raw" then we assume it is a Pulnix file and open
-    // it that way.  Otherwise, we assume it is something that DirectX can open.
+    // it that way.
     if (strcmp(".raw", &type[strlen(type)-4]) == 0) {
       pulnix_file_imager *f = new pulnix_file_imager(type);
       *camera = f;
@@ -405,6 +439,21 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       *imager = s;
       g_shift = 8;
       delete [] name;
+
+    // If the extension is ".tif" or ".tiff" or ".bmp" then we assume it is a VRPN-format file
+    // with an SEM device in it, so we form the name of the device and open
+    // a VRPN Remote object to handle it.
+    } else if (   (strcmp(".tif", &type[strlen(type)-4]) == 0) ||
+		  (strcmp(".TIF", &type[strlen(type)-4]) == 0) ||
+		  (strcmp(".bmp", &type[strlen(type)-4]) == 0) ||
+		  (strcmp(".BMP", &type[strlen(type)-4]) == 0) ||
+		  (strcmp(".tiff", &type[strlen(type)-5]) == 0) || 
+		  (strcmp(".TIFF", &type[strlen(type)-5]) == 0) ) {
+      FileStack_imager *s = new FileStack_imager(type);
+      *camera = s;
+      *video = s;
+      *imager = s;
+      g_shift = 0;    // XXX Assuming 8-bit TIFF file... need a control for this
 
     // File of unknown type.  We assume that it is something that DirectX knows
     // how to open.

@@ -147,6 +147,18 @@ Package=<4>
 
 ###############################################################################
 
+Project: "file_stack_library"=.\file_stack_library.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
 Project: "nmBase"=..\nano\src\lib\nmBase\nmBase.dsp - Package Owner=<4>
 
 Package=<5>
@@ -334,6 +346,9 @@ Package=<4>
     End Project Dependency
     Begin Project Dependency
     Project_Dep_Name SEM_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name file_stack_library
     End Project Dependency
 }}}
 
