@@ -1,3 +1,10 @@
+2003-12-15  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Adds debug windows to show a
+		tracker's-eye view of the bead being tracked and
+		a map and graph of the optimization landscape
+		surrounding the current point.
+
 2003-12-13  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* image_wrapper.h : Fixed interpolation code.

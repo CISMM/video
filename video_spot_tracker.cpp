@@ -1,6 +1,3 @@
-//XXX Add "Bead's-eye view" of the data to see how well it is tracking
-//    Basically, define the constant and then add a GUI for turning it on and off
-//XXX Add "optimization-space" view showing how good fit is in local area
 //XXX Add debug view showing where all points are being sampled
 //XXX Put in times based on video timestamps for samples rather than real time when we have them.
 //XXX Would like to have a .ini file or something to set the starting "save" directory.
@@ -36,7 +33,6 @@
 using namespace std;
 
 //#define	DEBUG
-//#define	BEADSEYEVIEW
 
 const int MAX_TRACKERS = 100; // How many trackers can exist (for VRPN's tracker object)
 #ifndef	M_PI
@@ -94,6 +90,8 @@ image_wrapper	    *g_image;	    //< Image wrapper for the camera
 Controllable_Video  *g_video = NULL;  //< Video controls, if we have them
 unsigned char	    *g_glut_image = NULL; //< Pointer to the storage for the image
 unsigned char	    *g_beadseye_image = NULL; //< Pointer to the storage for the beads-eye image
+unsigned char	    *g_landscape_image = NULL; //< Pointer to the storage for the fitness landscape image
+float *g_landscape_floats = NULL; //< Pointer to the storage for the fitness landscape raw values
 list <spot_tracker *>g_trackers;    //< List of active trackers
 spot_tracker  *g_active_tracker = NULL;	//< The tracker that the controls refer to
 bool		    g_ready_to_display = false;	//< Don't unless we get an image
@@ -104,15 +102,19 @@ int		    g_shift = 0;	  //< How many bits to shift right to get to 8
 vrpn_Connection	*g_vrpn_connection = NULL;  //< Connection to send position over
 vrpn_Tracker_Server *g_vrpn_tracker = NULL; //< Tracker server to send positions
 vrpn_Connection	*g_client_connection = NULL;//< Connection on which to perform logging
-int	g_tracking_window;	     //< Glut window displaying tracking
-int	g_beadseye_window;	     //< Glut window showing view from active bead
-int	g_beadseye_size = 151;	     //< Size of beads-eye-view window XXX should be dynamic
+int	g_tracking_window;		//< Glut window displaying tracking
+int	g_beadseye_window;		//< Glut window showing view from active bead
+int	g_beadseye_size = 121;		//< Size of beads-eye-view window XXX should be dynamic
+int	g_landscape_window;		//< Glut window showing local landscape of fitness func
+int	g_landscape_size = 25;		//< Size of optimization landscape window
+int	g_landscape_strip_width = 101;	//< Additional size of the graph showing X cross section
 
 //--------------------------------------------------------------------------
 // Tcl controls and displays
 void  logfilename_changed(char *newvalue, void *);
 void  rebuild_trackers(int newvalue, void *);
 void  rebuild_trackers(float newvalue, void *);
+void  set_debug_visibility(int newvalue, void *);
 //XXX X and Y range should match the image range, like the region size controls are.
 Tclvar_float_with_scale	g_X("x", "", 0, 1391, 0);
 Tclvar_float_with_scale	g_Y("y", "", 0, 1039, 0);
@@ -130,12 +132,12 @@ Tclvar_int_with_button	g_interpolate("interpolate",".kernel.interp",1, rebuild_t
 Tclvar_int_with_button	g_cone("cone",".kernel.cone",0, rebuild_trackers);
 Tclvar_int_with_button	g_symmetric("symmetric",".kernel.symmetric",0, rebuild_trackers);
 Tclvar_int_with_button	g_opt("optimize",".kernel.optimize");
-Tclvar_int_with_button	g_globalopt("global_optimize_now","",0);
 Tclvar_int_with_button	g_round_cursor("round_cursor","");
 Tclvar_int_with_button	g_small_area("small_area","");
 Tclvar_int_with_button	g_full_area("full_area","");
 Tclvar_int_with_button	g_mark("show_tracker","",1);
 Tclvar_int_with_button	g_show_video("show_video","",1);
+Tclvar_int_with_button	g_show_debug("show_debug","",0, set_debug_visibility);
 Tclvar_int_with_button	g_quit("quit","");
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
@@ -368,6 +370,8 @@ static void  cleanup(void)
   delete g_camera;
   if (g_glut_image) { delete [] g_glut_image; };
   if (g_beadseye_image) { delete [] g_beadseye_image; };
+  if (g_landscape_image) { delete [] g_landscape_image; };
+  if (g_landscape_floats) { delete [] g_landscape_floats; };
   if (g_play) { delete g_play; };
   if (g_rewind) { delete g_rewind; };
   if (g_step) { delete g_step; };
@@ -548,12 +552,29 @@ void myBeadDisplayFunc(void)
     float xImageOffset = g_active_tracker->get_x() - (g_beadseye_size+1)/2.0;
     float yImageOffset = g_active_tracker->get_y() - (g_beadseye_size+1)/2.0;
     double  double_pix;
+
+    // If we are outside 2 radii, then leave it blank to avoid having a
+    // moving border that will make us think the spot is moving when it
+    // is not.
     for (x = 0; x < g_beadseye_size; x++) {
       for (y = 0; y < g_beadseye_size; y++) {
+	g_beadseye_image[0 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 0;
+	  g_beadseye_image[1 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 0;
+	  g_beadseye_image[2 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 0;
+	  g_beadseye_image[3 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 255;
+      }
+    }
+    int min_x = (g_beadseye_size+1)/2 - 2 * g_active_tracker->get_radius();
+    int max_x = (g_beadseye_size+1)/2 + 2 * g_active_tracker->get_radius();
+    int min_y = (g_beadseye_size+1)/2 - 2 * g_active_tracker->get_radius();
+    int max_y = (g_beadseye_size+1)/2 + 2 * g_active_tracker->get_radius();
+
+    for (x = min_x; x < max_x; x++) {
+      for (y = min_y; y < max_y; y++) {
 	if (!g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix)) {
-	  g_beadseye_image[0 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 255;
-	  g_beadseye_image[1 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 128;
-	  g_beadseye_image[2 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 128;
+	  g_beadseye_image[0 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 0;
+	  g_beadseye_image[1 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 0;
+	  g_beadseye_image[2 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 0;
 	  g_beadseye_image[3 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 255;
 	} else {
 	  // This assumes that the pixels are actually 8-bit values
@@ -575,6 +596,88 @@ void myBeadDisplayFunc(void)
     glRasterPos2f(-1, -1);
     glDrawPixels(g_beadseye_size, g_beadseye_size,
       GL_RGBA, GL_UNSIGNED_BYTE, g_beadseye_image);
+  }
+
+  // Swap buffers so we can see it.
+  glutSwapBuffers();
+}
+
+// Draw the image from the point of view of the currently-active
+// tracked bead.  This window shows the optimization value landscape in
+// the region around the current point.
+void myLandscapeDisplayFunc(void)
+{
+  // Clear the window and prepare to draw in the back buffer
+  glDrawBuffer(GL_BACK);
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  if (g_show_video) {
+    int x,y;
+
+    // Find the raw fitness function values for a range of locations
+    // at 1-pixel steps surrounding the current location.  Store these
+    // into a raw floating-point buffer, and then set the optimizer back
+    // where it started.
+    // Solve for the max and min values in the floating-point buffer, then
+    // a scale and offset to map them to the range 0-255.
+    double min_val = 1e100, max_val = -1e100;
+    double start_x = g_active_tracker->get_x();
+    double start_y = g_active_tracker->get_y();
+    float xImageOffset = start_x - (g_landscape_size+1)/2.0;
+    float yImageOffset = start_y - (g_landscape_size+1)/2.0;
+    double this_val;
+    for (x = 0; x < g_landscape_size; x++) {
+      for (y = 0; y < g_landscape_size; y++) {
+	g_active_tracker->set_location(x + xImageOffset, y + yImageOffset);
+	this_val = g_active_tracker->check_fitness(*g_image);
+	g_landscape_floats[x + g_landscape_size * y] = this_val;
+	if (this_val < min_val) { min_val = this_val; }
+	if (this_val > max_val) { max_val = this_val; }
+      }
+    }
+    g_active_tracker->set_location(start_x, start_y);
+
+    // Copy pixels into the image buffer.  Flip the image over in
+    // Y so that the image coordinates display correctly in OpenGL.
+    // XXX Scale and offset them to fit in the range 0-255.
+    double scale = 255 / (max_val - min_val);
+    double offset = min_val * scale;
+    int	    int_val;
+    for (x = 0; x < g_landscape_size; x++) {
+      for (y = 0; y < g_landscape_size; y++) {
+	int_val = (int)( g_landscape_floats[x + g_landscape_size * y] * scale - offset );
+	g_landscape_image[0 + 4 * (x + g_landscape_size * (g_landscape_size - 1 - y))] = int_val;
+	g_landscape_image[1 + 4 * (x + g_landscape_size * (g_landscape_size - 1 - y))] = int_val;
+	g_landscape_image[2 + 4 * (x + g_landscape_size * (g_landscape_size - 1 - y))] = int_val;
+	g_landscape_image[3 + 4 * (x + g_landscape_size * (g_landscape_size - 1 - y))] = 255;
+      }
+    }
+
+    // Store the pixels from the image into the frame buffer
+    // so that they cover the entire image (starting from lower-left
+    // corner, which is at (-1,-1)).
+    glRasterPos2f(-1, -1);
+    glDrawPixels(g_landscape_size, g_landscape_size,
+      GL_RGBA, GL_UNSIGNED_BYTE, g_landscape_image);
+
+    // Draw a line graph showing the values along the X axis
+    double strip_start_x = -1 + 2 * ((double)(g_landscape_size)) / (g_landscape_size + g_landscape_strip_width);
+    double strip_step_x = (1 - strip_start_x) / g_landscape_strip_width;
+    xImageOffset = start_x - (g_landscape_strip_width+1)/2.0;
+    scale = 2 / (max_val - min_val);
+    offset = min_val*scale + 1; // Want to get -1 when subtract this and multiply by the scale.
+    glColor3f(1,1,1);
+    glBegin(GL_LINE_STRIP);
+    for (x = 0; x < g_landscape_strip_width; x++) {
+      g_active_tracker->set_location(x + xImageOffset, start_y);
+      this_val = g_active_tracker->check_fitness(*g_image);
+      glVertex3f( strip_start_x + x * strip_step_x, this_val * scale - offset,0);
+    }
+    glEnd();
+
+    // Put the tracker back where it started.
+    g_active_tracker->set_location(start_x, start_y);
   }
 
   // Swap buffers so we can see it.
@@ -671,14 +774,6 @@ void myIdleFunc(void)
   if (g_opt) {
     double  x, y;
 
-    // If the user has requested a global search, do this once for the
-    // active tracker only and then reset the checkbox.
-    if (g_globalopt) {
-      g_active_tracker->locate_good_fit_in_image(*g_image, x,y);
-      g_active_tracker->optimize(*g_image, x, y);
-      g_globalopt = 0;
-    }
-    
     // Optimize to find the best fit starting from last position for each tracker.
     // Invert the Y values on the way in and out.
     // Don't let it adjust the radius here (otherwise it gets too
@@ -750,10 +845,10 @@ void myIdleFunc(void)
   if (!g_already_posted) {
     glutSetWindow(g_tracking_window);
     glutPostRedisplay();
-#ifdef BEADSEYEVIEW
     glutSetWindow(g_beadseye_window);
     glutPostRedisplay();
-#endif
+    glutSetWindow(g_landscape_window);
+    glutPostRedisplay();
     g_already_posted = true;
   }
 
@@ -836,8 +931,7 @@ void mouseCallbackForGLUT(int button, int state, int x, int y) {
 	  g_X = x;
 	  g_Y = flip_y(y);
 	} else {
-	  // Turn global optimization off when we release.
-	  g_globalopt = 0;
+	  // Nothing to do at release.
 	}
 	break;
 
@@ -965,6 +1059,24 @@ void  rebuild_trackers(int newvalue, void *)
     }
     (*loop)->set_location(x,y);
     (*loop)->set_radius(r);
+  }
+}
+
+// Hide or show all of the debugging windows
+void  set_debug_visibility(int newvalue, void *)
+{
+  if (g_ready_to_display) {
+    if (newvalue) {
+      glutSetWindow(g_beadseye_window);
+      glutShowWindow();
+      glutSetWindow(g_landscape_window);
+      glutShowWindow();
+    } else {
+      glutSetWindow(g_beadseye_window);
+      glutHideWindow();
+      glutSetWindow(g_landscape_window);
+      glutHideWindow();
+    }
   }
 }
 
@@ -1155,7 +1267,6 @@ int main(int argc, char *argv[])
 
   //------------------------------------------------------------------
   // Create the window that will be used for the "Bead's-eye view"
-#ifdef BEADSEYEVIEW
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
   glutInitWindowPosition(175, 140);
   glutInitWindowSize(g_beadseye_size, g_beadseye_size);
@@ -1173,16 +1284,47 @@ int main(int argc, char *argv[])
     delete g_camera;
     exit(-1);
   }
-#endif
+
+  //------------------------------------------------------------------
+  // Create the window that will be used for the "Landscape view"
+  glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
+  glutInitWindowPosition(175 + 10 + g_beadseye_size, 140);
+  glutInitWindowSize(g_landscape_size + g_landscape_strip_width, g_landscape_size);
+  g_landscape_window = glutCreateWindow("Landscape");
+
+  // Create the floating-point buffer that will hold the fitness values before
+  // they are scaled to match the displayable range.
+  if ( (g_landscape_floats = new vrpn_float32
+      [g_landscape_size * g_landscape_size]) == NULL) {
+    fprintf(stderr,"Out of memory when allocating landscape float buffer!\n");
+    fprintf(stderr,"  (Image is %u by %u)\n", g_landscape_size, g_landscape_size);
+    delete g_camera;
+    exit(-1);
+  }
+
+  // Create the buffer that Glut will use to send to the landscape window.  This is allocating an
+  // RGBA buffer.  It needs to be 4-byte aligned, so we allocated it as a group of
+  // words and then cast it to the right type.  We're using RGBA rather than just RGB
+  // because it also solves the 4-byte alignment problem caused by funky sizes of image
+  // that are RGB images.
+  if ( (g_landscape_image = (unsigned char *)(void*)new vrpn_uint32
+      [g_landscape_size * g_landscape_size]) == NULL) {
+    fprintf(stderr,"Out of memory when allocating landscape image!\n");
+    fprintf(stderr,"  (Image is %u by %u)\n", g_landscape_size, g_landscape_size);
+    delete g_camera;
+    exit(-1);
+  }
 
   // Set the display functions for each window and idle function for GLUT (they
   // will do all the work) and then give control over to GLUT.
   glutSetWindow(g_tracking_window);
   glutDisplayFunc(myDisplayFunc);
-#ifdef BEADSEYEVIEW
   glutSetWindow(g_beadseye_window);
   glutDisplayFunc(myBeadDisplayFunc);
-#endif
+  glutHideWindow();
+  glutSetWindow(g_landscape_window);
+  glutDisplayFunc(myLandscapeDisplayFunc);
+  glutHideWindow();
   glutIdleFunc(myIdleFunc);
   glutMainLoop();
 
