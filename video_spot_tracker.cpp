@@ -1,6 +1,3 @@
-//XXX CIMS3.AVI shows up skewed!  It looks fine in Windows Media Player.  This
-//    is because its buffer size is not the same as its media size.  Need to
-//    implement stride test and such as described in the book.
 //XXX Better interface for selecting color component.
 //XXX Nice to tag each tracker with its sensor number.
 //XXX Make a better match (Gaussian kernel, or best fit to previous spot found, or something)
@@ -40,7 +37,7 @@ const int MAX_TRACKERS = 100; // How many trackers can exist (for VRPN's tracker
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.13";
+const char *Version_string = "01.14";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -142,7 +139,7 @@ public:
 class directx_imager: public directx_camera_server, public image_wrapper
 {
 public:
-  directx_imager(const int which, const unsigned w = 320, const unsigned h = 240) : directx_camera_server(which,w,h) {};
+  directx_imager(const int which, const unsigned w = 0, const unsigned h = 0) : directx_camera_server(which,w,h) {};
   virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
     minx = _minX; miny = _minY; maxx = _maxX; maxy = _maxY;
   }

@@ -217,22 +217,17 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
     return false;
   }
 
-  // XXX This is the default number of rows and columns, but we'd like to know the
-  // maximum number...
-
-  // Number of rows and columns
-  _num_columns = pVih->bmiHeader.biWidth;
-  // A negative height indicates that the images are stored non-inverted in Y
-  _num_rows = pVih->bmiHeader.biHeight;
-#ifdef	DEBUG
-  printf("directx_videofile_server: Found video of size %d by %d\n", _num_columns, _num_rows);
-#endif
-  if (_num_rows < 0) {
-    _invert_y = false;
-    _num_rows *= -1;
+  // Number of rows and columns.  This is different if we are using a target
+  // rectangle (rcTarget) than if we are not.
+  if (IsRectEmpty(&pVih->rcTarget)) {
+    _num_columns = pVih->bmiHeader.biWidth;
+    _num_rows = pVih->bmiHeader.biHeight;
   } else {
-    _invert_y = true;
+    _num_columns = pVih->rcTarget.right;
+    _num_rows = pVih->bmiHeader.biHeight;
+    printf("XXX directx_camera_server::open_and_find_parameters(): Warning: may not work correctly with target rectangle\n");
   }
+  printf("Got %dx%d video\n", _num_columns, _num_rows);
 
   // Make sure that the image is not compressed and that we have 8 bits
   // per pixel.
@@ -252,11 +247,24 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
     }
     return false;
   }
-  if (pVih->bmiHeader.biBitCount != 24) {
-    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Not 24 bits (%d)\n",
+  int BytesPerPixel = pVih->bmiHeader.biBitCount / 8;
+  if (BytesPerPixel != 3) {
+    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Not 3 bytes per (%d)\n",
       pVih->bmiHeader.biBitCount);
     return false;
   }
+
+  // A negative height indicates that the images are stored non-inverted in Y
+  // Not sure what to do with images that have negative height -- need to
+  // read the book some more to find out.
+  if (_num_rows < 0) {
+    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Num Rows is negative (internal error)\n");
+    return false;
+  }
+
+  // Find the stride to take when moving from one row of video to the
+  // next.  This is rounded up to the nearest DWORD.
+  _stride = (_num_columns * BytesPerPixel + 3) & ~3;
 
   //-------------------------------------------------------------------
   // Release resources that won't be used later and return

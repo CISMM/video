@@ -67,9 +67,10 @@ protected:
   // Memory pointers used to get non-virtual memory
   unsigned char	*_buffer;   //< Buffer for what comes from camera,
   size_t    _buflen;	    //< Length of that buffer
-  bool	    _invert_y;	    //< Do we need to invert the Y axis?
   bool	    _started_graph; //< Did we start the filter graph running?
   unsigned  _mode;	    //< Mode 0 = running, Mode 1 = paused.
+
+  long	    _stride;	    //< How many bytes to skip when going to next line (may be negative for upside-down images)
 
   // Pointer to the associated sample grabber callback object.
   directx_samplegrabber_callback  *_pCallback;

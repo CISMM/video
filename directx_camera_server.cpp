@@ -4,10 +4,8 @@
 #include "directx_camera_server.h"
 #include <vrpn_BaseClass.h>
 
-// XXX See info on source and target rectangles for how to subset, if wanted.
-
 //#define HACK_TO_REOPEN
-#define	DEBUG
+//#define	DEBUG
 
 //-----------------------------------------------------------------------
 // Helper functions for editing the filter graph:
@@ -107,55 +105,47 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
   }
 
   //XXX Should the app set the timeout period?
-  //XXX This lets us watch a camera stream, clamping to the video rate of the
-  //XXX camera.  It fails when trying to open the camera when it is allowed to
-  //XXX run at 320x200, but works when we set it for 640x480.  Probably a
-  //XXX misunderstanding of the video format...
 
-    // Wait until there is a sample ready in the callback handler.  If there is,
-    // copy it into our buffer and then tell it we are done processing the sample.
-    // If it takes too long, time out.
-    const int TIMEOUT_MSECS = 200;
-    BYTE	*imageLocation;
+  // Wait until there is a sample ready in the callback handler.  If there is,
+  // copy it into our buffer and then tell it we are done processing the sample.
+  // If it takes too long, time out.
+  const int TIMEOUT_MSECS = 250;
+  BYTE	*imageLocation;
+  if (!_pCallback->imageReady) {
+    for (int i = 0; i < TIMEOUT_MSECS; i++) {
+      vrpn_SleepMsecs(1);
+      if (_pCallback->imageReady) { break; }	// Break out of the wait if its ready
+    }
     if (!_pCallback->imageReady) {
-      for (int i = 0; i < TIMEOUT_MSECS; i++) {
-	vrpn_SleepMsecs(1);
-	if (_pCallback->imageReady) { break; }	// Break out of the wait if its ready
-      }
-      if (!_pCallback->imageReady) {
-	return false;
-      }
+#ifdef DEBUG
+      fprintf(stderr,"directx_camera_server::read_one_frame(): Timeout when reading image\n");
+#endif
+      return false;
     }
+  }
 
-    // If we are in mode 2, then we pause the graph after we captured one image.
-    if (_mode == 2) {
-      _pMediaControl->Pause();
-      _mode = 1;
-    }
+  // If we are in mode 2, then we pause the graph after we captured one image.
+  if (_mode == 2) {
+    _pMediaControl->Pause();
+    _mode = 1;
+  }
 
-    if (_pCallback->imageReady) {
-      _pCallback->imageReady = false;
-      // Check the size of the sample to ensure it is what we expect.  XXX We
-      // should really check the size and stride parameters from the videoinfo
-      // header and use this to perform one memcpy() per line based on the values
-      // it returns to get the image into our buffer.  Right now, we flag it as
-      // an error and return if the sizes don't match.
-      if (_pCallback->imageSample->GetActualDataLength() != (long)_buflen) {
-	fprintf(stderr,"directx_camera_server::read_one_frame(): Unexpected buffer length\n");
-	_status = false;
-	_pCallback->imageDone = true;
-	return false;
-      }
-      if (FAILED(_pCallback->imageSample->GetPointer(&imageLocation))) {
-	fprintf(stderr,"directx_camera_server::read_one_frame(): Can't get buffer\n");
-	_status = false;
-	_pCallback->imageDone = true;
-	return false;
-      }
-      memcpy(_buffer, imageLocation, _buflen);
+  if (_pCallback->imageReady) {
+    _pCallback->imageReady = false;
+    if (FAILED(_pCallback->imageSample->GetPointer(&imageLocation))) {
+      fprintf(stderr,"directx_camera_server::read_one_frame(): Can't get buffer\n");
+      _status = false;
       _pCallback->imageDone = true;
+      return false;
     }
-  //XXX}
+    // Step through each line of the video and copy it into the buffer.  We
+    // do one line at a time here because there can be padding at the end of
+    // each line on some video formats.
+    for (DWORD iRow = 0; iRow < _num_rows; iRow++) {
+      memcpy(_buffer+_num_columns*3*iRow, imageLocation+_stride*iRow, _num_columns*3);
+    }
+    _pCallback->imageDone = true;
+  }
 
 #ifdef	HACK_TO_REOPEN
   close_device();
@@ -312,7 +302,7 @@ bool directx_camera_server::open_and_find_parameters(const int which, unsigned w
   CoCreateInstance(CLSID_SampleGrabber, NULL, CLSCTX_INPROC_SERVER,
       IID_IBaseFilter, reinterpret_cast<void**>(&_pSampleGrabberFilter));
   if (_pSampleGrabberFilter == NULL) {
-    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't get SampleGrabber filter (not DirectX 8.1?)\n");
+    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't get SampleGrabber filter (not DirectX 8.1+?)\n");
     return false;
   }
 #ifdef	DEBUG
@@ -334,11 +324,11 @@ bool directx_camera_server::open_and_find_parameters(const int which, unsigned w
 
   //-------------------------------------------------------------------
   // Ask for the video resolution that has been passed in.
-  // This code is based on the AMCap sample application, and
+  // This code is based on
   // intuiting that we need to use the SetFormat call on the IAMStreamConfig
   // interface; this interface is described in the help pages.
   // If the width and height are specified as 0, then they are not set
-  // in the header, hopefully letting them use whatever is the default.
+  // in the header, letting them use whatever is the default.
   if ( (width != 0) && (height != 0) ) {
     _pBuilder->FindInterface(&PIN_CATEGORY_CAPTURE, &MEDIATYPE_Video, pSrc,
 			      IID_IAMStreamConfig, (void **)&_pStreamConfig);
@@ -374,9 +364,6 @@ bool directx_camera_server::open_and_find_parameters(const int which, unsigned w
 	pVideoHeader->bmiHeader.biWidth, pVideoHeader->bmiHeader.biHeight);
       return false;
     }
-
-    // Set the callback, where '0' means 'use the SampleCB callback'
-    _pGrabber->SetCallback(_pCallback, 0);
 
     // Clean up the pbFormat header memory we allocated above.
     CoTaskMemFree(mt.pbFormat);
@@ -439,7 +426,7 @@ bool directx_camera_server::open_and_find_parameters(const int which, unsigned w
   
 
   //-------------------------------------------------------------------
-  // Find _num_rows and _num_columns, which is the maximum size.
+  // Find _num_rows and _num_columns in the video stream.
   _pGrabber->GetConnectedMediaType(&mt);
   VIDEOINFOHEADER *pVih;
   if (mt.formattype == FORMAT_VideoInfo) {
@@ -449,19 +436,19 @@ bool directx_camera_server::open_and_find_parameters(const int which, unsigned w
     return false;
   }
 
-  // XXX This is the default number of rows and columns, but we'd like to know the
-  // maximum number...
-
-  // Number of rows and columns
-  _num_columns = pVih->bmiHeader.biWidth;
-  // A negative height indicates that the images are stored non-inverted in Y
-  _num_rows = abs(pVih->bmiHeader.biHeight);
-  if (_num_rows < 0) {
-    _invert_y = false;
+  // Number of rows and columns.  This is different if we are using a target
+  // rectangle (rcTarget) than if we are not.
+  if (IsRectEmpty(&pVih->rcTarget)) {
+    _num_columns = pVih->bmiHeader.biWidth;
+    _num_rows = pVih->bmiHeader.biHeight;
   } else {
-    _invert_y = true;
+    _num_columns = pVih->rcTarget.right;
+    _num_rows = pVih->bmiHeader.biHeight;
+    printf("XXX directx_camera_server::open_and_find_parameters(): Warning: may not work correctly with target rectangle\n");
   }
+#ifdef DEBUG
   printf("Got %dx%d video\n", _num_columns, _num_rows);
+#endif
 
   // Make sure that the image is not compressed and that we have 8 bits
   // per pixel.
@@ -481,11 +468,27 @@ bool directx_camera_server::open_and_find_parameters(const int which, unsigned w
     }
     return false;
   }
-  if (pVih->bmiHeader.biBitCount != 24) {
-    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Not 24 bits (%d)\n",
+  int BytesPerPixel = pVih->bmiHeader.biBitCount / 8;
+  if (BytesPerPixel != 3) {
+    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Not 3 bytes per pixel (%d)\n",
       pVih->bmiHeader.biBitCount);
     return false;
   }
+
+  // A negative height indicates that the images are stored non-inverted in Y
+  // Not sure what to do with images that have negative height -- need to
+  // read the book some more to find out.
+  if (_num_rows < 0) {
+    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Num Rows is negative (internal error)\n");
+    return false;
+  }
+
+  // Find the stride to take when moving from one row of video to the
+  // next.  This is rounded up to the nearest DWORD.
+  _stride = (_num_columns * BytesPerPixel + 3) & ~3;
+
+  // Set the callback, where '0' means 'use the SampleCB callback'
+  _pGrabber->SetCallback(_pCallback, 0);
 
   //-------------------------------------------------------------------
   // Release resources that won't be used later and return
