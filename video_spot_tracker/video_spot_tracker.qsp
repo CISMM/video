@@ -7,7 +7,7 @@ ComposerVersion=4.0.0.4
 ProjectName=video_spot_tracker
 ProjectDirectory=F:\taylorr\stm\src\video\video_spot_tracker
 NonSFXDirectory=F:\taylorr\stm\src\video\video_spot_tracker\NonSFX
-MediaFileName=video_spot_tracker_v03_00
+MediaFileName=video_spot_tracker_v03_00b
 CopyMediaToFName=
 ProgramDescriptiveName=Video Spot Tracker v03.00
 ProgramVersion=03.00
@@ -238,7 +238,6 @@ Item-003=Fil*F:\taylorr\STM\src\video\russ_widgets.tcl
 Item-004=Fil*F:\taylorr\STM\src\video\video_spot_tracker.bat
 Item-005=Fil*F:\taylorr\STM\src\video\video_spot_tracker.tcl
 Item-006=Fil*F:\taylorr\STM\src\video\video_spot_tracker\icons.ico
-Item-007=Fil*F:\taylorr\STM\src\video\video_spot_tracker\ImageMagick-5.5.7-Q16-windows-dll.exe
 
 [Group-001]
 TypicalCompactData=3
