@@ -19,6 +19,7 @@
 // sorted alphabetically (which corresponds to arithmetic sorting when
 // the whole block of numbers is filled in).
 
+#pragma warning( disable : 4786 )
 #include <list>
 #include <string>
 

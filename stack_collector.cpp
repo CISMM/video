@@ -356,7 +356,7 @@ void myIdleFunc(void)
 	  while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
 
 	  //------------------------------------------------------------
-	  // If the user has deselected the "snap" or pressed "quit" then
+	  // If the user has deselected the "take_stack" or pressed "quit" then
 	  // break out of the loop.
 	  if ( g_quit || !g_take_stack) {
 	    break;

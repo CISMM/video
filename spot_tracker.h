@@ -190,7 +190,7 @@ protected:
   typedef struct {
     double x, y;
   } offset;
-  offset  **_radius_lists; //< List of offset values, stored in an array
+  offset  **_radius_lists;  //< List of offset values, stored in an array
 };
 
 //----------------------------------------------------------------------------

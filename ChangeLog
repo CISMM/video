@@ -1,3 +1,48 @@
+2004-09-02  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* SEM_library.dsp : Modified to use non-DLL code generation.
+	* airy_maker.dsp : Same.
+	* argonot.dsp : Same.
+	* diaginc_library.dsp : Same.
+	* directx_library.dsp : Same.
+	* edt_library.dsp : Same.
+	* edt_raw_video_store.dsp : Same.
+	* file_stack_library.dsp : Same.
+	* make_test_image.dsp : Same.
+	* roper_example.dsp : Same.
+	* roper_library.dsp : Same.
+	* roper_spot_tracker.dsp : Same.
+	* spot_tracker_library.dsp : Same.
+	* stack_collector.dsp : Same.
+	* swap_ppm_lines.dsp : Same.
+	* tempimager_directx_dll.dsp : Same.
+	* test_directx_library.dsp : Same.
+	* test_spot_tracker.dsp : Same.
+	* video_spot_tracker.dsp : Same.
+	* video_tempimager_server.dsp : Same.
+	* file_list.h : Turned off warning about too-long debug symbols.
+	* file_stack_server.cpp : Created compile-time flag USE_METAMORPH
+		to determine whether it tries to compile in new code that
+		can read Metamorph files directly.  New class to do this.
+		The new class does not yet work (it doesn't understand the
+		specialized tags and doesn't know how to parse the data).
+	* file_stack_server.h : Same, plus comment changes and turning
+		off compile-time warning for too-long symbols.
+	* spot_tracker.cpp : Computes variance across rings, part of
+		a failed attempt to make the symmetric spot tracker
+		have a larger capture radius.
+	* spot_tracker.h : Whitespace change.
+	* stack_collector.cpp : Comment change.
+	* video_spot_tracker.bat : Can't see any change.
+	* video_spot_tracker.cpp : Added configuration section to turn
+		on and off which external libraries are being used.  Added
+		entries for ROPER and METAMORPH.  Made the program never
+		re-use an index for a tracker that has been deleted.  This
+		avoids confusion in the analysis process.
+	* video.dsw : Added project file for manual_capture.
+	* video_spot_tracker.html : Added comment about Windows XP SP2
+		firewall complaining when the program is run.
+
 2004-08-03  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* file_stack_library.dsp : Making things compile with most stuff

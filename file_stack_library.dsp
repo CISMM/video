@@ -41,8 +41,7 @@ RSC=rc.exe
 # PROP Intermediate_Dir "Release"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
-# ADD CPP /nologo /MD /W3 /GX /O2 /I "C:\Program Files\ImageMagick-5.5.7-Q16\include" /I "D:\Program Files\ImageMagick-5.5.7-Q16\include" /I "..\vrpn" /I "..\quat" /I "C:\nsrg\external\pc_win32\include" /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
-# SUBTRACT CPP /Fr
+# ADD CPP /nologo /MT /W3 /GX /O2 /I "C:\Program Files\GnuWin32\include" /I "D:\Program Files\GnuWin32\include" /I "D:\Program Files\ImageMagick-5.5.7-Q16\include" /I "C:\Program Files\ImageMagick-5.5.7-Q16\include" /I "..\vrpn" /I "..\quat" /I "C:\nsrg\external\pc_win32\include" /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c /Tp
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -65,7 +64,7 @@ LIB32=link.exe -lib
 # PROP Intermediate_Dir "Debug"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
-# ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "D:\Program Files\ImageMagick-5.5.7-Q16\include" /I "C:\Program Files\ImageMagick-5.5.7-Q16\include" /I "..\vrpn" /I "..\quat" /I "C:\nsrg\external\pc_win32\include" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
+# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I "C:\Program Files\GnuWin32\include" /I "D:\Program Files\GnuWin32\include" /I "D:\Program Files\ImageMagick-5.5.7-Q16\include" /I "C:\Program Files\ImageMagick-5.5.7-Q16\include" /I "..\vrpn" /I "..\quat" /I "C:\nsrg\external\pc_win32\include" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c /Tp
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe

@@ -1,3 +1,22 @@
+//---------------------------------------------------------------------------
+// This section contains configuration settings for the Video Spot Tracker.
+// It is used to make it possible to compile and link the code when one or
+// more of the camera- or file- driver libraries are unavailable. First comes
+// a list of definitions.  These should all be defined when building the
+// program for distribution.  Following that comes a list of paths and other
+// things that depend on these definitions.  They may need to be changed
+// as well, depending on where the libraries were installed.
+
+#define	VST_USE_ROPER
+//#define USE_METAMORPH	    // Metamorph reader not completed.
+
+#ifdef	VST_USE_ROPER
+#pragma comment(lib,"D:\\Program Files\\Roper Scientific\\PVCAM\\pvcam32.lib")
+#endif
+
+// END configuration section.
+//---------------------------------------------------------------------------
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,7 +24,9 @@
 #include <tcl.h>
 #include <tk.h>
 #include "Tcl_Linkvar.h"
+#ifdef	VST_USE_ROPER
 #include "roper_server.h"
+#endif
 #include "directx_camera_server.h"
 #include "directx_videofile_server.h"
 #include "diaginc_server.h"
@@ -52,6 +73,20 @@ const int KERNEL_SYMMETRIC = 2;
 //--------------------------------------------------------------------------
 // Some classes needed for use in the rest of the program.
 
+class Spot_Information {
+public:
+  Spot_Information(spot_tracker *tracker) { d_tracker = tracker; d_index = d_static_index++; }
+
+  spot_tracker *tracker(void) const { return d_tracker; }
+  unsigned index(void) const { return d_index; }
+
+protected:
+  spot_tracker		*d_tracker;	    //< The tracker we're keeping information for
+  unsigned		d_index;	    //< The index for this instance
+  static unsigned	d_static_index;     //< The index to use for the next one (never to be re-used).
+};
+unsigned  Spot_Information::d_static_index = 0;	  //< Start the first instance of a Spot_Information index at zero.
+
 class Controllable_Video {
 public:
   /// Start the stored video playing.
@@ -97,6 +132,18 @@ public:
   void single_step(void) { file_stack_server::single_step(); }
 };
 
+#ifdef	USE_METAMORPH
+class MetamorphStack_Controllable_Video : public Controllable_Video, public Metamorph_stack_server {
+public:
+  MetamorphStack_Controllable_Video(const char *filename) : Metamorph_stack_server(filename) {};
+  virtual ~MetamorphStack_Controllable_Video() {};
+  void play(void) { Metamorph_stack_server::play(); }
+  void pause(void) { Metamorph_stack_server::pause(); }
+  void rewind(void) { pause(); Metamorph_stack_server::rewind(); }
+  void single_step(void) { Metamorph_stack_server::single_step(); }
+};
+#endif
+
 class SEM_Controllable_Video : public Controllable_Video, public SEM_camera_server {
 public:
   SEM_Controllable_Video(const char *filename) : SEM_camera_server(filename) {};
@@ -122,7 +169,7 @@ Tclvar_int_with_button	g_frame_number("frame_number",NULL,-1);  //< Keeps track 
 int		    g_tracking_window;		  //< Glut window displaying tracking
 unsigned char	    *g_glut_image = NULL;	  //< Pointer to the storage for the image
 
-list <spot_tracker *>g_trackers;		  //< List of active trackers
+list <Spot_Information *>g_trackers;		  //< List of active trackers
 spot_tracker	    *g_active_tracker = NULL;	  //< The tracker that the controls refer to
 bool		    g_ready_to_display = false;	  //< Don't unless we get an image
 bool		    g_already_posted = false;	  //< Posted redisplay since the last display?
@@ -206,6 +253,8 @@ double	flip_y(double y)
 
 //--------------------------------------------------------------------------
 // Cameras wrapped by image wrapper and function to return wrapped cameras.
+
+#ifdef	VST_USE_ROPER
 class roper_imager: public roper_server, public image_wrapper
 {
 public:
@@ -230,6 +279,7 @@ public:
     return val;
   }
 };
+#endif
 
 class diaginc_imager: public diaginc_server, public image_wrapper
 {
@@ -348,6 +398,31 @@ public:
   }
 };
 
+#ifdef	USE_METAMORPH
+class MetamorphStack_imager: public MetamorphStack_Controllable_Video, public image_wrapper
+{
+public:
+  MetamorphStack_imager(const char *fn) : MetamorphStack_Controllable_Video(fn), image_wrapper() {};
+  virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
+    minx = _minX; miny = _minY; maxx = _maxX; maxy = _maxY;
+  }
+  virtual bool	read_pixel(int x, int y, double &result) const {
+    uns16 val;
+    if (get_pixel_from_memory(x, y, val, g_colorIndex)) {
+      result = val;
+      return true;
+    } else {
+      return false;
+    }
+  }
+  virtual double read_pixel_nocheck(int x, int y) const {
+    uns16 val;
+    get_pixel_from_memory(x, y, val);
+    return val;
+  }
+};
+#endif
+
 class SEM_imager: public SEM_Controllable_Video, public image_wrapper
 {
 public:
@@ -376,11 +451,14 @@ public:
 bool  get_camera_and_imager(const char *type, base_camera_server **camera, image_wrapper **imager,
 			    Controllable_Video **video)
 {
+#ifdef VST_USE_ROPER
   if (!strcmp(type, "roper")) {
     roper_imager *r = new roper_imager();
     *camera = r;
     *imager = r;
-  } else if (!strcmp(type, "diaginc")) {
+  } else
+#endif  
+  if (!strcmp(type, "diaginc")) {
     diaginc_imager *r = new diaginc_imager();
     *camera = r;
     *imager = r;
@@ -434,9 +512,8 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       *imager = s;
       delete [] name;
 
-    // If the extension is ".tif" or ".tiff" or ".bmp" then we assume it is a VRPN-format file
-    // with an SEM device in it, so we form the name of the device and open
-    // a VRPN Remote object to handle it.
+    // If the extension is ".tif" or ".tiff" or ".bmp" then we assume it is
+    // a file or stack of files to be opened by ImageMagick.
     } else if (   (strcmp(".tif", &type[strlen(type)-4]) == 0) ||
 		  (strcmp(".TIF", &type[strlen(type)-4]) == 0) ||
 		  (strcmp(".bmp", &type[strlen(type)-4]) == 0) ||
@@ -448,8 +525,18 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       *video = s;
       *imager = s;
 
+    // If the extension is ".stk"  then we assume it is a Metamorph file
+    // to be opened by the Metamorph reader.
+#ifdef	USE_METAMORPH
+    } else if (strcmp(".stk", &type[strlen(type)-4]) == 0) {
+      MetamorphStack_imager *s = new MetamorphStack_imager(type);
+      *camera = s;
+      *video = s;
+      *imager = s;
+
     // File of unknown type.  We assume that it is something that DirectX knows
     // how to open.
+#endif
     } else {
       directx_file_imager *f = new directx_file_imager(type);
       *camera = f;
@@ -535,12 +622,12 @@ static void  dirtyexit(void)
   // Done with the camera and other objects.
   printf("Exiting\n");
 
-  list<spot_tracker *>::iterator  loop;
+  list<Spot_Information *>::iterator  loop;
 
   for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
     delete *loop;
   }
-  delete g_camera;
+  if (g_camera) { delete g_camera; g_camera = NULL; }
   if (g_glut_image) { delete [] g_glut_image; g_glut_image = NULL; };
   if (g_beadseye_image) { delete [] g_beadseye_image; g_beadseye_image = NULL; };
   if (g_landscape_image) { delete [] g_landscape_image; g_landscape_image = NULL; };
@@ -577,7 +664,6 @@ void myDisplayFunc(void)
 {
   unsigned  r,c;
   vrpn_uint16  uns_pix;
-  int i;  //< Indexes the trackers.
 
   if (!g_ready_to_display) { return; }
 
@@ -640,25 +726,25 @@ void myDisplayFunc(void)
   // bead radius or a circle with a radius twice that of the bead; the
   // marker type depends on the g_round_cursor variable.
   if (g_mark) {
-    list <spot_tracker *>::iterator loop;
+    list <Spot_Information *>::iterator loop;
     glEnable(GL_LINE_SMOOTH); //< Use smooth lines here to avoid aliasing showing spot in wrong place
-    for (loop = g_trackers.begin(), i = 0; loop != g_trackers.end(); loop++, i++) {
+    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
       // Normalize center and radius so that they match the coordinates
       // (-1..1) in X and Y.
-      double  x = -1.0 + (*loop)->get_x() * (2.0/g_camera->get_num_columns());
-      double  y = -1.0 + ((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
-      double  dx = (*loop)->get_radius() * (2.0/g_camera->get_num_columns());
-      double  dy = (*loop)->get_radius() * (2.0/g_camera->get_num_rows());
+      double  x = -1.0 + (*loop)->tracker()->get_x() * (2.0/g_camera->get_num_columns());
+      double  y = -1.0 + ((*loop)->tracker()->get_y()) * (2.0/g_camera->get_num_rows());
+      double  dx = (*loop)->tracker()->get_radius() * (2.0/g_camera->get_num_columns());
+      double  dy = (*loop)->tracker()->get_radius() * (2.0/g_camera->get_num_rows());
 
-      if (*loop == g_active_tracker) {
+      if ((*loop)->tracker() == g_active_tracker) {
 	glColor3f(1,0,0);
       } else {
 	glColor3f(0,0,1);
       }
       if (g_rod) {
 	// Horrible hack to make this work with rod type
-	double orient = static_cast<rod3_spot_tracker_interp*>(*loop)->get_orientation();
-	double length = static_cast<rod3_spot_tracker_interp*>(*loop)->get_length();
+	double orient = static_cast<rod3_spot_tracker_interp*>((*loop)->tracker())->get_orientation();
+	double length = static_cast<rod3_spot_tracker_interp*>((*loop)->tracker())->get_length();
 	double dx = (length/2 * cos(orient * M_PI/180)) * (2.0/g_camera->get_num_columns());
 	double dy = (length/2 * sin(orient * M_PI/180)) * (2.0/g_camera->get_num_rows());
 	glBegin(GL_LINES);
@@ -666,7 +752,7 @@ void myDisplayFunc(void)
 	  glVertex2f(x+dx,y+dy);
 	glEnd();
       } else if (g_round_cursor) {
-	double stepsize = M_PI / (*loop)->get_radius();
+	double stepsize = M_PI / (*loop)->tracker()->get_radius();
 	double runaround;
 	glBegin(GL_LINE_STRIP);
 	  for (runaround = 0; runaround <= 2*M_PI; runaround += stepsize) {
@@ -685,9 +771,9 @@ void myDisplayFunc(void)
       // Label the marker with its index
       // If we are doing a kymograph, then label posterior and anterior
       char numString[10];
-      sprintf(numString,"%d", i);
+      sprintf(numString,"%d", (*loop)->index());
       if (g_kymograph) {
-	switch (i) {
+	switch ((*loop)->index()) {
 	case 2: sprintf(numString,"P"); break;
 	case 3: sprintf(numString,"A"); break;
 	default: break;
@@ -718,12 +804,12 @@ void myDisplayFunc(void)
   // If we are running a kymograph, draw a green line through the first two
   // trackers to show where we're collecting it from
   if (g_kymograph && (g_trackers.size() >= 2)) {
-    list<spot_tracker *>::iterator  loop = g_trackers.begin();
-    double x0 = -1.0 + (*loop)->get_x() * (2.0/g_camera->get_num_columns());
-    double y0 = -1.0 + ((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
+    list<Spot_Information *>::iterator  loop = g_trackers.begin();
+    double x0 = -1.0 + (*loop)->tracker()->get_x() * (2.0/g_camera->get_num_columns());
+    double y0 = -1.0 + ((*loop)->tracker()->get_y()) * (2.0/g_camera->get_num_rows());
     loop++;
-    double x1 = -1.0 + (*loop)->get_x() * (2.0/g_camera->get_num_columns());
-    double y1 = -1.0 + ((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
+    double x1 = -1.0 + (*loop)->tracker()->get_x() * (2.0/g_camera->get_num_columns());
+    double y1 = -1.0 + ((*loop)->tracker()->get_y()) * (2.0/g_camera->get_num_rows());
 
     // Draw the line between them
     glColor3f(0.5,0.9,0.5);
@@ -757,11 +843,11 @@ void myDisplayFunc(void)
     if (g_trackers.size() >= 4) {
       // Find the two tracked points to use.
       loop++; // Skip to the third point.
-      double cx0 = -1.0 + (*loop)->get_x() * (2.0/g_camera->get_num_columns());
-      double cy0 = -1.0 + ((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
+      double cx0 = -1.0 + (*loop)->tracker()->get_x() * (2.0/g_camera->get_num_columns());
+      double cy0 = -1.0 + ((*loop)->tracker()->get_y()) * (2.0/g_camera->get_num_rows());
       loop++;
-      double cx1 = -1.0 + (*loop)->get_x() * (2.0/g_camera->get_num_columns());
-      double cy1 = -1.0 + ((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
+      double cx1 = -1.0 + (*loop)->tracker()->get_x() * (2.0/g_camera->get_num_columns());
+      double cy1 = -1.0 + ((*loop)->tracker()->get_y()) * (2.0/g_camera->get_num_rows());
 
       // Find the center of the two (origin of cell coordinates) and the unit vector (dx,dy)
       // going towards the second from the first.
@@ -1080,7 +1166,7 @@ static	double	timediff(struct timeval t1, struct timeval t2)
 
 void myIdleFunc(void)
 {
-  list<spot_tracker *>::iterator loop;
+  list<Spot_Information *>::iterator loop;
 
   //------------------------------------------------------------
   // This must be done in any Tcl app, to allow Tcl/Tk to handle
@@ -1124,11 +1210,11 @@ void myIdleFunc(void)
     // Check them against all of the open trackers and push them to bound all
     // of them.
 
-    list<spot_tracker *>::iterator  loop;
+    list<Spot_Information *>::iterator  loop;
     for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-      double x = (*loop)->get_x();
-      double y = ((*loop)->get_y());
-      double fourRad = 4 * (*loop)->get_radius();
+      double x = (*loop)->tracker()->get_x();
+      double y = ((*loop)->tracker()->get_y());
+      double fourRad = 4 * (*loop)->tracker()->get_radius();
       if (g_rod) {
 	// Horrible hack to make this work with rod type
 	fourRad = 2 * static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_length();
@@ -1207,10 +1293,9 @@ void myIdleFunc(void)
     if (g_vrpn_tracker && g_video_valid) {
       static struct timeval start;
       static bool first_time = true;
-      int i = 0;
       struct timeval now; gettimeofday(&now, NULL);
-      for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++, i++) {
-	vrpn_float64  pos[3] = {(*loop)->get_x() - g_log_offset_x, flip_y((*loop)->get_y()) - g_log_offset_y, 0};
+      for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+	vrpn_float64  pos[3] = {(*loop)->tracker()->get_x() - g_log_offset_x, flip_y((*loop)->tracker()->get_y()) - g_log_offset_y, 0};
 	vrpn_float64  quat[4] = { 0, 0, 0, 1};
 	double orient = 0.0;
 	double length = 0.0;
@@ -1218,13 +1303,13 @@ void myIdleFunc(void)
 	// If we are tracking rods, then we adjust the orientation to match.
 	if (g_rod) {
 	  // Horrible hack to make this work with rod type
-	  orient = static_cast<rod3_spot_tracker_interp*>(*loop)->get_orientation();
-	  length = static_cast<rod3_spot_tracker_interp*>(*loop)->get_length();
+	  orient = static_cast<rod3_spot_tracker_interp*>((*loop)->tracker())->get_orientation();
+	  length = static_cast<rod3_spot_tracker_interp*>((*loop)->tracker())->get_length();
 	}
 
 	// Rotation about the Z axis, reported in radians.
 	q_from_euler(quat, orient * (M_PI/180),0,0);
-	g_vrpn_tracker->report_pose(i, now, pos, quat);
+	g_vrpn_tracker->report_pose((*loop)->index(), now, pos, quat);
 
 	// Also, write the data to the .csv file if one is open.
 	if (g_csv_file) {
@@ -1233,7 +1318,7 @@ void myIdleFunc(void)
 	    first_time = false;
 	  }
 	  double interval = timediff(now, start);
-	  fprintf(g_csv_file, "%lf, %d, %lf,%lf,%lf, %lf, %lf,%lf\n", interval, i, pos[0], pos[1], pos[2], (*loop)->get_radius(), orient, length);
+	  fprintf(g_csv_file, "%lf, %d, %lf,%lf,%lf, %lf, %lf,%lf\n", interval, (*loop)->index(), pos[0], pos[1], pos[2], (*loop)->tracker()->get_radius(), orient, length);
 	}
       }
     }
@@ -1259,16 +1344,16 @@ void myIdleFunc(void)
       // has a local maximum at best fit and global maxima elsewhere.
       if ( g_last_image && (g_search_radius > 0) && (last_optimized_frame_number != g_frame_number) ) {
 
-	double x_base = (*loop)->get_x();
-	double y_base = (*loop)->get_y();
+	double x_base = (*loop)->tracker()->get_x();
+	double y_base = (*loop)->tracker()->get_y();
 
 	// Create an image spot tracker and initize it at the location where the current
 	// tracker is, but in the last image.  Grab enough of the image that we will be able
 	// to check over the g_search_radius for a match.
-	image_spot_tracker_interp max_find((*loop)->get_radius(), (g_invert != 0), g_precision,
+	image_spot_tracker_interp max_find((*loop)->tracker()->get_radius(), (g_invert != 0), g_precision,
 	  0.1, g_sampleSpacing);
 	max_find.set_location(x_base, y_base);
-	max_find.set_image(*g_last_image, x_base, y_base, (*loop)->get_radius() + g_search_radius);
+	max_find.set_image(*g_last_image, x_base, y_base, (*loop)->tracker()->get_radius() + g_search_radius);
 
 	// Loop over the pixels within g_search_radius of the initial location and find the
 	// location with the best match over all of these points.  Do this in the current image.
@@ -1293,11 +1378,11 @@ void myIdleFunc(void)
 
 	// Put the tracker at the location of the maximum, so that it will find the
 	// total maximum when it finds the local maximum.
-	(*loop)->set_location(x_base + best_x_offset, y_base + best_y_offset);
+	(*loop)->tracker()->set_location(x_base + best_x_offset, y_base + best_y_offset);
       }
 
       // Here's where the tracker is optimized to its new location
-      (*loop)->optimize_xy(*g_image, x, y, (*loop)->get_x(), (*loop)->get_y() );
+      (*loop)->tracker()->optimize_xy(*g_image, x, y, (*loop)->tracker()->get_x(), (*loop)->tracker()->get_y() );
 
       // If we are running a kymograph, then we don't optimize any trackers
       // past the first two because they are only there as markers in the
@@ -1321,12 +1406,12 @@ void myIdleFunc(void)
       if ( (g_trackers.size() >= 2) && (g_kymograph_filled+1 < g_kymograph_height) ) {
 
 	// Find the two tracked points to use.
-	list<spot_tracker *>::iterator  loop = g_trackers.begin();
-	double x0 = (*loop)->get_x();
-	double y0 = (*loop)->get_y();
+	list<Spot_Information *>::iterator  loop = g_trackers.begin();
+	double x0 = (*loop)->tracker()->get_x();
+	double y0 = (*loop)->tracker()->get_y();
 	loop++;
-	double x1 = (*loop)->get_x();
-	double y1 = (*loop)->get_y();
+	double x1 = (*loop)->tracker()->get_x();
+	double y1 = (*loop)->tracker()->get_y();
 
 	// Find the center of the two (origin of kymograph coordinates) and the unit vector (dx,dy)
 	// going towards the second from the first.
@@ -1377,11 +1462,11 @@ void myIdleFunc(void)
 	if (g_trackers.size() >= 4) {
 	  // Find the two tracked points to use.
 	  loop++; // Skip to the third point.
-	  double cx0 = (*loop)->get_x();
-	  double cy0 = (*loop)->get_y();
+	  double cx0 = (*loop)->tracker()->get_x();
+	  double cy0 = (*loop)->tracker()->get_y();
 	  loop++;
-	  double cx1 = (*loop)->get_x();
-	  double cy1 = (*loop)->get_y();
+	  double cx1 = (*loop)->tracker()->get_x();
+	  double cy1 = (*loop)->tracker()->get_y();
 
 	  // Find the center of the two (origin of cell coordinates) and the unit vector (dx,dy)
 	  // going towards the second from the first.
@@ -1504,12 +1589,13 @@ bool  delete_active_tracker(void)
     return false;
   } else {
     // Delete the entry in the list that corresponds to the active tracker.
-    list <spot_tracker *>::iterator loop;
-    list <spot_tracker *>::iterator next;
+    list <Spot_Information *>::iterator loop;
+    list <Spot_Information *>::iterator next;
     for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-      if (*loop == g_active_tracker) {
+      if ((*loop)->tracker() == g_active_tracker) {
 	next = loop; next++;
 	delete g_active_tracker;
+	delete *loop;
 	g_trackers.erase(loop);
 	break;
       }
@@ -1519,10 +1605,10 @@ bool  delete_active_tracker(void)
     // a next one.  Otherwise, try to set it to the first one on the list,
     // if there is one.  Otherwise, set it to NULL.
     if (next != g_trackers.end()) {
-      g_active_tracker = *next;
+      g_active_tracker = (*next)->tracker();
     } else {
       if (g_trackers.size() > 0) {
-	g_active_tracker = *g_trackers.begin();
+	g_active_tracker = (*g_trackers.begin())->tracker();
       } else {
 	g_active_tracker = NULL;
       }
@@ -1540,13 +1626,13 @@ void  activate_and_drag_nearest_tracker_to(double x, double y)
   // Looks for the minimum squared distance and the tracker that is
   // there.
   double  minDist2 = 1e100;
-  spot_tracker	*minTracker = NULL;
+  Spot_Information *minTracker = NULL;
   double  dist2;
-  list<spot_tracker *>::iterator loop;
+  list<Spot_Information *>::iterator loop;
 
   for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-    dist2 = (x - (*loop)->get_x())*(x - (*loop)->get_x()) +
-      (y - (*loop)->get_y())*(y - (*loop)->get_y());
+    dist2 = (x - (*loop)->tracker()->get_x())*(x - (*loop)->tracker()->get_x()) +
+      (y - (*loop)->tracker()->get_y())*(y - (*loop)->tracker()->get_y());
     if (dist2 < minDist2) {
       minDist2 = dist2;
       minTracker = *loop;
@@ -1555,7 +1641,7 @@ void  activate_and_drag_nearest_tracker_to(double x, double y)
   if (minTracker == NULL) {
     fprintf(stderr, "No tracker to pick out of %d\n", g_trackers.size());
   } else {
-    g_active_tracker = minTracker;
+    g_active_tracker = minTracker->tracker();
     g_active_tracker->set_location(x, y);
     g_X = g_active_tracker->get_x();
     g_Y = flip_y(g_active_tracker->get_y());
@@ -1600,7 +1686,7 @@ void mouseCallbackForGLUT(int button, int state, int x, int y)
       case GLUT_LEFT_BUTTON:
 	if (state == GLUT_DOWN) {
 	  g_whichDragAction = 1;
-	  g_trackers.push_back(g_active_tracker = create_appropriate_tracker());
+	  g_trackers.push_back(new Spot_Information(g_active_tracker = create_appropriate_tracker()));
 	  g_active_tracker->set_location(x, y);
 
 	  // Move the pointer to where the user clicked.
@@ -1788,23 +1874,25 @@ void  rebuild_trackers(int newvalue, void *)
   // Make sure to put them back where they came from.
   // Re-point the active tracker at its corresponding new
   // tracker.
-  list<spot_tracker *>::iterator  loop;
+  list<Spot_Information *>::iterator  loop;
 
   for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-    double x = (*loop)->get_x();
-    double y = (*loop)->get_y();
-    double r = (*loop)->get_radius();
+    double x = (*loop)->tracker()->get_x();
+    double y = (*loop)->tracker()->get_y();
+    double r = (*loop)->tracker()->get_radius();
 
-    if (g_active_tracker == *loop) {
+    if (g_active_tracker == (*loop)->tracker()) {
+      delete (*loop)->tracker();
       delete *loop;
-      *loop = create_appropriate_tracker();
-      g_active_tracker = *loop;
+      *loop = new Spot_Information(create_appropriate_tracker());
+      g_active_tracker = (*loop)->tracker();
     } else {
+      delete (*loop)->tracker();
       delete *loop;
-      *loop = create_appropriate_tracker();
+      *loop = new Spot_Information(create_appropriate_tracker());
     }
-    (*loop)->set_location(x,y);
-    (*loop)->set_radius(r);
+    (*loop)->tracker()->set_location(x,y);
+    (*loop)->tracker()->set_radius(r);
   }
 }
 
@@ -2031,7 +2119,7 @@ int main(int argc, char *argv[])
   // set up the Tcl controls to run it.  Also, report the frame number.
   if (!get_camera_and_imager(g_device_name, &g_camera, &g_image, &g_video)) {
     fprintf(stderr,"Cannot open camera/imager\n");
-    if (g_camera) { delete g_camera; }
+    if (g_camera) { delete g_camera; g_camera = NULL; }
     cleanup();
     exit(-1);
   }
@@ -2069,7 +2157,7 @@ int main(int argc, char *argv[])
   // Verify that the camera is working.
   if (!g_camera->working()) {
     fprintf(stderr,"Could not establish connection to camera\n");
-    if (g_camera) { delete g_camera; }
+    if (g_camera) { delete g_camera; g_camera = NULL; }
     cleanup();
     exit(-1);
   }
@@ -2113,7 +2201,7 @@ int main(int argc, char *argv[])
       [g_camera->get_num_columns() * g_camera->get_num_rows()]) == NULL) {
     fprintf(stderr,"Out of memory when allocating image!\n");
     fprintf(stderr,"  (Image is %u by %u)\n", g_camera->get_num_columns(), g_camera->get_num_rows());
-    delete g_camera;
+    if (g_camera) { delete g_camera; g_camera = NULL; }
     cleanup();
     exit(-1);
   }
@@ -2134,7 +2222,7 @@ int main(int argc, char *argv[])
       [g_beadseye_size * g_beadseye_size]) == NULL) {
     fprintf(stderr,"Out of memory when allocating beads-eye image!\n");
     fprintf(stderr,"  (Image is %u by %u)\n", g_beadseye_size, g_beadseye_size);
-    delete g_camera;
+    if (g_camera) { delete g_camera; g_camera = NULL; }
     cleanup();
     exit(-1);
   }
@@ -2152,7 +2240,7 @@ int main(int argc, char *argv[])
       [g_landscape_size * g_landscape_size]) == NULL) {
     fprintf(stderr,"Out of memory when allocating landscape float buffer!\n");
     fprintf(stderr,"  (Image is %u by %u)\n", g_landscape_size, g_landscape_size);
-    delete g_camera;
+    if (g_camera) { delete g_camera; g_camera = NULL; }
     cleanup();
     exit(-1);
   }
@@ -2166,7 +2254,7 @@ int main(int argc, char *argv[])
       [g_landscape_size * g_landscape_size]) == NULL) {
     fprintf(stderr,"Out of memory when allocating landscape image!\n");
     fprintf(stderr,"  (Image is %u by %u)\n", g_landscape_size, g_landscape_size);
-    delete g_camera;
+    if (g_camera) { delete g_camera; g_camera = NULL; }
     cleanup();
     exit(-1);
   }

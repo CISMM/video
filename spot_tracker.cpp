@@ -419,7 +419,7 @@ double	cone_spot_tracker_interp::check_fitness(const image_wrapper &image)
 symmetric_spot_tracker_interp::symmetric_spot_tracker_interp(double radius, bool inverted, double pixelaccuracy,
 				     double radiusaccuracy, double sample_separation_in_pixels) :
   spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels),
-  _MAX_RADIUS(100)
+  _MAX_RADIUS(100), _radius_lists(NULL)
 {
   // Check the radius here so we don't need to check it in the fitness routine.
   if (_rad < 1) { _rad = 1; }
@@ -498,7 +498,7 @@ double	symmetric_spot_tracker_interp::check_fitness(const image_wrapper &image)
 {
   double  val;				//< Pixel value read from the image
   double  pixels;			//< How many pixels we ended up using (used in floating-point calculations only)
-  double  fitness = 0.0;		//< Accumulates the fitness values
+  double  ring_variance_sum = 0.0;	//< Accumulates the variance around the rings
   offset  **which_list = &_radius_lists[1];  //< Point at the first list, use increment later to advance
   int	  r;				//< Loops over radii from 1 up
   int	  count;			//< How many entries in a particular list
@@ -506,8 +506,8 @@ double	symmetric_spot_tracker_interp::check_fitness(const image_wrapper &image)
   // Don't check the pixel in the middle; it makes no difference to circular
   // symmetry.
   for (r = 1; r <= _rad / _samplesep; r++) {
-    double squareValSum = 0.0;
-    double valSum = 0.0;
+    double squareValSum = 0.0;		//< Used to compute the variance around a ring
+    double valSum = 0.0;		//< Used to compute the mean and variance around a ring
     int	pix;
     offset *list = *(which_list++);	//< Makes a speed difference to do this with increment vs. index
 
@@ -532,12 +532,15 @@ double	symmetric_spot_tracker_interp::check_fitness(const image_wrapper &image)
       list++;
 #endif
     }
-    fitness -= squareValSum - valSum*valSum / pixels;
+
+    // Calculate the variance around the ring using the formulation
+    // variance = sum_over_points(val^2) - sum_over_points(val)^2 / count,
+    // where val is the value at each point and count is the number of points.
+    // Accumulate these into the ring variance sum.
+    ring_variance_sum += squareValSum - valSum*valSum / pixels;
   }
 
-  // We never invert the fitness: we don't care whether it is a dark
-  // or bright spot.
-  return fitness;
+  return -ring_variance_sum;
 }
 
 image_spot_tracker_interp::image_spot_tracker_interp(double radius, bool inverted, double pixelaccuracy,
