@@ -1,3 +1,10 @@
+2004-02-16  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Modified to use a new version of the
+		VRPN File Connection that is able to avoid preloading
+		the file and avoid loading it all into memory.
+	* video_spot_tracker.html : Updated version number and comments.
+
 2004-02-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Fixed crashing bug when running without

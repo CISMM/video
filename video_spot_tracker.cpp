@@ -45,7 +45,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "02.01";
+const char *Version_string = "02.02";
 
 //--------------------------------------------------------------------------
 // Some classes needed for use in the rest of the program.
@@ -1668,6 +1668,13 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Usage: %s [roper|diaginc|directx|directx640x480|filename]\n", argv[0]);
     exit(-1);
   };
+
+  //------------------------------------------------------------------
+  // VRPN state setting so that we don't try to preload a video file
+  // when it is opened, which wastes time.  Also tell it not to
+  // accumulate messages, which can cause us to run out of memory.
+  vrpn_FILE_CONNECTIONS_SHOULD_PRELOAD = false;
+  vrpn_FILE_CONNECTIONS_SHOULD_ACCUMULATE = false;
 
   //------------------------------------------------------------------
   // Generic Tcl startup.  Getting and interpreter and mainwindow.
