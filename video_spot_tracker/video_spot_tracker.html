@@ -1,0 +1,620 @@
+<title>Video Spot Tracker v03.02</title>
+
+<h1>Video Spot Tracker version 03.02</h1>
+
+<p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
+  one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
+  DirectShow</a>-compatible video file, from a <a href="http://www.microsoft.com/directx">Microsoft 
+  DirectShow</a>-compatible camera, from a <a href="http://roperscientific.com">Roper 
+  Scientific</a> camera, from a <a href="http://diaginc.com">DiagInc</a> SPOT 
+  camera, or from a set of TIFF or BMP files (it can read other, compressed file 
+  formats but these are not included in the default set because these file formats 
+  distort images in ways that affect tracking accuracy). The program currently 
+  runs only on Windows, but it uses the portable openGL library for rendering, 
+  the portable Tcl/Tk for user interface control, and the portable ImageMagick 
+  package for reading images.</p>
+
+<h2>Running the program</h2>
+
+<p>The program is run by dragging a video file or image file onto the desktop 
+  icon that was created when the program was installed. To select a stack of image 
+  files that are numbered consecutively, drag any one of the files onto the icon. 
+  It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
+  Menu/All Programs/NSRG/Video Spot Tracker v03.02</b></i>. If you run the program 
+  directly by double-clicking on the icon, it will ask for a video or image file 
+  (AVI, TIF, or BMP) that it should open.</p>
+
+<p><b><i>NOTE:</i></b> With Windows XP service pack 2 and with other firewall 
+  software, running the program causes a dialog box to appear asking whether to 
+  block the program; the program needs to be unblocked only if the program is 
+  to be connected to a local or remote feedback system that relies on the tracking 
+  data. This happens when the program opens the Internet port assigned to it (3883) 
+  by the Internet Domain Naming Authority to export the data through the standard 
+  VRPN protocol (<a href="http://www.vrpn.org">www.vrpn.org</a>).</p>
+
+<h2><img src="GUI.jpg" width="161" height="740" align="right">Using the program</h2>
+
+<p>When the program is run and a file is selected, four windows will appear. The 
+  image window that appears on the lower right contains the first image within 
+  the video file or a continually-updating image from a live camera feed. The 
+  control panel named <b><i>tk</i></b> that appears on the left when the program 
+  is run (shown here to the right) contains a number of interaction widgets that 
+  control the operation of the program. The <b><i>kernel</i></b> control panel 
+  that appears above the image window (described later) controls the type of tracking 
+  kernel being used. The <b><i>log</i></b> control panel is described later.</p>
+
+<h3>Selecting the color channel to use</h3>
+
+<p><img src="red_green_blue.jpg" width="156" height="60" align="left">If the video 
+
+  file (or video camera) contains different data sets in the red, green, and blue 
+
+  channels then you will need to select the one you want to view. By default, 
+
+  the red channel (channel 0) is selected. To select a different channel, click 
+
+  on the &quot;0&quot; beneath the <i><b>red_green_blue </b></i>slider and type 
+
+  its number into the dialog box that appears. Enter 1 for green and 2 for blue. 
+
+  The video window should change to display the selected channel.</p>
+
+<h3>Selecting the Image bit depth</h3>
+
+<p>A <i>bit</i> is a computer term for an entity that can take on two values, 
+  stored as zero and one. Using several bits in parallel enables the encoding 
+  of integers: binary notations is like decimal notation but each digit can only 
+  have the value zero or one before wrapping around. Counting proceeds as follows: 
+  000, 001, 010, 011, 100 corresponds to decimal 0,1,2,3,4. Stacking 8 bits together 
+  (a bit depth of 8) covers the range 0-255. Stacking 12 bits covers the range 
+  0-4095. The default bit depth in <i>Video Spot Tracker</i> is 8 bits per pixel. 
+  This is correct for AVI files and many common file formats. Most scientific 
+  cameras, however, operate at 12 bits per pixel. When such an image is loaded 
+  into Video Spot Tracker, it produces a strange-looking image with dark spots 
+  where there should be bright spots, or bands of dark and light. While this will 
+  not interfere with the tracking (it is only a problem of mapping 12 bits of 
+  color to 8 bits of displayable color on the screen), it looks unappealing. By 
+  adjusting the bit depth to exceed the number of bits that are used in the image, 
+  these colors can be brought into range. If you load a 16-bit image, this can 
+  be handled by clicking on the number below the slider and typing in 16; even 
+  though it exceeds the maximum slider value, it can be set in this manner. To 
+  repeat, <b><i>this setting has no effect on tracking, only on the images shown 
+  on the screen</i></b>.</p>
+
+<h3>Selecting spots to track</h3>
+
+<p>To select the first spot to track, click on its center with the left mouse 
+
+  button. A red plus sign will appear at the location you have selected. If you 
+
+  want to adjust its radius, you can hold the mouse button down after you have 
+
+  clicked and pull the mouse away from the center; pretty soon, the radius of 
+
+  the disk will track the distance you have pulled the mouse from the center. 
+
+  You can also adjust the radius by clicking on the number beneath the <i><b>radius</b></i> 
+
+  slider within the <b><i>kernel</i></b> control panel and entering it into the 
+
+  dialog box that appears or by moving the <b><i>radius</i></b> slider.</p>
+
+<p><img src="three_tracks.jpg" width="168" height="174" align="left">When a new 
+  tracker is created it turns red to indicate that it is the active tracker; all 
+  other trackers turn blue. To create more trackers, click on the center of each 
+  new spot with the left mouse button. The default radius of each new spot tracker 
+  will match the radius of the spot that was active when the new one is created. 
+  Each tracked spot will be labeled with an index that matches its index in the 
+  stored tracking file.</p>
+
+<p>If you click with the <i>right </i>mouse button, the closest tracker is moved 
+  to the location you picked and it becomes the <b><i>active tracker </i></b>(in 
+  red). The active tracker's position and radius are shown in the user interface, 
+  and they can be edited by clicking on the number beneath the relevant slider. 
+  By selecting different trackers using the right mouse button, you can adjust 
+  the position of each tracker one at a time.</p>
+
+<p>You can drag a tracker to a new location by clicking the right mouse button 
+
+  on top of it and then holding the button down to drag the tracker to a new location. 
+
+  Note that when optimization is turned on, the tracker will always jump to the 
+
+  optimum location nearest the current location of the mouse cursor.</p>
+
+<p>You can delete an unwanted tracker by making it the active tracker (click on 
+  it with the right mouse button) and then pressing the <i>delete</i> or <i>backspace</i> 
+  key on the keyboard. In version 3.02 and higher, indices are not repeated even 
+  after trackers are deleted.</p>
+
+<p>If you prefer to not have the centers of the tracked objects obscured by the 
+
+  tracking markers, select the <b><i>round_cursor</i></b> checkbox from the <b><i>tk</i></b> 
+
+  control panel. This will replace the plus signs with a circle around the center 
+
+  at twice the radius that the kernel is set to use.</p>
+
+<h3>Selecting the type of tracker</h3>
+
+<p><img src="kernel.jpg" width="581" height="117"></p>
+
+<p>There are four types of tracking kernels available in version 3.02, disc, cone, 
+  and symmetric. Their properties are controlled using interface widgets in the 
+  <cite>kernel</cite> control panel.</p>
+<p>For tracking spots that are even in intensity, or which have uneven intensities 
+  within them but a defined circular edge, the <cite><strong>disc</strong></cite> 
+  kernel should be used. The radius should be set to match the radius of the spots 
+  you wish to track. The <cite><strong>interpolate</strong></cite> checkbox should 
+  be set for more accuracy and cleared for more speed.</p>
+<p>For tracking spots that are brighter in the center and drop off to dim (or 
+  darkest in the center and ramp up to bright), the <cite><strong>cone</strong></cite> 
+  kernel should be used. For cone tracking, the radius should be set about 1/3 
+  larger than the spots you want to track (giving the kernel a good sampling of 
+  the background as well as the spot). The setting of the <cite>interpolate</cite> 
+  check box does not matter for the cone tracker (this tracker always interpolates).</p>
+<p></p>
+<p>A parameter relevant for both the disc and cone kernel is whether the spots 
+  are dark points in a lighter background (the default) or lighter points in a 
+  dark background). This is controlled using the <dfn><strong>dark_spot</strong></dfn> 
+  check box located at the top of the user interface. You should set this for 
+  the type of spot you are seeking.</p>
+
+<p>If the bead profile is changing over time, or if it does not fit well into 
+  one of the above categories, then the <cite><strong>symmetric</strong></cite> 
+  tracker should be chosen. This tracker operates by locating the minimum variance 
+  in concentric rings around the bead center. It sums the variance in circles 
+  of radius 1, 2, 3, ... up to the radius setting and divides each circle's radius 
+  by its circumference to provide even weights for each ring. The radius should 
+  be set to be at least slighly larger than the bead that is to be tracked; setting 
+  it larger will not harm tracking except to make the program run more slowly. 
+  The setting on the <cite>dark_spot</cite> check box has no effect when symmetric 
+  tracker is chosen.</p>
+
+<p><img src="rod3.jpg" width="152" height="164" align="right">The final type of 
+  kernel is the <cite><strong>rod3</strong></cite> kernel. This is actually a 
+  grouping of three subkernels, each of which is one of the above types. These 
+  three kernels lie along the same line and move as a unit; they seek to track 
+  bars in the image. When this kernel box is selected, a new control panel will 
+  appear. This control panel is shown to the right, and it enables control over 
+  the length (in pixels) and orientation (in degrees) of the bar trackers. As 
+  with the radius and position controls described above, these controls change 
+  to display and control the values of the active tracker. The most successful 
+  bars may be made of cone kernels and be slightly less than the actual length 
+  of the bar on the screen. The symmetric kernel is probably the least useful. 
+  Note that if the bars flex, this tracker may not work very well.</p>
+
+<h3>Enabling the trackers to follow jumps in bead position</h3>
+<p></p>
+<p>The <strong><cite>follow_jumps</cite></strong> check-box activates a more-robust 
+  tracking algorithm that first looks for the best image match within 2 radiii 
+  of the prior position and then performs the standard kernel match. This makes 
+  the tracking run more slowly, but is more robust to bead motion between frames. 
+  It does not affect the accuracy or the style of the main optimization for the 
+  kernel, it is only used to initialize the new search location between frames.</p>
+<h3>Activating the trackers</h3>
+
+<p></p>
+
+<p>Once you have selected the type of tracker to use, and have selected spots 
+  to track, check the <cite>optimize</cite> checkbox. When you do this, the trackers 
+  should all move themselves to the centers of the spots they were started on. 
+  You can continue to add trackers using the right mouse button after you have 
+  checked the optimize button; they will try to follow the center of the spot 
+  even as you adjust their radius.</p>
+
+<h3>Faster display update</h3>
+
+<p><img src="small_area.jpg" width="162" height="175" align="right">Once you have 
+  created all of the trackers you want, you may check the <cite><strong>small_area</strong></cite> 
+  checkbox. This will cause the program to limit its update to a small area of 
+  pixels that surrounds the active trackers. This requires less processing and 
+  makes the update rate faster when the video is played. For the Roper and SPOT 
+  cameras, it also reduces the amount of data transmitted from the camera itself, 
+  again increasing the frame rate. This area will update itself as the trackers 
+  move, and it extends 4 radii past each tracker. This should enable the trackers 
+  to continue to track spots that are moving away from the updated video area. 
+  A green box shows up in the video window to indicate the area being updated.</p>
+
+<p>You can also manually adjust the area that is updated using the <b><i>minX</i></b>, 
+
+  <b><i>maxX</i></b>, <b><i>minY</i></b>, and <b><i>maxY</i></b> sliders that 
+
+  appear when the <b><i>show_clipping</i></b> check box is on. If you do this, 
+
+  you will want to un-check the small_area setting.</p>
+
+<p>To turn off the small area tracking, and to undo the selection of a manual 
+
+  region, click the <b><i>full_area</i></b> checkbox once. It will reset the update 
+
+  area to cover the whole image and turn small-area tracking off.</p>
+
+<h3>Reading the position of a tracker</h3>
+
+<p>You can check the position of each tracker in turn by clicking on each with 
+  the right mouse button, which makes each the active tracker that shows its values 
+  in the <b><i>x</i></b>, <b><i>y</i></b>, and <b><i>radius</i></b> displays. 
+  Note that these may show subpixel positions and radii. You can control the minimum 
+  step size that the optimizer will use by adjusting the <b><i>precision</i></b> 
+  slider within the <b><i>tk</i></b> control panel. Smaller values make the program 
+  run more slowly but will result in the program attempting to find the position 
+  with greater precision (this will not necessarily correspond to greater accuracy, 
+  due to noise and possibly aliasing).</p>
+
+<h3>Recording the tracker motion</h3>
+
+<p><img src="log.jpg" width="348" height="80" align="right">You can record the 
+
+  motion of the trackers by checking the <b><i>Logging</i></b> checkbox within 
+
+  the <b><i>log</i></b> control panel (shown to the right). This will bring up 
+
+  a dialog box that will let you select a filename. It will automatically add 
+
+  the default extension &quot;.vrpn&quot; to the filename you create. (A second 
+
+  file, with the extension &quot;.csv&quot; will also be created, though the program 
+
+  does not mention it.) Once you have selected a file name, you check the <b><i>play_video</i></b> 
+
+  checkbox to begin going through the video file, or you can use the <b><i>single_step_video</i></b> 
+
+  repeatedly to step through a frame at a time. When you are finished with the 
+
+  section of tracking that you are interested in, uncheck the Logging checkbox 
+
+  to stop the logging. You can then go forward to another section, turn on logging, 
+
+  and save a different file if you like.</p>
+
+<p>At the time logging is started, the value of the <b><i>Relative to active tracker 
+
+  start</i></b> check box is used to determine the origin of the reported positions 
+
+  (orientation and radius are always absolute). If the box is unchecked, the positions 
+
+  are in pixels with respect to the center of the pixel in the upper-left corner 
+
+  of the screen as the origin. If the box is checked, the positions are in pixels 
+
+  with respect to the location of the active tracker when logging was turned on.</p>
+
+<p>Logging will not occur while the file is paused, or when the end of the video 
+
+  has been reached (this also means that the positions of the trackers in the 
+
+  last frame of video will not be stored). This is done so that you can place 
+
+  the trackers back onto spots that have jumped too far between frames when single-stepping 
+
+  through the video and still get an accurate record of where the spots went. 
+
+  There will be one entry in the file per tracker for each frame of video stepped 
+
+  through or played through. The time values associated with each record are the 
+
+  wall-clock time at which the particular frame left the screen (when the next 
+
+  frame appeared); this is probably not useful and so should be ignored. <b><i>Note</i></b>: 
+
+  Some video files have a 30 frame/second playback but have three copies of the 
+
+  same video frame to produce an overall update of 10 frames/second; this will 
+
+  produce repeated location reports for each of the identical frames.</p>
+
+<p>The motion of the trackers over time is stored into two log files. The first 
+
+  is a <b><i>Comma-Separated Values</i></b> format with the extension .csv. This 
+
+  text format can be viewed in a text editor or loaded by several spreadsheet 
+
+  and analysis programs. The reports are stored in the file in in frame order, 
+
+  with multiple tracker entries interleaved for each frame. If you want to view 
+
+  the individual traces, you should use the <i>Excel</i> data sorting tool to 
+
+  sort the list by the <i>Spot ID</i> column.</p>
+
+<p>The second log file is in the <b><i>Virtual-Reality Peripheral Network</i></b> 
+  (<a href="http://www.vrpn.org">VRPN</a>) format. This format can be converted 
+  into a Matlab data file using the <b><i>vrpnLogToMatlab</i></b> program that 
+  should have been installed at the same time the <i><b>Video Spot Tracker</b></i> 
+  program was. You convert the &quot;.vrpn&quot; file into a Matlab file by dragging 
+  it onto a shortcut that points to the program (or by dragging it onto the program 
+  itself). The vrpnLogToMatlab program will have been installed in the directory: 
+  <b><i>C:\Program Files\NSRG\Video Spot Tracker v03.02\VrpnLogToMatlib</i></b> 
+  and it will also be located on the desktop.</p>
+
+<h3>Controlling playback</h3>
+
+<p>Whether logging is turned on or not, the video can be played by checking the 
+  <b><i>play_video</i></b> checkbox, and paused by unchecking it. The <b><i>single_step_video</i></b> 
+  checkbox will step forwards one video frame each time it is pressed. The <b><i>rewind</i></b> 
+  checkbox causes the video to rewind to the beginning, play the first frame of 
+  the video, and then pause. The <cite>FrameNum</cite> display shows which frame 
+  of a video file is currently being displayed.</p>
+
+<h3>Kymograph function</h3>
+
+<p>Clicking on the <i><b>kymograph</b></i> button in the main control panel brings 
+
+  up two more windows and modifies the behavior of the first four tracked spots 
+
+  in the image. This function is aimed at the study of cellular mitosis, and it 
+
+  provides a &quot;spingle-centered&quot; trace through the image. The two centromeres 
+
+  define the ends of the spindle. The point halfway between the two centromeres 
+
+  is defined as the spindle center, which moves from frame to frame. The line 
+
+  through the two centromeres is defined as the spindle axis, which rotates from 
+
+  frame to frame.</p>
+
+<p><img src="kymo_main.jpg" width="680" height="546"></p>
+
+<p>When kymograph mode is enabled, the third and fourth points (the ones that 
+  would normally be labeled &quot;2&quot; and &quot;3&quot;) are relabeled &quot;P&quot; 
+  and &quot;A&quot; for posterior and anterior. These two points are not optimized 
+  each frame no matter what setting the kernel optimization checkbox has, as they 
+  are used to label the ends of the cell. A green line bisects the image halfway 
+  between these points, indicating the 0 value on the cell-centered axis. Negative 
+  values (to the left on the kymograph_center chart) are towards the posterior 
+  end; positive towards the anterior. The white line down the center indicates 
+  the cell center; dim lines indicate 10-pixel steps, and brighter lines indicate 
+  100-pixel steps away from the center.</p>
+<p>It is important not to delete any trackers in kymograph mode. This will prevent 
+  the A and P points from behaving properly, and will also prevent proper following 
+  of the centerline.</p>
+
+<h2></h2>
+
+<p><img src="kymo_trace.jpg" width="349" height="130" align="right">The first 
+
+  window is named <b><i>kymograph</i></b> and it will accumulate traces from the 
+
+  image through the first two tracked points (the points labeled &quot;0&quot; 
+
+  and &quot;1&quot;). If there are not at least two tracked points, nothing is 
+
+  shown in this window. As the video is stepped through or played, a new line 
+
+  will be added to the window that is a resampling of the image pixels. The center 
+
+  of this window on each line corresponds to the spindle center and the sampling 
+
+  is done along the spindle axis. A green line is drawn between points 0 and 1 
+
+  to indicate the spindle axis, and a green cross-line indicates the spindle center.</p>
+
+<p><img src="kymo_graph.jpg" width="268" height="126" align="right">The second 
+
+  window is named <b><i>kymograph_center</i></b>, and it shows how the spindle 
+
+  center moves within the cell. If there are not at least four tracked points, 
+
+  nothing is shown in this window.</p>
+
+<h2>Downloading and installing the program</h2>
+
+<p>This program is brought to you courtesy of the National Institutes of Health 
+
+  <a href="http://www.nibib.nih.gov/">National Institute for Biomedical Imaging 
+
+  and Bioengineering</a> through its National Research Resource in <a href="http://www.cs.unc.edu/nano/cismm">Computer-Integrated 
+
+  Systems for Microscopy and Manipulation</a> at the University of North Carolina 
+
+  at Chapel Hill.</p>
+
+<h2></h2>
+
+<p>An installer for the program and manual can be downloaded from the <a href="http://www.cs.unc.edu/Research/nano/cismm/download/index.html">CISMM 
+
+  software download page</a>. To run it, you must also download and install <b><u>version 
+
+  01.05 or higher</u> </b>of the <i>NSRG Runtime</i> package, which is also available 
+
+  on that page. It also requires <a href="http://www.microsoft.com/directx">Microsoft 
+
+  <i>Direct X</i></a> version 9.0a or higher. If you want to open sets of TIFF 
+
+  files or other image file sets, you also need <a href="ftp://ftp.imagemagick.org/pub/ImageMagick/binaries/ImageMagick-5.5.7-Q16-windows-dll.exe">the 
+
+  16-bit version of ImageMagick version 5.5.7</a>. These packages can be installed 
+
+  in any order.</p>
+
+<h2>Version Information</h2>
+
+<h3>Version 3.02:</h3>
+<ul>
+  <li>When trackers are deleted, their indices are no longer re-used. Before, 
+    the deletion of bead 1 would shift the indices of all the other beads (on 
+    the screen and in the log file) greater than one. Also, the creation of a 
+    new bead after one was deleted used to re-use its index. Now, tracker indices 
+    remain the same so long as the tracker is present and are not re-used when 
+    trackers are deleted and created.</li>
+  <li>Code was added to enable the trackers to follow jumps of up to about 2 bead 
+    radii between frames. This mode retains the same accuracy as non-jump-following 
+    code, but operates much more slowly. This is controlled by a check-box in 
+    the kernel control panel.</li>
+  <li>Bug fixes to support both 8-bit and 16-bit input files.</li>
+</ul>
+
+<h3>Version 3.00:</h3>
+
+<ul>
+
+  <li>Major GUI changes: The behavior of the mouse buttons is completely different 
+
+    from their earlier behavior. The left mouse button now creates new trackers, 
+
+    and the right mouse button drags existing trackers around without changing 
+
+    their radius. There is not a tracker created at program startup. The &quot;delete&quot; 
+
+    and &quot;backspace&quot; keys can be used to delete the active tracker.</li>
+
+  <li>Major output changes: The Y values are now reported with respect to the 
+
+    center of the pixel at the upper-left corner of the screen. Previous versions 
+
+    reported with respect to the center of the pixel at the lower-left corner. 
+
+    The new convention is in keeping with the output from the <i>MetaMorph</i> 
+
+    program. Also, image from Pulnix cameras read through the EDT device are inverted 
+
+    to make them match the images shown by the preview program that comes with 
+
+    the camera. It is now possible to save positions relative to the initial location 
+
+    of the active tracker when logging is started.</li>
+
+  <li>Various bugs were fixed that caused the program to crash, use truncated 
+
+    filenames for logging, fail to open some types of files, or display incorrect 
+
+    intensities in the display window. The precision of position output has also 
+
+    been increased by decoupling it from the precision shown in the GUI.</li>
+
+</ul>
+
+<h3></h3>
+
+<h3>Version 2.03b:</h3>
+
+<ul>
+
+  <li>Only the web page and installer have changed. They mention that you need 
+
+    to have the 16-bit version of ImageMagick 5.5.7 to load image stacks.</li>
+
+</ul>
+
+<h3>Version 2.03:</h3>
+
+<ul>
+
+  <li>Is able to load a series of TIFF (or .BMP, or other image file format) files 
+
+    and play through them sequentially as if they were a movie. The files must 
+
+    have sequentially-numbered names (there can be gaps between the numbers, but 
+
+    the gap must be consistent between each pair of file names). The files can 
+
+    be 8 bits or 16 bits (or 12 bits in 16, which is a common format for TIFF 
+
+    files exported by camera-control software).</li>
+
+  <li>Will exit cleanly when one of the initially-displayed windows is closed 
+
+    by clicking on its (X) in the corner. If the main control panel is closed, 
+
+    it spits out a bunch of messages about not being able to destroy objects; 
+
+    these are harmless, indicating only that we are trying to get rid of things 
+
+    that are already gotten rid of.</li>
+
+  <li> Fixes a bug where trying to rewind or quit the program while the video 
+
+    was playing on a directx video file could cause the program to hang.</li>
+
+</ul>
+
+  <h3>Version 2.02:</h3>
+
+<ul>
+
+  <li> Will load in UNC's optical fluorescence files that are in SEM format more 
+
+    rapidly than earlier versions. It also doesn't keep them in memory, which 
+
+    will enable loading larger files.</li>
+
+</ul>
+
+<h3></h3>
+
+<h3>Version 2.01:</h3>
+
+<ul>
+
+  <li> When the program is run with no arguments (or by double-clicking the icon 
+
+    on the desktop), it asks the user for a video file to track in.</li>
+
+</ul>
+
+<h3>Version 2.00:</h3>
+
+<ul>
+
+  <li> Fixed a bug in the logfile-creation code that caused it to crash sometimes.</li>
+
+  <li>Changed major version number because 01.29 seemed like it was getting out 
+
+    of hand.</li>
+
+  <li>Use this in preference to 01.26 through 01.28a, which all have the potential 
+
+    crash bug.</li>
+
+</ul>
+
+<h3>Version 01.28a:</h3>
+
+<ul>
+
+  <li> Updated the manual. Same program as 01.28.</li>
+
+</ul>
+
+<h3></h3>
+
+<h3>Version 01.28:</h3>
+
+<ul>
+
+  <li> Improved kymograph now shows a trace of the spindle center with respect 
+
+    to the cell center.</li>
+
+</ul>
+
+<h3>Version 01.27:</h3>
+
+<ul>
+
+  <li> Added initial version of kymograph (misnamed kinograph) that records traces 
+
+    along the centerline between two spots. This is intended for use in cellular 
+
+    mitosis by placing the first two spots to be tracked on the centrosomes.</li>
+
+</ul>
+
+<h3>Version 01.26:</h3>
+
+<ul>
+
+  <li> Added the output of .csv log files in addition to the .vrpn log files. 
+
+    These are in a text format that can be read by several spreadsheet and analysis 
+
+    programs.</li>
+
+  <li>Added support for a group of three kernels in a line that will track bars 
+
+    in the image.</li>
+
+</ul>
+

@@ -1,0 +1,255 @@
+[General]
+FileVersion=1.1
+FileType=QSetupIniFile
+ComposerVersion=5.0.0.0
+OperatingSystem=WinXP  5.1  2600 (Service Pack 2)
+
+[Project]
+ProjectName=cismm_video_optimizer
+ProjectDirectory=F:\taylorr\STM\src\video\cismm_video_optimizer
+NonSFXDirectory=F:\taylorr\STM\src\video\cismm_video_optimizer\NonSFX
+MediaFileName=cismm_video_optimizer_01_01
+CopyMediaToFName=
+ProgramDescriptiveName=CISMM Video Optimizer
+ProgramVersion=01.01
+CompanyName=UNC Nanoscale Science Research Group
+ProgVerLiveUpdate=0
+RegisterAsApp=1
+LanguageFlag=1
+LanguageNames=|
+UseNonSFXDir=0
+ClrNonSFXDir=0
+CompressNonSFXFiles=0
+ForceCopyNonSFXFiles=0
+CompressionLevel=0
+
+[Display]
+AddSetupBackground=1
+SetupBackground3D=0
+TopLabel=1
+TopLabelVer=1
+TopLabel2=0
+BottomLabel=0
+TopLabelText="CISMM Video Optimizer"
+TopLabel2Text=""
+BottomLabelText="Copyright © 2004"
+BackgroundDesign=Windmill (Right)
+TopBackgroundColor=16758613
+BottomBackgroundColor=11613445
+AddBottomColor=1
+DlgBmp3DFrame=1
+DialogStyle=Modern
+AddDialogBitmap=1
+DialogBitmapFileName=F:\taylorr\STM\src\video\cismm_video_optimizer\icon64.bmp
+AddBackgroundBitmap=0
+BackgroundBitmapFileName=
+BackgroundBitmapLocation=|Top/Left|0|0|
+AddBackgroundWave=0
+BgBmpTransparent=0
+BackgroundWaveFileName=
+BackgroundWaveLocation=|Center|300|0|
+BackgroundWaveLoop=1
+BackgroundWaveDelay=0
+AddBackgroundWaveSlider=1
+BackgroundWaveSliderType=Fixed
+TopLabelSide=Left
+TopLabel2Side=Left
+BottomLabelSide=Left
+DialogLocation=|Center|0|0|
+TopLabelFont=|Tahoma|32|16777215|1|0|1|0|
+TopLabel2Font=|Tahoma|16|16777215|1|0|1|0|
+BottomLabelFont=|Tahoma|10|16777215|1|0|1|0|
+CompanyUrl=www.cs.unc.edu/nano
+
+[TargetExe]
+TargetDirectory=<AbsoluteDir>C:\NSRG\bin\cismm_video_optimizer_v01.01
+CommonDirectory=<AbsoluteDir>C:\NSRG\external
+AuxDirectory=<FontDir>
+TargetExeName=<Application Folder>\cismm_video_optimizer.bat
+RunTimeDir_1=|||||||1||||1||1|<ProgramFilesDir>|||||
+RunTimeDir_2=|||||||1||||1||1|<ProgramFilesDir>|||||
+RunTimeDir_3=|||||||1||||1||1|<ProgramFilesDir>|||||
+
+[Dialogs]
+SelectedDialogs=Welcome,License,*Readme,User Information,*Destination,*Setup Type,*Custom,Associate,*Shortcuts,*Confirm Setup,*Copy Files,*Complete
+LicenseTextFile=
+ReadmeTextFile=F:\taylorr\STM\src\video\cismm_video_optimizer\Installation_README.txt
+ReadmeTextFile2=
+UseNotepad=0
+SpaceReqOnDriveCheckBox=0
+SpaceReqOnDrive=
+RequestUserName=1
+RequestCompanyName=1
+RequestSerialNumberAlso=0
+MandatoryUserName=1
+MandatoryCompanyName=1
+MandatorySerialNumber=1
+RequestSerialCheckDLL=0
+SerialCheckDll=
+RequestPredefinedSerial=0
+CaseSensitiveSerial=0
+RequestTokenizedSerial=0
+CDSetup=0
+ShowCompactSetupAlso=1
+ForcePartialSetup=0
+ShowProgBar2=0
+SilentSetup=0
+ProposeReadme=0
+ProposeLaunch=1
+ProposeRestart=0
+ProposeReadmeChecked=0
+ProposeLaunchChecked=0
+ShowCloseRecommendation=0
+ShowAdwareDisclaimer=0
+ShowCopyrightWarning=0
+
+[Shortcuts]
+AddMainShortCut=1
+ForceRemoveShortcutFolder=0
+ProgramLinkFolder=NSRG\CISMM Video Optimizer v01.01
+ProgramLinkName=Cismm_video_optimizer
+ProgramLinkParam=
+ProgramLinkWorkDir=<Application Folder>
+ProgramLinkRun=Minimized
+ProgramLinkIconFile=<Application Folder>\cismm_video_optimizer.ico
+ProgramLinkIconNum=0
+StartMenuLinkName=CISMM Video Optimizer
+DesktopLinkName=CISMM Video Optimizer v01.01
+SendToLinkName=CISMM Video Optimizer
+StartUpLinkName=CISMM Video Optimizer
+QuickLaunchLinkName=CISMM Video Optimizer
+StartMenuCheckBox=0
+DesktopCheckBox=1
+SendToCheckBox=0
+StartUpCheckBox=0
+QuickLaunchCheckBox=0
+StartMenuChecked=1
+DesktopChecked=1
+SendToChecked=1
+StartUpChecked=1
+QuickLaunchChecked=1
+SetAllUsers=1
+AddUninstallShortcut=1
+Item-000=*|CISMM Video Optimizer Documentation|<Application Folder>\cismm_video_optimizer.html|NSRG\CISMM Video Optimizer v01.01|||Normal Window||0|1||0|
+
+[Billboard]
+AddBillboard=1
+Item-000=|1|0|0|1|0|Center|0|0|8388608|16711680|Verdana|14|16777215|1|0|360|360|0|1|
+
+[SplitSetup]
+SplitSetup=0
+ForceDownload=1
+DownloadURL_SPLIT=http://
+ConfirmSplitDownload=0
+
+[AutoUpdate]
+AutoUpdate=0
+RunAutoUpdate=1
+AddAutoUpdateShortcut=1
+ReqConfirmDownload=0
+ReqConfirmInstall=0
+ShutDownMethod=Don't Shut Down
+BackgroundUpdate=0
+RestartProcess=0
+InformFinish=0
+UpdateProjectFName=
+DownloadURL_UPDATE=http:
+NameOfUpdateFile=
+RunningProcess=
+VersionOriginal=1
+ValidVersions=
+VersionNew=1
+ReAskDays=0
+AutoUpdateProbeSpin=1
+AutoUpdateProbeText=Only at Agent Start
+
+[Switches]
+OperatingSystems=98,ME,NT,2000,XP,2003
+OverwriteFlag=1
+CreateUnInstall=1
+ScrambleUnInstallData=0
+HideErrMsgUnInstall=0
+HideLogBtnUnInstall=0
+AddRemoveProgramsUnInstall=1
+AddRemoveButtonButtonInstall=0
+UnInstallExeStampSwitch=0
+UnInstallExeStamp=
+CreateLogFile=0
+ConfirmExtract=0
+TestAdminRights=0
+TestAdminRightsUnInstall=0
+SetAllowFullAccess=1
+TestDotNetFramework=0
+TestExeBeforeInstall=0
+TestExeBeforeUnInstall=0
+AutorunCreateInfFile=0
+AutorunTest=0
+AutorunStartApp=0
+
+[Registry]
+
+[IniFile]
+
+[Environment]
+
+[Association]
+OpenWith=0
+OpenWithName=
+OpenWithMenuText=Open with
+OpenWithExtensions=
+
+[VerInfo]
+CopyFromExe=0
+DefineManually=0
+Item-001=|Comments||
+Item-002=|CompanyName||
+Item-003=|FileDescription||
+Item-004=|FileVersion||
+Item-005=|InternalName||
+Item-006=|LegalCopyright||
+Item-007=|LegalTrademarks||
+Item-008=|OriginalFilename||
+Item-009=|ProductName||
+Item-010=|ProductVersion||
+CopyIconFromTargetExe=0
+CopyIconFromOtherApp=0
+OtherIconAppFileName=
+Spin1=0
+Spin2=0
+
+[Execute]
+ExecuteDllCheckBox=0
+ExecutionDllFileName=
+Exec-000=*||ImageMagick Installer|Before Destination|10|Conditional|0|1|File Found||1||0|Ask Yes/No||0||0|File Found||1|Run Executable and Wait||0|Display Message||0|Display Message||0|Display Message||
+Arg-000-1=<AbsoluteDir>C:\Program Files\ImageMagick-5.5.7-Q16\README.txt
+Arg-000-2==
+Arg-000-5=Do you want to install ImageMagick 5.5.7 16-bit version so that you can open stacks of image files?
+Arg-000-6==
+Arg-000-10==
+Arg-000-13=<SrcDir>ImageMagick-5.5.7-Q16-windows-dll.exe
+Delivery-000=*F:\taylorr\STM\src\video\video_spot_tracker\ImageMagick-5.5.7-Q16-windows-dll.exe
+
+[GroupNames]
+Group-000=Main Group
+Group-001=Documentation
+
+[Group-000]
+TypicalCompactData=15
+Description=This is the main group of files
+Item-000=Fol*<Application Folder>[0]
+Item-001=Fil*C:\nsrg\external\pc_win32\bin\glut32.dll
+Item-002=Fil*F:\taylorr\STM\src\video\cismm_video_optimizer.tcl
+Item-003=Fil*F:\taylorr\STM\src\video\cismm_video_optimizer\cismm_video_optimizer.bat
+Item-004=Fil*F:\taylorr\STM\src\video\cismm_video_optimizer\cismm_video_optimizer.ico
+Item-005=Fil*F:\taylorr\STM\src\video\Release\cismm_video_optimizer.exe
+Item-006=Fil*F:\taylorr\STM\src\video\russ_widgets.tcl
+
+[Group-001]
+TypicalCompactData=5
+Description=
+Item-000=Fol*<Application Folder>[0]
+Item-001=Fil*F:\taylorr\STM\src\video\cismm_video_optimizer\cismm_video_optimizer.html
+Item-002=Fil*F:\taylorr\STM\src\video\cismm_video_optimizer\GUI.jpg
+Item-003=Fil*F:\taylorr\STM\src\video\cismm_video_optimizer\kernel.jpg
+Item-004=Fil*F:\taylorr\STM\src\video\cismm_video_optimizer\log.jpg
+Item-005=Fil*F:\taylorr\STM\src\video\cismm_video_optimizer\red_green_blue.jpg
