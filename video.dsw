@@ -408,7 +408,7 @@ Package=<4>
 
 ###############################################################################
 
-Project: "tempimager_directx_dll"=.\tempimager_directx_dll.dsp - Package Owner=<4>
+Project: "imager_directx_dll"=.\imager_directx_dll.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -498,7 +498,7 @@ Package=<4>
 
 ###############################################################################
 
-Project: "video_tempimager_server"=.\video_tempimager_server.dsp - Package Owner=<4>
+Project: "video_imager_server"=.\video_imager_server.dsp - Package Owner=<4>
 
 Package=<5>
 {{{

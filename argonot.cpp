@@ -1,5 +1,5 @@
 //----------------------------------------------------------------------------
-//   This program reads from a TempImager server and implements several image-
+//   This program reads from a VRPN Imager server and implements several image-
 // adjustment techniques to support the UNC NIH Resource, Computer-Integrated
 // Systems for Microscopy and Manipulation (CISMM).
 //   Supported features include:
@@ -22,7 +22,7 @@
 #include <GL/gl.h>
 #include <glut.h>
 #include <vrpn_Connection.h>
-#include <vrpn_TempImager.h>
+#include <vrpn_Imager.h>
 
 //--------------------------------------------------------------------------
 // Version string for this program
@@ -33,7 +33,7 @@ const char *Version_string = "01.00";
 // global variables to pass information between the various callback
 // handlers.
 
-vrpn_TempImager_Remote  *g_ti;		//< TempImager client object
+vrpn_Imager_Remote  *g_ti;		//< TempImager client object
 bool	  g_got_dimensions = false;	//< Heard image dimensions from server?
 bool	  g_ready_for_region = false;	//< Everything set up to handle a region?
 unsigned char *g_image = NULL;		//< Pointer to the storage for the image
@@ -51,7 +51,7 @@ Tclvar_int_with_button	g_clear_background("clear_background", "");
 Tclvar_int_with_button	g_quit("quit","");
 
 //----------------------------------------------------------------------------
-// TempImager callback handlers.
+// Imager callback handlers.
 
 void  cleanup(void)
 {
@@ -81,7 +81,7 @@ void  VRPN_CALLBACK handle_region_change(void *, const vrpn_IMAGERREGIONCB info)
     int r,c;	//< Row, Column
     int ir;	//< Inverted Row
     int offset,RegionOffset;
-    const vrpn_TempImager_Region* region=info.region;
+    const vrpn_Imager_Region* region=info.region;
     double  intensity_gain;
     double  intensity_offset;
 
@@ -402,11 +402,11 @@ int main(int argc, char **argv)
 	  return -1;
   }
 
-  // Open the TempImager client and set the callback
+  // Open the Imager client and set the callback
   // for new data and for information about the size of
   // the image.
   printf("Opening %s\n", device_name);
-  g_ti = new vrpn_TempImager_Remote(device_name);
+  g_ti = new vrpn_Imager_Remote(device_name);
   g_ti->register_description_handler(NULL, handle_description_message);
   g_ti->register_region_handler(NULL, handle_region_change);
 

@@ -282,7 +282,7 @@ bool  file_stack_server::write_memory_to_ppm_file(const char *filename, int gain
 }
 
 /// Send whole image over a vrpn connection
-bool  file_stack_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
+bool  file_stack_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
 {
   ///XXX;
   fprintf(stderr,"file_stack_server::send_vrpn_image(): Not yet implemented\n");
@@ -611,7 +611,7 @@ bool  Metamorph_stack_server::write_memory_to_ppm_file(const char *filename, int
 }
 
 /// Send whole image over a vrpn connection
-bool  Metamorph_stack_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
+bool  Metamorph_stack_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
 {
   ///XXX;
   fprintf(stderr,"Metamorph_stack_server::send_vrpn_image(): Not yet implemented\n");

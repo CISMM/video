@@ -23,7 +23,7 @@ public:
   virtual bool  write_memory_to_ppm_file(const char *filename, int gain = 1, bool sixteen_bits = false) const;
 
   /// Send whole image over a vrpn connection
-  virtual bool  send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan);
+  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan);
 
 protected:
   unsigned short _binMin, _binMax;//< Range of values that binning can be set to

@@ -224,7 +224,7 @@ bool  edt_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &val
 }
 
 /// Send whole image over a vrpn connection
-bool  edt_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
+bool  edt_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
 {
   // Make sure we have a valid, open device
   if (!_status) { return false; };
@@ -239,11 +239,14 @@ bool  edt_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_
 
   // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION).
   int nRowsPerRegion=vrpn_IMAGER_MAX_REGIONu8/_num_columns;
+  svr->send_begin_frame(0, _num_columns-1, 0, _num_rows-1);
   for(y=0; y<_num_rows; y+=nRowsPerRegion) {
     svr->send_region_using_base_pointer(svrchan,0,_num_columns-1,y,__min(_num_rows,y+nRowsPerRegion)-1,
       d_buffer, 1, _num_columns, _num_rows, true);
     svr->mainloop();
   }
+  svr->send_end_frame(0, _num_columns-1, 0, _num_rows-1);
+  svr->mainloop();
 
   // Mainloop the server connection (once per server mainloop, not once per object).
   svrcon->mainloop();
@@ -404,11 +407,37 @@ bool  edt_pulnix_raw_file_server::write_memory_to_ppm_file(const char *filename,
 }
 
 /// Send whole image over a vrpn connection
-bool  edt_pulnix_raw_file_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
+// XXX This needs to be tested
+bool  edt_pulnix_raw_file_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
 {
-  ///XXX;
-  fprintf(stderr,"edt_pulnix_raw_file_server::send_vrpn_image(): Not yet implemented\n");
-  return false;
+    _minX=_minY=0;
+    _maxX=_num_columns - 1;
+    _maxY=_num_rows - 1;
+    read_image_to_memory(_minX, _maxX, _minY, _maxY, (int)g_exposure);
 
-  return true;
+    if (!_status) {
+      return false;
+    }
+    if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
+      fprintf(stderr,"directx_camera_server::get_pixel_from_memory(): No image in memory\n");
+      return false;
+    }
+
+    // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION)
+    unsigned  num_x = get_num_columns();
+    unsigned  num_y = get_num_rows();
+    int nRowsPerRegion=vrpn_IMAGER_MAX_REGIONu8/num_x;
+    unsigned y;
+    svr->send_begin_frame(0, num_x-1, 0, num_y-1);
+    for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
+      svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1,
+	(vrpn_uint8 *)d_buffer, 1, get_num_columns());
+      svr->mainloop();
+    }
+    svr->send_end_frame(0, num_x-1, 0, num_y-1);
+    svr->mainloop();
+
+    // Mainloop the server connection (once per server mainloop, not once per object).
+    svrcon->mainloop();
+    return true;
 }

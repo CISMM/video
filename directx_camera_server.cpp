@@ -726,7 +726,7 @@ bool	directx_camera_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_u
   return true;
 }
 
-bool directx_camera_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
+bool directx_camera_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
 {
     unsigned y;
 
@@ -738,11 +738,14 @@ bool directx_camera_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Syn
 
     // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION).
     int nRowsPerRegion=vrpn_IMAGER_MAX_REGIONu8/_num_columns;
+    svr->send_begin_frame(0, _num_columns-1, 0, _num_rows-1);
     for(y=0; y<_num_rows; y+=nRowsPerRegion) {
       svr->send_region_using_base_pointer(svrchan,0,_num_columns-1,y,__min(_num_rows,y+nRowsPerRegion)-1,
 	_buffer+2 /* Send the red channel */, 3, 3*_num_columns, _num_rows, true);
       svr->mainloop();
     }
+    svr->send_end_frame(0, _num_columns-1, 0, _num_rows-1);
+    svr->mainloop();
 
     // Mainloop the server connection (once per server mainloop, not once per object).
     svrcon->mainloop();

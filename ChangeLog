@@ -1,3 +1,27 @@
+2004-12-07  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* EDT_directx_dll.cpp : Print statement made clearer.
+	* SEM_camera_server.cpp : Added frame begin/end.
+	* directx_camera_server.cpp : Same.
+	* edt_server.cpp : Same.
+	* file_stack_server.cpp : Same.
+	* roper_server.cpp : Same.
+	* SEM_camera_server.h : Switched from TempImager to Imager.
+	* argonot.cpp : Same.
+	* base_camera_server.h : Same.
+	* diaginc_server.h : Same.
+	* directx_camera_server.h : Same.
+	* edt_server.h : Same.
+	* roper_server.h : Same.
+	* file_stack_server.h : Same.
+	* roper_server.h : Same.
+	* diaginc_server.cpp : Added code to send over Imager.
+	* imager_direcdtx_dll.cpp : Moved from tempimager_directx_dll.cpp
+	* imager_direcdtx_dll.dsp : Moved from tempimager_directx_dll.dsp
+	* make_test_image.dsp : Told where to find vrpn.lib
+	* manual_capture.cpp : Added VRPN_CALLBACK
+	* video.dsw : Changed tempimager projects to imager projects
+
 2004-11-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* base_camera_server.cpp : Override the default copy

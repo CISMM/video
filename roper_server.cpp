@@ -547,7 +547,7 @@ bool	roper_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &va
   return true;
 }
 
-bool roper_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
+bool roper_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
 {
     _minX=_minY=0;
     _maxX=_num_columns - 1;
@@ -581,11 +581,14 @@ bool roper_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized
     // For these, stride will be 1 and offset will be 0, and the code will use memcpy() to copy the values.
     const int stride = 2;
     const int offset = 1;
+    svr->send_begin_frame(0, _num_columns-1, 0, _num_rows-1);
     for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
       svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1,
 	(uns8 *)_memory + offset, stride, num_x * stride);
       svr->mainloop();
     }
+    svr->send_end_frame(0, _num_columns-1, 0, _num_rows-1);
+    svr->mainloop();
 
     // Mainloop the server connection (once per server mainloop, not once per object).
     svrcon->mainloop();

@@ -117,9 +117,6 @@ CEDTPushPin::CEDTPushPin(HRESULT *phr, CSource *pFilter)
   dialog("CEDTPushPin::CEDTPushPin","Entering constructor");
 #endif
 
-  // Open the TempImager client and set the callback
-  // for new data and for information about the size of
-  // the image.
 #ifdef	DEBUG_ON
   dialog("CEDTPushPin::CEDTPushPin", "opening device");
 #endif

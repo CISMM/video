@@ -4,7 +4,7 @@
 #include  <string.h>
 #include  <stdio.h>
 #include  <vrpn_Connection.h>
-#include  <vrpn_TempImager.h>
+#include  <vrpn_Imager.h>
 #include  "roper_server.h"
 #include  "diaginc_server.h"
 #include  "directx_camera_server.h"
@@ -87,7 +87,7 @@ void  mainloop_camera_code(void)
 // This section contains code that does what the server should do
 
 vrpn_Synchronized_Connection  *svrcon;	//< Connection for server to talk on
-vrpn_TempImager_Server	      *svr;	//< Image server to be used to send
+vrpn_Imager_Server	      *svr;	//< Image server to be used to send
 int			      svrchan;	//< Server channel index for image data
 
 bool  init_server_code(const char *outgoing_logfile_name)
@@ -97,9 +97,9 @@ bool  init_server_code(const char *outgoing_logfile_name)
     fprintf(stderr, "Could not open server connection\n");
     return false;
   }
-  if ( (svr = new vrpn_TempImager_Server("TestImage", svrcon,
+  if ( (svr = new vrpn_Imager_Server("TestImage", svrcon,
     g_camera->get_num_columns(), g_camera->get_num_rows())) == NULL) {
-    fprintf(stderr, "Could not open TempImager Server\n");
+    fprintf(stderr, "Could not open Imager Server\n");
     return false;
   }
   if ( (svrchan = svr->add_channel("value", "unsigned16bit", 0, (float)(pow(2,16)-1))) == -1) {
@@ -208,7 +208,7 @@ int main(int argc, char *argv[])
   // Set up handler for all these signals to set done
   signal(SIGINT, handle_cntl_c);
 
-  printf("video_tempImager_server version %02d.%02d\n", MAJOR_VERSION, MINOR_VERSION);
+  printf("video_vrpnImager_server version %02d.%02d\n", MAJOR_VERSION, MINOR_VERSION);
 
   if (!init_camera_code(devicename, devicenum)) { return -1; }
   printf("Opened camera\n");

@@ -5,7 +5,7 @@
 #include <math.h>    // For floor()
 #include  <vrpn_Types.h>
 #include  <vrpn_Connection.h>
-#include  <vrpn_TempImager.h>
+#include  <vrpn_Imager.h>
 #include  <string>
 #include  <vector>
 
@@ -119,7 +119,7 @@ public:
     const char *magick_files_dir = "C:/nsrg/external/pc_win32/bin/ImageMagick-5.5.7-Q16/MAGIC_DIR_PATH") const;
 
   /// Send whole image over a vrpn connection
-  virtual bool  send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan) {return false;};
+  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan) {return false;};
 };
 
 //----------------------------------------------------------------------------

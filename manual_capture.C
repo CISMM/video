@@ -1,5 +1,5 @@
 //----------------------------------------------------------------------------
-// Example program to read pixels from a vrpn_TempImager server and display
+// Example program to read pixels from a vrpn_Imager server and display
 // them in an OpenGL window.  It assumes that the size of the imager does
 // not change during the run.  It asks for unsigned 8-bit pixels.
 
@@ -12,7 +12,7 @@
 #include <GL/gl.h>
 #include <GL/glut.h>
 #include <vrpn_Connection.h>
-#include <vrpn_TempImager.h>
+#include <vrpn_Imager.h>
 #include <vrpn_Analog.h>
 
 //----------------------------------------------------------------------------
@@ -23,7 +23,7 @@
 bool			g_done = false;	//< Time to exit the program?
 vrpn_Connection		*g_image_connection;	//< Set if logging is enabled.
 vrpn_Connection		*g_focus_connection;	//< Set if logging is enabled.
-vrpn_TempImager_Remote  *g_ti;		//< TempImager client object
+vrpn_Imager_Remote  *g_ti;		//< Imager client object
 vrpn_Analog_Remote	*g_focus;	//< Focus client object
 bool g_got_focus = false;		//< Heard focus from the server?
 float g_focus_value;			//< The last focus we heard
@@ -33,7 +33,7 @@ unsigned char *g_image = NULL;		//< Pointer to the storage for the image
 bool g_already_posted = false;		//< Posted redisplay since the last display?
 
 //----------------------------------------------------------------------------
-// TempImager callback handlers.
+// Imager callback handlers.
 
 void  VRPN_CALLBACK handle_description_message(void *, const struct timeval)
 {
@@ -58,7 +58,7 @@ DWORD ReportInterval=5000;
 // New pixels coming; fill them into the image and tell Glut to redraw.
 void  VRPN_CALLBACK handle_region_change(void *, const vrpn_IMAGERREGIONCB info)
 {
-    const vrpn_TempImager_Region  *region=info.region;
+    const vrpn_Imager_Region  *region=info.region;
 
     vrpn_int32 nCols=g_ti->nCols();
     vrpn_int32 nRows=g_ti->nRows();
@@ -211,11 +211,11 @@ int main(int argc, char **argv)
     g_focus_connection = vrpn_get_connection_by_name(focus_device_name, focus_logfile_name);
   }
 
-  // Open the TempImager client and set the callback
+  // Open the Imager client and set the callback
   // for new data and for information about the size of
   // the image.
   printf("Opening %s\n", image_device_name);
-  g_ti = new vrpn_TempImager_Remote(image_device_name);
+  g_ti = new vrpn_Imager_Remote(image_device_name);
   g_ti->register_description_handler(NULL, handle_description_message);
   g_ti->register_region_handler(NULL, handle_region_change);
 

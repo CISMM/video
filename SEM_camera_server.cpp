@@ -467,7 +467,7 @@ bool	SEM_camera_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint1
 }
 
 // XXX This routine needs to be tested.
-bool SEM_camera_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
+bool SEM_camera_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
 {
     _minX=_minY=0;
     _maxX=_num_columns - 1;
@@ -487,11 +487,14 @@ bool SEM_camera_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchro
     unsigned  num_y = get_num_rows();
     int nRowsPerRegion=vrpn_IMAGER_MAX_REGIONu16/num_x;
     unsigned y;
+    svr->send_begin_frame(0, num_x-1, 0, num_y-1);
     for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
       svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1,
 	(vrpn_uint16 *)_memory, 1, get_num_columns());
       svr->mainloop();
     }
+    svr->send_end_frame(0, num_x-1, 0, num_y-1);
+    svr->mainloop();
 
     // Mainloop the server connection (once per server mainloop, not once per object).
     svrcon->mainloop();

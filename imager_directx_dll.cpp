@@ -8,7 +8,7 @@
 // is stopped, though not spitting out any images.
 
 //----------------------------------------------------------------------------
-//   This program reads from a TempImager server and implements a Microsoft
+//   This program reads from a Imager server and implements a Microsoft
 // DirectShow source filter that produces what it receives as input from
 // VRPN as a video source that can be linked to by DirectShow applications.
 //   This is a DLL that must be registered using the regsvr32.exe program.
@@ -19,7 +19,7 @@
 //#define	DEBUG_ON
 
 #include <vrpn_Connection.h>
-#include <vrpn_TempImager.h>
+#include <vrpn_Imager.h>
 #include <streams.h>
 
 //--------------------------------------------------------------------------
@@ -85,13 +85,13 @@ protected:
   // as long as the filter is running or paused.
   HRESULT FillBuffer(IMediaSample *pSample);
 
-  vrpn_TempImager_Remote  *m_ti;    //< TempImager client object
+  vrpn_Imager_Remote  *m_ti;    //< TempImager client object
   bool	  m_ready_for_region;	    //< Everything set up to handle a region?
   bool	  m_ready_to_send_region;   //< Are we trying to fill a buffer?
   unsigned char *m_image;	    //< Pointer to the storage for the image
 
-  static  void  handle_region_change(void *userdata, const vrpn_IMAGERREGIONCB info);
-  static  void  handle_description_message(void *userdata, const struct timeval);
+  static  void  VRPN_CALLBACK handle_region_change(void *userdata, const vrpn_IMAGERREGIONCB info);
+  static  void  VRPN_CALLBACK handle_description_message(void *userdata, const struct timeval);
 };
 
 class CVRPNSource : public CSource {
@@ -120,7 +120,7 @@ CVRPNPushPin::CVRPNPushPin(HRESULT *phr, CSource *pFilter)
   dialog("CVRPNPushPin::CVRPNPushPin","Entering constructor");
 #endif
 
-  // Open the TempImager client and set the callback
+  // Open the Imager client and set the callback
   // for new data and for information about the size of
   // the image.
 #ifdef	DEBUG_ON
@@ -129,7 +129,7 @@ CVRPNPushPin::CVRPNPushPin(HRESULT *phr, CSource *pFilter)
     dialog("CVRPNPushPin::CVRPNPushPin", out);
   }
 #endif
-  m_ti = new vrpn_TempImager_Remote(device_name);
+  m_ti = new vrpn_Imager_Remote(device_name);
   m_ti->register_description_handler(this, handle_description_message);
   m_ti->register_region_handler(this, handle_region_change);
 
@@ -191,7 +191,7 @@ void  CVRPNPushPin::handle_region_change(void *userdata, const vrpn_IMAGERREGION
     CVRPNPushPin  *me = (CVRPNPushPin*)(userdata);  //< Userdata is a pointer to the object
     int r,c;	//< Row, Column
     int offset,RegionOffset;
-    const vrpn_TempImager_Region* region=info.region;
+    const vrpn_Imager_Region* region=info.region;
 
     int infoLineSize=region->d_cMax-region->d_cMin+1;
     vrpn_int32 nCols=me->m_ti->nCols();
@@ -537,7 +537,7 @@ CUnknown *WINAPI CVRPNSource::CreateInstance(IUnknown *pUnk, HRESULT *phr)
 }
 
 
-// tempimager_directx_dll.cpp : Defines the entry point for the DLL application.
+// imager_directx_dll.cpp : Defines the entry point for the DLL application.
 //
 
 //----------------------------------------------------------------------------
