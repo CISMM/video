@@ -1,3 +1,15 @@
+2003-07-18  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* directx_camera_server.cpp : Changed the code to use the callback
+		mechanism from the frame capture filter rather than asking
+		it for the current frame; this only processes each frame
+		one time, and it set the replay rate to a maximum of the
+		image-generation rate.
+	* directx_camera_server.h : Same.
+	* directx_videofile_server.cpp : Same.
+	* directx_videofile_server.h : Same.
+	* video_spot_tracker.cpp : Changed comments and version number.
+
 2003-06-17  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Lets it compile in the new-better

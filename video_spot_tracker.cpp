@@ -1,22 +1,4 @@
-//XXX The camera code seems to stop updating the video after about
-//    five minutes of tracking.  The video in the window stops being
-//    updated, the tracking optimization doesn't change, but the rest
-//    of the UI keeps running (and the VRPN connect/disconnect).
-//    After a while using the camera, it make DirectX think that there
-//    was not a camera anymore.
-//    This does not happen with the USB-connected Logitech camera,
-//    it runs fine for many minutes, both with video showing and small
-//    range (40 fps) and with video off (60fps).
-//    It does not use up more GDI objects when it is locked up.  It
-//    does seem to drop the camera offline.  Video doesn't have to be
-//    off for this to happen.  This is using DirectX 9 on the laptop
-//    and the Dazzle video converter.  Jeremy Cribb's Sony laptop.
-//    The AMCAP example application runs fine for a long time.  Also
-//    AMCAP needs to be run ahead of time to "turn on" the video from
-//    the device -- it stays on after the program exits.  Maybe it is
-//    timing out somehow?
-//XXX Throttle to a requested frame rate (60fps, 30fps), or even better,
-//    make directx driver not re-use existing video frames!
+//XXX Doesn't get any images from Betty card; times out.
 //XXX Would like to do multiple spots at the same time.
 //XXX Would like to be able to specify the microns-per-pixel value
 //    and have it stored in the log file.
@@ -29,6 +11,24 @@
 //XXX Pause seems to be broken on the video playback -- it skips to the end.
 //XXX All of the Y coordinates seem to be inverted in this code compared
 //    to the image-capture code.  Mouse, display, and video clipping.
+//XXX The camera code seems to stop updating the video after about
+//    five minutes of tracking.  The video in the window stops being
+//    updated, the tracking optimization doesn't change, but the rest
+//    of the UI keeps running (and the VRPN connect/disconnect).
+//    After a while using the camera, it make DirectX think that there
+//    was not a camera anymore.
+//    This does not happen with the USB-connected Logitech camera,
+//    it runs fine for many minutes, both with video showing and small
+//    range (40 fps) and with video off (60fps).
+//    This does not happen on the lab machine running Windows 2000.
+//    It does not use up more GDI objects when it is locked up.  It
+//    does seem to drop the camera offline.  Video doesn't have to be
+//    off for this to happen.  This is using DirectX 9 on the laptop
+//    and the Dazzle video converter.  Jeremy Cribb's Sony laptop.
+//    The AMCAP example application runs fine for a long time.  Also
+//    AMCAP needs to be run ahead of time to "turn on" the video from
+//    the device -- it stays on after the program exits.  Maybe it is
+//    timing out somehow?
 
 #include <math.h>
 #include <stdio.h>
@@ -53,7 +53,7 @@
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.05";
+const char *Version_string = "01.07";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make

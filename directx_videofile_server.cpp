@@ -93,7 +93,7 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
   // Create COM and DirectX objects needed to access a video stream.
 
   // Initialize COM.  This must have a matching uninitialize in
-  // the descructor.
+  // the destructor.
   CoInitialize(NULL);
 
   // Create the filter graph manager
@@ -118,6 +118,14 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
   _pBuilder->SetFiltergraph(_pGraph);    
 
   //-------------------------------------------------------------------
+  // Construct the sample grabber callback handler that will be used
+  // to receive image data from the sample grabber.
+  if ( (_pCallback = new directx_samplegrabber_callback()) == NULL) {
+    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't create sample grabber callback handler (out of memory?)\n");
+    return false;
+  }
+
+  //-------------------------------------------------------------------
   // Construct the sample grabber that will be used to snatch images from
   // the video stream as they go by.
 
@@ -133,6 +141,9 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
   mt.majortype = MEDIATYPE_Video;	  // Ask for video media producers
   mt.subtype = MEDIASUBTYPE_RGB24;	  // Ask for 8 bit RGB
   _pGrabber->SetMediaType(&mt);
+
+  // Set the callback, where '0' means 'use the SampleCB callback'
+  _pGrabber->SetCallback(_pCallback, 0);
 
   //-------------------------------------------------------------------
   // Create a NULL renderer that will be used to discard the video frames
@@ -174,19 +185,17 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
   ConnectTwoFilters(_pGraph, _pSampleGrabberFilter, pNull);
   
   //-------------------------------------------------------------------
-  // Set the reference clock to be the vido file reader.  The default is
-  // to use the renderer, but the NULL renderer seems to speed through the
-  // file like lightning (when viewed in the graph editor program that comes
-  // with the DirectX SDK).
-  //XXX do we need this?pMediaFilter->SetSyncSource(NULL); // Turn off the reference clock.
-  // This version sets it without having to query a new interface.  It doesn't seem to make
-  // any difference with the Hauppauge card (still only grabs first frame).
-  //_pSampleGrabberFilter->SetSyncSource(_pSampleGrabberFilter);
-  //pNull->SetSyncSource(NULL);
+  // We don't need a reference clock for playout because we're going
+  // to limit playback rate by controlling how fast we pass frames through
+  // the callback handler.  We can't set a playout rate anyway, because
+  // the NULL renderer won't do this for us.  Recall that the frames come
+  // out of the file reader as fast as it can process them, and only
+  // block up if the downstream buffers all fill up.
+  pNull->SetSyncSource(NULL); // Turn off the reference clock.
   
   //-------------------------------------------------------------------
-  // Find the control that lets you seek in the media (rewind uses this).
-  // Find the control that lets us single-step the media and make sure it works.
+  // Find the control that lets you seek in the media (rewind uses this
+  // to restart at the beginning of the file).
 
   if (FAILED(_pGraph->QueryInterface(IID_IMediaSeeking, (void **)&_pMediaSeeking))) {
     fprintf(stderr,"directx_videofile_server::open_and_find_parameters(): Can't create media seeker\n");
@@ -194,20 +203,6 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
     pNull->Release();
     return false;
   }
-  if (FAILED(_pGraph->QueryInterface(IID_IVideoFrameStep, (void **)&_pFrameStep))) {
-    fprintf(stderr,"directx_videofile_server::open_and_find_parameters(): Can't create frame stepper\n");
-    pSrc->Release();
-    pNull->Release();
-    return false;
-  }
-  if (S_OK != _pFrameStep->CanStep(0L, NULL)) {
-    _pFrameStep->Release();
-    _pFrameStep = NULL;
-    fprintf(stderr,"directx_videofile_server::open_and_find_parameters(): Warning: Can't use single-step on this file, frames may be lost\n");
-  }
-  // XXX Why does this fail on all video files in this program when it always works on the
-  // "play" example application?  Another note: the video plays all the way
-  // to the end right away when I look at it in the graph editor.
 
   //-------------------------------------------------------------------
   // Find _num_rows and _num_columns, which is the maximum size.
@@ -265,8 +260,7 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
 }
 
 directx_videofile_server::directx_videofile_server(const char *filename) :
-  _pMediaSeeking(NULL),
-  _pFrameStep(NULL)
+  _pMediaSeeking(NULL)
 {
   //---------------------------------------------------------------------
   if (!open_and_find_parameters(filename)) {
@@ -311,7 +305,6 @@ directx_videofile_server::directx_videofile_server(const char *filename) :
 void  directx_videofile_server::close_device(void)
 {
   if (_pMediaSeeking) { _pMediaSeeking->Release(); }
-  if (_pFrameStep) { _pFrameStep->Release(); }
 #ifdef REGISTER_FILTERGRAPH
   if (_dwGraphRegister) {
       RemoveGraphFromRot(_dwGraphRegister);
@@ -337,11 +330,6 @@ void  directx_videofile_server::pause(void)
 {
   _pMediaControl->Stop();
   _mode = 1;  // Paused mode
-  // XXX For some reason, this skips to the end of the stream
-  // when it pauses.  If we try to read the current position
-  // and seek there, it seems to get the end position as the
-  // current position.  However, rewind seems to do the right
-  // thing.
 }
 
 /** Rewind the videofile to the beginning and pause it. */
@@ -364,16 +352,11 @@ void  directx_videofile_server::rewind(void)
     read_one_frame function.  Since not all video interfaces support the
     frame-step interface (apparently from some example code), we have
     a fallback plan to run in play mode in this case.
+    XXX Fix this code.
     */
 bool  directx_videofile_server::read_one_frame(unsigned minX, unsigned maxX,
 			      unsigned minY, unsigned maxY,
 			      unsigned exposure_millisecs)
 {
-  if (_pFrameStep) {
-    _mode = 1;
-    _pFrameStep->Step(1, NULL);
     return directx_camera_server::read_one_frame(minX, maxX, minY, maxY, exposure_millisecs);
-  } else {
-    return directx_camera_server::read_one_frame(minX, maxX, minY, maxY, exposure_millisecs);
-  }
 }

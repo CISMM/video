@@ -30,7 +30,6 @@ public:
 
 protected:
   IMediaSeeking *_pMediaSeeking;    //< Lets us seek to positions within video
-  IVideoFrameStep *_pFrameStep;	    //< Lets us single-step or take other steps in video
 #ifdef	REGISTER_FILTERGRAPH
   DWORD     _dwGraphRegister;	    //< Let us register our graph so we can see with the edtior
 #endif

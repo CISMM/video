@@ -8,6 +8,22 @@
 #include <dshow.h>
 #include <qedit.h>
 
+// This code (and the code in the derived videofile server) is
+// based on information from the DirectX Software Developers Kit, and also
+// from the book "Programming Microsoft DirectShow for Digital Video and
+// Television, Mark D. Pesce.  Microsoft Press.  ISBN 0-7356-1821-6.  This
+// book was required reading for me to understand how the filter graphs
+// run, how to control replay rate, and how to reliably grab all of the
+// samples from a stream.  The chapter on using the Sample Grabber Filter
+// (ch. 11) was particularly relevant.  Note that I did not break the seal
+// on the enclosed disk, which would require me to agree to licensing terms
+// that include me not providing anyone with copies of my modified versions
+// of the sample code in source-code format.  Instead, I used the information
+// gained in the reading of the book to write by hand my own version of this
+// code.  What a sick world we live in when example code can't be freely
+// shared.
+
+class directx_samplegrabber_callback; //< Forward declaration
 
 class directx_camera_server : public base_camera_server {
 public:
@@ -55,10 +71,62 @@ protected:
   bool	    _started_graph; //< Did we start the filter graph running?
   unsigned  _mode;	    //< Mode 0 = running, Mode 1 = paused.
 
+  // Pointer to the associated sample grabber callback object.
+  directx_samplegrabber_callback  *_pCallback;
+
   virtual bool	open_and_find_parameters(const int which, unsigned width, unsigned height);
   virtual bool	read_one_frame(unsigned minX, unsigned maxX,
 			unsigned minY, unsigned maxY,
 			unsigned exposure_millisecs);
+};
+
+// This class is used to handle callbacks from the SampleGrabber filter.  It
+// grabs each sample and holds onto it until the camera server that is associated
+// with the object comes and gets it.  The callback method in this class is
+// called in another thread, so its methods need to be guarded with semaphores.
+
+class directx_samplegrabber_callback : public ISampleGrabberCB {
+public:
+  directx_samplegrabber_callback(void);
+  ~directx_samplegrabber_callback(void);
+
+  // Boolean flag telling whether there is a sample in the image
+  // buffer ready for the application thread to consume.  Set to
+  // true by the callback when there is an image there, and back
+  // to false by the application thread when it reads the image.
+  // XXX This should be done using a semaphore to avoid having
+  // to poll in the application.
+  bool	imageReady; //< true when there is an image ready to be processed
+
+  // Boolean flag telling whether the app is done processing the image
+  // buffer so that the callback thread can return it to the filter graph.
+  // Set to true by the application when it finishes, and back
+  // to false by the callback thread when it gets a new image.
+  // XXX This should be done using a semaphore to avoid having
+  // to poll in the callback thread.
+  bool	imageDone; //< true when the app has finished processing an image
+
+  // A pointer to the image sample that has been passed to the sample
+  // grabber callback handler.
+  IMediaSample  *imageSample;
+
+  // These three methods must be defined because of the IUnknown parent class.
+  // XXX The first two are a hack to pretend that we are doing reference counting;
+  // this object must last longer than the sample grabber it is connected to in
+  // order to avoid segmentations faults.
+  STDMETHODIMP_(ULONG) AddRef(void) { return 1; }
+  STDMETHODIMP_(ULONG) Release(void) { return 2; }
+  STDMETHOD(QueryInterface)(REFIID interfaceRequested, void **handleToInterfaceRequested);
+
+  // One of the following two methods must be defined do to the ISampleGraberCB
+  // parent class; this is the way we hear from the grabber.  We implement the one that
+  // gives us unbuffered access.  Be sure to turn off buffering in the SampleGrabber
+  // that is associated with this callback handler.
+  STDMETHODIMP BufferCB(double, BYTE *, long) { return E_NOTIMPL; }
+  STDMETHOD(SampleCB)(double time, IMediaSample *sample);
+
+protected:
+  BITMAPINFOHEADER  _bitmapInfo;  //< Describes format of the bitmap
 };
 
 #endif

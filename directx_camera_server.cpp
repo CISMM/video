@@ -7,7 +7,7 @@
 // XXX See info on source and target rectangles for how to subset, if wanted.
 
 //#define HACK_TO_REOPEN
-//#define	DEBUG
+#define	DEBUG
 
 //-----------------------------------------------------------------------
 // Helper functions for editing the filter graph:
@@ -63,7 +63,6 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
 			      unsigned minY, unsigned maxY,
 			      unsigned exposure_millisecs)
 {
-  long	scrap;	//< Parameter we don't need to know the value of
   HRESULT hr;
 
   if (!_status) { return false; };
@@ -73,104 +72,83 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
   _started_graph = false;
 #endif
 
-  // If we have not yet started the media graph running, set it up to do
-  // multiple-frame capture and then set it running.
-#if 0
+  // If we have not yet started the media graph running, set up the callback
+  // handler for the sample grabber filter so that we will hear about each frame
+  // as it comes in.  Then set the filter graph running.
   if (!_started_graph) {
-    // Set the grabber do not do one-shot mode and buffering.
-    // One-shot mode means it will stop the graph from
-    // running after a single frame capture; the setting we
-    // are using means it will run continuously.
+    // Set the grabber do not do one-shot mode because that would cause
+    // it to stop the filter graph after a single frame is captured.
     _pGrabber->SetOneShot(FALSE);
-    _pGrabber->SetBufferSamples(TRUE);
+
+    // Set the grabber to not do buffering mode, because we've not implemented
+    // the handler for buffered callbacks.
+    _pGrabber->SetBufferSamples(FALSE);
 
     // Run the graph and wait until it captures a frame into its buffer
-    //XXX do we need this?pMediaFilter->SetSyncSource(NULL); // Turn off the reference clock.
-    // This version sets it without having to query a new interface.  It doesn't seem to make
-    // any difference with the Hauppauge card (still only grabs first frame).
-    //_pSampleGrabberFilter->SetSyncSource(NULL);
-
-    hr = _pMediaControl->Run();
+    switch (_mode) {
+      case 0: // Case 0 = run
+	hr = _pMediaControl->Run();
+	break;
+      case 1: // Case 1 = paused
+	hr = _pMediaControl->Pause();
+	break;
+      default:
+	fprintf(stderr, "directx_camera_server::read_one_frame(): Unknown mode (%d)\n", _mode);
+	_status = false;
+	return false;
+    }
     if ( (hr != S_OK) && (hr != S_FALSE) ){
       fprintf(stderr,"directx_camera_server::read_one_frame(): Can't run filter graph\n");
       _status = false;
       return false;
     }
+
     _started_graph = true;
   }
-#else
-  // Set the grabber one-shot mode and buffering.
-  // One-shot mode means it will stop the graph from
-  // running after a single frame capture.
-  _pGrabber->SetOneShot(TRUE);
-  _pGrabber->SetBufferSamples(TRUE);
 
-  // Run the graph and wait until it captures a frame into its buffer
-  //XXX do we need this?pMediaFilter->SetSyncSource(NULL); // Turn off the reference clock.
-  // This version sets it without having to query a new interface.  It doesn't seem to make
-  // any difference with the Hauppauge card (still only grabs first frame).  Also doesn't make
-  // any difference with the movies that don't play through.
-  //_pSampleGrabberFilter->SetSyncSource(NULL);
+  // Make sure that the grabber filter is still running; otherwise, we've
+  // gone past the end of the file or otherwise gotten to a stopping point
+  // and we'd wait forever for our image.
+  FILTER_STATE	filter_state;
+  //XXX Need to somehow let the app know when it didn't get a frame?
+  //XXX Should the app set the timeout period?
+  //XXX This lets us watch a camera stream, clamping to the video rate of the
+  //XXX camera.  It fails when trying to open the camera when it is allowed to
+  //XXX run at 320x200, but works when we set it for 640x480.  Probably a
+  //XXX misunderstanding of the video format...
+//XXX  _pGrabber->GetState(0, &filter_state);
+//XXX  if (filter_state == State_Running) {
 
-  switch (_mode) {
-    case 0: // Case 0 = run
-      hr = _pMediaControl->Run();
-      break;
-    case 1: // Case 1 = paused
-      hr = _pMediaControl->Pause();
-      break;
-    default:
-      fprintf(stderr, "directx_camera_server::read_one_frame(): Unknown mode (%d)\n", _mode);
-      _status = false;
-      return false;
-  }
-  if ( (hr != S_OK) && (hr != S_FALSE) ){
-    fprintf(stderr,"directx_camera_server::read_one_frame(): Can't run filter graph\n");
-    _status = false;
-    return false;
-  }
-#endif
-
-  // Wait until done or 1 second has passed (timeout).
-  // XXX We seem to be okay if the wait for completion returns okay or
-  // returns "Wrong state" -- which I think may mean that it has already
-  // finished.  Check to see if we are losing frames when this happens.
-  // This seems to work okay on Logitech cameras, but does not work properly
-  // on the Hauppauge (sp?) WinTV card -- it captures the first frame after
-  // the card is opened and then repeatedly reads the same frame out of the
-  // card (it thinks it is getting new frames, but they are all the first
-  // frame over and over again).  Also, we get the first frame over and over
-  // again for some videofile clips (BigBeadSmallMovie, LongOrbit, PerfectOrbit).
-  vrpn_SleepMsecs(1);
-  hr = _pEvent->WaitForCompletion(1000, &scrap);
-  if ( (hr != S_OK) && (hr != VFW_E_WRONG_STATE) ) {
-    if (hr == E_ABORT) {
-      fprintf(stderr,"directx_camera_server::read_one_frame(): Timeout\n");
-    } else if (hr == VFW_E_WRONG_STATE) {
-      fprintf(stderr,"directx_camera_server::read_one_frame(): Filter not running\n");
-    } else {
-      fprintf(stderr,"directx_camera_server::read_one_frame(): Unknown failure to read\n");
+    // Wait until there is a sample ready in the callback handler.  If there is,
+    // copy it into our buffer and then tell it we are done processing the sample.
+    // If it takes too long, time out.
+    const int TIMEOUT_MSECS = 200;
+    BYTE	*imageLocation;
+    if (!_pCallback->imageReady) {
+      for (int i = 0; i < TIMEOUT_MSECS; i++) {
+	vrpn_SleepMsecs(1);
+	if (_pCallback->imageReady) { break; }	// Break out of the wait if its ready
+      }
+      if (!_pCallback->imageReady) {
+	fprintf(stderr, "directx_camera_server::read_one_frame(): Warning -- timeout\n");
+      }
     }
-    _status = false;
-    return false;
-  }
 
-  // Check the size of the required buffer by calling the get routine
-  // with a NULL pointer.  Make sure our buffer is large enough to handle
-  // the image, then read it in.
-  long vidbuflen = 0;
-  _pGrabber->GetCurrentBuffer(&vidbuflen, NULL); //< Call with NULL to get length
-  if (vidbuflen != (int)_buflen) {
-    fprintf(stderr,"directx_camera_server::read_one_frame(): Unexpected buffer size!\n");
-    fprintf(stderr,"   (expected %u, got %ld)\n", _buflen, vidbuflen);
-    _status = false;
-    return false;
-  }
-  if (S_OK != _pGrabber->GetCurrentBuffer(&vidbuflen, reinterpret_cast<long*>(_buffer))) {
-    fprintf(stderr,"directx_camera_server::read_one_frame(): Can't get the buffer!\n");
-    _status = false;
-    return false;
-  }
+    //XXX Get the size and stride parameters from the videoinfo header and use
+    // that to perform a series of memcpy() operations based on the values it
+    // returns to get the image into our buffer.  (Make sure the size is what
+    // we expect).
+    if (_pCallback->imageReady) {
+      _pCallback->imageReady = false;
+      if (FAILED(_pCallback->imageSample->GetPointer(&imageLocation))) {
+	fprintf(stderr,"directx_camera_server::read_one_frame(): Can't get buffer\n");
+	_status = false;
+	return false;
+      }
+      memcpy(_buffer, imageLocation, _buflen);
+      _pCallback->imageDone = true;
+    }
+  //XXX}
 
 #ifdef	HACK_TO_REOPEN
   close_device();
@@ -212,8 +190,8 @@ bool directx_camera_server::open_and_find_parameters(const int which, unsigned w
   //-------------------------------------------------------------------
   // Create COM and DirectX objects needed to access a video stream.
 
-  // Initialize COM.  This must have a matching uninitialize in
-  // the destructor.
+  // Initialize COM.  This must have a matching uninitialize somewhere before
+  // the object is destroyed.
 #ifdef	DEBUG
   printf("directx_camera_server::open_and_find_parameters(): Before CoInitialize\n");
 #endif
@@ -307,8 +285,16 @@ bool directx_camera_server::open_and_find_parameters(const int which, unsigned w
   pDevEnum->Release();
 
   //-------------------------------------------------------------------
+  // Construct the sample grabber callback handler that will be used
+  // to receive image data from the sample grabber.
+  if ( (_pCallback = new directx_samplegrabber_callback()) == NULL) {
+    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't create sample grabber callback handler (out of memory?)\n");
+    return false;
+  }
+
+  //-------------------------------------------------------------------
   // Construct the sample grabber that will be used to snatch images from
-  // the video stream as they go by.
+  // the video stream as they go by.  Set its media type and callback.
 
   // Create the Sample Grabber.
 #ifdef	DEBUG
@@ -379,6 +365,9 @@ bool directx_camera_server::open_and_find_parameters(const int which, unsigned w
 	pVideoHeader->bmiHeader.biWidth, pVideoHeader->bmiHeader.biHeight);
       return false;
     }
+
+    // Set the callback, where '0' means 'use the SampleCB callback'
+    _pGrabber->SetCallback(_pCallback, 0);
 
     // Clean up the pbFormat header memory we allocated above.
     CoTaskMemFree(mt.pbFormat);
@@ -478,7 +467,9 @@ directx_camera_server::directx_camera_server() :
   _pSampleGrabberFilter(NULL),
   _pGrabber(NULL),
   _pStreamConfig(NULL),
-  _started_graph(false)
+  _pCallback(NULL),
+  _started_graph(false),
+  _mode(0)
 {
   // No image in memory yet.
   _minX = _maxX = _minY = _maxY = 0;
@@ -495,6 +486,7 @@ directx_camera_server::directx_camera_server(int which, unsigned width, unsigned
   _pSampleGrabberFilter(NULL),
   _pGrabber(NULL),
   _pStreamConfig(NULL),
+  _pCallback(NULL),
   _started_graph(false),
   _mode(0)
 {
@@ -717,4 +709,58 @@ bool directx_camera_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Syn
     // Mainloop the server connection (once per server mainloop, not once per object).
     svrcon->mainloop();
     return true;
+}
+
+
+//--------------------------------------------------------------------------------------------
+// This section implements the callback handler that gets frames from the
+// SampleGrabber filter.
+
+directx_samplegrabber_callback::directx_samplegrabber_callback(void) :
+  imageReady(false),
+  imageDone(false),
+  imageSample(NULL)
+{
+}
+
+HRESULT directx_samplegrabber_callback::QueryInterface(REFIID interfaceRequested, void **handleToInterfaceRequested)
+{
+  if (handleToInterfaceRequested == NULL) { return E_POINTER; }
+  if (interfaceRequested == IID_IUnknown) {
+    *handleToInterfaceRequested = static_cast<IUnknown *>(this);
+  } else if (interfaceRequested == IID_ISampleGrabberCB) {
+    *handleToInterfaceRequested = static_cast<ISampleGrabberCB *>(this);
+  } else {
+    return E_NOINTERFACE;
+  }
+  AddRef();
+  return S_OK;
+}
+
+// This is the routine that processes each sample.  It gets the information about
+// the sample (one frame) from the SampleGrabber, then marks itself as being ready
+// to process the sample.  It then blocks until the sample has been processed by
+// the associated camera server.
+// The hand-off is handled by using two booleans acting as semaphores.
+// The first semaphore (imageReady)
+// controls access to the callback handler's buffer so that the application thread
+// will only read it when it is full.  The second sempaphore (imageDone) controls when
+// the handler routine can release a sample; it makes sure that the sample is not
+// released before the application thread is done processing it.
+// XXX The directx camera must be sure to free an open sample (if any) after changing
+// the state of the filter graph, so that this doesn't block indefinitely?
+
+HRESULT directx_samplegrabber_callback::SampleCB(double time, IMediaSample *sample)
+{
+  // Point the image sample to the media sample we have and then set the flag
+  // to tell the application it can process it.
+  imageSample = sample;
+  imageReady = true;
+
+  // Wait until the image has been processed and then return the buffer to the
+  // filter graph
+  while (!imageDone) { vrpn_SleepMsecs(1); }
+  imageDone = false;
+
+  return S_OK;
 }
