@@ -25,11 +25,12 @@
 #include <GL/glut.h>
 
 //#define	FAKE_CAMERA
+const unsigned FAKE_CAMERA_SIZE = 256;
 //#define	FAKE_NIKON
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "02.00";
+const char *Version_string = "02.01";
 char  *g_device_name = NULL;			  //< Name of the device to open
 double  g_focus = 0;    // Current setting for the microscope focus
 bool	g_focus_changed = false;
@@ -68,6 +69,7 @@ Tclvar_float_with_scale	g_focusDown("focus_lower_microns", "", -20, 0, -5);
 Tclvar_float_with_scale	g_focusUp("focus_raise_microns", "", 0, 20, 5);
 Tclvar_float_with_scale	g_focusStep("focus_step_microns", "", (float)0.05, 5, 1);
 Tclvar_float_with_scale	g_repeat("repeat", "", (float)1, 20, 1);
+Tclvar_float_with_scale	g_min_repeat_wait_sec("min_repeat_wait_secs", "", (float)0, 60, 0);
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
 Tclvar_float_with_scale	g_gain("gain", "", 1, 32, 1);
 Tclvar_int_with_button	g_quit("quit","");
@@ -278,6 +280,37 @@ void VRPN_CALLBACK handle_focus_change(void *, const vrpn_ANALOGCB info)
   g_focus_changed = true;
 }
 
+static	double	duration(struct timeval t1, struct timeval t2)
+{
+    return (t1.tv_usec - t2.tv_usec) / 1000000.0 +
+	   (t1.tv_sec - t2.tv_sec);
+}
+
+void  wait_until_enough_time_has_passed_since(const struct timeval last_stack_started, double g_min_repeat_wait_sec)
+{
+  struct timeval now;
+  
+  do {
+    //------------------------------------------------------------
+    // This must be done in any Tcl app, to allow Tcl/Tk to handle
+    // events.
+
+    while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
+
+    //------------------------------------------------------------
+    // If the user has deselected the "take_stack" or pressed "quit" then
+    // break out of the loop.
+    if ( g_quit || !g_take_stack) {
+      return;
+    }
+
+    //------------------------------------------------------------
+    // Find out what time it is so that we can know if it has been
+    // long enough so that we should return.
+    gettimeofday(&now, NULL);
+  } while (duration(now, last_stack_started) < g_min_repeat_wait_sec);
+}
+
 // Where_to_go is in number of ticks, not in microns.
 void  move_nikon_focus_and_wait_until_it_gets_there(double where_to_go) {
 #ifndef	FAKE_NIKON
@@ -311,10 +344,17 @@ void  cleanup(void)
 void myIdleFunc(void)
 {
     // If we are previewing, then read from the camera and put
-    // the image into the preview window
+    // the image into the preview window.  Also, mainloop the
+    // analog to ensure that we hear about the latest position
+    // of the focus.
     if (g_preview) {
+#ifndef	FAKE_CAMERA
       g_camera->read_image_to_memory((int)*g_minX,(int)*g_maxX, (int)*g_minY,(int)*g_maxY, g_exposure);
+#endif
       preview_image(g_camera);
+#ifndef	FAKE_NIKON
+      ana->mainloop();
+#endif
     }
 
     // If we've been asked to take a stack, do it.
@@ -354,8 +394,18 @@ void myIdleFunc(void)
       printf("  (Initial focus found at %ld)\n", (long)g_focus);
       startfocus = g_focus;
 
+      struct timeval last_stack_started;
+
       // Loop through the number of repeats we have been asked to do
       for (repeat = 0; repeat < g_repeat; repeat++) {
+
+        // Make sure we have waited the minimum time length since the
+        // last time we collected a stack before starting the next
+        // one.
+        if (repeat > 0) {
+          wait_until_enough_time_has_passed_since(last_stack_started, g_min_repeat_wait_sec);
+        }
+        gettimeofday(&last_stack_started, NULL);
 
 	// Go one past the lower focus request in order to make sure we
 	// always come past each plane going the same direction (avoids
@@ -524,15 +574,25 @@ int main(int argc, char *argv[])
     fprintf(stderr,"Camera not working\n");
     exit(-1);
   }
+#else
+  g_max_image_width = g_window_width = FAKE_CAMERA_SIZE;
+  g_max_image_height = g_window_height = FAKE_CAMERA_SIZE;
 #endif
 
   //------------------------------------------------------------------
   // Initialize the controls for the clipping based on the size of
   // the image we got.
+#ifndef	FAKE_CAMERA
   g_minX = new Tclvar_float_with_scale("minX", ".clip", 0, g_camera->get_num_columns()-1, 0);
   g_maxX = new Tclvar_float_with_scale("maxX", ".clip", 0, g_camera->get_num_columns()-1, g_camera->get_num_columns()-1);
   g_minY = new Tclvar_float_with_scale("minY", ".clip", 0, g_camera->get_num_rows()-1, 0);
   g_maxY = new Tclvar_float_with_scale("maxY", ".clip", 0, g_camera->get_num_rows()-1, g_camera->get_num_rows()-1);
+#else
+  g_minX = new Tclvar_float_with_scale("minX", ".clip", 0, FAKE_CAMERA_SIZE-1, 0);
+  g_maxX = new Tclvar_float_with_scale("maxX", ".clip", 0, FAKE_CAMERA_SIZE-1, FAKE_CAMERA_SIZE-1);
+  g_minY = new Tclvar_float_with_scale("minY", ".clip", 0, FAKE_CAMERA_SIZE-1, 0);
+  g_maxY = new Tclvar_float_with_scale("maxY", ".clip", 0, FAKE_CAMERA_SIZE-1, FAKE_CAMERA_SIZE-1);
+#endif
 
   //------------------------------------------------------------------
   // Initialize GLUT display modes and create the window that will display the

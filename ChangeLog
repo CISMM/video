@@ -1,3 +1,9 @@
+2005-01-20  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* stack_collector.cpp : Version 2.01. Watches for focus change
+		during preview.  Lets the user specify a minimum time
+		lapse between stacks.
+
 2005-01-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* SEM_camera_server.cpp : Modified the VRPN send method to take
