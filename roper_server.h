@@ -23,15 +23,25 @@ public:
   virtual bool  write_memory_to_ppm_file(const char *filename, bool sixteen_bits = false) const;
 
 protected:
-  int16	  _camera_handle;
+  int16	  _camera_handle;     //< Used to access the camera
+  bool	  _circbuffer_on;     //< Can it do circular buffers?
+  rgn_type  _last_region;     //< Stores the values for last circular-buffer region
+  unsigned _last_exposure;    //< Stores the exposure time for last circular-buffer region
+  bool	  _circbuffer_run;    //< Is the circular buffer running now?
+  unsigned  _circbuffer_len;  //< Length of the circular buffer memory
+  unsigned  _circbuffer_num;  //< Number of images in the circular buffer
+  uns16	    *_circbuffer;     //< Buffer to hold the images from the camera
 
   // Global Memory Pointers used to get non-virtual memory
   HGLOBAL   _buffer;  //< Global memory-locked buffer
-  void	    *_memory; //< Pointer to that buffer
   uns32	    _buflen;  //< Length of that buffer
+  void	    *_memory; //< Pointer to either the global buffer (for single-frame) or the circular buffer
 
   virtual bool open_and_find_parameters(void);
   virtual bool read_one_frame(const int16 camera_handle,
+		       const rgn_type &region_description,
+		       const uns32 exposure_time_millisecs);
+  virtual bool read_continuous(const int16 camera_handle,
 		       const rgn_type &region_description,
 		       const uns32 exposure_time_millisecs);
 };

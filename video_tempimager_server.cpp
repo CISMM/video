@@ -9,7 +9,7 @@
 #include  "directx_camera_server.h"
 
 const int MAJOR_VERSION = 1;
-const int MINOR_VERSION = 3;
+const int MINOR_VERSION = 4;
 
 //-----------------------------------------------------------------
 // This section contains code to initialize the camera and read its
@@ -106,7 +106,8 @@ void  mainloop_server_code(void)
 
   // Loop through each line, fill them in, and send them to the client.
   // XXX This nested for loop takes about 200ms to complete for the
-  // firewire cameras.  The memory copy only accounts for a tiny amount.
+  // firewire cameras.  This is when the client is not consuming the
+  // data fast enough.  The memory copy only accounts for a tiny amount.
   for (y = 0; y < num_y; y++) {
     for (x = 0; x < num_x; x++) {
       g_camera->get_pixel_from_memory(x, y, data[x + y*num_x]);
@@ -116,10 +117,11 @@ void  mainloop_server_code(void)
     svr->fill_region(svrchan, 0, num_x-1, y,y, data);
     svr->send_region();
     svr->mainloop();
-  }
+   }
 
   // Mainloop the server connection (once per server mainloop, not once per object).
-  // This call tales about 200ms to complete.
+  // This call takes about 200ms to complete (when the client is not accepting
+  // data fast enough).
   svrcon->mainloop();
 
   delete [] data;
@@ -194,14 +196,14 @@ int main(int argc, char *argv[])
     }
   }
     
+  // Set up handler for all these signals to set done
+  signal(SIGINT, handle_cntl_c);
+
   printf("video_tempImager_server version %02d.%02d\n", MAJOR_VERSION, MINOR_VERSION);
 
   if (!init_camera_code(devicename, devicenum)) { return -1; }
   printf("Opened camera\n");
   if (!init_server_code()) { return -1; }
-
-  // Set up handler for all these signals to set done
-  signal(SIGINT, handle_cntl_c);
 
   while (!g_done) {
     mainloop_camera_code();

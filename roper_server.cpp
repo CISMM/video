@@ -46,6 +46,130 @@ static	unsigned long	duration(struct timeval t1, struct timeval t2)
 
 //-----------------------------------------------------------------------
 
+bool  roper_server::read_continuous(const int16 camera_handle,
+		       const rgn_type &region_description,
+		       const uns32 exposure_time_millisecs)
+{
+  int16	progress;	//< Progress made in getting the current frame
+  uns32	buffer_size;	//< Size required to hold the data
+
+  //--------------------------------------------------------------------
+  // See if the parameters have changed or if the circular buffer has not
+  // yet been set up to run..  If so, then we need to stop any previous
+  // acquisition and then restart a new set of acquisitions.
+  if ( !_circbuffer_run || (exposure_time_millisecs != _last_exposure) ||
+       (region_description.s1 != _last_region.s1) ||
+       (region_description.s2 != _last_region.s2) ||
+       (region_description.p1 != _last_region.p1) ||
+       (region_description.p2 != _last_region.p2) ||
+       (region_description.sbin != _last_region.sbin) ||
+       (region_description.pbin != _last_region.pbin) ) {
+
+    // Stop any currently-running acquisition and free the memory used
+    // by the circular buffer.
+    if (_circbuffer_run) {
+      boolean retval1;
+      _circbuffer_run = false;
+      if (!(retval1 = pl_exp_stop_cont(_camera_handle, CCS_HALT))) {
+	fprintf(stderr,"roper_server::read_continuous(): Cannot stop acquisition\n");
+      }
+      if (_circbuffer) {
+	delete [] _circbuffer;
+	_circbuffer_len = 0;
+      }
+      if (retval1) { return false; }
+    }
+
+    // Allocate a new circular buffer that is large enough to hold the number
+    // of buffers we want.
+    _circbuffer_len = (uns32)(_circbuffer_num * 
+      (_maxX - _minX + 1) * (_maxY - _minY + 1) / (_binning * _binning) );
+    if ( (_circbuffer = new uns16[_circbuffer_len]) == NULL) {
+      fprintf(stderr,"roper_server::read_continuous(): Out of memory\n");
+      _circbuffer_len = 0;
+      return false;
+    }
+
+    // Setup and start a continuous acquisition.
+    PL_CHECK_RETURN(pl_exp_setup_cont(camera_handle, 1, &region_description,
+      TIMED_MODE, exposure_time_millisecs, &buffer_size, CIRC_OVERWRITE),
+      "pl_exp_setup_cont");
+    // The factor of 2 here is converting bytes to pixels (16 bits)
+    if (buffer_size / 2 != _circbuffer_len / _circbuffer_num) {
+      fprintf(stderr,"roper_server::read_continuous(): Unexpected buffer size (got %u, expected %u)\n",
+	buffer_size, _circbuffer_len / _circbuffer_num * 2);
+      return false;
+    }
+    PL_CHECK_RETURN(pl_exp_start_cont(camera_handle, _circbuffer, _circbuffer_len),
+      "pl_exp_start_cont");
+  }
+  _last_exposure = exposure_time_millisecs;
+  _last_region = region_description;
+  _circbuffer_run = true;
+
+  // Wait for it to be done reading; timeout in 1 second longer than exposure should be
+  const double READ_TIMEOUT = exposure_time_millisecs/1000 + 1;
+  struct  timeval start, now;
+  gettimeofday(&start, NULL);
+  do {
+     uns32 trash;
+     PL_CHECK_RETURN(pl_exp_check_cont_status(camera_handle, &progress, &trash,&trash),
+       "pl_exp_check_cont_status");
+     if (progress == READOUT_FAILED) {
+       fprintf(stderr,"read_continuous(): Readout failed\n");
+       return FALSE;
+     }
+     // XXX Status gets set to 100 here for several milliseconds, then to
+     // 103.  These are invalid values for status.  The example code from
+     // Roper also gets nonsense returns (or at least the read code hangs
+     // in this same place).
+
+     // Check for a timeout; if we haven't heard anything for a second longer than exposure,
+     // abort the read and restart it.
+     gettimeofday(&now, NULL);
+     if (duration(now, start) / 1.0e6 > READ_TIMEOUT) {
+//XXX       send_text_message("Timeout when reading, retrying", vrpn_TEXT_WARNING, 0);
+       // XXX Should return an error and let the above code decide to retry
+       fprintf(stderr,"roper_server::read_continuous(): Timeout, retrying\n");
+       switch (progress) {
+       case READOUT_NOT_ACTIVE:
+	 fprintf(stderr, "  Status: Readout Not Active\n");
+	 break;
+       case EXPOSURE_IN_PROGRESS:
+	 fprintf(stderr, "  Status: Exposure In Progress\n");
+	 break;
+       case READOUT_IN_PROGRESS:
+	 fprintf(stderr, "  Status: Readout In Progress\n");
+	 break;
+       case ACQUISITION_IN_PROGRESS:
+	 fprintf(stderr, "  Status: Acquisition In Progress\n");
+	 break;
+       case READOUT_COMPLETE:
+	 fprintf(stderr, "  Status: Readout Complete\n");
+	 break;
+       case READOUT_FAILED:
+	 fprintf(stderr, "  Status: Readout Failed\n");
+	 break;
+       default:
+	 fprintf(stderr, "  Unrecognized status (%d) at timeout (valid ones %d through %d)\n",
+	   progress, READOUT_NOT_ACTIVE, ACQUISITION_IN_PROGRESS);
+       }
+       gettimeofday(&start, NULL);
+     }
+     // Check at 1ms intervals to avoid eating the whole CPU
+     vrpn_SleepMsecs(1);
+  } while (progress != READOUT_COMPLETE);
+
+  // Get a pointer to the valid frame data
+  PL_CHECK_RETURN(pl_exp_get_latest_frame(camera_handle, &_memory),
+    "pl_exp_get_latest_frame");
+
+  return TRUE;
+}
+
+
+//-----------------------------------------------------------------------
+
 bool  roper_server::read_one_frame(const int16 camera_handle,
 		       const rgn_type &region_description,
 		       const uns32 exposure_time_millisecs) {
@@ -55,14 +179,24 @@ bool  roper_server::read_one_frame(const int16 camera_handle,
 
   // Initialize the sequence and set the parameters.  Also
   // check to make sure that the buffer passed in is large
-  // enough to hold the image.
-  PL_CHECK_RETURN(pl_exp_init_seq(), "pl_exp_init_seq");
-  PL_CHECK_RETURN(pl_exp_setup_seq(camera_handle, 1, 1,
-    &region_description, TIMED_MODE, exposure_time_millisecs, &buffer_size), "pl_exp_setup_seq");
-  if (buffer_size > _buflen) {
-    fprintf(stderr,"read_one_frame: Buffer passed in too small\n");
-    return FALSE;
+  // enough to hold the image.  Only do this if the parameters
+  // have changed since the last time through.
+  if ( (exposure_time_millisecs != _last_exposure) ||
+       (region_description.s1 != _last_region.s1) ||
+       (region_description.s2 != _last_region.s2) ||
+       (region_description.p1 != _last_region.p1) ||
+       (region_description.p2 != _last_region.p2) ||
+       (region_description.sbin != _last_region.sbin) ||
+       (region_description.pbin != _last_region.pbin) ) {
+    PL_CHECK_RETURN(pl_exp_setup_seq(camera_handle, 1, 1,
+      &region_description, TIMED_MODE, exposure_time_millisecs, &buffer_size), "pl_exp_setup_seq");
+    if (buffer_size > _buflen) {
+      fprintf(stderr,"read_one_frame: Buffer passed in too small\n");
+      return FALSE;
+    }
   }
+  _last_exposure = exposure_time_millisecs;
+  _last_region = region_description;
 
   // Start it reading one exposure
   PL_CHECK_RETURN(pl_exp_start_seq(camera_handle, _buffer), "pl_exp_start_seq");
@@ -95,8 +229,6 @@ bool  roper_server::read_one_frame(const int16 camera_handle,
 
   } while (progress != READOUT_COMPLETE);
 
-  // Uninitialize the sequence, and return
-  PL_CHECK_RETURN(pl_exp_uninit_seq(), "pl_exp_uninit_seq");
   return TRUE;
 }
 
@@ -110,6 +242,7 @@ bool roper_server::open_and_find_parameters(void)
   // no critical failures.
   int16	  num_cameras;
   int16	  num_rows, num_columns;
+  bool	  avail_flag;
   char	  camera_name[CAM_NAME_LEN];
   PL_CHECK_EXIT(pl_cam_get_total(&num_cameras), "pl_cam_get_total");
   if (num_cameras <= 0) {
@@ -126,8 +259,16 @@ bool roper_server::open_and_find_parameters(void)
     "PARAM_PAR_SIZE");
   PL_CHECK_EXIT(pl_get_param(_camera_handle, PARAM_SER_SIZE, ATTR_CURRENT, &num_columns),
     "PARAM_SER_SIZE");
+  PL_CHECK_EXIT(pl_get_param(_camera_handle, PARAM_CIRC_BUFFER, ATTR_AVAIL, &avail_flag),
+    "PARAM_SER_SIZE");
   _num_rows = num_rows;
   _num_columns = num_columns;
+  _circbuffer_on = avail_flag;
+  //XXX This code doesn't work -- emailed factory asking about it
+  _circbuffer_on = false;
+  if (!_circbuffer_on) {
+    fprintf(stderr,"roper_server::open_and_find_parameters(): Does not support circular buffers (using single-capture mode)\n");
+  }
 
   // XXX Find the list of available exposure settings..
 
@@ -135,7 +276,12 @@ bool roper_server::open_and_find_parameters(void)
 }
 
 roper_server::roper_server(unsigned binning) :
-  base_camera_server(binning)
+  base_camera_server(binning),
+  _last_exposure(0),
+  _circbuffer_run(false),
+  _circbuffer(NULL),
+  _circbuffer_len(0),
+  _circbuffer_num(3)	  //< Use this many buffers in the circular buffer
 {
   //---------------------------------------------------------------------
   // Initialize the PVCAM software, open the camera, and find out what its
@@ -164,6 +310,10 @@ roper_server::roper_server(unsigned binning) :
   }
 
   //---------------------------------------------------------------------
+  // Initialize the acquisition sequence.
+  PL_CHECK_WARN(pl_exp_init_seq(), "pl_exp_init_seq");
+
+  //---------------------------------------------------------------------
   // No image in memory yet.
   _minX = _minY = _maxX = _maxY = 0;
 
@@ -175,6 +325,23 @@ roper_server::roper_server(unsigned binning) :
 
 roper_server::~roper_server(void)
 {
+  //---------------------------------------------------------------------
+  // If the circular-buffer mode is supported, shut that down here.
+  if (_circbuffer_run) {
+    if (!pl_exp_stop_cont(_camera_handle, CCS_HALT)) {
+      fprintf(stderr,"roper_server::~roper_server(): Cannot stop acquisition\n");
+    }
+    if (_circbuffer) {
+      delete [] _circbuffer;
+      _circbuffer_len = 0;
+    }
+  }
+
+  // Uninitialize the acquisition sequence
+  PL_CHECK_WARN(pl_exp_uninit_seq(), "pl_exp_uninit_seq");
+
+  //---------------------------------------------------------------------
+  // Shut down the PVCAM software and free the global memory buffer.
   PL_CHECK_WARN(pl_pvcam_uninit(), "pl_pvcam_uninit");
   GlobalUnlock(_buffer );
   GlobalFree(_buffer );
@@ -208,7 +375,10 @@ bool  roper_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned 
   if (_maxY >= _num_rows) { _maxY = _num_rows - 1; };
 
   //---------------------------------------------------------------------
-  // Set up and read one frame.
+  // Set up and read one frame at a time if the circular-buffer code is
+  // not available.  Otherwise, the opening code will have set up
+  // the system to run continuously, so we get the next frame from the
+  // buffers.
   rgn_type  region_description;
   region_description.s1 = _minX;
   region_description.s2 = _maxX;
@@ -216,8 +386,13 @@ bool  roper_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned 
   region_description.p2 = _maxY;
   region_description.sbin = _binning;
   region_description.pbin = _binning;
-  PL_CHECK_RETURN(read_one_frame(_camera_handle, region_description, (int)exposure_time_millisecs),
-    "read_one_frame");
+  if (_circbuffer_on) {
+    PL_CHECK_RETURN(read_continuous(_camera_handle, region_description, (int)exposure_time_millisecs),
+      "read_continuous");
+  } else {
+    PL_CHECK_RETURN(read_one_frame(_camera_handle, region_description, (int)exposure_time_millisecs),
+      "read_one_frame");
+  }
 
   return true;
 }
@@ -235,7 +410,7 @@ bool  roper_server::write_memory_to_ppm_file(const char *filename, bool sixteen_
   // If we are not doing 16 bits, map the 12 bits to the range 0-255, and then write out an
   // uncompressed 8-bit grayscale PPM file with the values scaled to this range.
   if (!sixteen_bits) {
-    uns16	   *vals = (uns16 *)_memory;
+    uns16	  *vals = (uns16 *)_memory;
     unsigned char *pixels;
     // This buffer will be oversized if min and max don't span the whole window.
     if ( (pixels = new unsigned char[_buflen/2]) == NULL) {

@@ -1,3 +1,20 @@
+2002-10-27  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* base_camera_server.h : White space adjust.
+	* roper_server.cpp : Added code to read from the Roper in continuous
+		mode rather than one frame at a time; this code doesn't work
+		(and neither does the example code on which it is based, it
+		turns out), so this is not yet enabled.  Also optimized to
+		only do open/close code at the beginning and end, not every
+		frame (which sped it up marginally).
+	* roper_server.h : Same.
+	* roper_example.cpp : Test program from Roper manual (turns out not
+		to work!)
+	* roper_example.dsp : Build file for this.
+	* video.dsw : Added a Roper test program.
+	* video_tempimager_server.cpp : Added comments.  Changed white space.
+		Moved signal handler installation to another location.
+
 2002-10-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* directx_camera_server.cpp : Swap Red and Blue to the correct order.
