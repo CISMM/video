@@ -1,3 +1,13 @@
+2003-04-03  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Changing default exposure time to 80ms
+		if we're using the SPOT camera -- this seems to be the
+		minimum for our camera.
+	* diaginc_server.cpp : Debugging to make it actually read an image.
+		May or may not get the pixels in the right order.  May or
+		may not do binning correctly (couldn't get on the microscope
+		to test it).
+
 2003-03-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Adding Diagnostics Inc. SPOT camera

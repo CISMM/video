@@ -169,30 +169,36 @@ bool  roper_server::read_continuous(const int16 camera_handle,
 
 bool  diaginc_server::read_one_frame(unsigned short minX, unsigned short maxX,
 				     unsigned short minY, unsigned short maxY,
-				     unsigned exposure_time_millisecs) {
-
+				     unsigned exposure_time_millisecs)
+{
   // If the image size or exposure time have changed since the
   // last time, set new ones.  Also, set it to not do auto-exposure.
   if (exposure_time_millisecs != _last_exposure) {
     BOOL  autoexpose = false;
     SPOT_EXPOSURE_STRUCT2 exposure;
     SP_CHECK_RETURN(SpotSetValue(SPOT_AUTOEXPOSE, &autoexpose), "SpotSetValue(Autoexpose)");
-    exposure.dwExpDur = exposure_time_millisecs * 2;
+    exposure.nGain = 1;	// XXX Later, let this be set.
+    exposure.dwExpDur = exposure_time_millisecs * 2000;	  // Convert to half-microseconds
+    exposure.dwClearExpDur = exposure_time_millisecs * 2000;	  // Convert to half-microseconds
+    exposure.dwRedExpDur = exposure_time_millisecs * 2000;
+    exposure.dwGreenExpDur = exposure_time_millisecs * 2000;
+    exposure.dwBlueExpDur = exposure_time_millisecs * 2000;
     SP_CHECK_RETURN(SpotSetValue(SPOT_EXPOSURE2, &exposure), "SpotSetValue(Exposure2)");
   }
   if ( (_last_minX != minX) || (_last_maxX != maxX) ||
-       (_last_minY != minY) || (_last_maxY != _minY) ) {
+       (_last_minY != minY) || (_last_maxY != minY) ) {
     RECT  image_region;
     image_region.left = minX;
     image_region.right = maxX;
-    image_region.bottom = minY;
-    image_region.top = maxY;
+    image_region.bottom = maxY;	  // Bottom is at highest index
+    image_region.top = minY;	  // Top is at index zero
     SP_CHECK_RETURN(SpotSetValue(SPOT_IMAGERECT, &image_region), "SpotSetValue(Region)");
   }
   _last_exposure = exposure_time_millisecs;
   _last_minX = minX; _last_maxX = maxX; _last_minY = minY; _last_maxY = maxY;
 
   // Get the picture into the memory buffer
+  // XXX There seems to be confusion over the byte ordering in this buffer.
   SP_CHECK_RETURN(SpotGetImage(_bitDepth, false, 0, _buffer, NULL, NULL, NULL),"SpotGetImage()");
 
   return true;
@@ -223,7 +229,18 @@ bool diaginc_server::open_and_find_parameters(void)
   SP_CHECK_RETURN(SpotSetValue(SPOT_DRIVERDEVICENUMBER, &camera_to_use), "SpotSetValue(Device)");
   SP_CHECK_WARN(SpotInit(), "SpotInit");
 
+  // Set the color to monochrome mode (turn off filter wheels) and ask it for 12 bits.
+  SPOT_COLOR_ENABLE_STRUCT2 colorstruct;
+  colorstruct.bEnableRed = false;
+  colorstruct.bEnableGreen = false;
+  colorstruct.bEnableBlue = false;
+  colorstruct.bEnableClear = false;
+  SP_CHECK_RETURN(SpotSetValue(SPOT_COLORENABLE2, &colorstruct), "SpotSetValue(ColorEnable)");
+  bitdepth = 12;
+  SP_CHECK_RETURN(SpotSetValue(SPOT_BITDEPTH, &bitdepth), "SpotGetvalue(Bitdepth)");
+
   // Find out the parameters available on this camera
+  //XXX Got 24 bits when wanted 12, even though I tried to disable the color above.
   SP_CHECK_RETURN(SpotGetValue(SPOT_BITDEPTH, &bitdepth), "SpotGetvalue(Bitdepth)");
   if (bitdepth != 12) {
     fprintf(stderr,"diagnc_server::open_and_find_parameters(): Got depth %d, wanted 12\n", bitdepth);
@@ -233,12 +250,12 @@ bool diaginc_server::open_and_find_parameters(void)
   SP_CHECK_RETURN(SpotGetValue(SPOT_IMAGERECT, &image_region), "SpotGetValue(Region)");
   _minX = image_region.left;
   _maxX = image_region.right;
-  _minY = image_region.bottom;
-  _maxY = image_region.top;
+  _minY = image_region.top;	    // This is zero
+  _maxY = image_region.bottom;	    // This is the largest Y value
   _num_rows = _maxY - _minY + 1;
   _num_columns = _maxX - _minX + 1;
   _circbuffer_on = false;
-  SP_CHECK_RETURN(SpotGetValue(SPOT_BINSIZELIMITS, &binRange), "SpotGetValue(BinLimits)");
+  SP_CHECK_RETURN(SpotGetValue(SPOT_BINSIZELIMITS, &(binRange[0])), "SpotGetValue(BinLimits)");
   _binMin = binRange[0];
   _binMax = binRange[1];
 
@@ -285,7 +302,8 @@ diaginc_server::diaginc_server(unsigned binning) :
   // image with no binning.
   _buflen = (vrpn_uint32)(_num_rows * _num_columns * 2);	// Two bytes per pixel
   if ( (_buffer = GlobalAlloc( GMEM_ZEROINIT, _buflen)) == NULL) {
-    fprintf(stderr,"diaginc_server::diaginc_server(): Cannot allocate enough locked memory for buffer\n");
+    fprintf(stderr,"diaginc_server::diaginc_server(): Cannot allocate enough locked memory for buffer (%dx%d)\n",
+      _num_columns, _num_rows);
     _status = false;
     return;
   }
@@ -377,8 +395,10 @@ bool  diaginc_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigne
     fprintf(stderr,"diaginc_server::read_image_to_memory(): Circular buffer not implemented\n");
     return false;
   } else {
-    SP_CHECK_RETURN(read_one_frame(minX, maxX, minY, maxY, (unsigned long)exposure_time_millisecs),
-      "read_one_frame");
+    if (!read_one_frame(minX, maxX, minY, maxY, (unsigned long)exposure_time_millisecs)) {
+      fprintf(stderr, "diagnc_server::read_image_to_memory(): Could not read frame\n");
+      return false;
+    }
   }
 
   return true;

@@ -93,6 +93,7 @@ public:
 class diaginc_imager: public diaginc_server, public image_wrapper
 {
 public:
+  // XXX Start with binning of 2 to get the processor load down
   diaginc_imager::diaginc_imager() : diaginc_server(1), image_wrapper() {} ;
   virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
     minx = _minX; miny = _minY; maxx = _maxX; maxy = _maxY;
@@ -158,6 +159,7 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
     *camera = r;
     *imager = r;
     g_shift = 4;
+    g_exposure = 80;	// Seems to be the minimum exposure for the one we have
   } else if (!strcmp(type, "directx")) {
     directx_imager *d = new directx_imager(1,640,480);	// Use camera #1 (first one found)
     *camera = d;
