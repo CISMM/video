@@ -128,7 +128,9 @@ void copy_of_image::operator=(const image_wrapper &copyfrom)
   for (x = _minx; x <= _maxx; x++) {
     for (y = _miny; y <= _maxy; y++) {
       for (c = 0; c < get_num_colors(); c++) {
-	_image[index(x, y, c)] = copyfrom.read_pixel_nocheck(x, y, c);
+	double val;
+	copyfrom.read_pixel(x, y, val, c);  // Ignore result outside of image.
+	_image[index(x, y, c)] = val;
       }
     }
   }
@@ -151,10 +153,8 @@ void  copy_of_image::read_range(int &minx, int &maxx, int &miny, int &maxy) cons
 
 bool  copy_of_image::read_pixel(int x, int y, double &result, unsigned rgb) const
 {
-  if ( (x < _minx) || (x > _maxx) || (y < _miny) || (y > _maxy) ) {
-    return false;
-  }
-  if (_image == NULL) {
+  if ( (_image == NULL) || (x < _minx) || (x > _maxx) || (y < _miny) || (y > _maxy) ) {
+    result = 0.0;
     return false;
   }
   result = _image[index(x, y, rgb)];

@@ -330,6 +330,8 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
 		  (strcmp(".TIF", &type[strlen(type)-4]) == 0) ||
 		  (strcmp(".bmp", &type[strlen(type)-4]) == 0) ||
 		  (strcmp(".BMP", &type[strlen(type)-4]) == 0) ||
+		  (strcmp(".jpg", &type[strlen(type)-4]) == 0) ||
+		  (strcmp(".JPG", &type[strlen(type)-4]) == 0) ||
 		  (strcmp(".tiff", &type[strlen(type)-5]) == 0) || 
 		  (strcmp(".TIFF", &type[strlen(type)-5]) == 0) ) {
       FileStack_Controllable_Video *s = new FileStack_Controllable_Video(type);

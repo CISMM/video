@@ -1,6 +1,3 @@
-//XXX Add an optional second tracker to do an orientation match in addition
-// to a shift match.
-
 //---------------------------------------------------------------------------
 // This section contains configuration settings for the Video Spot Tracker.
 // It is used to make it possible to compile and link the code when one or
@@ -12,7 +9,6 @@
 
 #define	VST_USE_ROPER
 //#define USE_METAMORPH	    // Metamorph reader not completed.
-const bool g_show_video = true;
 
 #ifdef	VST_USE_ROPER
 #pragma comment(lib,"D:\\Program Files\\Roper Scientific\\PVCAM\\pvcam32.lib")
@@ -63,7 +59,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.01";
+const char *Version_string = "01.02";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -81,6 +77,8 @@ public:
 
   spot_tracker *tracker(void) const { return d_tracker; }
   unsigned index(void) const { return d_index; }
+
+  void set_tracker(spot_tracker *tracker) { d_tracker = tracker; }
 
 protected:
   spot_tracker		*d_tracker;	    //< The tracker we're keeping information for
@@ -173,6 +171,7 @@ unsigned char	    *g_glut_image = NULL;	  //< Pointer to the storage for the ima
 
 list <Spot_Information *>g_trackers;		  //< List of active trackers
 spot_tracker	    *g_active_tracker = NULL;	  //< The tracker that the controls refer to
+spot_tracker	    *g_second_tracker = NULL;	  //< The second tracker in the list (used for scale and/or offset)
 bool		    g_ready_to_display = false;	  //< Don't unless we get an image
 bool		    g_already_posted = false;	  //< Posted redisplay since the last display?
 int		    g_mousePressX, g_mousePressY; //< Where the mouse was when the button was pressed
@@ -187,6 +186,7 @@ void  logfilename_changed(char *newvalue, void *);
 void  rebuild_trackers(int newvalue, void *);
 void  rebuild_trackers(float newvalue, void *);
 void  set_maximum_search_radius(int newvalue, void *);
+void  make_appropriate_tracker_active(int newvalue, void *);
 Tclvar_float		g_X("x");
 Tclvar_float		g_Y("y");
 Tclvar_float_with_scale	g_Radius("radius", ".kernel.radius", 1, 30, 5);
@@ -204,14 +204,17 @@ Tclvar_int_with_button	g_interpolate("interpolate",NULL,1, rebuild_trackers);
 Tclvar_int_with_button	g_areamax("areamax",NULL,0, set_maximum_search_radius);
 Tclvar_int_with_button	g_kernel_type("kerneltype", NULL, KERNEL_SYMMETRIC, rebuild_trackers);
 Tclvar_int_with_button	g_opt("optimize",".kernel.optimize");
+Tclvar_int_with_button	g_reorient("reorient","",0, make_appropriate_tracker_active);
+Tclvar_int_with_button	g_rescale("rescale","",0, make_appropriate_tracker_active);
 Tclvar_int_with_button	g_round_cursor("round_cursor","");
 Tclvar_int_with_button	g_full_area("full_area","");
 Tclvar_int_with_button	g_mark("show_tracker","",1);
 Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
-Tclvar_int_with_button	g_quit("quit","");
+Tclvar_int_with_button	g_quit("quit", NULL);
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
 double			g_log_offset_x, g_log_offset_y;
+double			g_orig_length, g_orig_orient;
 char			*g_logfile_base_name = NULL;
 copy_of_image		*g_log_last_image = NULL;
 unsigned		g_log_frame_number_last_logged = -1;
@@ -301,6 +304,8 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
 		  (strcmp(".TIF", &type[strlen(type)-4]) == 0) ||
 		  (strcmp(".bmp", &type[strlen(type)-4]) == 0) ||
 		  (strcmp(".BMP", &type[strlen(type)-4]) == 0) ||
+		  (strcmp(".jpg", &type[strlen(type)-4]) == 0) ||
+		  (strcmp(".JPG", &type[strlen(type)-4]) == 0) ||
 		  (strcmp(".tiff", &type[strlen(type)-5]) == 0) || 
 		  (strcmp(".TIFF", &type[strlen(type)-5]) == 0) ) {
       FileStack_Controllable_Video *s = new FileStack_Controllable_Video(type);
@@ -360,14 +365,50 @@ static	bool  save_log_frame(unsigned frame_number)
     g_log_frame_number_last_logged = frame_number;
     sprintf(filename, "%s.opt.%04d.tif", g_logfile_base_name, frame_number);
 
-    // Make a transformed image class to re-index the copied image.
-    transformed_image shifted(*g_log_last_image, 
-	g_active_tracker->get_x() - g_log_offset_x,
-	g_active_tracker->get_y() - g_log_offset_y);
+    // Difference in position between first and second tracker.
+    double dx = g_second_tracker->get_x() - g_trackers.front()->tracker()->get_x();
+    double dy = g_second_tracker->get_y() - g_trackers.front()->tracker()->get_y();
 
-    if (!shifted.write_to_tiff_file(filename, 1, true)) {
-      delete [] filename;
-      return false;
+    double rotation = 0.0;
+    double scale = 1.0;
+    if (g_reorient) {
+      double new_orient = atan2( dy, dx );
+      rotation = new_orient - g_orig_orient;
+    }
+
+    if (g_rescale) {
+      double new_length = sqrt( dx*dx + dy*dy);
+      if (g_orig_length != 0) {
+	scale = new_length/g_orig_length;
+      }
+    }
+    // Make a transformed image class to re-index the copied image.
+    // Use the faster, translate-only version if there is no rotation
+    // or scaling.
+    if (g_reorient || g_rescale) {
+      // Specify the center of rotation and scaling as the current
+      // position of the origin tracker.
+      affine_transformed_image shifted(*g_log_last_image, 
+	  g_trackers.front()->tracker()->get_x() - g_log_offset_x,
+	  g_trackers.front()->tracker()->get_y() - g_log_offset_y,
+	  rotation,
+	  scale,
+	  g_trackers.front()->tracker()->get_x(),
+	  g_trackers.front()->tracker()->get_y());
+
+      if (!shifted.write_to_tiff_file(filename, 1, true)) {
+	delete [] filename;
+	return false;
+      }
+    } else {
+      translated_image shifted(*g_log_last_image, 
+	  g_trackers.front()->tracker()->get_x() - g_log_offset_x,
+	  g_trackers.front()->tracker()->get_y() - g_log_offset_y);
+
+      if (!shifted.write_to_tiff_file(filename, 1, true)) {
+	delete [] filename;
+	return false;
+      }
     }
     (*g_log_last_image) = *g_camera;
 
@@ -435,6 +476,11 @@ static void  cleanup(void)
   dirtyexit();
 }
 
+static bool should_draw_second_tracker(void)
+{
+  return g_reorient || g_rescale;
+}
+
 void myDisplayFunc(void)
 {
   unsigned  r,c;
@@ -447,41 +493,39 @@ void myDisplayFunc(void)
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT);
 
-  if (g_show_video) {
-    // Copy pixels into the image buffer.  Flip the image over in
-    // Y so that the image coordinates display correctly in OpenGL.
+  // Copy pixels into the image buffer.  Flip the image over in
+  // Y so that the image coordinates display correctly in OpenGL.
 #ifdef DEBUG
-    printf("Filling pixels %d,%d through %d,%d\n", (int)(*g_minX),(int)(*g_minY), (int)(*g_maxX), (int)(*g_maxY));
+  printf("Filling pixels %d,%d through %d,%d\n", (int)(*g_minX),(int)(*g_minY), (int)(*g_maxX), (int)(*g_maxY));
 #endif
-    int shift = g_bitdepth - 8;
-    for (r = *g_minY; r <= *g_maxY; r++) {
-      for (c = *g_minX; c <= *g_maxX; c++) {
-	if (!g_camera->get_pixel_from_memory(c, r, uns_pix, g_colorIndex)) {
-	  fprintf(stderr, "Cannot read pixel from region\n");
-	  cleanup();
-      	  exit(-1);
-	}
-
-	// This assumes that the pixels are actually 8-bit values
-	// and will clip if they go above this.  It also writes pixels
-	// from the first channel into all colors of the image.  It uses
-	// RGBA so that we don't have to worry about byte-alignment problems
-	// that plagued us when using RGB pixels.
-	g_glut_image[0 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> shift;
-	g_glut_image[1 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> shift;
-	g_glut_image[2 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> shift;
-	g_glut_image[3 + 4 * (c + g_camera->get_num_columns() * r)] = 255;
-
-#ifdef DEBUG
-	// If we're debugging, fill the border pixels with green
-	if ( (r == *g_minY) || (r == *g_maxY) || (c == *g_minX) || (c == *g_maxX) ) {
-	  g_glut_image[0 + 4 * (c + g_camera->get_num_columns() * r)] = 0;
-	  g_glut_image[1 + 4 * (c + g_camera->get_num_columns() * r)] = 255;
-	  g_glut_image[2 + 4 * (c + g_camera->get_num_columns() * r)] = 0;
-	  g_glut_image[3 + 4 * (c + g_camera->get_num_columns() * r)] = 255;
-	}
-#endif
+  int shift = g_bitdepth - 8;
+  for (r = *g_minY; r <= *g_maxY; r++) {
+    for (c = *g_minX; c <= *g_maxX; c++) {
+      if (!g_camera->get_pixel_from_memory(c, r, uns_pix, g_colorIndex)) {
+	fprintf(stderr, "Cannot read pixel from region\n");
+	cleanup();
+      	exit(-1);
       }
+
+      // This assumes that the pixels are actually 8-bit values
+      // and will clip if they go above this.  It also writes pixels
+      // from the first channel into all colors of the image.  It uses
+      // RGBA so that we don't have to worry about byte-alignment problems
+      // that plagued us when using RGB pixels.
+      g_glut_image[0 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> shift;
+      g_glut_image[1 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> shift;
+      g_glut_image[2 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> shift;
+      g_glut_image[3 + 4 * (c + g_camera->get_num_columns() * r)] = 255;
+
+#ifdef DEBUG
+      // If we're debugging, fill the border pixels with green
+      if ( (r == *g_minY) || (r == *g_maxY) || (c == *g_minX) || (c == *g_maxX) ) {
+	g_glut_image[0 + 4 * (c + g_camera->get_num_columns() * r)] = 0;
+	g_glut_image[1 + 4 * (c + g_camera->get_num_columns() * r)] = 255;
+	g_glut_image[2 + 4 * (c + g_camera->get_num_columns() * r)] = 0;
+	g_glut_image[3 + 4 * (c + g_camera->get_num_columns() * r)] = 255;
+      }
+#endif
     }
 
     // Store the pixels from the image into the frame buffer
@@ -537,6 +581,10 @@ void myDisplayFunc(void)
       char numString[10];
       sprintf(numString,"%d", (*loop)->index());
       drawStringAtXY(x+dx,y, numString);
+
+      // If we're only supposed to draw the first tracker, break out of the
+      // loop here.
+      if (!should_draw_second_tracker()) { break; }
     }
   }
 
@@ -835,6 +883,13 @@ void  activate_and_drag_nearest_tracker_to(double x, double y)
       minTracker = *loop;
     }
   }
+
+  // If we aren't showing the second tracker, then we always activate
+  // the first one.
+  if (!should_draw_second_tracker()) {
+    minTracker = g_trackers.front();
+  }
+
   if (minTracker == NULL) {
     fprintf(stderr, "No tracker to pick out of %d\n", g_trackers.size());
   } else {
@@ -920,14 +975,11 @@ void motionCallbackForGLUT(int x, int y) {
     {
       int x_dist = (int)(fabs(x-g_mousePressX));
       int y_dist = (int)(fabs(y-g_mousePressY));
-      int max_dist;
-      if (x_dist > y_dist) { max_dist = x_dist; }
-      else { max_dist = y_dist; }
 
-      *g_minX = g_mousePressX - max_dist;
-      *g_maxX = g_mousePressX + max_dist;
-      *g_minY = g_mousePressY - max_dist;
-      *g_maxY = g_mousePressY + max_dist;
+      *g_minX = g_mousePressX - x_dist;
+      *g_maxX = g_mousePressX + x_dist;
+      *g_minY = g_mousePressY - y_dist;
+      *g_maxY = g_mousePressY + y_dist;
 
       // Clip the size to stay within the window boundaries.
       if (*g_minX < 0) { *g_minX = 0; };
@@ -1012,13 +1064,35 @@ void  logfilename_changed(char *newvalue, void *)
 
   // Set the offsets to use when logging to the current position of
   // the zeroeth tracker.
-  g_log_offset_x = g_active_tracker->get_x();
-  g_log_offset_y = g_active_tracker->get_y();
+  g_log_offset_x = g_trackers.front()->tracker()->get_x();
+  g_log_offset_y = g_trackers.front()->tracker()->get_y();
+
+  // Set the length and orientation of the original pair of trackers.
+  double dx = g_second_tracker->get_x() - g_trackers.front()->tracker()->get_x();
+  double dy = g_second_tracker->get_y() - g_trackers.front()->tracker()->get_y();
+  g_orig_length = sqrt( dx*dx + dy*dy );
+  g_orig_orient = atan2( dy, dx);
+}
+
+void  make_appropriate_tracker_active(int newvalue, void *)
+{
+  // If we have an active tracker, then set it to the
+  // appropriate tracker.  The guard is to avoid seg fault at
+  // startup.
+  if (g_active_tracker) {
+    if (should_draw_second_tracker()) {
+      g_active_tracker = g_trackers.back()->tracker();
+    } else {
+      g_active_tracker = g_trackers.front()->tracker();
+    }
+  }
 }
 
 // Routine that rebuilds all trackers with the format that matches
 // current settings.  This callback is called when one of the Tcl
-// integer-with-buttons changes its value.
+// integer-with-buttons changes its value or when the option to
+// allow re-orienting or re-scaling is changed (these options require
+// two trackers vs. offset-only mode, which only needs one).
 
 void  rebuild_trackers(int newvalue, void *)
 {
@@ -1035,13 +1109,11 @@ void  rebuild_trackers(int newvalue, void *)
 
     if (g_active_tracker == (*loop)->tracker()) {
       delete (*loop)->tracker();
-      delete *loop;
-      *loop = new Spot_Information(create_appropriate_tracker());
+      (*loop)->set_tracker(create_appropriate_tracker());
       g_active_tracker = (*loop)->tracker();
     } else {
       delete (*loop)->tracker();
-      delete *loop;
-      *loop = new Spot_Information(create_appropriate_tracker());
+      (*loop)->set_tracker(create_appropriate_tracker());
     }
     (*loop)->tracker()->set_location(x,y);
     (*loop)->tracker()->set_radius(r);
@@ -1298,10 +1370,11 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-  // Create a tracker and place it in the center of the window.
+  // Create two trackers and place them near the center of the window.
   g_trackers.push_back(new Spot_Information(g_active_tracker = create_appropriate_tracker()));
   g_active_tracker->set_location(g_camera->get_num_columns()/2, g_camera->get_num_rows()/2);
-
+  g_trackers.push_back(new Spot_Information(g_second_tracker = create_appropriate_tracker()));
+  g_second_tracker->set_location(0, g_camera->get_num_rows()/2);
 
   // Set the display functions for each window and idle function for GLUT (they
   // will do all the work) and then give control over to GLUT.

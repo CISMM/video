@@ -6,6 +6,12 @@
 set fileinfo(open_dir) "C:\\"
 
 ###########################################################
+# Put in a big "Quit" button at the top of the main window.
+
+button .quit -text "Quit" -command { set quit 1 }
+pack .quit -side top -fill x
+
+###########################################################
 # Put the places for the controls to let the user pick a kernel.
 
 toplevel .kernel

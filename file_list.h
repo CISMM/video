@@ -10,8 +10,9 @@
 // must come in a continguous block that is the same number of characters
 // in each of the file names.  The stride between file names must be
 // constant, and it must be less than 100 to be detected by this
-// class.  The changing block of numbers must be the last block of
-// numbers in the file name.
+// class.  The changing block of numbers selected by this function is
+// the one that is nearest to the end of the file name, if there is more
+// than one set.
 //
 // It returns FALSE and clears the list if there is no such file as
 // the name passed in.  It returns TRUE and fills in at least the

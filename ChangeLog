@@ -1,3 +1,19 @@
+2004-09-21  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* base_camera_server.cpp : Returns black outside of image borders
+		when resampling image, rather than garbage.
+	* base_camera_server.h : Same.  Adds translated image and affine
+		transformed image classes.  Not yet completely optimized
+		for speed.
+	* cismm_video_optimizer.cpp : Adds a second tracker and the option
+		to optimize orientation and/or scale along with translation.
+	* cismm_video_optimizer.tcl : Same.
+	* file_list.cpp : Will find a file set even if the block of numbers
+		that index it is not the last block of numbers in the file
+		name.
+	* file_list.h : Same.
+	* video_spot_tracker.cpp : Adds Jpeg to the file types loaded.
+
 2004-09-15  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Checked to make sure it does not try

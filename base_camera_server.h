@@ -32,8 +32,11 @@ public:
   // smoothly interpolate between pixel values.
   // All sorts of speed tweaks in here because it is in the inner loop for
   // the spot tracker and other codes.
+  // Return a result of zero and false if the coordinate its outside the image.
+  // Return the correct interpolated result and true if the coordinate is inside.
   inline bool	read_pixel_bilerp(double x, double y, double &result, unsigned rgb = 0) const
   {
+    result = 0;	// In case of failure.
     // The order of the following statements is optimized for speed.
     // The double version is used below for xlowfrac comp, ixlow also used later.
     // Slightly faster to explicitly compute both here to keep the answer around.
@@ -142,18 +145,17 @@ protected:
 };
 
 //----------------------------------------------------------------------------
-// Concrete version of above virtual base class that applies a transformation
-// to the pixel coordinates for another image and lets you resample it.  The
-// present implementation only does a translation, but could be extended with
-// an overloaded constructor to include other transformations.  It does a
+// Concrete version of above virtual base class that applies a translation
+// to the pixel coordinates for another image and lets you resample it.  It does a
 // bilinear interpolation on the pixel coordinates to get the values from the
-// other image.
+// other image.  It is a faster implementation than the more general affine_transformed
+// image defined below.
 
-class transformed_image: public image_wrapper {
+class translated_image: public image_wrapper {
 public:
-  transformed_image(const image_wrapper &reference_image, double dx, double dy) :
+  translated_image(const image_wrapper &reference_image, double dx, double dy) :
     _ref(reference_image), _dx(dx), _dy(dy) { };
-  virtual ~transformed_image() {};
+  virtual ~translated_image() {};
 
   // Tell what the range is for the image.
   virtual void	read_range(int &minx, int &maxx, int &miny, int &maxy) const
@@ -186,9 +188,98 @@ protected:
   inline  double  newy(double x, double y) const { return y + _dy; }
 };
 
+//----------------------------------------------------------------------------
+// Concrete version of above virtual base class that applies a translation,
+// rotation, and uniform scale to the pixel coordinates for another image
+// and lets you resample it.  The rotation and scale are performed around
+// a specified location in the coordinates of the affine_transform image,
+// then the translation is applied in this rotated and scaled space.
+// It does a bilinear interpolation on the pixel
+// coordinates to get the values from the other image.  Rotation is in
+// radians, and a positive rotation rotates the +X axis into the +Y axis.
+
+class affine_transformed_image: public image_wrapper {
+public:
+  affine_transformed_image(const image_wrapper &reference_image,
+			   double dx, double dy,
+			   double rotradians, double scale,
+			   double centerx = 0, double centery = 0) :
+    _ref(reference_image), _dx(dx), _dy(dy), _rot(rotradians), _scale(scale),
+    _centerx(centerx), _centery(centery)
+  {
+      _sinrot = sin(_rot);
+      _cosrot = cos(_rot);
+  };
+  virtual ~affine_transformed_image() {};
+
+  // Tell what the range is for the image.
+  virtual void	read_range(int &minx, int &maxx, int &miny, int &maxy) const
+  {
+    _ref.read_range(minx, maxx, miny, maxy);
+  }
+
+  /// Return the number of colors that the image has
+  virtual unsigned  get_num_colors() const { return _ref.get_num_colors(); }
+
+  /// Read a pixel from the image into a double; return true if the pixel
+  // was in the image, false if it was not.
+  virtual bool	read_pixel(int x, int y, double	&result, unsigned rgb = 0) const
+  {
+    return _ref.read_pixel_bilerp(newx(x,y), newy(x,y), result, rgb);
+  }
+
+  /// Read a pixel from the image into a double; Don't check boundaries.
+  virtual double read_pixel_nocheck(int x, int y, unsigned rgb = 0) const
+  {
+    return _ref.read_pixel_bilerp_nocheck(newx(x,y), newy(x,y), rgb);
+  }
+
+protected:
+  const	image_wrapper &_ref;	    //< Image to get pixels from
+  double  _dx, _dy;		    //< Transform to apply to coordinates
+  double  _rot;			    //< Rotation in radians to apply to around translated center
+  double  _scale;		    //< Scale factor to apply at translated center.
+  double  _centerx;		    //< Center of scaling and rotation
+  double  _centery;		    //< Center of scaling and rotation
+  double  _sinrot;		    //< Sine of the rotation angle
+  double  _cosrot;		    //< Cosine of the rotation angle
+
+  // Calculate the direction and length of a step in (x,y) along the
+  // rotated and scaled X axis.
+  inline double _scale_and_rotate_x_step(double x, double y) const {
+    return _scale * (_cosrot*x - _sinrot*y);
+  }
+
+  // Calculate the direction and length of a step in (x,y) along the
+  // rotated and scaled Y axis.
+  inline double _scale_and_rotate_y_step(double x, double y) const {
+    return _scale * (_sinrot*x + _cosrot*y);
+  }
+
+  // These compute the new coordinates from the old coordinates.
+  inline  double  newx(double x, double y) const {
+    double x_centered = x - _centerx;
+    double y_centered = y - _centery;
+    double x_scaled_rot = _scale_and_rotate_x_step(x_centered, y_centered);
+    double y_scaled_rot = _scale_and_rotate_y_step(x_centered, y_centered);
+    double x_putback = x_scaled_rot + _centerx;
+    double y_putback = y_scaled_rot + _centery;
+    return x_putback + _dx;
+  }
+  inline  double  newy(double x, double y) const {
+    double x_centered = x - _centerx;
+    double y_centered = y - _centery;
+    double x_scaled_rot = _scale_and_rotate_x_step(x_centered, y_centered);
+    double y_scaled_rot = _scale_and_rotate_y_step(x_centered, y_centered);
+    double x_putback = x_scaled_rot + _centerx;
+    double y_putback = y_scaled_rot + _centery;
+    return y_putback + _dy;
+  }
+};
+
 
 //----------------------------------------------------------------------------
-// This class forms a basic wrapper for camera.  It treats an camera as anything
+// This class forms a basic wrapper for a camera.  It treats an camera as anything
 // which can do what is needed for an imager and also includes functions for
 // reading images into memory from the camera.
 
