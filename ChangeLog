@@ -1,3 +1,15 @@
+2004-11-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* cismm_video_optimizer.cpp : Beginning of code to let users
+		specify a subtraction image and image-based operations
+		like on the Argus.
+	* cismm_video_optimizer.tcl : Same.
+	* video_spot_tracker.cpp : Made the video controls run right
+		after the Tcl code to avoid timeouts.  Added code to
+		say "Done with video" and pause at the end of a video.
+		Let the kymograph run even when the trackers are not
+		optimizing.
+
 2004-11-09  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* base_camera_server.cpp : Code to create radially-averaged

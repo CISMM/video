@@ -110,6 +110,30 @@ proc update_gain_window_visibility {nm el op} {
 }
 
 ###########################################################
+# Put the place for the controls for the image mixtures.
+# This window should only be visible when imagemix_control is turned on.
+
+toplevel .imagemix
+wm geometry .imagemix +185+10
+wm withdraw .imagemix
+set show_imagemix_control 0
+frame .imagemix.subtract_first
+pack .imagemix.subtract_first -side left
+frame .imagemix.subtract_brackets
+pack .imagemix.subtract_brackets -side left
+
+trace variable show_imagemix_control w update_imagemix_window_visibility
+
+proc update_imagemix_window_visibility {nm el op} {
+	global show_imagemix_control
+	if { $show_imagemix_control } {
+		wm deiconify .imagemix
+	} else {
+		wm withdraw .imagemix
+	}
+}
+
+###########################################################
 # Put the controls that will let the user store a log file.
 # It puts a checkbox down at the bottom of the main menu
 # that causes a dialog box to come up when it is turned on.

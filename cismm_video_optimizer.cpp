@@ -162,6 +162,7 @@ public:
 char  *g_device_name = NULL;			  //< Name of the device to open
 base_camera_server  *g_camera;			  //< Camera used to get an image
 copy_of_image	    *g_last_image = NULL;	  //< Copy of the last image we had, if any
+copy_of_image	    *g_subtract_image = NULL;	  //< Image to subtract from the current image
 float		    g_search_radius = 0;	  //< Search radius for doing local max in before optimizing.
 Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
 Tclvar_int_with_button	g_frame_number("frame_number",NULL,-1);  //< Keeps track of video frame number
@@ -185,6 +186,7 @@ void  rebuild_trackers(int newvalue, void *);
 void  rebuild_trackers(float newvalue, void *);
 void  set_maximum_search_radius(int newvalue, void *);
 void  make_appropriate_tracker_active(int newvalue, void *);
+void  subtractfirst_changed(int newvalue, void *);
 Tclvar_float		g_X("x");
 Tclvar_float		g_Y("y");
 Tclvar_float_with_scale	g_Radius("radius", ".kernel.radius", 1, 30, 5);
@@ -210,6 +212,9 @@ Tclvar_int_with_button	g_round_cursor("round_cursor","");
 Tclvar_int_with_button	g_full_area("full_area","");
 Tclvar_int_with_button	g_mark("show_tracker","",1);
 Tclvar_int_with_button	g_show_gain_control("show_gain_control","",0);
+Tclvar_int_with_button	g_show_imagemix_control("show_imagemix_control","",1);
+Tclvar_int_with_button	g_subtract_first("subtract_first_image",".imagemix.subtract_first",0, subtractfirst_changed);
+Tclvar_int_with_button	g_subtract_brackets("subtract_bracketting_images",".imagemix.subtract_brackets",0);
 Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
 Tclvar_int_with_button	g_quit("quit", NULL);
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
@@ -1227,6 +1232,22 @@ void  rebuild_trackers(float newvalue, void *) {
 void  set_maximum_search_radius(int newvalue, void *)
 {
   g_search_radius = g_Radius * newvalue;
+}
+
+// Routine that stores the current image when the button is turned on
+// into a subtraction image so that it can be later subtracted from other images.
+// Deletes the subtraction image and sets it to null when the button is turned off.
+
+void  subtractfirst_changed(int newvalue, void *)
+{
+  if (newvalue == 1) {
+    g_subtract_image = new copy_of_image(*g_camera);
+  } else {
+    if (g_subtract_image) {
+      delete g_subtract_image;
+      g_subtract_image = NULL;
+    }
+  }
 }
 
 

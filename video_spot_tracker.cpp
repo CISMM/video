@@ -61,7 +61,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "03.05";
+const char *Version_string = "03.06";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -1071,6 +1071,45 @@ void myIdleFunc(void)
     fprintf(stderr,"Tclvar Mainloop failed\n");
   }
 
+  //------------------------------------------------------------
+  // If we have a video object, let the video controls operate
+  // on it.
+  if (g_video) {
+    static  int	last_play = 0;
+
+    // If the user has pressed step, then run the video for a
+    // single step and pause it.
+    if (*g_step) {
+      g_video->single_step();
+      *g_play = 0;
+      *g_step = 0;
+    }
+
+    // If the user has pressed play, start the video playing
+    if (!last_play && *g_play) {
+      g_video->play();
+      *g_rewind = 0;
+    }
+
+    // If the user has cleared play, then pause the video
+    if (last_play && !(*g_play)) {
+      g_video->pause();
+    }
+    last_play = *g_play;
+
+    // If the user has pressed rewind, go the the beginning of
+    // the stream and then pause (by clearing play).  This has
+    // to come after the checking for stop play above so that the
+    // video doesn't get paused.  Also, reset the frame count
+    // when we rewind.
+    if (*g_rewind) {
+      *g_play = 0;
+      *g_rewind = 0;
+      g_video->rewind();
+      g_frame_number = -1;
+    }
+  }
+
   // If they just asked for the full area, reset to that and
   // then turn off the check-box.  Also turn off small-area.
   if (g_full_area) {
@@ -1144,6 +1183,17 @@ void myIdleFunc(void)
     } else {
       // We timed out; either paused or at the end.  Don't log in this case.
       g_video_valid = false;
+
+      // If we are playing, then say that we've finished the run and
+      // stop playing.
+      if (((int)(*g_play)) != 0) {
+#ifdef	_WIN32
+	if (!PlaySound("end_of_video.wav", NULL, SND_FILENAME | SND_ASYNC)) {
+	  fprintf(stderr,"Cannot play sound %s\n", "end_of_video.wav");
+	}
+#endif
+	*g_play = 0;
+      }
     }
   } else {
     // Got a valid video frame; can log it.  Add to the frame number.
@@ -1318,98 +1368,6 @@ void myIdleFunc(void)
     }
 
     last_optimized_frame_number = g_frame_number;
-
-    // Update the kymograph if it is active and if we have a new video frame.
-    // This must be done AFTER the optimization because we need to find the right
-    // trace through the NEW image.  If we lost tracking, too bad...
-    if (g_kymograph && g_video_valid) {
-      // Make sure we have at least two trackers, which will define the
-      // frame of reference for the kymograph.  Also make sure that we are
-      // not out of display room in the kymograph.
-      if ( (g_trackers.size() >= 2) && (g_kymograph_filled+1 < g_kymograph_height) ) {
-
-	// Find the two tracked points to use.
-	list<Spot_Information *>::iterator  loop = g_trackers.begin();
-	double x0 = (*loop)->xytracker()->get_x();
-	double y0 = (*loop)->xytracker()->get_y();
-	loop++;
-	double x1 = (*loop)->xytracker()->get_x();
-	double y1 = (*loop)->xytracker()->get_y();
-
-	// Find the center of the two (origin of kymograph coordinates) and the unit vector (dx,dy)
-	// going towards the second from the first.
-	double xcenter = (x0 + x1) / 2;
-	double ycenter = (y0 + y1) / 2;
-	double dist = sqrt( (x1-x0)*(x1-x0) + (y1-y0)*(y1-y0) );
-	if (dist == 0) { dist = 1; }  //< Avoid divide-by-zero below.
-	double dx = (x1 - x0) / dist;
-	double dy = (y1 - y0) / dist;
-
-	// March along in the image from negative half-width to half-width
-	// and fill in the samples image values at these locations.
-	double step;
-	double double_pix;
-	int shift = g_bitdepth - 8;
-	for (step = -g_kymograph_width/2.0; step <= g_kymograph_width / 2.0; step++) {
-
-	  // Figure out where to look in the image
-	  double x = xcenter + step * dx;
-	  double y = ycenter + step * dy;
-
-	  // Figure out where to put this in the kymograph
-	  int kx = (int)(step + g_kymograph_width/2.0);
-	  int ky = g_kymograph_filled;
-
-	  // Look up the pixel in the image and put it into the kymograph if we get a reading.
-	  if (!g_camera->read_pixel_bilerp(x, y, double_pix)) {
-	    g_kymograph_image[0 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
-	    g_kymograph_image[1 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
-	    g_kymograph_image[2 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
-	    g_kymograph_image[3 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 255;
-	  } else {
-	    // This assumes that the pixels are actually 8-bit values
-	    // and will clip if they go above this.  It also writes pixels
-	    // from the first channel into all colors of the image.  It uses
-	    // RGBA so that we don't have to worry about byte-alignment problems
-	    // that plagued us when using RGB pixels.
-	    g_kymograph_image[0 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (uns16)(double_pix) >> shift;
-	    g_kymograph_image[1 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (uns16)(double_pix) >> shift;
-	    g_kymograph_image[2 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (uns16)(double_pix) >> shift;
-	    g_kymograph_image[3 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 255;
-	  }
-	}
-
-	// Figure out the coordinates of the kymograph center in the coordinate system
-	// of the cell, where the third tracker (#2) is the posterior end and the fourth
-	// is the anterior end.
-	if (g_trackers.size() >= 4) {
-	  // Find the two tracked points to use.
-	  loop++; // Skip to the third point.
-	  double cx0 = (*loop)->xytracker()->get_x();
-	  double cy0 = (*loop)->xytracker()->get_y();
-	  loop++;
-	  double cx1 = (*loop)->xytracker()->get_x();
-	  double cy1 = (*loop)->xytracker()->get_y();
-
-	  // Find the center of the two (origin of cell coordinates) and the unit vector (dx,dy)
-	  // going towards the second from the first.
-	  double cxcenter = (cx0 + cx1) / 2;
-	  double cycenter = (cy0 + cy1) / 2;
-	  double cdist = sqrt( (cx1-cx0)*(cx1-cx0) + (cy1-cy0)*(cy1-cy0) );
-	  if (cdist == 0) { cdist = 1; }  //< Avoid divide-by-zero below.
-	  double cdx = (cx1 - cx0) / cdist;
-	  double cdy = (cy1 - cy0) / cdist;
-
-	  // Find the dot product between the spindle center and the cell center,
-	  // which is the value of the cell-centered ordinate.
-	  g_kymograph_centers[g_kymograph_filled] = 
-	    (xcenter - cxcenter) * cdx + (ycenter - cycenter) * cdy;
-	}
-
-	// We've added another line to the kymograph!
-	g_kymograph_filled++;
-      }
-    } 
   }
 
   // If we are optimizing in Z, then do it here.
@@ -1420,6 +1378,98 @@ void myIdleFunc(void)
       (*loop)->ztracker()->optimize(*g_camera, (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y(), z);
     }
   }
+
+  // Update the kymograph if it is active and if we have a new video frame.
+  // This must be done AFTER the optimization because we need to find the right
+  // trace through the NEW image.  If we lost tracking, too bad...
+  if (g_kymograph && g_video_valid) {
+    // Make sure we have at least two trackers, which will define the
+    // frame of reference for the kymograph.  Also make sure that we are
+    // not out of display room in the kymograph.
+    if ( (g_trackers.size() >= 2) && (g_kymograph_filled+1 < g_kymograph_height) ) {
+
+      // Find the two tracked points to use.
+      list<Spot_Information *>::iterator  loop = g_trackers.begin();
+      double x0 = (*loop)->xytracker()->get_x();
+      double y0 = (*loop)->xytracker()->get_y();
+      loop++;
+      double x1 = (*loop)->xytracker()->get_x();
+      double y1 = (*loop)->xytracker()->get_y();
+
+      // Find the center of the two (origin of kymograph coordinates) and the unit vector (dx,dy)
+      // going towards the second from the first.
+      double xcenter = (x0 + x1) / 2;
+      double ycenter = (y0 + y1) / 2;
+      double dist = sqrt( (x1-x0)*(x1-x0) + (y1-y0)*(y1-y0) );
+      if (dist == 0) { dist = 1; }  //< Avoid divide-by-zero below.
+      double dx = (x1 - x0) / dist;
+      double dy = (y1 - y0) / dist;
+
+      // March along in the image from negative half-width to half-width
+      // and fill in the samples image values at these locations.
+      double step;
+      double double_pix;
+      int shift = g_bitdepth - 8;
+      for (step = -g_kymograph_width/2.0; step <= g_kymograph_width / 2.0; step++) {
+
+	// Figure out where to look in the image
+	double x = xcenter + step * dx;
+	double y = ycenter + step * dy;
+
+	// Figure out where to put this in the kymograph
+	int kx = (int)(step + g_kymograph_width/2.0);
+	int ky = g_kymograph_filled;
+
+	// Look up the pixel in the image and put it into the kymograph if we get a reading.
+	if (!g_camera->read_pixel_bilerp(x, y, double_pix)) {
+	  g_kymograph_image[0 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
+	  g_kymograph_image[1 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
+	  g_kymograph_image[2 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
+	  g_kymograph_image[3 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 255;
+	} else {
+	  // This assumes that the pixels are actually 8-bit values
+	  // and will clip if they go above this.  It also writes pixels
+	  // from the first channel into all colors of the image.  It uses
+	  // RGBA so that we don't have to worry about byte-alignment problems
+	  // that plagued us when using RGB pixels.
+	  g_kymograph_image[0 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (uns16)(double_pix) >> shift;
+	  g_kymograph_image[1 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (uns16)(double_pix) >> shift;
+	  g_kymograph_image[2 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (uns16)(double_pix) >> shift;
+	  g_kymograph_image[3 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 255;
+	}
+      }
+
+      // Figure out the coordinates of the kymograph center in the coordinate system
+      // of the cell, where the third tracker (#2) is the posterior end and the fourth
+      // is the anterior end.
+      if (g_trackers.size() >= 4) {
+	// Find the two tracked points to use.
+	loop++; // Skip to the third point.
+	double cx0 = (*loop)->xytracker()->get_x();
+	double cy0 = (*loop)->xytracker()->get_y();
+	loop++;
+	double cx1 = (*loop)->xytracker()->get_x();
+	double cy1 = (*loop)->xytracker()->get_y();
+
+	// Find the center of the two (origin of cell coordinates) and the unit vector (dx,dy)
+	// going towards the second from the first.
+	double cxcenter = (cx0 + cx1) / 2;
+	double cycenter = (cy0 + cy1) / 2;
+	double cdist = sqrt( (cx1-cx0)*(cx1-cx0) + (cy1-cy0)*(cy1-cy0) );
+	if (cdist == 0) { cdist = 1; }  //< Avoid divide-by-zero below.
+	double cdx = (cx1 - cx0) / cdist;
+	double cdy = (cy1 - cy0) / cdist;
+
+	// Find the dot product between the spindle center and the cell center,
+	// which is the value of the cell-centered ordinate.
+	g_kymograph_centers[g_kymograph_filled] = 
+	  (xcenter - cxcenter) * cdx + (ycenter - cycenter) * cdy;
+      }
+
+      // We've added another line to the kymograph!
+      g_kymograph_filled++;
+    }
+  } 
 
   //------------------------------------------------------------
   // Make the GUI track the result for the active tracker
@@ -1434,45 +1484,6 @@ void myIdleFunc(void)
       // Horrible hack to make this work with rod type
       g_orientation = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_orientation();
       g_length = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_length();
-    }
-  }
-
-  //------------------------------------------------------------
-  // If we have a video object, let the video controls operate
-  // on it.
-  if (g_video) {
-    static  int	last_play = 0;
-
-    // If the user has pressed step, then run the video for a
-    // single step and pause it.
-    if (*g_step) {
-      g_video->single_step();
-      *g_play = 0;
-      *g_step = 0;
-    }
-
-    // If the user has pressed play, start the video playing
-    if (!last_play && *g_play) {
-      g_video->play();
-      *g_rewind = 0;
-    }
-
-    // If the user has cleared play, then pause the video
-    if (last_play && !(*g_play)) {
-      g_video->pause();
-    }
-    last_play = *g_play;
-
-    // If the user has pressed rewind, go the the beginning of
-    // the stream and then pause (by clearing play).  This has
-    // to come after the checking for stop play above so that the
-    // video doesn't get paused.  Also, reset the frame count
-    // when we rewind.
-    if (*g_rewind) {
-      *g_play = 0;
-      *g_rewind = 0;
-      g_video->rewind();
-      g_frame_number = -1;
     }
   }
 
