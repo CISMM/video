@@ -1,3 +1,10 @@
+2004-03-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* diaginc_library.dsp : Making it build without the ..\external dir.
+	* file_stack_library.dsp : Same.
+	* video_spot_tracker.dsp : Same.
+	* video_spot_tracker.html : that to the.
+
 2004-03-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* Tcl_Linkvar.C : Making sure that strings don't get written past

@@ -877,6 +877,8 @@ Tclvar_selector::Tclvar_selector (char * tcl_varname, char * parent_name,
 	Tclvar_list_of_strings * list, char * initial_value,
         Linkvar_Selectcall c, void *ud) :
     mylist (NULL),
+    tcl_widget_name(NULL),
+    tcl_label_name(NULL),
     d_initialized (0)
 {
 	callback = c;
