@@ -54,6 +54,18 @@ pack .kernel.optimize -side left
 # Quit the program if this window is destroyed
 bind .kernel <Destroy> {global quit ; set quit 1} 
 
+# Hide the kernel control window if the tracker is hidden.
+trace variable show_tracker w update_kernel_window_visibility
+
+proc update_kernel_window_visibility {nm el op} {
+	global show_tracker
+	if { $show_tracker } {
+		wm deiconify .kernel
+	} else {
+		wm withdraw .kernel
+	}
+}
+
 ###########################################################
 # Put the place for the controls for the clipping.
 # This window should only be visible when clipping is turned on.
@@ -70,6 +82,30 @@ proc update_clipping_window_visibility {nm el op} {
 		wm deiconify .clipping
 	} else {
 		wm withdraw .clipping
+	}
+}
+
+###########################################################
+# Put the place for the controls for the contrast/gain.
+# This window should only be visible when gain_control is turned on.
+
+toplevel .gain
+wm geometry .gain +185+10
+wm withdraw .gain
+set show_gain_control 0
+frame .gain.low
+pack .gain.low -side left
+frame .gain.high
+pack .gain.high -side left
+
+trace variable show_gain_control w update_gain_window_visibility
+
+proc update_gain_window_visibility {nm el op} {
+	global show_gain_control
+	if { $show_gain_control } {
+		wm deiconify .gain
+	} else {
+		wm withdraw .gain
 	}
 }
 

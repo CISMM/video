@@ -10,21 +10,22 @@
 #include <magick/api.h>
 
 // Apply the specified gain to the value, clamp to zero and the maximum
-// possible value, and return the result.
-static	vrpn_uint16 scale_and_clamp(const double value, const double gain)
+// possible value, and return the result.  We always clamp to 65535 rather
+// than 255 because the high-order byte is used when writing an 8-bit
+// file.
+static	vrpn_uint16 offset_scale_and_clamp(const double value, const double gain, const double offset)
 {
-  double result = value * gain;
+  double result = gain * (value + offset);
   if (result < 0) { result = 0; }
   if (result > 65535) { result = 65535; }
   return (vrpn_uint16)(result);
 }
 
 /// Store the portion of the image that is in memory to a TIFF file.
-bool  image_wrapper::write_to_tiff_file(const char *filename, double gain, bool sixteen_bits,
+bool  image_wrapper::write_to_tiff_file(const char *filename, double scale, double offset, bool sixteen_bits,
 						    const char *magick_files_dir) const
 {
-  // Make a pointer to the image data.  If we adjust the gain, then make
-  // a copy of it adjusted by the gain.
+  // Make a pointer to the image data adjusted by the scale and offset.
   vrpn_uint16	  *gain_buffer = NULL;
   int		  r,c;
   int minx, maxx, miny, maxy, numcols, numrows;
@@ -45,11 +46,11 @@ bool  image_wrapper::write_to_tiff_file(const char *filename, double gain, bool 
       int flip_r = (numrows - 1) - r;
       double  value;
       read_pixel(minx + c, miny + r, value, 0);
-      gain_buffer[0 + 3*(c + flip_r * numcols)] = scale_and_clamp(value, gain);
+      gain_buffer[0 + 3*(c + flip_r * numcols)] = offset_scale_and_clamp(value, scale, offset);
       read_pixel(minx + c, miny + r, value, 1);
-      gain_buffer[1 + 3*(c + flip_r * numcols)] = scale_and_clamp(value, gain);
+      gain_buffer[1 + 3*(c + flip_r * numcols)] = offset_scale_and_clamp(value, scale, offset);
       read_pixel(minx + c, miny + r, value, 2);
-      gain_buffer[2 + 3*(c + flip_r * numcols)] = scale_and_clamp(value, gain);
+      gain_buffer[2 + 3*(c + flip_r * numcols)] = offset_scale_and_clamp(value, scale, offset);
     }
   }
 

@@ -99,7 +99,7 @@ public:
 
   /// Store the portion of image in memory to a TIFF file (subclasses may override this to make it more efficient,
   // but we provide an instance in the C file).
-  virtual bool  write_to_tiff_file(const char *filename, double gain = 1.0, bool sixteen_bits = false,
+  virtual bool  write_to_tiff_file(const char *filename, double scale = 1.0, double offset = 0.0, bool sixteen_bits = false,
     const char *magick_files_dir = "C:/nsrg/external/pc_win32/bin/ImageMagick-5.5.7-Q16/MAGIC_DIR_PATH") const;
 
   /// Send whole image over a vrpn connection

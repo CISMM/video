@@ -59,7 +59,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.03";
+const char *Version_string = "01.04";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -209,6 +209,7 @@ Tclvar_int_with_button	g_rescale("rescale","",0, make_appropriate_tracker_active
 Tclvar_int_with_button	g_round_cursor("round_cursor","");
 Tclvar_int_with_button	g_full_area("full_area","");
 Tclvar_int_with_button	g_mark("show_tracker","",1);
+Tclvar_int_with_button	g_show_gain_control("show_gain_control","",0);
 Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
 Tclvar_int_with_button	g_quit("quit", NULL);
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
@@ -219,6 +220,9 @@ char			*g_logfile_base_name = NULL;
 copy_of_image		*g_log_last_image = NULL;
 unsigned		g_log_frame_number_last_logged = -1;
 bool g_video_valid = false; // Do we have a valid video frame in memory?
+
+Tclvar_float_with_scale	g_clip_high("clip_high", ".gain.high", 0, 1, 1);
+Tclvar_float_with_scale	g_clip_low("clip_low", ".gain.low", 0, 1, 0);
 
 //--------------------------------------------------------------------------
 // Helper routine to get the Y coordinate right when going between camera
@@ -400,13 +404,25 @@ static	bool  save_log_frame(unsigned frame_number)
     // Figure out whether the image will be sixteen bits, and also
     // the gain to apply (256 if 8-bit, 1 if 16-bit).
     bool do_sixteen = (g_sixteenbits == 1);
-    int gain = 1;
-    if (!do_sixteen) { gain = 256; }
+    int bitshift_gain = 1;
+    if (!do_sixteen) { bitshift_gain = 256; }
 
     // Crop the region we want out of the image and then write it
-    // to a file.
+    // to a file.  Set the gain based on whether we're using 16 bits
+    // and the offset and scale (gain again) based on the global
+    // clipping values.
+    vrpn_uint16 clamp = (1 << ((unsigned)(g_bitdepth))) - 1;
+    double  intensity_gain;
+    double  intensity_offset;
+
+    // Compute gain and offset so that pixels at or below the low-clip value are
+    // set to zero and pixels at or above the high-clip value are set to the
+    // maximum value for the current global pixel-count setting.
+    intensity_gain = 1.0/(g_clip_high - g_clip_low);
+    intensity_offset = - g_clip_low * clamp;
+
     cropped_image crop(*shifted, (int)(*g_minX), (int)(*g_minY), (int)(*g_maxX), (int)(*g_maxY));
-    if (!crop.write_to_tiff_file(filename, gain, do_sixteen)) {
+    if (!crop.write_to_tiff_file(filename, bitshift_gain*intensity_gain, intensity_offset, do_sixteen)) {
       delete [] filename;
       delete shifted;
       return false;
@@ -484,6 +500,48 @@ static bool should_draw_second_tracker(void)
   return g_reorient || g_rescale;
 }
 
+// Apply gain and offset based on the settings for the
+// two global intensity clipping parameters.  Then clamp
+// the value to the maximum representable value for the
+// specified image bit depth.
+
+inline	vrpn_uint16 offset_scale_clamp(vrpn_uint16 value)
+{
+  vrpn_uint16 clamp = (1 << ((unsigned)(g_bitdepth))) - 1;
+
+  // First, apply scale and offset to the value unless the
+  // clipping variables are 0 and 1.
+  if ( (g_clip_low != 0) || (g_clip_high != 1) ) {
+    double  intensity_gain;
+    double  intensity_offset;
+
+    // Compute gain and offset so that pixels at or below the low-clip value are
+    // set to zero and pixels at or above the high-clip value are set to the
+    // maximum value for the current global pixel-count setting.
+    // First, make sure we've got legal settings.
+    if (g_clip_high <= g_clip_low) {
+      g_clip_high = g_clip_low + (1.0/clamp);
+    }
+    intensity_gain = 1.0/(g_clip_high - g_clip_low);
+    intensity_offset = g_clip_low * clamp;
+
+    double dval = (value - intensity_offset) * intensity_gain;
+    if (dval < 0) {
+      value = 0;
+    } else {
+      value = dval;
+    }
+  }
+
+  // Clamp the value based on the number of pixels that are supposed
+  // to be in the input file.
+  if (value <= clamp) {
+      return value;
+  } else {
+    return clamp;
+  }
+}
+
 void myDisplayFunc(void)
 {
   unsigned  r,c;
@@ -515,9 +573,9 @@ void myDisplayFunc(void)
       // from the first channel into all colors of the image.  It uses
       // RGBA so that we don't have to worry about byte-alignment problems
       // that plagued us when using RGB pixels.
-      g_glut_image[0 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> shift;
-      g_glut_image[1 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> shift;
-      g_glut_image[2 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> shift;
+      g_glut_image[0 + 4 * (c + g_camera->get_num_columns() * r)] = offset_scale_clamp(uns_pix) >> shift;
+      g_glut_image[1 + 4 * (c + g_camera->get_num_columns() * r)] = offset_scale_clamp(uns_pix) >> shift;
+      g_glut_image[2 + 4 * (c + g_camera->get_num_columns() * r)] = offset_scale_clamp(uns_pix) >> shift;
       g_glut_image[3 + 4 * (c + g_camera->get_num_columns() * r)] = 255;
 
 #ifdef DEBUG

@@ -1,3 +1,18 @@
+2004-11-02  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* argonot.cpp : Added "VRPN_CALLBACK" as needed by new version.
+	* base_camera_server.cpp : added offset parameter to the file
+		save, so that offset and scaling could both be done on
+		the way to the saved file.
+	* base_camera_server.h : Same.
+	* cismm_video_optimizer.cpp : Added contrast and brightness
+		controls.
+	* cismm_video_optimizer.tcl : Same.
+	* directx_library.dsp : Pointed at project file on D: rather than C:.
+	* test_directx_library.dsp : Same.
+	* video_tempimager_server.cpp : Added directx640x480 option.
+	* video_tempimager_server.dsp : Changes to compile in current env.
+
 2004-10-02  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* base_camera_server.cpp : Added code to enable cropping of

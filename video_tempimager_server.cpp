@@ -47,6 +47,14 @@ bool  init_camera_code(const char *type, int which = 1)
       fprintf(stderr,"init_camera_code(): Can't open DirectX camera server\n");
       return false;
     }
+  } else if (!strcmp(type, "directx640x480")) {
+    printf("Opening DirectX Camera %d\n", which);
+    g_camera = new directx_camera_server(which, 640, 480);
+    printf("Making sure camera is working\n");
+    if (!g_camera->working()) {
+      fprintf(stderr,"init_camera_code(): Can't open DirectX camera server\n");
+      return false;
+    }
   } else {
     fprintf(stderr,"init_camera_code(): Unknown camera type (%s)\n", type);
     return false;
