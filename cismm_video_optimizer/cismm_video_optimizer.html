@@ -1,6 +1,6 @@
-<title>CISMM Video Optimizer v01.02</title>
+<title>CISMM Video Optimizer v01.04</title>
 
-<h1>CISMM Video Optimizer v01.02</h1>
+<h1>CISMM Video Optimizer v01.04</h1>
 
 <p>The <dfn>CISMM Video Optimizer</dfn> program is used to optimize video frames from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible video file, from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible camera, from a <a href="http://roperscientific.com">Roper Scientific</a> camera, from a <a href="http://diaginc.com">DiagInc</a> SPOT camera, or from a set of TIFF or BMP files (it can read other, compressed file formats but these are not included in the default set because these file formats distort images in ways that affect tracking accuracy). The program currently runs only on Windows, but it uses the portable openGL library for rendering, the portable Tcl/Tk for user interface control, and the portable ImageMagick package for reading images.</p>
 
@@ -10,9 +10,9 @@
 
 <h2>Running the program</h2>
 
-<p>The program is run by dragging a video file or image file onto the desktop icon that was created when the program was installed. To select a stack of image files that are numbered consecutively, drag any one of the files onto the icon.  It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start Menu/All Programs/NSRG/CISMM Video Optimizer v01.02</b></i>. If you run the program directly by double-clicking on the icon, it will ask for a video or image file (AVI, TIF, or BMP) that it should open.</p> 
+<p>The program is run by dragging a video file or image file onto the desktop icon that was created when the program was installed. To select a stack of image files that are numbered consecutively, drag any one of the files onto the icon.  It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start Menu/All Programs/NSRG/CISMM Video Optimizer v01.04</b></i>. If you run the program directly by double-clicking on the icon, it will ask for a video or image file (AVI, TIF, or BMP) that it should open.</p> 
 
-<h2><img src="GUI.jpg" width="170" height="566" align="right">Using the program</h2>
+<h2><img src="GUI.jpg" width="173" height="714" align="right">Using the program</h2>
 
 <p>When the program is run and a file is selected, four windows will appear. The image window that appears on the lower right contains the first image within the video file or a continually-updating image from a live camera feed. The control panel named <b><i>tk</i></b> that appears on the left when the program is run (shown here to the right) contains a number of interaction widgets that control the operation of the program. The <b><i>kernel</i></b> control panel that appears above the image window (described later) controls the type of tracking kernel being used. The <b><i>log</i></b> control panel is described later.</p> 
 
@@ -20,10 +20,50 @@
 
 <p><img src="red_green_blue.jpg" width="156" height="60" align="left">If the video file (or video camera) contains different data sets in the red, green, and blue channels then you will need to select the one you want to view. By default, the red channel (channel 0) is selected. To select a different channel, click on the &quot;0&quot; beneath the <i><b>red_green_blue </b></i>slider and type its number into the dialog box that appears. Enter 1 for green and 2 for blue.  The video window should change to display the selected channel.</p> 
 
-<h3>Selecting the Image bit depth</h3>
+<h3>Selecting the image bit depth</h3>
 
-<p>A <i>bit</i> is a computer term for an entity that can take on two values, stored as zero and one. Using several bits in parallel enables the encoding of integers: binary notations is like decimal notation but each digit can only have the value zero or one before wrapping around. Counting proceeds as follows: 000, 001, 010, 011, 100 corresponds to decimal 0,1,2,3,4. Stacking 8 bits together (a bit depth of 8) covers the range 0-255. Stacking 12 bits covers the range 0-4095. The default bit depth in <i>CISMM Video Optimizer </i> is 8 bits per pixel. This is correct for AVI files and many common file formats. Most scientific cameras, however, operate at 12 bits per pixel. When such an image is loaded into CISMM Video Optimizer, it produces a strange-looking image with dark spots where there should be bright spots, or bands of dark and light. While this will not interfere with the tracking (it is only a problem of mapping 12 bits of color to 8 bits of displayable color on the screen), it looks unappealing. By adjusting the bit depth to exceed the number of bits that are used in the image, these colors can be brought into range. If you load a 16-bit image, this can be handled by clicking on the number below the slider and typing in 16; even though it exceeds the maximum slider value, it can be set in this manner. To repeat, <b><i>this setting has no effect on tracking, only on the images shown on the screen</i></b>.</p>
+<p>A <i>bit</i> is a computer term for an entity that can take on two values, 
+  stored as zero and one. Using several bits in parallel enables the encoding 
+  of integers: binary notations is like decimal notation but each digit can only 
+  have the value zero or one before wrapping around. Counting proceeds as follows: 
+  000, 001, 010, 011, 100 corresponds to decimal 0,1,2,3,4. Stacking 8 bits together 
+  (a bit depth of 8) covers the range 0-255. Stacking 12 bits covers the range 
+  0-4095. The default bit depth in <i>CISMM Video Optimizer </i> is 8 bits per 
+  pixel. This is correct for AVI files and many common file formats. Most scientific 
+  cameras, however, operate at 12 bits per pixel. When such an image is loaded 
+  into CISMM Video Optimizer, it produces a strange-looking image with dark spots 
+  where there should be bright spots, or bands of dark and light. While this will 
+  not interfere with the tracking (it is only a problem of mapping 12 bits of 
+  color to 8 bits of displayable color on the screen), it looks unappealing. By 
+  adjusting the bit depth to exceed the number of bits that are used in the image, 
+  these colors can be brought into range. If you load a 16-bit image, this can 
+  be handled by clicking on the number below the slider and typing in 16; even 
+  though it exceeds the maximum slider value, it can be set in this manner. To 
+  repeat, <b><i>this setting has no effect on tracking, only on the images shown 
+  on the screen</i></b>. It also has no effect on the high-value cropping within 
+  the stored file: the screen only shows 8 bits, but if an image is saved as 16 
+  bits then the data values above the high-crop line (see below) and the maximum 
+  stored value will be maintained in the stored file.</p>
 
+<h3>Adjusting contrast and brightness</h3>
+<p><img src="gain_controls.jpg" width="272" height="99" align="right">The brightness 
+  and contrast of the image can be adjusted using the gain control panel, which 
+  is displayed when the <i>show_gain_control</i> box is checked; this box is off 
+  by default. The control panel is shown to the right. The two sliders are used 
+  to bracket the range of brightness that is to be stored in the output file. 
+  By default, they cover the entire normalized range (0 to 1). The actual pixel-value 
+  range is determined by the setting of the <i>bit_depth</i> slider in the main 
+  control panel: 8 bits means values from 0-255 are the full range, while 12 bits 
+  means 0-4095. Every intensity below the <i>clip_low</i> setting is set to zero, 
+  every pixel above the <i>clip_high</i> value is set to maximum, and the intensities 
+  in between are stretched to cover the range represented by <i>bit_depth</i>. 
+  Note that if the output file is 8 bits, then it will contain the same values 
+  shown on the screen. If it is 16 bits, then the high-value cropping may not 
+  occur because there are more representable values in the file than can be shown 
+  on the screen; in this case, the stretching will still occur but the high values 
+  will still be present in the output file.</p>
+<p>The red, green, and blue channels of the input image are scaled using the same 
+  settings.</p>
 <h3>Cropping the video</h3>
 
 <p><img src="crop.jpg" width="168" height="154" align="right">To reduce the size of the resulting image stack, it is possible the select only a sub-region of the video that is to be saved, cropping the video to the selected region. The region can be selected in one of two ways. The first is to press and hold the right mouse button at the center of the desired region and then drag the mouse to set one corner of the region. The second is to select the <cite>show_clipping</cite> checkbox in the <cite>tk</cite> control panel. This will bring up a new control window that lets you slide the four sides of the selection region within the image.</p>
@@ -32,7 +72,7 @@
 
 <p>Remember that objects will move as the video goes, so be careful to preview your video and make sure everything stays in the cropped region for the segment of video you are optimizing, with room to spare for any border around objects that you need.</p>
 
-<h3>Selecting the type of optimization</h3>
+<h3>Selecting the type of transformation</h3>
 
 <p>By default, the CISMM Video Optimizer only applies a translation to successive frames in the image and only provides one fiducial mark, which follows a point on the images that is to remain fixed in the output video.</p>
 
@@ -50,7 +90,7 @@
 
 <p><img src="kernel.jpg" width="528" height="117"></p>
 
-<p>There are three types of tracking kernels available in version 1.02, disc, cone, and symmetric. Their properties are controlled using interface widgets in the <cite>kernel</cite> control panel.</p> 
+<p>There are three types of tracking kernels available in version 1.04, disc, cone, and symmetric. Their properties are controlled using interface widgets in the <cite>kernel</cite> control panel.</p> 
 
 <p>For tracking spots that are even in intensity, or which have uneven intensities within them but a defined circular edge, the <cite><strong>disc</strong></cite> kernel should be used. The radius should be set to match the radius of the spots you wish to track. The <cite><strong>interpolate</strong></cite> checkbox should be set for more accuracy and cleared for more speed.</p> 
 
@@ -92,6 +132,11 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 01.04</h3>
+<ul>
+  <li>Adds controls to adjust gain and offset by clipping away onwanted parts 
+    of the color range.</li>
+</ul>
 <h3>Version 01.03:</h3>
 <ul>
   <li>Fixes a bug with orientation and scale tracking.</li>
