@@ -69,6 +69,17 @@ const int KERNEL_DISC = 0;	  //< These must match the values used in cismm_video
 const int KERNEL_CONE = 1;
 const int KERNEL_SYMMETRIC = 2;
 
+const int DISPLAY_COMPUTED = 0;	  //< These must match the values used in cismm_video_optimizer.tcl
+const int DISPLAY_MIN = 1;
+const int DISPLAY_MAX = 2;
+const int DISPLAY_MEAN = 3;
+
+const int SUBTRACT_NONE = 0;	  //< These must match the values used in cismm_video_optimizer.tcl
+const int SUBTRACT_MIN = 1;
+const int SUBTRACT_MAX = 2;
+const int SUBTRACT_MEAN = 3;
+const int SUBTRACT_SINGLE = 4;
+
 //--------------------------------------------------------------------------
 // Some classes needed for use in the rest of the program.
 
@@ -160,9 +171,14 @@ public:
 // global access to the objects we will be using.
 
 char  *g_device_name = NULL;			  //< Name of the device to open
-base_camera_server  *g_camera;			  //< Camera used to get an image
+base_camera_server  *g_camera = NULL;			  //< Camera used to get an image
+image_wrapper	    *g_image_to_display = NULL;	  //< Image that we're supposed to display.
 copy_of_image	    *g_last_image = NULL;	  //< Copy of the last image we had, if any
 copy_of_image	    *g_subtract_image = NULL;	  //< Image to subtract from the current image
+image_metric	    *g_min_image = NULL;	  //< Accumulates minimum of images
+image_metric	    *g_max_image = NULL;	  //< Accumulates maximum of images
+image_metric	    *g_mean_image = NULL;	  //< Accumulates mean of images
+image_wrapper	    *g_calculated_image = NULL;	  //< Image calculated from the camera image and other parameters
 float		    g_search_radius = 0;	  //< Search radius for doing local max in before optimizing.
 Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
 Tclvar_int_with_button	g_frame_number("frame_number",NULL,-1);  //< Keeps track of video frame number
@@ -186,7 +202,11 @@ void  rebuild_trackers(int newvalue, void *);
 void  rebuild_trackers(float newvalue, void *);
 void  set_maximum_search_radius(int newvalue, void *);
 void  make_appropriate_tracker_active(int newvalue, void *);
-void  subtractfirst_changed(int newvalue, void *);
+void  subtract_changed(int newvalue, void *);
+void  accumulate_min_changed(int newvalue, void *);
+void  accumulate_max_changed(int newvalue, void *);
+void  accumulate_mean_changed(int newvalue, void *);
+void  display_which_image_changed(int newvalue, void *);
 Tclvar_float		g_X("x");
 Tclvar_float		g_Y("y");
 Tclvar_float_with_scale	g_Radius("radius", ".kernel.radius", 1, 30, 5);
@@ -213,9 +233,12 @@ Tclvar_int_with_button	g_full_area("full_area","");
 Tclvar_int_with_button	g_mark("show_tracker","",1);
 Tclvar_int_with_button	g_show_gain_control("show_gain_control","",0);
 Tclvar_int_with_button	g_show_imagemix_control("show_imagemix_control","",1);
-Tclvar_int_with_button	g_subtract_first("subtract_first_image",".imagemix.subtract_first",0, subtractfirst_changed);
-Tclvar_int_with_button	g_subtract_brackets("subtract_bracketting_images",".imagemix.subtract_brackets",0);
+Tclvar_int_with_button	g_subtract("subtract",NULL,0, subtract_changed);
+Tclvar_int_with_button	g_accumulate_min("accumulate_min_image",".imagemix.statistics",0, accumulate_min_changed);
+Tclvar_int_with_button	g_accumulate_max("accumulate_max_image",".imagemix.statistics",0, accumulate_max_changed);
+Tclvar_int_with_button	g_accumulate_mean("accumulate_mean_image",".imagemix.statistics",0, accumulate_mean_changed);
 Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
+Tclvar_int_with_button	g_display_which_image("display",NULL,0, display_which_image_changed);
 Tclvar_int_with_button	g_quit("quit", NULL);
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
@@ -236,7 +259,7 @@ Tclvar_float_with_scale	g_clip_low("clip_low", ".gain.low", 0, 1, 0);
 // space and openGL space.
 double	flip_y(double y)
 {
-  return g_camera->get_num_rows() - 1 - y;
+  return g_image_to_display->get_num_rows() - 1 - y;
 }
 
 /// Open the wrapped camera we want to use depending on the name of the
@@ -445,7 +468,7 @@ static	bool  save_log_frame(unsigned frame_number)
       return false;
     }
 
-    (*g_log_last_image) = *g_camera;
+    (*g_log_last_image) = *g_image_to_display;
 
     delete [] filename;
     delete shifted;
@@ -525,10 +548,9 @@ static bool should_draw_second_tracker(void)
 // two global intensity clipping parameters.  Then clamp
 // the value to the maximum representable value for the
 // specified image bit depth.
-
-inline	vrpn_uint16 offset_scale_clamp(vrpn_uint16 value)
+inline	vrpn_uint16 offset_scale_clamp(double value)
 {
-  vrpn_uint16 clamp = (1 << ((unsigned)(g_bitdepth))) - 1;
+  double clamp = (1 << ((unsigned)(g_bitdepth))) - 1;
 
   // First, apply scale and offset to the value unless the
   // clipping variables are 0 and 1.
@@ -566,7 +588,7 @@ inline	vrpn_uint16 offset_scale_clamp(vrpn_uint16 value)
 void myDisplayFunc(void)
 {
   unsigned  r,c;
-  vrpn_uint16  uns_pix;
+  double  pixel_val;
 
   if (!g_ready_to_display) { return; }
 
@@ -583,7 +605,7 @@ void myDisplayFunc(void)
   int shift = g_bitdepth - 8;
   for (r = *g_minY; r <= *g_maxY; r++) {
     for (c = *g_minX; c <= *g_maxX; c++) {
-      if (!g_camera->get_pixel_from_memory(c, r, uns_pix, g_colorIndex)) {
+      if (!g_image_to_display->read_pixel(c, r, pixel_val, g_colorIndex)) {
 	fprintf(stderr, "Cannot read pixel from region\n");
 	cleanup();
       	exit(-1);
@@ -594,18 +616,18 @@ void myDisplayFunc(void)
       // from the first channel into all colors of the image.  It uses
       // RGBA so that we don't have to worry about byte-alignment problems
       // that plagued us when using RGB pixels.
-      g_glut_image[0 + 4 * (c + g_camera->get_num_columns() * r)] = offset_scale_clamp(uns_pix) >> shift;
-      g_glut_image[1 + 4 * (c + g_camera->get_num_columns() * r)] = offset_scale_clamp(uns_pix) >> shift;
-      g_glut_image[2 + 4 * (c + g_camera->get_num_columns() * r)] = offset_scale_clamp(uns_pix) >> shift;
-      g_glut_image[3 + 4 * (c + g_camera->get_num_columns() * r)] = 255;
+      g_glut_image[0 + 4 * (c + g_image_to_display->get_num_columns() * r)] = offset_scale_clamp(pixel_val) >> shift;
+      g_glut_image[1 + 4 * (c + g_image_to_display->get_num_columns() * r)] = offset_scale_clamp(pixel_val) >> shift;
+      g_glut_image[2 + 4 * (c + g_image_to_display->get_num_columns() * r)] = offset_scale_clamp(pixel_val) >> shift;
+      g_glut_image[3 + 4 * (c + g_image_to_display->get_num_columns() * r)] = 255;
 
 #ifdef DEBUG
       // If we're debugging, fill the border pixels with green
       if ( (r == *g_minY) || (r == *g_maxY) || (c == *g_minX) || (c == *g_maxX) ) {
-	g_glut_image[0 + 4 * (c + g_camera->get_num_columns() * r)] = 0;
-	g_glut_image[1 + 4 * (c + g_camera->get_num_columns() * r)] = 255;
-	g_glut_image[2 + 4 * (c + g_camera->get_num_columns() * r)] = 0;
-	g_glut_image[3 + 4 * (c + g_camera->get_num_columns() * r)] = 255;
+	g_glut_image[0 + 4 * (c + g_image_to_display->get_num_columns() * r)] = 0;
+	g_glut_image[1 + 4 * (c + g_image_to_display->get_num_columns() * r)] = 255;
+	g_glut_image[2 + 4 * (c + g_image_to_display->get_num_columns() * r)] = 0;
+	g_glut_image[3 + 4 * (c + g_image_to_display->get_num_columns() * r)] = 255;
       }
 #endif
     }
@@ -615,9 +637,9 @@ void myDisplayFunc(void)
     // corner, which is at (-1,-1)).
     glRasterPos2f(-1, -1);
 #ifdef DEBUG
-    printf("Drawing %dx%d pixels\n", g_camera->get_num_columns(), g_camera->get_num_rows());
+    printf("Drawing %dx%d pixels\n", g_image_to_display->get_num_columns(), g_image_to_display->get_num_rows());
 #endif
-    glDrawPixels(g_camera->get_num_columns(),g_camera->get_num_rows(),
+    glDrawPixels(g_image_to_display->get_num_columns(),g_image_to_display->get_num_rows(),
       GL_RGBA, GL_UNSIGNED_BYTE, g_glut_image);
   }
 
@@ -632,10 +654,10 @@ void myDisplayFunc(void)
     for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
       // Normalize center and radius so that they match the coordinates
       // (-1..1) in X and Y.
-      double  x = -1.0 + (*loop)->tracker()->get_x() * (2.0/g_camera->get_num_columns());
-      double  y = -1.0 + ((*loop)->tracker()->get_y()) * (2.0/g_camera->get_num_rows());
-      double  dx = (*loop)->tracker()->get_radius() * (2.0/g_camera->get_num_columns());
-      double  dy = (*loop)->tracker()->get_radius() * (2.0/g_camera->get_num_rows());
+      double  x = -1.0 + (*loop)->tracker()->get_x() * (2.0/g_image_to_display->get_num_columns());
+      double  y = -1.0 + ((*loop)->tracker()->get_y()) * (2.0/g_image_to_display->get_num_rows());
+      double  dx = (*loop)->tracker()->get_radius() * (2.0/g_image_to_display->get_num_columns());
+      double  dy = (*loop)->tracker()->get_radius() * (2.0/g_image_to_display->get_num_rows());
 
       if ((*loop)->tracker() == g_active_tracker) {
 	glColor3f(1,0,0);
@@ -676,16 +698,16 @@ void myDisplayFunc(void)
   glDisable(GL_LINE_SMOOTH);
   glColor3f(0,1,0);
   glBegin(GL_LINE_STRIP);
-  glVertex3f( -1 + 2*((*g_minX-1) / (g_camera->get_num_columns()-1)),
-	      -1 + 2*((*g_minY-1) / (g_camera->get_num_rows()-1)) , 0.0 );
-  glVertex3f( -1 + 2*((*g_maxX+1) / (g_camera->get_num_columns()-1)),
-	      -1 + 2*((*g_minY-1) / (g_camera->get_num_rows()-1)) , 0.0 );
-  glVertex3f( -1 + 2*((*g_maxX+1) / (g_camera->get_num_columns()-1)),
-	      -1 + 2*((*g_maxY+1) / (g_camera->get_num_rows()-1)) , 0.0 );
-  glVertex3f( -1 + 2*((*g_minX-1) / (g_camera->get_num_columns()-1)),
-	      -1 + 2*((*g_maxY+1) / (g_camera->get_num_rows()-1)) , 0.0 );
-  glVertex3f( -1 + 2*((*g_minX-1) / (g_camera->get_num_columns()-1)),
-	      -1 + 2*((*g_minY-1) / (g_camera->get_num_rows()-1)) , 0.0 );
+  glVertex3f( -1 + 2*((*g_minX-1) / (g_image_to_display->get_num_columns()-1)),
+	      -1 + 2*((*g_minY-1) / (g_image_to_display->get_num_rows()-1)) , 0.0 );
+  glVertex3f( -1 + 2*((*g_maxX+1) / (g_image_to_display->get_num_columns()-1)),
+	      -1 + 2*((*g_minY-1) / (g_image_to_display->get_num_rows()-1)) , 0.0 );
+  glVertex3f( -1 + 2*((*g_maxX+1) / (g_image_to_display->get_num_columns()-1)),
+	      -1 + 2*((*g_maxY+1) / (g_image_to_display->get_num_rows()-1)) , 0.0 );
+  glVertex3f( -1 + 2*((*g_minX-1) / (g_image_to_display->get_num_columns()-1)),
+	      -1 + 2*((*g_maxY+1) / (g_image_to_display->get_num_rows()-1)) , 0.0 );
+  glVertex3f( -1 + 2*((*g_minX-1) / (g_image_to_display->get_num_columns()-1)),
+	      -1 + 2*((*g_minY-1) / (g_image_to_display->get_num_rows()-1)) , 0.0 );
   glEnd();
 
   // Swap buffers so we can see it.
@@ -788,6 +810,82 @@ void myIdleFunc(void)
     g_frame_number++;
   }
   g_ready_to_display = true;
+
+  // If we have a valid video frame, do any required accumulation into
+  // the image statistic buffers.
+  if (g_video_valid) {
+    if (g_min_image) {
+      (*g_min_image) += *g_camera;
+    }
+    if (g_max_image) {
+      (*g_max_image) += *g_camera;
+    }
+    if (g_mean_image) {
+      (*g_mean_image) += *g_camera;
+    }
+  }
+
+  // Compute the calculated image if we're using one.  If not, then point the
+  // image to display at the camera image.  If so, point the image to display
+  // at the calculated image.
+  if (g_subtract == SUBTRACT_NONE) {
+    g_image_to_display = g_camera;
+  } else {
+    image_wrapper *img = NULL;
+    switch (g_subtract) {
+    case SUBTRACT_SINGLE:
+      img = g_subtract_image;
+      break;
+    case SUBTRACT_MIN:
+      img = g_min_image;
+      break;
+    case SUBTRACT_MAX:
+      img = g_max_image;
+      break;
+    case SUBTRACT_MEAN:
+      img = g_mean_image;
+      break;
+    };
+    if (img) {
+      // Get rid of the old calculated image, if we have one
+      if (g_calculated_image) { delete g_calculated_image; g_calculated_image = NULL; }
+      // Calculate the new image and then point the image to display at it.
+      // The offset is determined by the maximum value that can be displayed in an
+      // image with half as many values as the present image.
+      double offset = (1 << (((unsigned)(g_bitdepth))-1) ) - 1;
+      g_calculated_image = new subtracted_image(*g_camera, *img, offset);
+      if (g_calculated_image == NULL) {
+	fprintf(stderr, "Out of memory when calculating image\n");
+	cleanup();
+	exit(-1);
+      }
+      g_image_to_display = g_calculated_image;
+    } else {
+      fprintf(stderr,"Internal error: no subtraction image found, mode %d\n", (int)g_subtract);
+      cleanup();
+      exit(-1);
+    }
+  };
+
+  // Decide which image to display.  For the calculated image, leave things
+  // alone.  For the others, set to the appropriate image.
+  switch (g_display_which_image) {
+  case DISPLAY_COMPUTED:
+    break;
+  case DISPLAY_MIN:
+    g_image_to_display = g_min_image;
+    break;
+  case DISPLAY_MAX:
+    g_image_to_display = g_max_image;
+    break;
+  case DISPLAY_MEAN:
+    g_image_to_display = g_mean_image;
+    break;
+  default:
+    fprintf(stderr, "myIdleFunc(): Internal error: unknown mode (%d)\n", (int)g_display_which_image);
+    cleanup();
+    exit(-1);
+  }
 
   // If we've gotten a new valid frame, then it is time to store the image
   // for the previous frame and get a copy of the current frame so that we
@@ -1151,7 +1249,7 @@ void  logfilename_changed(char *newvalue, void *)
 
   // Make a copy of the current image so that we can save it when
   // it is appropriate to do so.
-  g_log_last_image = new copy_of_image(*g_camera);
+  g_log_last_image = new copy_of_image(*g_image_to_display);
 
   // Set the offsets to use when logging to the current position of
   // the zeroeth tracker.
@@ -1166,14 +1264,16 @@ void  logfilename_changed(char *newvalue, void *)
 
   // Create a PSF image file object if we're saving one.  Give it the same
   // name as the file passed in, but append ".psf.tif" to it.
-  char	*psfname = new char[strlen(g_logfile_base_name) + 9];
-  if (psfname == NULL) {
-    fprintf(stderr,"logfilename_changed(): Out of memory\n");
-    return;
+  if (g_log_pointspread) {
+    char	*psfname = new char[strlen(g_logfile_base_name) + 9];
+    if (psfname == NULL) {
+      fprintf(stderr,"logfilename_changed(): Out of memory\n");
+      return;
+    }
+    sprintf(psfname, "%s.psf.tif", g_logfile_base_name);
+    g_psf_file = new PSF_File(psfname, ceil(g_Radius), g_sixteenbits != 0);
+    delete [] psfname;
   }
-  sprintf(psfname, "%s.psf.tif", g_logfile_base_name);
-  g_psf_file = new PSF_File(psfname, ceil(g_Radius), g_sixteenbits != 0);
-  delete [] psfname;
 }
 
 void  make_appropriate_tracker_active(int newvalue, void *)
@@ -1234,19 +1334,102 @@ void  set_maximum_search_radius(int newvalue, void *)
   g_search_radius = g_Radius * newvalue;
 }
 
-// Routine that stores the current image when the button is turned on
-// into a subtraction image so that it can be later subtracted from other images.
+// Routine that stores the current image when subtract mode is set to SUBTRACT_SINGLE.
 // Deletes the subtraction image and sets it to null when the button is turned off.
+// Also sets the image bit depth up one level when subtraction is turned on and
+// down one level when it is turned off (because there can be twice as many values
+// when subtracting).
 
-void  subtractfirst_changed(int newvalue, void *)
+void  subtract_changed(int newvalue, void *)
 {
-  if (newvalue == 1) {
+  g_bitdepth = (float)g_bitdepth - 1;
+  if (g_subtract_image) {
+    delete g_subtract_image;
+    g_subtract_image = NULL;
+  }
+  if (newvalue == SUBTRACT_SINGLE) {
     g_subtract_image = new copy_of_image(*g_camera);
+  }
+  if (newvalue != SUBTRACT_NONE) {
+    g_bitdepth = (float)g_bitdepth + 1;
+  }
+}
+
+// Routine that start accumulating min image.
+
+void  accumulate_min_changed(int newvalue, void *)
+{
+  if (g_min_image) {
+    delete g_min_image;
+    g_min_image = NULL;
+  }
+  if (newvalue == 1) {
+    g_min_image = new minimum_image(*g_camera);
   } else {
-    if (g_subtract_image) {
-      delete g_subtract_image;
-      g_subtract_image = NULL;
+    // Make sure we're not trying to display the minimum
+    if (g_display_which_image == DISPLAY_MIN) {
+      g_display_which_image = DISPLAY_COMPUTED;
     }
+  }
+}
+
+// Routine that start accumulating min image.
+
+void  accumulate_max_changed(int newvalue, void *)
+{
+  if (g_max_image) {
+    delete g_max_image;
+    g_max_image = NULL;
+  }
+  if (newvalue == 1) {
+    g_max_image = new maximum_image(*g_camera);
+  } else {
+    // Make sure we're not trying to display the maximum
+    if (g_display_which_image == DISPLAY_MAX) {
+      g_display_which_image = DISPLAY_COMPUTED;
+    }
+  }
+}
+
+// Routine that start accumulating min image.
+
+void  accumulate_mean_changed(int newvalue, void *)
+{
+  if (g_mean_image) {
+    delete g_mean_image;
+    g_mean_image = NULL;
+  }
+  if (newvalue == 1) {
+    g_mean_image = new mean_image(*g_camera);
+  } else {
+    // Make sure we're not trying to display the mean
+    if (g_display_which_image == DISPLAY_MEAN) {
+      g_display_which_image = DISPLAY_COMPUTED;
+    }
+  }
+}
+
+// Ensure that we are accumulating the image that we want to show.
+// The idle function contains code to do the actual display switching
+// for the correct one.
+void  display_which_image_changed(int newvalue, void *)
+{
+  switch (newvalue) {
+  case DISPLAY_COMPUTED:
+    break;
+  case DISPLAY_MIN:
+    g_accumulate_min = 1;
+    break;
+  case DISPLAY_MAX:
+    g_accumulate_max = 1;
+    break;
+  case DISPLAY_MEAN:
+    g_accumulate_mean = 1;
+    break;
+  default:
+    fprintf(stderr, "display_which_image_changed(): Internal error: unknown mode (%d)\n", newvalue);
+    cleanup();
+    exit(-1);
   }
 }
 
@@ -1449,6 +1632,9 @@ int main(int argc, char *argv[])
     cleanup();
     exit(-1);
   }
+
+  // Display the camera image until further notice.
+  g_image_to_display = g_camera;
 
   //------------------------------------------------------------------
   // Initialize the controls for the clipping based on the size of

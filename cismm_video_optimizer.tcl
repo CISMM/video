@@ -116,11 +116,31 @@ proc update_gain_window_visibility {nm el op} {
 toplevel .imagemix
 wm geometry .imagemix +185+10
 wm withdraw .imagemix
+frame .imagemix.display
+pack .imagemix.display -side left
+radiobutton .imagemix.display.computed -variable display -text show_computed -value 0
+pack .imagemix.display.computed -anchor w
+radiobutton .imagemix.display.min -variable display -text show_min -value 1
+pack .imagemix.display.min -anchor w
+radiobutton .imagemix.display.max -variable display -text show_max -value 2
+pack .imagemix.display.max -anchor w
+radiobutton .imagemix.display.mean -variable display -text show_mean -value 3
+pack .imagemix.display.mean -anchor w
 set show_imagemix_control 0
-frame .imagemix.subtract_first
-pack .imagemix.subtract_first -side left
-frame .imagemix.subtract_brackets
-pack .imagemix.subtract_brackets -side left
+frame .imagemix.subtract
+pack .imagemix.subtract -side left
+radiobutton .imagemix.subtract.none -variable subtract -text subtract_none -value 0
+pack .imagemix.subtract.none -anchor w
+radiobutton .imagemix.subtract.min -variable subtract -text subtract_min -value 1
+pack .imagemix.subtract.min -anchor w
+radiobutton .imagemix.subtract.max -variable subtract -text subtract_max -value 2
+pack .imagemix.subtract.max -anchor w
+radiobutton .imagemix.subtract.mean -variable subtract -text subtract_mean -value 3
+pack .imagemix.subtract.mean -anchor w
+radiobutton .imagemix.subtract.single -variable subtract -text subtract_single -value 4
+pack .imagemix.subtract.single -anchor w
+frame .imagemix.statistics
+pack .imagemix.statistics -side left
 
 trace variable show_imagemix_control w update_imagemix_window_visibility
 

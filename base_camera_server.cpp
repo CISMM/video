@@ -146,14 +146,6 @@ copy_of_image::~copy_of_image()
   }
 }
 
-void  copy_of_image::read_range(int &minx, int &maxx, int &miny, int &maxy) const
-{
-  minx = _minx;
-  maxx = _maxx;
-  miny = _miny;
-  maxy = _maxy;
-}
-
 bool  copy_of_image::read_pixel(int x, int y, double &result, unsigned rgb) const
 {
   if ( (_image == NULL) || (x < _minx) || (x > _maxx) || (y < _miny) || (y > _maxy) ) {
@@ -172,13 +164,221 @@ double	copy_of_image::read_pixel_nocheck(int x, int y, unsigned rgb) const
   return _image[index(x, y, rgb)];
 }
 
-void  cropped_image::read_range(int &minx, int &maxx, int &miny, int &maxy) const
+subtracted_image::subtracted_image(const image_wrapper &first, const image_wrapper &second, const double offset) :
+  _minx(-1), _maxx(-1), _miny(-1), _maxy(-1),
+  _numx(-1), _numy(-1), _image(NULL), _numcolors(0)
 {
-  minx = _minx;
-  maxx = _maxx;
-  miny = _miny;
-  maxy = _maxy;
+  // Check to make sure that the two images match.
+  int minx, miny, maxx, maxy;
+  first.read_range(minx, maxx, miny, maxy);
+  int minx2, miny2, maxx2, maxy2;
+  second.read_range(minx2, maxx2, miny2, maxy2);
+  if ( (first.get_num_colors() != second.get_num_colors()) ||
+       (minx != minx2) || (miny != miny2) || (maxx != maxx2) || (maxy != maxy2) ) {
+    fprintf(stderr,"subtracted_image::subtracted_image(): Two images differ in dimension\n");
+    return;
+  }
+
+  // Get our image buffer
+  _minx = minx; _maxx = maxx; _miny = miny; _maxy = maxy;
+  _numx = (_maxx - _minx) + 1;
+  _numy = (_maxy - _miny) + 1;
+  _numcolors = first.get_num_colors();
+  _image = new double[_numx * _numy * get_num_colors()];
+  if (_image == NULL) {
+    _numx = _numy = _minx = _maxx = _miny = _maxy = _numcolors = 0;
+    fprintf(stderr,"subtracted_image::subtracted_image(): Out of memory\n");
+    return;
+  }
+
+  // Copy the values from the images, offsetting aas we go
+  int x, y;
+  unsigned c;
+  for (x = _minx; x <= _maxx; x++) {
+    for (y = _miny; y <= _maxy; y++) {
+      for (c = 0; c < get_num_colors(); c++) {
+	_image[index(x, y, c)] = first.read_pixel_nocheck(x, y, c) - second.read_pixel_nocheck(x, y, c) + offset;
+      }
+    }
+  }
 }
+
+subtracted_image::~subtracted_image()
+{
+  if (_image) {
+    delete [] _image;
+  }
+}
+
+bool  subtracted_image::read_pixel(int x, int y, double &result, unsigned rgb) const
+{
+  if ( (_image == NULL) || (x < _minx) || (x > _maxx) || (y < _miny) || (y > _maxy) ) {
+    result = 0.0;
+    return false;
+  }
+  result = _image[index(x, y, rgb)];
+  return true;
+}
+
+double	subtracted_image::read_pixel_nocheck(int x, int y, unsigned rgb) const
+{
+  if (_image == NULL) {
+    return 0.0;
+  }
+  return _image[index(x, y, rgb)];
+}
+
+image_metric::image_metric(const image_wrapper &copyfrom) :
+  _minx(-1), _maxx(-1), _miny(-1), _maxy(-1),
+  _numx(-1), _numy(-1), _image(NULL), _numcolors(0)
+{
+  // Allocate image buffer
+  int minx, miny, maxx, maxy;
+  copyfrom.read_range(minx, maxx, miny, maxy);
+  _minx = minx; _maxx = maxx; _miny = miny; _maxy = maxy;
+  _numx = (_maxx - _minx) + 1;
+  _numy = (_maxy - _miny) + 1;
+  _numcolors = copyfrom.get_num_colors();
+  _image = new double[_numx * _numy * get_num_colors()];
+  if (_image == NULL) {
+    _numx = _numy = _minx = _maxx = _miny = _maxy = _numcolors = 0;
+    fprintf(stderr, "image_metric::image_metric(): Out of memory\n");
+    return;
+  }
+
+  // Copy the values from the image
+  int x, y;
+  unsigned c;
+  for (x = _minx; x <= _maxx; x++) {
+    for (y = _miny; y <= _maxy; y++) {
+      for (c = 0; c < get_num_colors(); c++) {
+	double val;
+	copyfrom.read_pixel(x, y, val, c);  // Ignore result outside of image.
+	_image[index(x, y, c)] = val;
+      }
+    }
+  }
+}
+
+image_metric::~image_metric()
+{
+  if (_image) {
+    delete [] _image;
+  }
+}
+
+bool  image_metric::read_pixel(int x, int y, double &result, unsigned rgb) const
+{
+  if ( (_image == NULL) || (x < _minx) || (x > _maxx) || (y < _miny) || (y > _maxy) ) {
+    result = 0.0;
+    return false;
+  }
+  result = _image[index(x, y, rgb)];
+  return true;
+}
+
+double	image_metric::read_pixel_nocheck(int x, int y, unsigned rgb) const
+{
+  if (_image == NULL) {
+    return 0.0;
+  }
+  return _image[index(x, y, rgb)];
+}
+
+void minimum_image::operator+=(const image_wrapper &newimage)
+{
+  // Check to make sure that the two images match.
+  int minx, miny, maxx, maxy;
+  newimage.read_range(minx, maxx, miny, maxy);
+  if ( (newimage.get_num_colors() != get_num_colors()) ||
+       (minx != _minx) || (miny != _miny) || (maxx != _maxx) || (maxy != _maxy) ) {
+    fprintf(stderr,"minimum_image::+=(): New image differs in dimension\n");
+    return;
+  }
+
+  // Store the min of the existing and new image
+  int x, y;
+  unsigned c;
+  for (x = _minx; x <= _maxx; x++) {
+    for (y = _miny; y <= _maxy; y++) {
+      for (c = 0; c < get_num_colors(); c++) {
+	double val = read_pixel_nocheck(x, y, c);
+	double val2 = newimage.read_pixel_nocheck(x, y, c);
+	_image[index(x, y, c)] = (val < val2) ? val : val2;
+      }
+    }
+  }
+}
+
+void maximum_image::operator+=(const image_wrapper &newimage)
+{
+  // Check to make sure that the two images match.
+  int minx, miny, maxx, maxy;
+  newimage.read_range(minx, maxx, miny, maxy);
+  if ( (newimage.get_num_colors() != get_num_colors()) ||
+       (minx != _minx) || (miny != _miny) || (maxx != _maxx) || (maxy != _maxy) ) {
+    fprintf(stderr,"maximum_image::+=(): New image differs in dimension\n");
+    return;
+  }
+
+  // Store the max of the existing and new image
+  int x, y;
+  unsigned c;
+  for (x = _minx; x <= _maxx; x++) {
+    for (y = _miny; y <= _maxy; y++) {
+      for (c = 0; c < get_num_colors(); c++) {
+	double val = read_pixel_nocheck(x, y, c);
+	double val2 = newimage.read_pixel_nocheck(x, y, c);
+	_image[index(x, y, c)] = (val > val2) ? val : val2;
+      }
+    }
+  }
+}
+
+void mean_image::operator+=(const image_wrapper &newimage)
+{
+  // Check to make sure that the two images match.
+  int minx, miny, maxx, maxy;
+  newimage.read_range(minx, maxx, miny, maxy);
+  if ( (newimage.get_num_colors() != get_num_colors()) ||
+       (minx != _minx) || (miny != _miny) || (maxx != _maxx) || (maxy != _maxy) ) {
+    fprintf(stderr,"mean_image::+=(): New image differs in dimension\n");
+    return;
+  }
+
+  // Sum the existing image and increase the image count
+  int x, y;
+  unsigned c;
+  for (x = _minx; x <= _maxx; x++) {
+    for (y = _miny; y <= _maxy; y++) {
+      for (c = 0; c < get_num_colors(); c++) {
+	_image[index(x, y, c)] += newimage.read_pixel_nocheck(x, y, c);
+      }
+    }
+  }
+  d_num_images++;
+}
+
+//< Take the 
+bool  mean_image::read_pixel(int x, int y, double &result, unsigned rgb) const
+{
+  if ( (_image == NULL) || (x < _minx) || (x > _maxx) || (y < _miny) || (y > _maxy) ) {
+    result = 0.0;
+    return false;
+  }
+  result = _image[index(x, y, rgb)] / d_num_images;
+  return true;
+}
+
+double	mean_image::read_pixel_nocheck(int x, int y, unsigned rgb) const
+{
+  if (_image == NULL) {
+    return 0.0;
+  }
+  return _image[index(x, y, rgb)] / d_num_images;
+}
+
+
 
 PSF_File::~PSF_File()
 {

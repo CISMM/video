@@ -1,3 +1,16 @@
+2004-11-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* base_camera_server.cpp : Added new methods to base classes so
+		that they can be used more widely.  Added new image-subtract
+		class.  Added various image-statistic classes (min, max,
+		and mean).
+	* base_camera_server.h : Same.
+	* cismm_video_optimizer.cpp : Added code to compute image
+		statistics (min, max, mean) and view them.  Added code
+		to let the user subtract single frames, min, max, or
+		mean frames from the video.
+	* cismm_video_optimizer.tcl : Same.
+
 2004-11-11  Jeremy Cribb  <jcribb@email.unc.edu>
   * GLUItake.dsp : added.  MS Visual Studio project file for GLUItake 
     video capture software for EDT boards.  Using this you can capture

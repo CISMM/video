@@ -22,6 +22,16 @@ public:
 
   /// Return the number of colors that the image has
   virtual unsigned  get_num_colors() const = 0;
+  virtual unsigned  get_num_rows(void) const { 
+    int	_minx, _maxx, _miny, _maxy;
+    read_range(_minx, _maxx, _miny, _maxy);
+    return _maxy-_miny+1;
+  }
+  virtual unsigned  get_num_columns(void) const {
+    int	_minx, _maxx, _miny, _maxy;
+    read_range(_minx, _maxx, _miny, _maxy);
+    return _maxx-_minx+1;
+  }
 
   /// Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.
@@ -118,7 +128,10 @@ public:
   ~copy_of_image();
 
   // Tell what the range is for the image.
-  virtual void	read_range(int &minx, int &maxx, int &miny, int &maxy) const;
+  virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
+    minx = _minx; miny = _miny; maxx = _maxx; maxy = _maxy;
+  }
+
 
   /// Return the number of colors that the image has
   virtual unsigned  get_num_colors() const { return _numcolors; };
@@ -175,7 +188,9 @@ public:
   }
 
   // Tell what the range is for the image.
-  virtual void	read_range(int &minx, int &maxx, int &miny, int &maxy) const;
+  virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
+    minx = _minx; miny = _miny; maxx = _maxx; maxy = _maxy;
+  }
 
   /// Return the number of colors that the image has
   virtual unsigned  get_num_colors() const { return _ref.get_num_colors(); }
@@ -328,6 +343,141 @@ protected:
     x_new = x_scaled_rot + _centerx;
     y_new = y_scaled_rot + _centery;
   }
+};
+
+//----------------------------------------------------------------------------
+// Concrete version of above virtual base class that creates itself by subtracting
+// two images and adding an offset.  New = first - second + offset;
+
+class subtracted_image: public image_wrapper {
+public:
+  subtracted_image(const image_wrapper &first, const image_wrapper &second, const double offset);
+  ~subtracted_image();
+
+  // Tell what the range is for the image.
+  virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
+    minx = _minx; miny = _miny; maxx = _maxx; maxy = _maxy;
+  }
+
+  /// Return the number of colors that the image has
+  virtual unsigned  get_num_colors() const { return _numcolors; };
+
+  /// Read a pixel from the image into a double; return true if the pixel
+  // was in the image, false if it was not.
+  virtual bool	read_pixel(int x, int y, double	&result, unsigned rgb = 0) const;
+
+  /// Read a pixel from the image into a double; Don't check boundaries.
+  virtual double read_pixel_nocheck(int x, int y, unsigned rgb = 0) const;
+
+  /// Copy new values from the image that is passed in, reallocating if needed
+  void	operator= (const image_wrapper &copyfrom);
+
+protected:
+  int _minx, _maxx, _miny, _maxy;   //< Coordinates for the pixels (copied from other image)
+  int _numx, _numy;		    //< Calculated based on the above min/max values
+  int _numcolors;		    //< How many colors do we have
+  double  *_image;		    //< Holds the values copied from the other image
+
+  inline int index(int x, int y, unsigned rgb) const {
+    int xindex = x - _minx;
+    int yindex = y - _miny;
+    return rgb + get_num_colors() * (xindex + _numx * yindex);
+  };
+};
+
+//----------------------------------------------------------------------------
+// Image statistic calculator base class, derived from above.  Provides the
+// interface needed for operators that take in a bunch of images and produce
+// an image that is some average or other metric on the set of images.
+
+class image_metric: public image_wrapper {
+public:
+
+  /// Copies the size, creates buffer, and copies the image into
+  // the buffer.
+  image_metric(const image_wrapper &copyfrom);
+  ~image_metric();
+
+  // Add another image to those being used.
+  virtual void operator+= (const image_wrapper &newimage) = 0;
+
+  // Tell what the range is for the image.
+  virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
+    minx = _minx; miny = _miny; maxx = _maxx; maxy = _maxy;
+  }
+
+  /// Return the number of colors that the image has
+  virtual unsigned  get_num_colors() const { return _numcolors; };
+
+  /// Read a pixel from the image into a double; return true if the pixel
+  // was in the image, false if it was not.
+  virtual bool	read_pixel(int x, int y, double	&result, unsigned rgb = 0) const;
+
+  /// Read a pixel from the image into a double; Don't check boundaries.
+  virtual double read_pixel_nocheck(int x, int y, unsigned rgb = 0) const;
+
+protected:
+  int _minx, _maxx, _miny, _maxy;   //< Coordinates for the pixels (copied from other image)
+  int _numx, _numy;		    //< Calculated based on the above min/max values
+  int _numcolors;		    //< How many colors do we have
+  double  *_image;		    //< Holds the values copied from the other image
+
+  inline int index(int x, int y, unsigned rgb) const {
+    int xindex = x - _minx;
+    int yindex = y - _miny;
+    return rgb + get_num_colors() * (xindex + _numx * yindex);
+  };
+};
+
+//----------------------------------------------------------------------------
+// Concrete version of the image metric that computes the minimum of all
+// images that are added to it.
+
+class minimum_image: public image_metric {
+public:
+  minimum_image(const image_wrapper &copyfrom) : image_metric(copyfrom) {};
+  ~minimum_image();
+
+  // Take the minimum of the existing image and this new image
+  virtual void operator+= (const image_wrapper &newimage);
+};
+
+//----------------------------------------------------------------------------
+// Concrete version of the image metric that computes the maximum of all
+// images that are added to it.
+
+class maximum_image: public image_metric {
+public:
+  maximum_image(const image_wrapper &copyfrom) : image_metric(copyfrom) {};
+  ~maximum_image();
+
+  // Take the maximum of the existing image and this new image
+  virtual void operator+= (const image_wrapper &newimage);
+};
+
+//----------------------------------------------------------------------------
+// Concrete version of the image metric that computes the mean of all
+// images that are added to it.
+
+class mean_image: public image_metric {
+public:
+  mean_image(const image_wrapper &copyfrom) : image_metric(copyfrom), d_num_images(1) {};
+  ~mean_image();
+
+  // Take the mean of the existing image and this new image
+  virtual void operator+= (const image_wrapper &newimage);
+
+  /// Read a pixel from the image into a double; return true if the pixel
+  // was in the image, false if it was not.  Takes the mean by dividing by
+  // the number of images read.
+  virtual bool	read_pixel(int x, int y, double	&result, unsigned rgb = 0) const;
+
+  /// Read a pixel from the image into a double; Don't check boundaries.
+  // Takes the mean by dividing by the number of images read.
+  virtual double read_pixel_nocheck(int x, int y, unsigned rgb = 0) const;
+
+protected:
+  double    d_num_images;   //< Number of images added; stored in double for math speed
 };
 
 
