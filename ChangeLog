@@ -1,3 +1,7 @@
+2002-10-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* directx_camera_server.cpp : Swap Red and Blue to the correct order.
+
 2002-10-14  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* base_camera_server.h : Added concept of binning.

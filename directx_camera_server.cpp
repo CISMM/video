@@ -159,6 +159,7 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
   _pGrabber->GetCurrentBuffer(&vidbuflen, NULL); //< Call with NULL to get length
   if (vidbuflen != (int)_buflen) {
     fprintf(stderr,"directx_camera_server::read_one_frame(): Unexpected buffer size!\n");
+    fprintf(stderr,"   (expected %u, got %ld)\n", _buflen, vidbuflen);
     _status = false;
     return false;
   }
@@ -529,6 +530,24 @@ bool  directx_camera_server::write_memory_to_ppm_file(const char *filename, bool
   }
 
   //---------------------------------------------------------------------
+  // Swap the red and blue values for each triplet in the buffer, since
+  // the DirectShow order is BGR and the PPM order is RGB.
+  unsigned  char *bufrgb = new unsigned char[_buflen];
+  if (bufrgb == NULL) {
+    fprintf(stderr,"directx_camera_server::write_memory_to_ppm_file(): Out of memory\n");
+    return false;
+  }
+  unsigned  X,Y;
+  unsigned  cols = (_maxX - _minX) + 1;
+  for (Y = _minY; Y < _maxY; Y++) {
+    for (X = _minX; X < _maxX; X++) {
+      bufrgb[ (Y*cols + X) * 3 + 0 ] = _buffer[ (Y*cols + X) * 3 + 2 ];
+      bufrgb[ (Y*cols + X) * 3 + 1 ] = _buffer[ (Y*cols + X) * 3 + 1 ];
+      bufrgb[ (Y*cols + X) * 3 + 2 ] = _buffer[ (Y*cols + X) * 3 + 0 ];
+    }
+  }
+
+  //---------------------------------------------------------------------
   // Write out an uncompressed RGB PPM file.  We ignore the "16bits" request
   // because we don't have 16 bits to put in there!
   if (sixteen_bits) {
@@ -543,12 +562,12 @@ bool  directx_camera_server::write_memory_to_ppm_file(const char *filename, bool
     fprintf(stderr, "directx_camera_server::write_memory_to_ppm_file(): Can't write header to %s\n", filename);
     return false;
   }
-  // XXX Is the color order correct here?
-  if (fwrite(_buffer, 1, _buflen, of) != _buflen) {
+  if (fwrite(bufrgb, 1, _buflen, of) != _buflen) {
     fprintf(stderr, "directx_camera_server::write_memory_to_ppm_file(): Can't write data to %s\n", filename);
     return false;
   }
   fclose(of);
+  delete [] bufrgb;
 
   return true;
 }
@@ -556,6 +575,9 @@ bool  directx_camera_server::write_memory_to_ppm_file(const char *filename, bool
 bool	directx_camera_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint8 &val, int RGB) const
 {
   if (!_status) { return false; };
+
+  // Switch red and blue, since they are backwards in the record (blue is first).
+  RGB = 2 - RGB;
 
   // XXX This will depend on what kind of pixels we have!
   if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
@@ -573,6 +595,9 @@ bool	directx_camera_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_u
 bool	directx_camera_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &val, int RGB) const
 {
   if (!_status) { return false; };
+
+  // Switch red and blue, since they are backwards in the record (blue is first).
+  RGB = 2 - RGB;
 
   // XXX This will depend on what kind of pixels we have!
   if ( (_maxX <= _minX) || (_maxY <= _minY) ) {

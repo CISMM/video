@@ -105,6 +105,8 @@ void  mainloop_server_code(void)
   }
 
   // Loop through each line, fill them in, and send them to the client.
+  // XXX This nested for loop takes about 200ms to complete for the
+  // firewire cameras.  The memory copy only accounts for a tiny amount.
   for (y = 0; y < num_y; y++) {
     for (x = 0; x < num_x; x++) {
       g_camera->get_pixel_from_memory(x, y, data[x + y*num_x]);
@@ -116,7 +118,8 @@ void  mainloop_server_code(void)
     svr->mainloop();
   }
 
-  // Mainloop the server connection (once per server mainloop, not once per object)
+  // Mainloop the server connection (once per server mainloop, not once per object).
+  // This call tales about 200ms to complete.
   svrcon->mainloop();
 
   delete [] data;

@@ -174,6 +174,17 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
   ConnectTwoFilters(_pGraph, _pSampleGrabberFilter, pNull);
   
   //-------------------------------------------------------------------
+  // Set the reference clock to be the vido file reader.  The default is
+  // to use the renderer, but the NULL renderer seems to speed through the
+  // file like lightning (when viewed in the graph editor program that comes
+  // with the DirectX SDK).
+  //XXX do we need this?pMediaFilter->SetSyncSource(NULL); // Turn off the reference clock.
+  // This version sets it without having to query a new interface.  It doesn't seem to make
+  // any difference with the Hauppauge card (still only grabs first frame).
+  //_pSampleGrabberFilter->SetSyncSource(_pSampleGrabberFilter);
+  //pNull->SetSyncSource(NULL);
+  
+  //-------------------------------------------------------------------
   // Find the control that lets you seek in the media (rewind uses this).
   // Find the control that lets us single-step the media and make sure it works.
 
@@ -194,7 +205,7 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
     _pFrameStep = NULL;
     fprintf(stderr,"directx_videofile_server::open_and_find_parameters(): Warning: Can't use single-step on this file, frames may be lost\n");
   }
-  // XXX Why does this fail on some video files when it always works on the
+  // XXX Why does this fail on all video files in this program when it always works on the
   // "play" example application?  Another note: the video plays all the way
   // to the end right away when I look at it in the graph editor.
 
