@@ -49,11 +49,15 @@ HRESULT ConnectTwoFilters(IGraphBuilder *pGraph, IBaseFilter *pFirst, IBaseFilte
 
 //-----------------------------------------------------------------------
 
+/** The first time we are called, start the filter graph running in continuous
+    mode and grab the first image that comes out.  Later times, grab each new
+    image as it comes.
+    */
 bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
 			      unsigned minY, unsigned maxY,
 			      unsigned exposure_time)
 {
-  long	scrap;	//< Parameter we don't need
+  long	scrap;	//< Parameter we don't need to know the value of
   HRESULT hr;
 
   if (!_status) { return false; };
@@ -78,6 +82,11 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
   // XXX We seem to be okay if the wait for completion returns okay or
   // returns "Wrong state" -- which I think may mean that it has already
   // finished.  Check to see if we are losing frames when this happens.
+  // This seems to work okay on Logitech cameras, but does not work properly
+  // on the Hauppauge (sp?) WinTV card -- it captures the first frame after
+  // the card is opened and then repeatedly reads the same frame out of the
+  // card (it thinks it is getting new frames, but they are all the first
+  // frame over and over again).
   hr = _pEvent->WaitForCompletion(1000, &scrap);
   if ( (hr != S_OK) && (hr != VFW_E_WRONG_STATE) ) {
     if (hr == E_ABORT) {
@@ -264,7 +273,8 @@ directx_camera_server::directx_camera_server(void) :
   _pMediaControl(NULL),
   _pEvent(NULL),
   _pSampleGrabberFilter(NULL),
-  _pGrabber(NULL)
+  _pGrabber(NULL),
+  _started_graph(false)
 {
   //---------------------------------------------------------------------
 

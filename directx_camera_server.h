@@ -9,7 +9,7 @@
 class directx_camera_server : public base_camera_server {
 public:
   directx_camera_server(void);
-  ~directx_camera_server(void);
+  virtual ~directx_camera_server(void);
 
   /// Return the number of colors that the device has
   virtual unsigned  get_num_colors() const { return 3; };
@@ -37,9 +37,10 @@ protected:
   ISampleGrabber *_pGrabber;	    // Interface for the sample grabber filter
 
   // Memory pointers used to get non-virtual memory
-  char	    *_buffer;	  // Global memory-locked buffer
-  size_t    _buflen;	  // Length of that buffer
-  bool	    _invert_y;	  // Do we need to invert the Y axis?
+  char	    *_buffer;	  //< Buffer for what comes from camera
+  size_t    _buflen;	  //< Length of that buffer
+  bool	    _invert_y;	  //< Do we need to invert the Y axis?
+  bool	    _started_graph; //< Did we start the filter graph running?
 
   virtual bool	open_and_find_parameters(void);
   virtual bool	read_one_frame(unsigned minX, unsigned maxX,

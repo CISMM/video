@@ -7,6 +7,8 @@
 
 class base_camera_server {
 public:
+  virtual ~base_camera_server(void) {};
+
   /// Is the camera working properly?
   bool working(void) const { return _status; };
   unsigned  get_num_rows(void) { return _num_rows; };

@@ -1,11 +1,15 @@
 #include  <math.h>
 #include  <stdlib.h>
+#include  <signal.h>
 #include  <string.h>
 #include  <stdio.h>
 #include  <vrpn_Connection.h>
 #include  <vrpn_TempImager.h>
 #include  "roper_server.h"
 #include  "directx_camera_server.h"
+
+const int MAJOR_VERSION = 1;
+const int MINOR_VERSION = 2;
 
 //-----------------------------------------------------------------
 // This section contains code to initialize the camera and read its
@@ -37,6 +41,11 @@ bool  init_camera_code(const char *type)
   return true;
 }
 
+void  teardown_camera_code(void)
+{
+  if (g_camera) { delete g_camera; };
+}
+
 /// Cause the camera to read one frame.
 // XXX Later, would like to put it into continuous mode, most likely
 void  mainloop_camera_code(void)
@@ -53,7 +62,8 @@ int			      svrchan;	//< Server channel index for image data
 
 bool  init_server_code(void)
 {
-  if ( (svrcon = new vrpn_Synchronized_Connection()) == NULL) {
+  const int PORT = 4511;
+  if ( (svrcon = new vrpn_Synchronized_Connection(PORT)) == NULL) {
     fprintf(stderr, "Could not open server connection\n");
     return false;
   }
@@ -66,8 +76,15 @@ bool  init_server_code(void)
     fprintf(stderr, "Could not add channel to server image\n");
     return false;
   }
+  printf("Waiting for video connections on %d\n", PORT);
 
   return true;
+}
+
+void  teardown_server_code(void)
+{
+  if (svr) { delete svr; };
+  if (svrcon) { delete svrcon; };
 }
 
 void  mainloop_server_code(void)
@@ -100,6 +117,21 @@ void  mainloop_server_code(void)
   delete [] data;
 }
 
+//-----------------------------------------------------------------
+// g_done gets set when the user presses ^C to exit the program.
+
+static	bool  g_done = false;	//< Becomes true when time to exit
+
+// WARNING: On Windows systems, this handler is called in a separate
+// thread from the main program (this differs from Unix).  To avoid all
+// sorts of chaos as the main program continues to handle packets, we
+// set a done flag here and let the main program shut down in its own
+// thread by calling shutdown() to do all of the stuff we used to do in
+// this handler.
+
+void handle_cntl_c(int) {
+  g_done = true;
+}
 
 //-----------------------------------------------------------------
 // Mostly just calls the above functions; split into client and
@@ -110,13 +142,22 @@ void  mainloop_server_code(void)
 
 int main(unsigned argc, char *argv[])
 {
+  printf("video_tempImager_server version %02d.%02d\n", MAJOR_VERSION, MINOR_VERSION);
+
   if (!init_camera_code("directx")) { return -1; }
   if (!init_server_code()) { return -1; }
 
-  while (true) {
+  // Set up handler for all these signals to set done
+  signal(SIGINT, handle_cntl_c);
+
+  while (!g_done) {
     mainloop_camera_code();
     mainloop_server_code();
+    vrpn_SleepMsecs(1);
   }
 
+  printf("Deleting camera and connection objects\n");
+  teardown_server_code();
+  teardown_camera_code();
   return 0;
 }

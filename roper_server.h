@@ -8,7 +8,7 @@
 class roper_server : public base_camera_server {
 public:
   roper_server(void);
-  ~roper_server(void);
+  virtual ~roper_server(void);
 
   /// Read an image to a memory buffer
   bool	read_image_to_memory(int minX = 0, int maxX = -1,
