@@ -1,3 +1,8 @@
+//XXX There are some off-by-1 errors in the way the red lines are drawn
+//XXX It is not possible to select all the way to the top or right
+//    because the window is only half the number of pixels in the
+//    image, so it always wants to skip the last column.
+
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -18,7 +23,7 @@
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.04";
+const char *Version_string = "01.05";
 double  g_focus = 0;    // Current setting for the microscope focus
 bool	g_focus_changed = false;
 roper_server  *g_roper = NULL;
@@ -30,6 +35,7 @@ int	g_window_height = g_max_image_height / g_window_size_divisor;
 int	g_window_id;			//< Window ID to destroy when done
 unsigned char *g_image = NULL;		//< Pointer to the storage for the image
 bool	g_already_posted = false;	//< Posted redisplay since the last display?
+int	g_mousePressX, g_mousePressY;	//< Where the mouse was when the button was pressed
 
 #ifndef	FAKE_NIKON
 vrpn_Synchronized_Connection	*con;
@@ -140,6 +146,73 @@ void  preview_image(roper_server *roper)
     glutPostRedisplay();
     g_already_posted = true;
   }
+}
+
+/// Sets the region size based in where the mouse was first picked and
+/// where it is now.  Basically covers the rectangle between the min
+/// and max of each of them.
+void  set_region_based_on_mouse(int sx, int sy, int fx, int fy)
+{
+  // Scale the x and y values by the window size divisor
+  sx *= g_window_size_divisor;
+  sy *= g_window_size_divisor;
+  fx *= g_window_size_divisor;
+  fy *= g_window_size_divisor;
+
+  // Invert y to make it match display coordinates
+  sy = (g_max_image_height-1) - sy;
+  fy = (g_max_image_height-1) - fy;
+
+  if (sx < fx) {
+    g_minX = sx;
+    g_maxX = fx;
+  } else {
+    g_minX = fx;
+    g_maxX = sx;
+  }
+
+  if (sy < fy) {
+    g_minY = sy;
+    g_maxY = fy;
+  } else {
+    g_minY = fy;
+    g_maxY = sy;
+  }
+
+}
+
+void mouseCallbackForGLUT(int button, int state, int x, int y) {
+ 
+    switch(button) {
+	case GLUT_LEFT_BUTTON:
+	  if (state == GLUT_DOWN) {
+	    // Start the region-picking process by setting the min and
+	    // max X and Y to the current pick location.
+	    set_region_based_on_mouse(x,y, x,y);
+
+	    g_mousePressX = x;
+	    g_mousePressY = y;
+	  } else {
+	    // Don't need to do anything -- it was rubberbanding the whole time
+	  }
+	  break;
+	case GLUT_MIDDLE_BUTTON:
+	  break;
+	case GLUT_RIGHT_BUTTON:
+	  break;
+    }
+}
+
+void motionCallbackForGLUT(int x, int y) {
+  // Clip the motion to stay within the window boundaries.
+  if (x < 0) { x = 0; };
+  if (y < 0) { y = 0; };
+  if (x >= g_window_width) { x = g_window_width - 1; }
+  if (y >= g_window_height) { y = g_window_height - 1; };
+
+  // Set the bounds based on the point first picked and this point.
+  set_region_based_on_mouse(g_mousePressX,g_mousePressY, x,y);
+  return;
 }
 
 //--------------------------------------------------------------------------
@@ -347,6 +420,8 @@ int main(int argc, char *argv[])
   // will do all the work) and then give control over to GLUT.
   glutDisplayFunc(myDisplayFunc);
   glutIdleFunc(myIdleFunc);
+  glutMotionFunc(motionCallbackForGLUT);
+  glutMouseFunc(mouseCallbackForGLUT);
 
   //------------------------------------------------------------------
   // Generic Tcl startup.  Getting and interpreter and mainwindow.
