@@ -1,3 +1,4 @@
+//XXX Image is inverted in Y...
 //XXX PerfectOrbit video doesn't seem to play once it has been loaded!
 //    Pausing does make it jump to the end, like other videos
 //    LongOrbit behaves the same way... (both are large files)
@@ -121,7 +122,7 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
     *camera = r;
     *imager = r;
   } else if (!strcmp(type, "directx")) {
-    directx_imager *d = new directx_imager(1,320,240);	// Use camera #1 (first one found)
+    directx_imager *d = new directx_imager(1,640,480);	// Use camera #1 (first one found)
     *camera = d;
     *imager = d;
   } else {

@@ -141,7 +141,7 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
   // card (it thinks it is getting new frames, but they are all the first
   // frame over and over again).  Also, we get the first frame over and over
   // again for some videofile clips (BigBeadSmallMovie, LongOrbit, PerfectOrbit).
-//  vrpn_SleepMsecs(1);
+  vrpn_SleepMsecs(1);
   hr = _pEvent->WaitForCompletion(1000, &scrap);
   if ( (hr != S_OK) && (hr != VFW_E_WRONG_STATE) ) {
     if (hr == E_ABORT) {
@@ -503,21 +503,13 @@ directx_camera_server::directx_camera_server(int which, unsigned width, unsigned
 
   //---------------------------------------------------------------------
   // Allocate a buffer that is large enough to read the maximum-sized
-  // image with no binning.  Also allocate a buffer to hold an inverted
-  // image (inverted in Y).  These buffers will be swapped back and forth
-  // inside the invert_memory_image_in_y() function.
+  // image with no binning.
   _buflen = (unsigned)(_num_rows * _num_columns * 3);	// Expect B,G,R; 8-bits each.
   if ( (_buffer = new unsigned char[_buflen]) == NULL) {
     fprintf(stderr,"directx_camera_server::directx_camera_server(): Out of memory for buffer\n");
     _status = false;
     return;
   }
-  if ( (_inv_buffer = new unsigned char[_buflen]) == NULL) {
-    fprintf(stderr,"directx_camera_server::directx_camera_server(): Out of memory for inversion buffer\n");
-    _status = false;
-    return;
-  }
-
   // No image in memory yet.
   _minX = _maxX = _minY = _maxY = 0;
 
@@ -554,7 +546,6 @@ directx_camera_server::~directx_camera_server(void)
     _vrpn_buffer_size=0;
   }
   if (_buffer != NULL) { delete [] _buffer; }
-  if (_inv_buffer != NULL) { delete [] _inv_buffer; }
 }
 
 bool  directx_camera_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned minY, unsigned maxY,
@@ -593,10 +584,6 @@ bool  directx_camera_server::read_image_to_memory(unsigned minX, unsigned maxX, 
     fprintf(stderr, "directx_camera_server::read_image_to_memory(): Can't read image\n");
     return false;
   }
-
-  //---------------------------------------------------------------------
-  // Invert the image in place if we need to.
-  if (_invert_y) { invert_memory_image_in_y(); }
 
   return true;
 }
@@ -705,77 +692,22 @@ bool	directx_camera_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_u
   return true;
 }
 
-/// Invert the memory that is in the buffer in Y.  This points buffer to the new image.
-// This routine makes use of the _buffer and _inv_buffer memories, copying from one to
-// the other and then switching the pointers.  This avoids the need to re-allocate
-// buffers as the program runs.
-bool  directx_camera_server::invert_memory_image_in_y(void)
-{
-  // XXX This will depend on what kind of pixels we have!
-
-  unsigned y;
-
-  for (y = 0; y < _num_rows; y++) {
-    memcpy(&_inv_buffer[ y * _num_columns * 3], &_buffer[ (_num_rows - 1 - y) * _num_columns * 3], _num_columns * 3);
-  }
-
-  // Out with the old and in with the new!
-  unsigned char *temp = _buffer;
-  _buffer = _inv_buffer;
-  _inv_buffer = temp;
-  return true;
-}
-
 bool directx_camera_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
 {
+    unsigned y;
+
+    // Get a new image into the buffer.
     _minX=_minY=0;
     _maxX=_num_columns - 1;
     _maxY=_num_rows - 1;
     read_one_frame(_minX, _maxX, _minY, _maxY, (int)g_exposure);
-    unsigned  x,y;
-    unsigned  num_x = get_num_columns();
-    unsigned  num_y = get_num_rows();
-    if (_vrpn_buffer==NULL) {
-		_vrpn_buffer_size=sizeof(vrpn_uint16)*num_x*num_y;
-		_vrpn_buffer=malloc(_vrpn_buffer_size);
-    }
-    vrpn_uint16 *data = (vrpn_uint16*) _vrpn_buffer;
 
-    if (data == NULL) {
-	    fprintf(stderr, "mainloop_server_code(): Out of memory\n");
-	    return false;
-    }
-
-    if (!_status) { return false; }
-    // Switch red and blue, since they are backwards in the record (blue is first).
-    int RGB = 2;
-    if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
-		fprintf(stderr,"directx_camera_server::get_pixel_from_memory(): No image in memory\n");
-		return false;
-    }
-
-    // Loop through each line and fill them into the buffer.  Invert the image in y while we are
-    // copying it into the buffer.
-    unsigned  cols = (_maxX - _minX) + 1;
-    unsigned i,j;
-    unsigned minx = (_minX > 0) ? _minX : 0;
-    unsigned maxx = (_maxX < num_x) ? _maxX : num_x;
-    unsigned miny = (_minY > 0) ? _minY : 0;
-    unsigned maxy = (_maxY < num_y) ? _maxY : num_y;
-    int	linestart;
-    int xindex;
-    for (y = miny,i=num_x*(__min(num_y,_maxY)-1),j=0; y < maxy; y++,i-=num_x,j+=cols) {
-      linestart = j*3 + RGB;
-      for (x = minx, xindex = x*3; x < maxx; x++, xindex += 3){
-	data[i + x] = _buffer[ linestart + xindex ];
-      }
-    }
-    // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION)
-    int nRowsPerRegion=vrpn_IMAGER_MAX_REGION/num_x;
-    for(y=0; y<num_y; y+=nRowsPerRegion) {
-		svr->fill_region(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1,data+y*num_x);
-		svr->send_region();
-		svr->mainloop();
+    // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION).
+    int nRowsPerRegion=vrpn_IMAGER_MAX_REGIONu8/_num_columns;
+    for(y=0; y<_num_rows; y+=nRowsPerRegion) {
+      svr->send_region_using_base_pointer(svrchan,0,_num_columns-1,y,__min(_num_rows,y+nRowsPerRegion)-1,
+	_buffer+2 /* Send the red channel */, 3, 3*_num_columns, _num_rows, true);
+      svr->mainloop();
     }
 
     // Mainloop the server connection (once per server mainloop, not once per object).

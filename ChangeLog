@@ -1,3 +1,17 @@
+2002-11-24  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* argonot.cpp : Modified to use new vrpn_TempImager class.
+	* directx_camera_server.cpp : Same.  This involved removing a lot
+		of code, which is now down inside the TempImager.
+		Also inserted sleep to try and make it not eat the CPU.
+	* directx_camera_server.h : Same.
+	* roper_server.cpp : Making use the new vrpn_TempImager class.
+		Not tested.
+	* stack_collector.dsp : Enable building release version.
+	* test_driectx_library.dsp : Same.
+	* video_spot_tracker.cpp : Works with new vrpn_TempImager class.
+	* video_tempimager_server.cpp : Same.  Took out unused code.
+
 2002-11-14  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* argonot.cpp : Increased sleep from 1 to 5 ms to increase read rate.

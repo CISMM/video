@@ -93,36 +93,6 @@ void  teardown_server_code(void)
   if (svrcon) { delete svrcon; };
 }
 
-void  mainloop_server_code(void)
-{
-  unsigned  x,y;
-  unsigned  num_x = g_camera->get_num_columns();
-  unsigned  num_y = g_camera->get_num_rows();
-  vrpn_uint16 *data = new vrpn_uint16[num_x * num_y];
-
-  if (data == NULL) {
-    fprintf(stderr, "mainloop_server_code(): Out of memory\n");
-    return;
-  }
-
-  // Loop through each line, fill them in, and send them to the client.
-  for (y = 0; y < num_y; y++) {
-    for (x = 0; x < num_x; x++) {
-      g_camera->get_pixel_from_memory(x, y, data[x + y*num_x]);
-    }
-
-    // Send the current row over to the client.
-    svr->fill_region(svrchan, 0, num_x-1, y,y, data);
-    svr->send_region();
-    svr->mainloop();
-   }
-
-  // Mainloop the server connection (once per server mainloop, not once per object).
-  svrcon->mainloop();
-
-  delete [] data;
-}
-
 //-----------------------------------------------------------------
 // g_done gets set when the user presses ^C to exit the program.
 

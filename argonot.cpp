@@ -94,7 +94,7 @@ void  handle_region_change(void *, const vrpn_IMAGERREGIONCB info)
     intensity_gain = 255.0/(g_clip_high-g_clip_low);
     intensity_offset = g_clip_low;
 
-    int infoLineSize=region->cMax-region->cMin+1;
+    int infoLineSize=region->_cMax-region->_cMin+1;
     vrpn_int32 nCols=g_ti->nCols();
     vrpn_int32 nRows=g_ti->nRows();
     unsigned char uns_pix;
@@ -110,7 +110,7 @@ void  handle_region_change(void *, const vrpn_IMAGERREGIONCB info)
     // from future images).
     // If this is the first region and we used to be grabbing into the
     // background buffer, stop copying into the background buffer.
-    if (info.region->rMin == 0) {
+    if (info.region->_rMin == 0) {
       if (g_subtract_background) {
 	g_subtract_background = 0;
 	subtracting_background = true;
@@ -120,11 +120,13 @@ void  handle_region_change(void *, const vrpn_IMAGERREGIONCB info)
       }
     }
     if (subtracting_background) {
-      for (r = info.region->rMin,RegionOffset=(r-region->rMin)*infoLineSize; r <= region->rMax; r++,RegionOffset+=infoLineSize) {
+      for (r = info.region->_rMin,RegionOffset=(r-region->_rMin)*infoLineSize; r <= region->_rMax; r++,RegionOffset+=infoLineSize) {
 	ir = nRows - r - 1;
 	int row_offset = ir*nCols;
-	for (c = info.region->cMin; c <= info.region->cMax; c++) {
-	  g_background[c + row_offset] = -region->vals[(c-region->cMin) + RegionOffset];
+	for (c = info.region->_cMin; c <= info.region->_cMax; c++) {
+	  vrpn_uint8 val;
+	  info.region->read_unscaled_pixel(c,r,val);
+	  g_background[c + row_offset] = -val;
 	}
       }
     }
@@ -135,7 +137,7 @@ void  handle_region_change(void *, const vrpn_IMAGERREGIONCB info)
     // an intensity value of 128 everywhere; other values will appear as image.
     // If this is the first region and we used to be averaging into the
     // background buffer, stop averaging into the background buffer.
-    if (info.region->rMin == 0) {
+    if (info.region->_rMin == 0) {
       if (g_average_background) {
 	g_average_background = 0;
 	averaging_background = true;
@@ -145,11 +147,13 @@ void  handle_region_change(void *, const vrpn_IMAGERREGIONCB info)
       }
     }
     if (averaging_background) {
-      for (r = info.region->rMin,RegionOffset=(r-region->rMin)*infoLineSize; r <= region->rMax; r++,RegionOffset+=infoLineSize) {
+      for (r = info.region->_rMin,RegionOffset=(r-region->_rMin)*infoLineSize; r <= region->_rMax; r++,RegionOffset+=infoLineSize) {
 	ir = nRows - r - 1;
 	int row_offset = ir*nCols;
-	for (c = info.region->cMin; c <= info.region->cMax; c++) {
-	  g_background[c + row_offset] = 128 - region->vals[(c-region->cMin) + RegionOffset];
+	for (c = info.region->_cMin; c <= info.region->_cMax; c++) {
+	  vrpn_uint8 val;
+	  info.region->read_unscaled_pixel(c,r,val);
+	  g_background[c + row_offset] = 128 - val;
 	}
       }
     }
@@ -169,16 +173,17 @@ void  handle_region_change(void *, const vrpn_IMAGERREGIONCB info)
 
     // Copy pixels into the image buffer.  Flip the image over in
     // Y so that the image coordinates display correctly in OpenGL.
-    for (r = info.region->rMin,RegionOffset=(r-region->rMin)*infoLineSize; r <= region->rMax; r++,RegionOffset+=infoLineSize) {
+    for (r = info.region->_rMin,RegionOffset=(r-region->_rMin)*infoLineSize; r <= region->_rMax; r++,RegionOffset+=infoLineSize) {
       ir = g_ti->nRows() - r - 1;
       int row_offset = ir*nCols;
-      for (c = info.region->cMin; c <= region->cMax; c++) {
+      for (c = info.region->_cMin; c <= region->_cMax; c++) {
 	int per_pixel_adjustment = g_background[c + row_offset];
 	int temp;
+	vrpn_uint8 val;
+	info.region->read_unscaled_pixel(c,r,val);
 
 	offset = 3 * (c + row_offset);
-	temp = (int)(( (region->vals[(c-region->cMin) + RegionOffset] + per_pixel_adjustment) - intensity_offset) *
-		  intensity_gain);
+	temp = (int)(( (val + per_pixel_adjustment) - intensity_offset) * intensity_gain);
 	if (temp < 0) { temp = 0; }
 	if (temp > 255) { temp = 255; }
 	uns_pix = (unsigned char)temp;
@@ -202,10 +207,10 @@ void  handle_region_change(void *, const vrpn_IMAGERREGIONCB info)
 	first_time = false;
       } else {
 	static	unsigned  last_r = 10000;
-	if (last_r > info.region->rMin) {
+	if (last_r > info.region->_rMin) {
 	  frame_count++;
 	}
-	last_r = info.region->rMin;
+	last_r = info.region->_rMin;
 	gettimeofday(&now, NULL);
 	double timesecs = 0.001 * vrpn_TimevalMsecs(vrpn_TimevalDiff(now, last_print_time));
 	if (timesecs >= 5) {
