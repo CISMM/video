@@ -7,10 +7,10 @@ ComposerVersion=4.0.0.4
 ProjectName=video_tempimager_server
 ProjectDirectory=F:\taylorr\STM\src\video\video_tempimager_server
 NonSFXDirectory=F:\taylorr\STM\src\video\video_tempimager_server\NonSFX
-MediaFileName=video_tempimager_server_v01_00
+MediaFileName=video_tempimager_server_v01_01
 CopyMediaToFName=
-ProgramDescriptiveName=video_tempimager_server_v01_00
-ProgramVersion=01.00
+ProgramDescriptiveName=video_tempimager_server_v01_01
+ProgramVersion=01.01
 CompanyName=UNC NSRG
 ProgVerLiveUpdate=0
 RegisterAsApp=1
@@ -27,7 +27,7 @@ TopLabel=1
 TopLabelVer=0
 TopLabel2=0
 BottomLabel=0
-TopLabelText="video_tempimager_server_v01_00"
+TopLabelText="video_tempimager_server_v01_01"
 TopLabel2Text=""
 BottomLabelText="Copyright © 2003"
 TopBackgroundColor=16711680
@@ -58,7 +58,7 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|
 CompanyUrl=www.cs.unc.edu/nano
 
 [TargetExe]
-TargetDirectory=<AbsoluteDir>C:\nsrg\bin\video_tempimager_server_v01.00
+TargetDirectory=<AbsoluteDir>C:\nsrg\bin\video_tempimager_server_v01.01
 CommonDirectory=<CommonFilesDir>UNC NSRG
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\video_tempimager_server.exe
@@ -99,7 +99,7 @@ ShowCopyrightWarning=1
 [Shortcuts]
 AddMainShortCut=0
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=NSRG\video_tempimager_server_v01_00
+ProgramLinkFolder=NSRG\video_tempimager_server_v01_01
 ProgramLinkName=Video_tempimager_server
 ProgramLinkParam=
 ProgramLinkWorkDir=<Application Folder>
@@ -123,9 +123,9 @@ StartUpChecked=1
 QuickLaunchChecked=1
 SetAllUsers=1
 AddUninstallShortcut=1
-Item-000=*|Roper imager server binned 1x1|<Application Folder>\video_tempimager_server.exe|NSRG\video_tempimager_server_v01_00|-bin 1 -expose 1 roper|<Application Folder>|Normal Window||0|
-Item-001=*|Roper imager server binned 2x2|<Application Folder>\video_tempimager_server.exe|NSRG\video_tempimager_server_v01_00|-expose 1 -bin 2 roper|<Application Folder>|Normal Window||0|
-Item-002=*|Roper imager server binned 3x3|<Application Folder>\video_tempimager_server.exe|NSRG\video_tempimager_server_v01_00|-expose 1 -bin 3 roper|<Application Folder>|Normal Window||0|
+Item-000=*|Roper imager server binned 1x1|<Application Folder>\video_tempimager_server.exe|NSRG\video_tempimager_server_v01_01|-bin 1 -expose 1 roper|<Application Folder>|Normal Window||0|
+Item-001=*|Roper imager server binned 2x2|<Application Folder>\video_tempimager_server.exe|NSRG\video_tempimager_server_v01_01|-expose 1 -bin 2 roper|<Application Folder>|Normal Window||0|
+Item-002=*|Roper imager server binned 3x3|<Application Folder>\video_tempimager_server.exe|NSRG\video_tempimager_server_v01_01|-expose 1 -bin 3 roper|<Application Folder>|Normal Window||0|
 
 [Billboard]
 AddBillboard=1
@@ -184,7 +184,7 @@ TestExeBeforeUnInstall=0
 [Association]
 OpenWith=0
 OpenWithName=
-OpenWithMenuText=Open with 
+OpenWithMenuText=Open with
 OpenWithExtensions=
 
 [VerInfo]
