@@ -2,6 +2,8 @@
 #define	BASE_CAMERA_SERVER_H
 
 #include <vrpn_Types.h>
+#include  <vrpn_Connection.h>
+#include  <vrpn_TempImager.h>
 
 class base_camera_server {
 public:
@@ -31,11 +33,17 @@ public:
   /// Store the memory image to a PPM file.
   virtual bool  write_memory_to_ppm_file(const char *filename, bool sixteen_bits = false) const {return false;};
 
+  /// Send whole image over a vrpn connection
+  virtual bool  send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan) {return false;};
+
 protected:
   bool	    _status;			//< True is working, false is not
   unsigned  _num_rows, _num_columns;    //< Size of the memory buffer
   unsigned  _minX, _minY, _maxX, _maxY; //< Region of the image in memory
   unsigned  _binning;			//< How many camera pixels compressed into image pixel
+
+  void*     _vrpn_buffer; //this buffer will only be allocated once
+  unsigned  _vrpn_buffer_size; //the size of the vrpn_buffer
 
   virtual bool	open_and_find_parameters(void) {return false;};
   base_camera_server(unsigned binning = 1) {

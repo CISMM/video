@@ -317,6 +317,9 @@ roper_server::roper_server(unsigned binning) :
   // No image in memory yet.
   _minX = _minY = _maxX = _maxY = 0;
 
+  _vrpn_buffer=NULL;
+  _vrpn_buffer_size=0;
+
   _status = true;
 }
 
@@ -345,6 +348,10 @@ roper_server::~roper_server(void)
   PL_CHECK_WARN(pl_pvcam_uninit(), "pl_pvcam_uninit");
   GlobalUnlock(_buffer );
   GlobalFree(_buffer );
+  if (_vrpn_buffer!=NULL){
+	  free(_vrpn_buffer);
+	  _vrpn_buffer_size=0;
+  }
 }
 
 bool  roper_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned minY, unsigned maxY,
@@ -503,4 +510,54 @@ bool	roper_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &va
   uns16	cols = (_maxX - _minX)/_binning + 1;
   val = vals[Y*cols + X];
   return true;
+}
+
+bool roper_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
+{
+    _minX=_minY=0;
+    _maxX=_num_columns - 1;
+    _maxY=_num_rows - 1;
+    read_image_to_memory(_minX, _maxX, _minY, _maxY, (int)g_exposure);
+    unsigned  x,y;
+    unsigned  num_x = get_num_columns();
+    unsigned  num_y = get_num_rows();
+    if (_vrpn_buffer==NULL) {
+		_vrpn_buffer_size=sizeof(vrpn_uint16)*num_x*num_y;
+		_vrpn_buffer=malloc(_vrpn_buffer_size);
+    }
+    vrpn_uint16 *data = (vrpn_uint16*) _vrpn_buffer;
+
+    if (data == NULL) {
+	    fprintf(stderr, "mainloop_server_code(): Out of memory\n");
+	    return false;
+    }
+
+    if (!_status)
+	    return false;
+    if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
+		fprintf(stderr,"directx_camera_server::get_pixel_from_memory(): No image in memory\n");
+		return false;
+    }
+
+	uns16	*vals = (uns16 *)_memory;
+	uns16	cols = (_maxX - _minX)/_binning + 1;
+
+    unsigned i,j;
+    // Loop through each line, fill them in, and send them to the client.
+    for (y = __max(0,_minX),i=0,j=0; y < __min(num_y,_maxY); y++,i+=num_x,j+=cols) {
+		for (x = __max(0,_minX); x < __min(num_x,_maxX); x++) {
+			data[i + x] = vals[j + x];
+		}
+	}
+    // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION)
+    int nRowsPerRegion=vrpn_IMAGER_MAX_REGION/num_x;
+    for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
+		svr->fill_region(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1,data+y*num_x);
+		svr->send_region();
+		svr->mainloop();
+    }
+
+    // Mainloop the server connection (once per server mainloop, not once per object).
+    svrcon->mainloop();
+    return true;
 }

@@ -31,6 +31,9 @@ public:
   /// Store the memory image to a PPM file.
   virtual bool  write_memory_to_ppm_file(const char *filename, bool sixteen_bits = false) const;
 
+  /// Send whole image over a vrpn connection
+  virtual bool  send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan);
+
 protected:
   /// Construct but do not open camera (used by derived classes)
   directx_camera_server();

@@ -163,7 +163,7 @@ void  Usage(const char *s)
 int main(int argc, char *argv[])
 {
   int	i, realparams;		  // How many non-flag command-line arguments
-  char	*devicename = "directx";  // Name of the device to open
+  char	*devicename = "roper";  // Name of the device to open
   int	devicenum = 1;		  // Which, if there are more than one, to open
 
   realparams = 0;
@@ -206,9 +206,8 @@ int main(int argc, char *argv[])
   if (!init_server_code()) { return -1; }
 
   while (!g_done) {
-    mainloop_camera_code();
-    mainloop_server_code();
-    vrpn_SleepMsecs(1);
+    g_camera->send_vrpn_image(svr,svrcon,g_exposure,svrchan);
+//    vrpn_SleepMsecs(1);
   }
 
   printf("Deleting camera and connection objects\n");
