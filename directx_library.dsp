@@ -87,6 +87,10 @@ LIB32=link.exe -lib
 
 SOURCE=.\directx_camera_server.cpp
 # End Source File
+# Begin Source File
+
+SOURCE=.\directx_videofile_server.cpp
+# End Source File
 # End Group
 # Begin Group "Header Files"
 
@@ -98,6 +102,10 @@ SOURCE=.\base_camera_server.h
 # Begin Source File
 
 SOURCE=.\directx_camera_server.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\directx_videofile_server.h
 # End Source File
 # End Group
 # End Target

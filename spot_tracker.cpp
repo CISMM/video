@@ -173,6 +173,7 @@ void  disk_spot_tracker::locate_good_fit_in_image(const image_wrapper &image, do
   int ilow = (int)(minx+2*_rad+1);
   int ihigh = (int)(maxx-2*_rad-1);
   int step = (int)(_rad / 4);
+  if (step < 1) { step = 1; };
   int jlow = (int)(miny+2*_rad+1);
   int jhigh = (int)(maxy-2*_rad-1);
   for (i = ilow; i <= ihigh; i += step) {

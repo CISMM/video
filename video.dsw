@@ -120,6 +120,30 @@ Package=<4>
 
 ###############################################################################
 
+Project: "video_spot_tracker"=.\video_spot_tracker.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name BaseClasses
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name directx_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name roper_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name spot_tracker_library
+    End Project Dependency
+}}}
+
+###############################################################################
+
 Project: "video_tempimager_server"=.\video_tempimager_server.dsp - Package Owner=<4>
 
 Package=<5>

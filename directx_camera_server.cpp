@@ -4,11 +4,12 @@
 #include "directx_camera_server.h"
 #include <vrpn_BaseClass.h>
 
+//#define HACK_TO_REOPEN
 
 //-----------------------------------------------------------------------
 // Helper functions for editing the filter graph:
 
-HRESULT GetPin(IBaseFilter *pFilter, PIN_DIRECTION PinDir, IPin **ppPin)
+static HRESULT GetPin(IBaseFilter *pFilter, PIN_DIRECTION PinDir, IPin **ppPin)
 {
     IEnumPins  *pEnum;
     IPin       *pPin;
@@ -29,7 +30,7 @@ HRESULT GetPin(IBaseFilter *pFilter, PIN_DIRECTION PinDir, IPin **ppPin)
     return E_FAIL;  
 }
 
-HRESULT ConnectTwoFilters(IGraphBuilder *pGraph, IBaseFilter *pFirst, IBaseFilter *pSecond)
+static HRESULT ConnectTwoFilters(IGraphBuilder *pGraph, IBaseFilter *pFirst, IBaseFilter *pSecond)
 {
     IPin *pOut = NULL, *pIn = NULL;
     HRESULT hr = GetPin(pFirst, PINDIR_OUTPUT, &pOut);
@@ -62,6 +63,37 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
 
   if (!_status) { return false; };
 
+#ifdef	HACK_TO_REOPEN
+  open_and_find_parameters();
+  _started_graph = false;
+#endif
+
+  // If we have not yet started the media graph running, set it up to do
+  // multiple-frame capture and then set it running.
+#if 0
+  if (!_started_graph) {
+    // Set the grabber do not do one-shot mode and buffering.
+    // One-shot mode means it will stop the graph from
+    // running after a single frame capture; the setting we
+    // are using means it will run continuously.
+    _pGrabber->SetOneShot(FALSE);
+    _pGrabber->SetBufferSamples(TRUE);
+
+    // Run the graph and wait until it captures a frame into its buffer
+    //XXX do we need this?pMediaFilter->SetSyncSource(NULL); // Turn off the reference clock.
+    // This version sets it without having to query a new interface.  It doesn't seem to make
+    // any difference with the Hauppauge card (still only grabs first frame).
+    //_pSampleGrabberFilter->SetSyncSource(NULL);
+
+    hr = _pMediaControl->Run();
+    if ( (hr != S_OK) && (hr != S_FALSE) ){
+      fprintf(stderr,"directx_camera_server::read_one_frame(): Can't run filter graph\n");
+      _status = false;
+      return false;
+    }
+    _started_graph = true;
+  }
+#else
   // Set the grabber one-shot mode and buffering.
   // One-shot mode means it will stop the graph from
   // running after a single frame capture.
@@ -69,7 +101,10 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
   _pGrabber->SetBufferSamples(TRUE);
 
   // Run the graph and wait until it captures a frame into its buffer
-  //XXX do we need this? pMediaFilter->SetSyncSource(NULL); // Turn off the reference clock.
+  //XXX do we need this?pMediaFilter->SetSyncSource(NULL); // Turn off the reference clock.
+  // This version sets it without having to query a new interface.  It doesn't seem to make
+  // any difference with the Hauppauge card (still only grabs first frame).
+  //_pSampleGrabberFilter->SetSyncSource(NULL);
 
   hr = _pMediaControl->Run();
   if ( (hr != S_OK) && (hr != S_FALSE) ){
@@ -77,6 +112,7 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
     _status = false;
     return false;
   }
+#endif
 
   // Wait until done or 1 second has passed (timeout).
   // XXX We seem to be okay if the wait for completion returns okay or
@@ -116,13 +152,17 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
     return false;
   }
 
+#ifdef	HACK_TO_REOPEN
+  close_device();
+#endif
+
   return true;
 }
 
 //---------------------------------------------------------------------
-// Open the camera and determine its available features and parameters.
+// Open the camera specified and determine its available features and parameters.
 
-bool directx_camera_server::open_and_find_parameters(void)
+bool directx_camera_server::open_and_find_parameters(const int which)
 {
   //-------------------------------------------------------------------
   // Create COM and DirectX objects needed to access a video stream.
@@ -177,12 +217,26 @@ bool directx_camera_server::open_and_find_parameters(void)
   ULONG cFetched;
   IMoniker *pMoniker = NULL;
   IBaseFilter *pSrc = NULL;
-  if (pClassEnum->Next(1, &pMoniker, &cFetched) == S_OK)
-  {
-      // Bind the first moniker to a filter object.
-      pMoniker->BindToObject(0, 0, IID_IBaseFilter, (void**)&pSrc);
+  // Skip (which - 1) cameras
+  int i;
+  for (i = 0; i < which-1 ; i++) {
+    if (pClassEnum->Next(1, &pMoniker, &cFetched) != S_OK) {
+      fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't open camera (not enough cameras)\n");
       pMoniker->Release();
+      return false;
+    }
   }
+  // Take the next camera and bind it
+  if (pClassEnum->Next(1, &pMoniker, &cFetched) == S_OK) {
+    // Bind the first moniker to a filter object.
+    pMoniker->BindToObject(0, 0, IID_IBaseFilter, (void**)&pSrc);
+    pMoniker->Release();
+  } else {
+    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't open camera (not enough cameras)\n");
+    pMoniker->Release();
+    return false;
+  }
+
   pClassEnum->Release();
   pDevEnum->Release();
 
@@ -200,7 +254,8 @@ bool directx_camera_server::open_and_find_parameters(void)
   // Set the media type to video
   AM_MEDIA_TYPE mt;
   ZeroMemory(&mt, sizeof(AM_MEDIA_TYPE));
-  mt.majortype = MEDIATYPE_Video;
+  mt.majortype = MEDIATYPE_Video;	  // Ask for video media producers
+  mt.subtype = MEDIASUBTYPE_RGB24;	  // Ask for 8 bit RGB
   _pGrabber->SetMediaType(&mt);
 
   //-------------------------------------------------------------------
@@ -240,7 +295,7 @@ bool directx_camera_server::open_and_find_parameters(void)
     return false;
   }
 
-  // XXX This is the default number of rows and columne, but we'd like to know the
+  // XXX This is the default number of rows and columns, but we'd like to know the
   // maximum number...
 
   // Number of rows and columns
@@ -255,8 +310,25 @@ bool directx_camera_server::open_and_find_parameters(void)
 
   // Make sure that the image is not compressed and that we have 8 bits
   // per pixel.
-  if ( (pVih->bmiHeader.biCompression != BI_RGB) || (pVih->bmiHeader.biBitCount != 24) ) {
-    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Unsupported image format\n");
+  if (pVih->bmiHeader.biCompression != BI_RGB) {
+    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Compression not RGB\n");
+    switch (pVih->bmiHeader.biCompression) {
+      case BI_RLE8:
+	fprintf(stderr,"  (It is BI_RLE8)\n");
+	break;
+      case BI_RLE4:
+	fprintf(stderr,"  (It is BI_RLE4)\n");
+      case BI_BITFIELDS:
+	fprintf(stderr,"  (It is BI_BITFIELDS)\n");
+	break;
+      default:
+	fprintf(stderr,"  (Unknown compression type)\n");
+    }
+    return false;
+  }
+  if (pVih->bmiHeader.biBitCount != 24) {
+    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Not 24 bits (%d)\n",
+      pVih->bmiHeader.biBitCount);
     return false;
   }
 
@@ -267,7 +339,22 @@ bool directx_camera_server::open_and_find_parameters(void)
   return true;
 }
 
+/// Construct but do not open a camera
 directx_camera_server::directx_camera_server(void) :
+  _pGraph(NULL),
+  _pBuilder(NULL),
+  _pMediaControl(NULL),
+  _pEvent(NULL),
+  _pSampleGrabberFilter(NULL),
+  _pGrabber(NULL),
+  _started_graph(false)
+{
+  // No image in memory yet.
+  _minX = _maxX = _minY = _maxY = 0;
+}
+
+/// Open nth available camera.
+directx_camera_server::directx_camera_server(const int which) :
   _pGraph(NULL),
   _pBuilder(NULL),
   _pMediaControl(NULL),
@@ -278,7 +365,7 @@ directx_camera_server::directx_camera_server(void) :
 {
   //---------------------------------------------------------------------
 
-  if (!open_and_find_parameters()) {
+  if (!open_and_find_parameters(which)) {
     fprintf(stderr, "directx_camera_server::directx_camera_server(): Cannot open camera\n");
     _status = false;
     return;
@@ -289,14 +376,17 @@ directx_camera_server::directx_camera_server(void) :
   // image with no binning.
   _buflen = (unsigned)(_num_rows * _num_columns * 3);	// Expect B,G,R; 8-bits each.
   if ( (_buffer = new char[_buflen]) == NULL) {
-    fprintf(stderr,"directx_camera_server::directx_camera_server(): Cannot allocate enough locked memory for buffer\n");
+    fprintf(stderr,"directx_camera_server::directx_camera_server(): Out of memory for buffer\n");
     _status = false;
     return;
   }
 
-  //---------------------------------------------------------------------
   // No image in memory yet.
-  _minX = _minY = _maxX = _maxY = 0;
+  _minX = _maxX = _minY = _maxY = 0;
+
+#ifdef	HACK_TO_REOPEN
+  close_device();
+#endif
 
   _status = true;
 }
@@ -304,7 +394,7 @@ directx_camera_server::directx_camera_server(void) :
 //---------------------------------------------------------------------
 // Close the camera and the system.  Free up memory.
 
-directx_camera_server::~directx_camera_server(void)
+void  directx_camera_server::close_device(void)
 {
   // Clean up.
   if (_pGrabber) { _pGrabber->Release(); };
@@ -314,6 +404,11 @@ directx_camera_server::~directx_camera_server(void)
   if (_pBuilder) { _pBuilder->Release(); };
   if (_pGraph) { _pGraph->Release(); };
   CoUninitialize();
+}
+  
+directx_camera_server::~directx_camera_server(void)
+{
+  close_device();
 }
 
 bool  directx_camera_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned minY, unsigned maxY,

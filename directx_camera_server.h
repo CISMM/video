@@ -1,3 +1,6 @@
+#ifndef	DIRECTX_CAMERA_SERVER_H
+#define	DIRECTX_CAMERA_SERVER_H
+
 #include <windows.h>
 #include "base_camera_server.h"
 
@@ -8,8 +11,10 @@
 
 class directx_camera_server : public base_camera_server {
 public:
-  directx_camera_server(void);
+  /// Open the nth available camera
+  directx_camera_server(const int which);
   virtual ~directx_camera_server(void);
+  virtual void close_device(void);
 
   /// Return the number of colors that the device has
   virtual unsigned  get_num_colors() const { return 3; };
@@ -27,6 +32,9 @@ public:
   virtual bool  write_memory_to_ppm_file(const char *filename) const;
 
 protected:
+  /// Construct but do not open camera (used by derived classes)
+  directx_camera_server(void);
+
   // Objects needed for DirectShow video input.  Described in the help
   // menus for the DirectX API
   IGraphBuilder *_pGraph;	    // Constructs a DirectShow filter graph
@@ -42,9 +50,11 @@ protected:
   bool	    _invert_y;	  //< Do we need to invert the Y axis?
   bool	    _started_graph; //< Did we start the filter graph running?
 
-  virtual bool	open_and_find_parameters(void);
+  virtual bool	open_and_find_parameters(const int which);
   virtual bool	read_one_frame(unsigned minX, unsigned maxX,
 			unsigned minY, unsigned maxY,
 			unsigned exposure_time);
   virtual bool	invert_memory_image_in_y(void);
 };
+
+#endif

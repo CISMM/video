@@ -155,9 +155,6 @@ int main(unsigned argc, char *argv[])
       g_Y = (float)y;
     }
 
-    // Done with the camera
-    delete roper;
-
     //------------------------------------------------------------
     // This must be done in any Tcl app, to allow Tcl/Tk to handle
     // events
@@ -173,6 +170,9 @@ int main(unsigned argc, char *argv[])
 	    return -1;
     }
   }
+
+  // Done with the camera
+  delete roper;
 
   return 0;
 }
