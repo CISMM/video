@@ -83,7 +83,7 @@ int main(int, char *[])
     printf("Next step: X = %8.3lg,  Y = %8.3lg,  rad = %8.3lg, fit = %12.5lg\n", x,y,rad, fit);
   }
 
-  printf("Chasing around a spot using full optimization\n");
+  printf("Chasing around a slightly noisy spot using full optimization\n");
   avgcount = 50;
   minerr = 1000; maxerr = 0; sumerr = 0;
   minraderr = 1000; maxraderr = 0; sumraderr = 0;
@@ -108,6 +108,9 @@ int main(int, char *[])
       sumraderr += raderr;
       biasx += x - testx;
       biasy += y - testy;
+      if (i == 0) {
+	printf("First opt: real coords (%g,%g), found coords (%g,%g)\n", testx,testy, x,y);
+      }
     }
   }
   printf("Pos err: min=%g, max=%g, mean=%g, xbias = %g, ybias = %g\n", minerr, maxerr, sumerr/avgcount, biasx/avgcount, biasy/avgcount);
@@ -116,7 +119,7 @@ int main(int, char *[])
   testrad = 5.5;
   pixacc = 0.05;
   avgcount = 50;
-  printf("Chasing around a spot of known radius %g to %g pixel\n", testrad, pixacc);
+  printf("Chasing around a slightly noisy spot of known radius %g to %g pixel\n", testrad, pixacc);
   compute_chase_statistics(tracker, testrad, pixacc, avgcount, minerr, maxerr, sumerr, biasx, biasy, x,y);
   printf("Pos err: min=%g, max=%g, mean=%g, xbias = %g, ybias = %g\n", minerr, maxerr, sumerr/avgcount, biasx/avgcount, biasy/avgcount);
 
@@ -136,9 +139,6 @@ int main(int, char *[])
   gettimeofday(&end, NULL);
   printf("  Time: %lg seconds per optimization\n", duration(end, start)/avgcount);
 
-  //XXX Why is the interpolating tracker WORSE than the regular in accuracy,
-  // even though it has a lower bias?  DOH: because the test image is a point-
-  // sampled image, rather than an area-integrated one!
   printf("-----------------------------------------------------------------\n");
   printf("Generating interpolating spot tracker\n");
   disk_spot_tracker_interp interptracker(seedrad);
@@ -155,7 +155,7 @@ int main(int, char *[])
     printf("Next step: X = %8.3lg,  Y = %8.3lg,  rad = %8.3lg, fit = %12.5lg\n", x,y,rad, fit);
   }
 
-  printf("Chasing around a spot using full optimization\n");
+  printf("Chasing around a slightly noisy spot using full optimization\n");
   avgcount = 50;
   minerr = 1000; maxerr = 0; sumerr = 0;
   minraderr = 1000; maxraderr = 0; sumraderr = 0;
@@ -180,6 +180,9 @@ int main(int, char *[])
       sumraderr += raderr;
       biasx += x - testx;
       biasy += y - testy;
+      if (i == 0) {
+	printf("First opt: real coords (%g,%g), found coords (%g,%g)\n", testx,testy, x,y);
+      }
     }
   }
   printf("Pos err: min=%g, max=%g, mean=%g, xbias = %g, ybias = %g\n", minerr, maxerr, sumerr/avgcount, biasx/avgcount, biasy/avgcount);
@@ -188,9 +191,17 @@ int main(int, char *[])
   testrad = 5.5;
   pixacc = 0.05;
   avgcount = 50;
-  printf("Chasing around a spot of known radius %g to %g pixel\n", testrad, pixacc);
+  printf("Chasing around a slightly noisy spot of known radius %g to %g pixel\n", testrad, pixacc);
   compute_chase_statistics(interptracker, testrad, pixacc, avgcount, minerr, maxerr, sumerr, biasx,biasy, x,y);
   printf("Pos err: min=%g, max=%g, mean=%g, xbias = %g, ybias = %g\n", minerr, maxerr, sumerr/avgcount, biasx/avgcount, biasy/avgcount);
+
+  testrad = 5.5;
+  pixacc = 0.05;
+  x = 120.5; y = 120;
+  test_image image3(0,255,0,255,127,0,x,y,testrad, 250);
+  printf("Optimizing a slightly noisy spot of known radius %g at %g,%g\n", testrad, x,y);
+  interptracker.optimize_xy(image3, x, y, floor(x), ceil(y));
+  printf("  Found a spot of radius %g at %g,%g\n", interptracker.get_radius(), interptracker.get_x(), interptracker.get_y());
 
   pixacc = 0.05;
   testrad = 5.5;

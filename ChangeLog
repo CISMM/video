@@ -1,3 +1,20 @@
+2003-08-07  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* image_wrapper.h : Defaults to no noise.
+	* spot_tracker.cpp : Fixes bug in initialization.  Pulled many of
+		the disk_spot_tracker functions into the spot_tracker base
+		class.  Made a new type of disk spot tracker that interpolates
+		the values between pixels in the image, which does a better
+		job of matching to sub-pixel locations.  Renamed original
+		version that samples within the kernel but at the original
+		resolution interp2: don't use it.
+	* spot_tracker.h : Same.
+	* test_spot_tracker.cpp : Modified to better test the subpixel
+		behavior of the interpolating tracker.
+	* vidso_spot_tracker.cpp : Changed version number.
+	* video_spot_tracker.dsp : Not sure what the change was.  Added /Fr
+		flag.
+
 2003-08-04  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* base_camera_server.h : Removed _vrpn_buffer and _vrpn_buffer_size

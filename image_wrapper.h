@@ -30,7 +30,7 @@ public:
   // disk in the specified location (may be subpixel) with the specified
   // radius and intensity.
   test_image(int minx = 0, int maxx = 255, int miny = 0, int maxy = 255,
-	     double background = 127.0, double noise = 5.0,
+	     double background = 127.0, double noise = 0.0,
 	     double diskx = 127.25, double disky = 127.75, double diskr = 18.5,
 	     double diskintensity = 250);
 

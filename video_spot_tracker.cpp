@@ -54,7 +54,7 @@ const int MAX_TRACKERS = 100; // How many trackers can exist (for VRPN's tracker
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.10";
+const char *Version_string = "01.12";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
