@@ -1,3 +1,13 @@
+2002-11-14  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* argonot.cpp : Increased sleep from 1 to 5 ms to increase read rate.
+	* directx_camera_server.cpp : Uses a pair of buffers for the normal
+		and inverted-in-y video that are swapped each time, rather
+		than allocated a new buffer each time a frame needs to be
+		swapped.  Twiddled with some loop code to move calculations
+		outside the loops and use adds rather than multiplies within
+		the loops.
+
 2002-11-05  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* argonot.cpp : Option to let the user clear the background.

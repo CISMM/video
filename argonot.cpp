@@ -301,7 +301,7 @@ void myIdleFunc(void)
   // a little while so that we don't eat the whole CPU.
   g_ti->mainloop();
 
-  vrpn_SleepMsecs(1);
+  vrpn_SleepMsecs(5);
 }
 
 int main(int argc, char **argv)

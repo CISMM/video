@@ -49,7 +49,8 @@ protected:
   IAMStreamConfig *_pStreamConfig;    // Interface to set the video dimensions
 
   // Memory pointers used to get non-virtual memory
-  unsigned char	*_buffer;   //< Buffer for what comes from camera
+  unsigned char	*_buffer;   //< Buffer for what comes from camera, ping_pongs with _inv_buffer
+  unsigned char	*_inv_buffer; //< Buffer holding the inverted image, ping-pongs with _buffer
   size_t    _buflen;	    //< Length of that buffer
   bool	    _invert_y;	    //< Do we need to invert the Y axis?
   bool	    _started_graph; //< Did we start the filter graph running?
