@@ -1,3 +1,13 @@
+2003-06-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* directx_camera_server.cpp : Made it so that if you ask for a
+		video of size 0x0 it just takes whatever the default
+		resolution is for the camera.
+	* video_spot_tracker.cpp : Enabled the user to open directx to
+		get any resolution or directx640x480 to get that specific
+		resolution.  Adds a button to return it to full-screen
+		video display (opposite of small_area).
+
 2003-04-03  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Changing default exposure time to 80ms

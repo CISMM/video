@@ -342,43 +342,47 @@ bool directx_camera_server::open_and_find_parameters(const int which, unsigned w
   // This code is based on the AMCap sample application, and
   // intuiting that we need to use the SetFormat call on the IAMStreamConfig
   // interface; this interface is described in the help pages.
-  _pBuilder->FindInterface(&PIN_CATEGORY_CAPTURE, &MEDIATYPE_Video, pSrc,
-                            IID_IAMStreamConfig, (void **)&_pStreamConfig);
-  if (_pStreamConfig == NULL) {
-    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't get StreamConfig interface\n");
-    return false;
+  // If the width and height are specified as 0, then they are not set
+  // in the header, hopefully letting them use whatever is the default.
+  if ( (width != 0) && (height != 0) ) {
+    _pBuilder->FindInterface(&PIN_CATEGORY_CAPTURE, &MEDIATYPE_Video, pSrc,
+			      IID_IAMStreamConfig, (void **)&_pStreamConfig);
+    if (_pStreamConfig == NULL) {
+      fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't get StreamConfig interface\n");
+      return false;
+    }
+
+    ZeroMemory(&mt, sizeof(AM_MEDIA_TYPE));
+    mt.majortype = MEDIATYPE_Video;	  // Ask for video media producers
+    mt.subtype = MEDIASUBTYPE_RGB24;	  // Ask for 8 bit RGB
+    mt.pbFormat = (BYTE*)CoTaskMemAlloc(sizeof(VIDEOINFOHEADER));
+    VIDEOINFOHEADER *pVideoHeader = (VIDEOINFOHEADER*)mt.pbFormat;
+    ZeroMemory(pVideoHeader, sizeof(VIDEOINFOHEADER));
+    pVideoHeader->bmiHeader.biBitCount = 24;
+    pVideoHeader->bmiHeader.biWidth = width;
+    pVideoHeader->bmiHeader.biHeight = height;
+    pVideoHeader->bmiHeader.biPlanes = 1;
+    pVideoHeader->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    pVideoHeader->bmiHeader.biSizeImage = DIBSIZE(pVideoHeader->bmiHeader);
+
+    // Set the format type and size.
+    mt.formattype = FORMAT_VideoInfo;
+    mt.cbFormat = sizeof(VIDEOINFOHEADER);
+
+    // Set the sample size.
+    mt.bFixedSizeSamples = TRUE;
+    mt.lSampleSize = DIBSIZE(pVideoHeader->bmiHeader);
+
+    // Make the call to actually set the video type to what we want.
+    if (_pStreamConfig->SetFormat(&mt) != S_OK) {
+      fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't set resolution to %dx%d\n",
+	pVideoHeader->bmiHeader.biWidth, pVideoHeader->bmiHeader.biHeight);
+      return false;
+    }
+
+    // Clean up the pbFormat header memory we allocated above.
+    CoTaskMemFree(mt.pbFormat);
   }
-
-  ZeroMemory(&mt, sizeof(AM_MEDIA_TYPE));
-  mt.majortype = MEDIATYPE_Video;	  // Ask for video media producers
-  mt.subtype = MEDIASUBTYPE_RGB24;	  // Ask for 8 bit RGB
-  mt.pbFormat = (BYTE*)CoTaskMemAlloc(sizeof(VIDEOINFOHEADER));
-  VIDEOINFOHEADER *pVideoHeader = (VIDEOINFOHEADER*)mt.pbFormat;
-  ZeroMemory(pVideoHeader, sizeof(VIDEOINFOHEADER));
-  pVideoHeader->bmiHeader.biBitCount = 24;
-  pVideoHeader->bmiHeader.biWidth = width;
-  pVideoHeader->bmiHeader.biHeight = height;
-  pVideoHeader->bmiHeader.biPlanes = 1;
-  pVideoHeader->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-  pVideoHeader->bmiHeader.biSizeImage = DIBSIZE(pVideoHeader->bmiHeader);
-
-  // Set the format type and size.
-  mt.formattype = FORMAT_VideoInfo;
-  mt.cbFormat = sizeof(VIDEOINFOHEADER);
-
-  // Set the sample size.
-  mt.bFixedSizeSamples = TRUE;
-  mt.lSampleSize = DIBSIZE(pVideoHeader->bmiHeader);
-
-  // Make the call to actually set the video type to what we want.
-  if (_pStreamConfig->SetFormat(&mt) != S_OK) {
-    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't set resolution to %dx%d\n",
-      pVideoHeader->bmiHeader.biWidth, pVideoHeader->bmiHeader.biHeight);
-    return false;
-  }
-
-  // Clean up the pbFormat header memory we allocated above.
-  CoTaskMemFree(mt.pbFormat);
 
   //-------------------------------------------------------------------
   // Create a NULL renderer that will be used to discard the video frames

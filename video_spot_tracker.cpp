@@ -1,3 +1,23 @@
+//XXX Needs to set up to enable logging.
+//XXX The camera code seems to stop updating the video after about
+//    five minutes of tracking.  The video in the window stops being
+//    updated, the tracking optimization doesn't change, but the rest
+//    of the UI keeps running (and the VRPN connect/disconnect).
+//    After a while using the camera, it make DirectX think that there
+//    was not a camera anymore.
+//    It does not use up more GDI objects when it is locked up.  It
+//    does seem to drop the camera offline.  Video doesn't have to be
+//    off for this to happen.  This is using DirectX 9 on the laptop
+//    and the Dazzle video converter.  Jeremy Cribb's Sony laptop.
+//    The AMCAP example application runs fine for a long time.  Also
+//    AMCAP needs to be run ahead of time to "turn on" the video from
+//    the device -- it stays on after the program exits.  Maybe it is
+//    timing out somehow?
+//XXX Throttle to a requested frame rate (60fps, 30fps), or even better,
+//    make it not re-use existing video frames!
+//XXX Would like to do multiple spots at the same time.
+//XXX Would like to be able to specify the microns-per-pixel value
+//    and have it stored in the log file.
 //XXX Off-by-1 somewhere in Roper when binning (top line dark)
 //XXX PerfectOrbit video doesn't seem to play once it has been loaded!
 //    Pausing does make it jump to the end, like other videos
@@ -31,7 +51,7 @@
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.03";
+const char *Version_string = "01.04";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -63,6 +83,7 @@ Tclvar_int_with_button	g_invert("dark_spot","");
 Tclvar_int_with_button	g_opt("optimize","");
 Tclvar_int_with_button	g_globalopt("global_optimize_now","",1);
 Tclvar_int_with_button	g_small_area("small_area","");
+Tclvar_int_with_button	g_full_area("full_area","");
 Tclvar_int_with_button	g_mark("show_tracker","",1);
 Tclvar_int_with_button	g_show_video("show_video","",1);
 Tclvar_int_with_button	g_quit("quit","");
@@ -161,6 +182,12 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
     g_shift = 4;
     g_exposure = 80;	// Seems to be the minimum exposure for the one we have
   } else if (!strcmp(type, "directx")) {
+    // Passing width and height as zero leaves it open to whatever the camera has
+    directx_imager *d = new directx_imager(1,0,0);	// Use camera #1 (first one found)
+    *camera = d;
+    *imager = d;
+    g_shift = 0;
+  } else if (!strcmp(type, "directx640x480")) {
     directx_imager *d = new directx_imager(1,640,480);	// Use camera #1 (first one found)
     *camera = d;
     *imager = d;
@@ -314,6 +341,17 @@ void myIdleFunc(void)
 
   if (Tclvar_mainloop()) {
     fprintf(stderr,"Tclvar Mainloop failed\n");
+  }
+
+  // If they just asked for the full area, reset to that and
+  // then turn off the check-box.  Also turn off small-area.
+  if (g_full_area) {
+    g_small_area = 0;
+    *g_minX = 0;
+    *g_minY = 0;
+    *g_maxX = g_camera->get_num_columns() - 1;
+    *g_maxY = g_camera->get_num_rows() -1;
+    g_full_area = 0;
   }
 
   // If we are asking for a small region around the tracked dot,
@@ -500,7 +538,7 @@ int main(int argc, char *argv[])
     break;
 
   default:
-    fprintf(stderr, "Usage: %s [filename]\n", argv[0]);
+    fprintf(stderr, "Usage: %s [roper|directx|directx640x480|filename]\n", argv[0]);
     exit(-1);
   };
 
