@@ -42,7 +42,7 @@ inline double	FraunhoferWaveFunction(double R, double x, double y, double lambda
 /** The aperture has a radius R.  The coordinate rho is the distance from center on the image
   * plane in meters.  The wavelength of the light in meters is lambda.  The C value is a
   * constant that adjusts the overall intensity and it wasn't clear how to choose it. **/
-inline double	FraunhoferIntensity(double R, double rho, double lambda, double C = 1.0) {
+inline double	FraunhoferIntensity(double R, double rho, double lambda, double C) {
   double fwf = FraunhoferWaveFunction(R, rho, lambda);
   return C*C * fwf*fwf;
 }
@@ -51,7 +51,7 @@ inline double	FraunhoferIntensity(double R, double rho, double lambda, double C 
 /** The aperture has a radius R.  The coordinates x and y are the distance from center on the image
   * plane in meters.  The wavelength of the light in meters is lambda.  The C value is a
   * constant that adjusts the overall intensity and it wasn't clear how to choose it. **/
-inline double	FraunhoferIntensity(double R, double x, double y, double lambda, double C = 1.0) {
+inline double	FraunhoferIntensity(double R, double x, double y, double lambda, double C) {
   double fwf = FraunhoferWaveFunction(R, x, y, lambda);
   return C*C * fwf*fwf;
 }

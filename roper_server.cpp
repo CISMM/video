@@ -18,7 +18,7 @@ static	unsigned long	duration(struct timeval t1, struct timeval t2)
 // returns.  The _RETURN version returns from the function passing FALSE
 // if there is an error.
 
-#define	PL_CHECK_EXIT(x, y) { boolean retval; \
+#define	PL_CHECK_EXIT(x, y) { int retval; \
   if ( (retval = x) == PV_FAIL ) { \
     char  msg[1024]; \
     pl_error_message(pl_error_code(), msg); \
@@ -27,7 +27,7 @@ static	unsigned long	duration(struct timeval t1, struct timeval t2)
   } \
 }
 
-#define	PL_CHECK_RETURN(x, y) { boolean retval; \
+#define	PL_CHECK_RETURN(x, y) { int retval; \
   if ( (retval = x) == PV_FAIL ) { \
     char  msg[1024]; \
     pl_error_message(pl_error_code(), msg); \
@@ -36,7 +36,7 @@ static	unsigned long	duration(struct timeval t1, struct timeval t2)
   } \
 }
 
-#define	PL_CHECK_WARN(x, y) { boolean retval; \
+#define	PL_CHECK_WARN(x, y) { int retval; \
   if ( (retval = x) == PV_FAIL ) { \
     char  msg[1024]; \
     pl_error_message(pl_error_code(), msg); \
@@ -68,7 +68,7 @@ bool  roper_server::read_continuous(const int16 camera_handle,
     // Stop any currently-running acquisition and free the memory used
     // by the circular buffer.
     if (_circbuffer_run) {
-      boolean retval1;
+      int retval1;
       _circbuffer_run = false;
       if (!(retval1 = pl_exp_stop_cont(_camera_handle, CCS_HALT))) {
 	fprintf(stderr,"roper_server::read_continuous(): Cannot stop acquisition\n");

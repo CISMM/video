@@ -22,8 +22,7 @@ int main(int argc, char **argv)
     pl_cam_open(cam_name, &hCam, OPEN_EXCLUSIVE );
 
     /* check for circular buffer support */
-    if( pl_get_param( hCam, PARAM_CIRC_BUFFER, ATTR_AVAIL, &avail_flag ) &&
-	avail_flag )
+    if( pl_get_param( hCam, PARAM_CIRC_BUFFER, ATTR_AVAIL, &avail_flag ) && avail_flag )
 	  FocusContinuous( hCam );
     else
 	  printf( "circular buffers not supported\n" );
@@ -44,8 +43,7 @@ void FocusContinuous( int16 hCam )
 
     /* Init a sequence set the region, exposure mode and exposure time */
     pl_exp_init_seq();
-    pl_exp_setup_cont( hCam, 1, &region, TIMED_MODE, 100, &size,
-    CIRC_OVERWRITE );
+    pl_exp_setup_cont( hCam, 1, &region, TIMED_MODE, 100, &size, CIRC_OVERWRITE );
 
     /* set up a circular buffer of 3 frames */
     buffer = (uns16*)malloc( size * 3 );
@@ -60,8 +58,7 @@ void FocusContinuous( int16 hCam )
       /* wait for data or error */
       printf("  Checking status\n");
       while( pl_exp_check_cont_status( hCam, &status, &not_needed,
-	      &not_needed ) &&
-	      (status != READOUT_COMPLETE && status != READOUT_FAILED) );
+	&not_needed ) && (status != READOUT_COMPLETE) && (status != READOUT_FAILED) ) {printf("%d.",status);};
 
       /* Check Error Codes */
       if( status == READOUT_FAILED ) {

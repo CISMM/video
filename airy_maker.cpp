@@ -29,6 +29,8 @@ const unsigned	Window_Size_Y = Window_Size_X;
 const float	Window_Units_X = 1e9;
 const float	Window_Units_Y = Window_Units_X;
 
+enum { M_NOTHING, M_X_ONLY, M_Y_ONLY, M_X_AND_Y };
+
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
 // global access to the objects we will be using.
@@ -44,6 +46,9 @@ Tclvar_float_with_scale	g_Wavelength("wavelength_nm", ".kernel.wavelength", 300,
 Tclvar_float_with_scale	g_PixelSpacing("pixelSpacing_nm", ".kernel.pixel", 20, Window_Size_X/4, 50);
 Tclvar_float_with_scale	g_PixelHidden("pixelFracHidden", ".kernel.pixelhide", 0, 0.5, 0.1);
 Tclvar_float_with_scale	g_Radius("aperture_nm", "", 1000, 3000, 1000);
+Tclvar_float_with_scale	g_PixelXOffset("x_offset_pix", "", -1, 1, 0);
+Tclvar_float_with_scale	g_PixelYOffset("y_offset_pix", "", -1, 1, 0);
+Tclvar_float_with_scale	g_SampleCount("samples", "", 64, 256, 64);
 Tclvar_int_with_button	g_quit("quit","");
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
 
@@ -60,7 +65,8 @@ void drawSideViewVsPixels(
   double width,		//< Width in pixels of the screen.  We draw from -1 to 1 in X, 0 to 1 in Y
   double units,		//< Converts from Pixel units to screen-space units
   double pixelSpacing,	//< How far in screen pixels between imager pixels
-  double pixelFrac)	//< What fraction of imager pixels are not active
+  double pixelFrac,	//< What fraction of imager pixels are not active
+  double offset)	//< How far from center (and which direction) to offset Airy pattern in capture device pixel units
 {
   float	loop;	  // So we don't get integer math on coordinates
 
@@ -71,10 +77,11 @@ void drawSideViewVsPixels(
   glDisable(GL_LINE_SMOOTH);
   glColor3f(0.5,0.7,0.5);
   glBegin(GL_LINES);
-  double valAtZero = FraunhoferIntensity(g_Radius/1e9, 0, g_Wavelength/1e9);
+  double valAtZero = FraunhoferIntensity(g_Radius/1e9, 0, g_Wavelength/1e9,1.0);
+  double airyOffsetMatchingPixelOffset = -offset / width * pixelSpacing * 2;
   for (loop = -1; loop <= 1.0; loop += 1/(width/2.0)) {
     glVertex3f( loop,
-		FraunhoferIntensity(g_Radius/1e9, loop, g_Wavelength/1e9) / valAtZero,
+		FraunhoferIntensity(g_Radius/1e9, loop + airyOffsetMatchingPixelOffset, g_Wavelength/1e9,1.0) / valAtZero,
 		0.0 );
     glVertex3f( loop,
 		0.0,
@@ -112,7 +119,7 @@ void drawSideViewVsPixels(
   glBegin(GL_LINE_STRIP);
   for (loop = -1; loop <= 1.0; loop += 1/(width/2.0)) {
     glVertex3f( loop,
-		FraunhoferIntensity(g_Radius/1e9, loop, g_Wavelength/1e9) / valAtZero,
+		FraunhoferIntensity(g_Radius/1e9, loop + airyOffsetMatchingPixelOffset, g_Wavelength/1e9,1.0) / valAtZero,
 		0.0 );
   }
   glEnd();
@@ -158,6 +165,102 @@ void drawPixelGrid(
   glEnd();
 }
 
+// Compute the volume under part of the Airy disk.  Do this by
+// sampling the disk densely, finding the average value within the area,
+// and then multiplying by the area.
+
+double	computeAiryVolume(
+  double x0,		//< Low end of X integration range in Airy-disk coordinates
+  double x1,		//< High end of X integration range
+  double y0,		//< Low end of Y integration range
+  double y1,		//< High end of Y integration range
+  int samples)		//< How many samples to take in each of X and Y
+{
+  int count = 0;	//< How many pixels we have summed up
+  double x;		//< Steps through X
+  double y;		//< Steps through Y
+  double sx = (x1 - x0) / (samples + 1);
+  double sy = (y1 - y0) / (samples + 1);
+  double sum = 0;
+
+  for (x = x0 + sx/2; x < x1; x += sx) {
+    for (y = y0 + sy/2; y < y1; y += sy) {
+      count++;
+      sum += FraunhoferIntensity(g_Radius/1e9, x, y, g_Wavelength/1e9, 1.0);
+    }
+  }
+
+  return (sum / count) * (x1-x0) * (y1-y0);
+}
+
+void drawPixelBarGraphs(
+  double width,		//< Width in pixels of the screen (assumed isotropic in X and Y
+  double units,		//< Converts from Pixel units to screen-space units
+  double pixelSpacing,	//< How far in screen pixels between imager pixels
+  double pixelFrac,	//< What fraction of imager pixels are not active
+  double xOffset,	//< How far from the center (and which direction) to offset Airy pattern in X in capture device units
+  double yOffset)	//< How far from the center (and which direction) to offset Airy pattern in Y in capture device units
+{
+  // Find the volume of the whole Airy disk by going way out past its
+  // border.
+  double totVol = computeAiryVolume(-1,1, -1,1, g_SampleCount);
+
+  // Compute how far to step between pixel centers in the screen, then
+  // how far down you can go without getting below -1 when taking these
+  // steps.  Then take one more step than this to get started.
+  // XXX Adjust for offsets.
+  double airyOffsetMatchingPixelOffsetX = -xOffset / width * pixelSpacing * 2;
+  double airyOffsetMatchingPixelOffsetY = yOffset / width * pixelSpacing * 2;
+  double pixelStepInScreen = 1/(width/2.0) * (pixelSpacing/1e9) * units;
+  double halfStepInScreen = 0.5 * pixelStepInScreen;
+  int numsteps = floor(1/pixelStepInScreen);
+  double start = - (numsteps+1) * pixelStepInScreen;
+  double x, y;
+  for (x = start; x < 1.0; x += pixelStepInScreen) {
+    for (y = start; y < 1.0; y += pixelStepInScreen) {
+
+      // Find the four corners of the pixel where we are going to draw the
+      // bar graph.  These include the whole pixel area.  These are found in
+      // the screen space, from -1..1 in X and Y.
+      double xs0 = x - halfStepInScreen;
+      double xs1 = x + halfStepInScreen;
+      double ys0 = y - halfStepInScreen;
+      double ys1 = y + halfStepInScreen;
+
+      // Find the four corners of the pixel that actually has area to receive
+      // photons.  This removes the area clipped by the pixelFrac parameter.
+      // These are also found in screen space.
+      double xc0 = xs0 + halfStepInScreen*pixelFrac;
+      double xc1 = xs1 - halfStepInScreen*pixelFrac;
+      double yc0 = ys0 + halfStepInScreen*pixelFrac;
+      double yc1 = ys1 - halfStepInScreen*pixelFrac;
+
+      // Convert the pixel coordinates from screen space space to
+      // Airy-disk space.  XXX This will need scaling as well as offset
+      // when we get a more formal unit description.
+      double xa0 = xc0 + airyOffsetMatchingPixelOffsetX;
+      double xa1 = xc1 + airyOffsetMatchingPixelOffsetX;
+      double ya0 = yc0 + airyOffsetMatchingPixelOffsetY;
+      double ya1 = yc1 + airyOffsetMatchingPixelOffsetY;
+
+      // Compute the fraction of volume falling within the receiving area by
+      // dividing the volume within it to the volume covered by the whole Airy disk
+      // computed above.  This is the fraction of the pixel to fill.
+      double frac = computeAiryVolume(xa0, xa1, ya0, ya1, g_SampleCount * pixelStepInScreen / 2) / totVol;
+
+      // Draw a filled-in graph that covers the fraction of the whole pixel
+      // that equals the fraction of the Airy disk volume computed above.
+      glColor3f(0.5,0.8,0.5);
+      glBegin(GL_QUADS);
+	glVertex3f( xs0, ys0, 0.0 );
+	glVertex3f( xs1, ys0, 0.0 );
+	glVertex3f( xs1, ys0 + frac * (ys1-ys0), 0.0 );
+	glVertex3f( xs0, ys0 + frac * (ys1-ys0), 0.0 );
+      glEnd();
+    }
+  }
+}
+
 void myDisplayFunc(void)
 {
   // Clear the window and prepare to draw in the back buffer
@@ -169,20 +272,26 @@ void myDisplayFunc(void)
   glLoadIdentity();
   glScalef(0.5,1.0,1.0);
   glTranslatef(-1.0, 0.0, 0.0);
-  drawSideViewVsPixels(Window_Size_X, Window_Units_X, g_PixelSpacing, g_PixelHidden);
+  drawSideViewVsPixels(Window_Size_X, Window_Units_X, g_PixelSpacing, g_PixelHidden, g_PixelXOffset);
 
   // Draw the curve vs. the Y axis.
   glLoadIdentity();
   glScalef(1.0,0.5,1.0);
   glTranslatef(0.0, -1.0, 0.0);
   glRotatef(-90, 0,0,1);
-  drawSideViewVsPixels(Window_Size_X, Window_Units_X, g_PixelSpacing, g_PixelHidden);
+  drawSideViewVsPixels(Window_Size_X, Window_Units_X, g_PixelSpacing, g_PixelHidden, g_PixelYOffset);
 
   // Draw the pixel grid.
   glLoadIdentity();
   glScalef(0.5,0.5,1.0);
   glTranslatef(-1.0, -1.0, 0.0);
   drawPixelGrid(Window_Size_X, Window_Units_X, g_PixelSpacing);
+
+  // Draw the bar graphs for the lower-left portion of the screen.
+  glLoadIdentity();
+  glScalef(0.5,0.5,1.0);
+  glTranslatef(-1.0, -1.0, 0.0);
+  drawPixelBarGraphs(Window_Size_X, Window_Units_X, g_PixelSpacing, g_PixelHidden, g_PixelXOffset, g_PixelYOffset);
 
   // Swap buffers so we can see it.
   glutSwapBuffers();
@@ -227,8 +336,52 @@ void myIdleFunc(void)
   vrpn_SleepMsecs(5);
 }
 
-void mouseCallbackForGLUT(int button, int state, int x, int y) {
+// Computes offset based on the location of the mouse within
+// the lower-left quadrant of the display, where the grid is
+// shown bracketed by the Airy patterns.  Computes the offset
+// the would place the center of the Airy pattern at that location
+// in x and y.  Then clamps the offsets to the range -1..+1.
 
+void  compute_x_offset_based_on_mouse(int x)
+{
+  // Compute the location of the mouse within the quadrant
+  // in the range -1..+1 for each of X and Y.  +X is to the
+  // right and +Y is up.
+  double xNorm = x*2.0/Window_Size_X - 0.5;
+
+  // Convert this to offset in display pixel units.
+  double xOffset = xNorm * Window_Size_X / (g_PixelSpacing);
+
+  // Clamp this offset to (-1,1) and store in the globals.
+  if (xOffset < -1) { xOffset = -1; }
+  if (xOffset > 1) { xOffset = 1; }
+  g_PixelXOffset = xOffset;
+}
+
+// Computes offset based on the location of the mouse within
+// the lower-left quadrant of the display, where the grid is
+// shown bracketed by the Airy patterns.  Computes the offset
+// the would place the center of the Airy pattern at that location
+// in x and y.  Then clamps the offsets to the range -1..+1.
+
+void  compute_y_offset_based_on_mouse(int y)
+{
+  // Compute the location of the mouse within the quadrant
+  // in the range -1..+1 for each of X and Y.  +X is to the
+  // right and +Y is up.
+  double yNorm = y*2.0/Window_Size_Y - 1.5;
+
+  // Convert this to offset in display pixel units.
+  double yOffset = yNorm * Window_Size_Y / (g_PixelSpacing);
+
+  // Clamp this offset to (-1,1) and store in the globals.
+  if (yOffset < -1) { yOffset = -1; }
+  if (yOffset > 1) { yOffset = 1; }
+  g_PixelYOffset = yOffset;
+}
+
+void mouseCallbackForGLUT(int button, int state, int x, int y)
+{
     // Record where the button was pressed for use in the motion
     // callback.
     g_mousePressX = x;
@@ -238,7 +391,7 @@ void mouseCallbackForGLUT(int button, int state, int x, int y) {
       case GLUT_RIGHT_BUTTON:
 	if (state == GLUT_DOWN) {
 	  printf("XXX Pressed right button\n");
-	  g_whichDragAction = 1;
+	  g_whichDragAction = 0;
 	} else {
 	  printf("XXX Released right button\n");
 	}
@@ -247,14 +400,37 @@ void mouseCallbackForGLUT(int button, int state, int x, int y) {
       case GLUT_MIDDLE_BUTTON:
 	if (state == GLUT_DOWN) {
 	  printf("XXX Pressed middle button\n");
-	  g_whichDragAction = 0;
+	  g_whichDragAction = M_NOTHING;
 	}
 	break;
 
       case GLUT_LEFT_BUTTON:
 	if (state == GLUT_DOWN) {
-	  printf("XXX Pressed left button\n");
-	  g_whichDragAction = 1;
+	  // Left mouse button clicked in the lower-left quadrant
+	  // of the screen (bracketed by the airey patterns) causes
+	  // the offsets to be set to the point where the mouse is.
+	  // Dragging here continues to reset this offset.  There is
+	  // a limit of +/- 1 on the offset.
+	  if ( (x <= Window_Size_X/2) && (y >= Window_Size_Y/2) ) {
+    	    compute_x_offset_based_on_mouse(x);
+    	    compute_y_offset_based_on_mouse(y);
+	    g_whichDragAction = M_X_AND_Y;
+	  }
+
+	  // Left mouse button clicked in the upper-left quadrant
+	  // causes motion of only the X offet.
+	  if ( (x <= Window_Size_X/2) && (y < Window_Size_Y/2) ) {
+    	    compute_x_offset_based_on_mouse(x);
+	    g_whichDragAction = M_X_ONLY;
+	  }
+
+	  // Left mouse button clicked in the lower-right quadrant
+	  // causes motion of only the X offet.
+	  if ( (x > Window_Size_X/2) && (y >= Window_Size_Y/2) ) {
+    	    compute_y_offset_based_on_mouse(y);
+	    g_whichDragAction = M_Y_ONLY;
+	  }
+
 	}
 	break;
     }
@@ -264,12 +440,25 @@ void motionCallbackForGLUT(int x, int y) {
 
   switch (g_whichDragAction) {
 
-  case 0: //< Do nothing on drag.
+  case M_NOTHING: //< Do nothing on drag.
     break;
 
-  case 1:
+  case M_X_ONLY:
     {
-	  printf("XXX Dragging action 1\n");
+	  compute_x_offset_based_on_mouse(x);
+    }
+    break;
+
+  case M_Y_ONLY:
+    {
+	  compute_y_offset_based_on_mouse(y);
+    }
+    break;
+
+  case M_X_AND_Y:
+    {
+	  compute_x_offset_based_on_mouse(x);
+	  compute_y_offset_based_on_mouse(y);
     }
     break;
 

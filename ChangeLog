@@ -1,3 +1,11 @@
+2003-11-15  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* airy_maker.cpp : Shows probability distribution within the pixels
+		by comparing volume within each to total volume under the
+		Airy disc.  Lets the user adjust the offsets for the
+		Airy disk with the mouse.
+	* roper_server.cpp : Cosmetic and warning-removing.
+
 2003-11-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* airy_maker.cpp : Set range on slider to be larger.  Changed the
