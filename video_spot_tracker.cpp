@@ -61,7 +61,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "03.07";
+const char *Version_string = "03.08";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -307,6 +307,9 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     *camera = r;
     g_exposure = 80;	// Seems to be the minimum exposure for the one we have
     g_bitdepth = 12;
+  } else if (!strcmp(type, "edt")) {
+    edt_server *r = new edt_server();
+    *camera = r;
   } else if (!strcmp(type, "directx")) {
     // Passing width and height as zero leaves it open to whatever the camera has
     directx_camera_server *d = new directx_camera_server(1,0,0);	// Use camera #1 (first one found)
@@ -2071,7 +2074,7 @@ int main(int argc, char *argv[])
     break;
 
   default:
-    fprintf(stderr, "Usage: %s [roper|diaginc|directx|directx640x480|filename]\n", argv[0]);
+    fprintf(stderr, "Usage: %s [roper|edt|diaginc|directx|directx640x480|filename]\n", argv[0]);
     exit(-1);
   };
   

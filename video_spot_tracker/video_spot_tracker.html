@@ -1,8 +1,19 @@
-<title>Video Spot Tracker v03.07</title>
+<title>Video Spot Tracker v03.07c</title>
 
-<h1>Video Spot Tracker version 03.07</h1>
+<h1>Video Spot Tracker version 03.07c</h1>
 
-<p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible video file, from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible camera, from a <a href="http://roperscientific.com">Roper Scientific</a> camera, from a <a href="http://diaginc.com">DiagInc</a> SPOT camera, or from a set of TIFF or BMP files (it can read other, compressed file formats but these are not included in the default set because these file formats distort images in ways that affect tracking accuracy). The program currently runs only on Windows, but it uses the portable openGL library for rendering, the portable Tcl/Tk for user interface control, and the portable ImageMagick package for reading images.</p>
+<p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
+  one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
+  DirectShow</a>-compatible video file, from a <a href="http://www.microsoft.com/directx">Microsoft 
+  DirectShow</a>-compatible camera, from a <a href="http://roperscientific.com">Roper 
+  Scientific</a> camera, from a <a href="http://diaginc.com">DiagInc</a> SPOT 
+  camera, from a camera attached to an <a href="http://www.edt.com/">EDT</a> video 
+  capture board (we use a Pulnix camera this way at UNC), or from a set of TIFF 
+  or BMP files (it can read other, compressed file formats but these are not included 
+  in the default set because these file formats distort images in ways that affect 
+  tracking accuracy). The program currently runs only on Windows, but it uses 
+  the portable openGL library for rendering, the portable Tcl/Tk for user interface 
+  control, and the portable ImageMagick package for reading images.</p>
 
 <h2>Running the program</h2>
 
@@ -140,6 +151,11 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 3.07c:</h3>
+<ul>
+  <li>Adds test of control for EDT board (which we use to control the Pulnix camera).</li>
+  </ul>
+<h3></h3>
 <h3>Version 3.07:</h3>
 <ul>
   <li>Can open and track in Roper SPE stack files.</li>

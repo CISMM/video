@@ -1,3 +1,8 @@
+2004-12-21  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Added EDT camera control, so I can
+		try this with the Pulnix and see how fast it is.
+
 2004-12-17  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* edt_server.cpp : Fixed error message.
