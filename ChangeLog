@@ -1,5 +1,20 @@
 2003-08-04  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* base_camera_server.h : Removed _vrpn_buffer and _vrpn_buffer_size
+		(unused?)
+	* directx_camera_server.cpp : Removed filter_state (unused).
+		Made grabber callback return all of its samples and exit
+		when it is time to shut down.
+	* directx_camera_server.h : Same.
+	* directx_videofile_server.cpp : Use Pause() rather that Stop() to
+		avoid locking up the callback handler for the grabber.
+	* roper_server.cpp : Removed _vrpn_buffer and _size.
+	* video_spot_tracker.cpp : Changed version.  Changed where the
+		coordinates are flipped so that things are in the right
+		system.
+
+2003-08-04  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* base_camera_server.h : Comment changes.
 	* diaginc_server.cpp : Still trying to debug.  It seems to copy
 		with a stride that is smaller than it should be, but it

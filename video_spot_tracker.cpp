@@ -1,16 +1,10 @@
 //XXX Small-area code should fill in around all trackers, not just the active one.
-//XXX Got a crash down in the image-read callback when reading from video file.
 //XXX Make a better match (Gaussian kernel, or re-use existing, or something)
 //XXX Put in times based on video timestamps for samples rather than real time.
 //XXX Would like to be able to specify the microns-per-pixel value
 //    and have it stored in the log file.
 //XXX Off-by-1 somewhere in Roper when binning (top line dark)
-//XXX Is the camera being deleted twice?
 //XXX When we don't find the camera (or file), in debug the code hangs on camera delete.
-//XXX It doesn't seem to show the first picture when you rewind if it has
-//    been stuck at the end for a while when rewind is pressed.  If it just
-//    got there, or has been there briefly (<1 sec?) it does.  Pressing
-//    rewind again fixes it, as do play and single-step.
 //XXX All of the Y coordinates seem to be inverted in this code compared
 //    to the image-capture code.  Mouse, display, and video clipping.
 //XXX The camera code seems to stop updating the video after about
@@ -31,7 +25,6 @@
 //    AMCAP needs to be run ahead of time to "turn on" the video from
 //    the device -- it stays on after the program exits.  Maybe it is
 //    timing out somehow?
-//XXX One time it hung at quit with the Logitech camera.
 
 #include <math.h>
 #include <stdio.h>
@@ -61,7 +54,7 @@ const int MAX_TRACKERS = 100; // How many trackers can exist (for VRPN's tracker
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.09";
+const char *Version_string = "01.10";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -457,6 +450,7 @@ void myIdleFunc(void)
   }
   g_ready_to_display = true;
 
+  g_active_tracker->set_location(g_X, flip_y(g_Y));
   g_active_tracker->set_radius(g_Radius);
   if (g_opt) {
     double  x, y;
@@ -589,7 +583,7 @@ void  activate_and_drag_nearest_tracker_to(double x, double y)
     g_active_tracker = minTracker;
     g_active_tracker->set_location(x, y);
     g_X = g_active_tracker->get_x();
-    g_Y = g_active_tracker->get_y();
+    g_Y = flip_y(g_active_tracker->get_y());
     g_Radius = g_active_tracker->get_radius();
   }
 }
@@ -612,7 +606,7 @@ void mouseCallbackForGLUT(int button, int state, int x, int y) {
 	if (state == GLUT_DOWN) {
 	  g_whichDragAction = 1;
 	  g_trackers.push_back(g_active_tracker = create_appropriate_tracker());
-	  g_active_tracker->set_location(x, y);
+	  g_active_tracker->set_location(x, flip_y(y));
 
 	  // Move the pointer to where the user clicked.
 	  // Invert Y to match the coordinate systems.

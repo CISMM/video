@@ -317,9 +317,6 @@ roper_server::roper_server(unsigned binning) :
   // No image in memory yet.
   _minX = _minY = _maxX = _maxY = 0;
 
-  _vrpn_buffer=NULL;
-  _vrpn_buffer_size=0;
-
   _status = true;
 }
 
@@ -348,10 +345,6 @@ roper_server::~roper_server(void)
   PL_CHECK_WARN(pl_pvcam_uninit(), "pl_pvcam_uninit");
   GlobalUnlock(_buffer );
   GlobalFree(_buffer );
-  if (_vrpn_buffer!=NULL){
-	  free(_vrpn_buffer);
-	  _vrpn_buffer_size=0;
-  }
 }
 
 bool  roper_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned minY, unsigned maxY,

@@ -328,7 +328,7 @@ void  directx_videofile_server::play(void)
 /** Pause the video file at the current location. */
 void  directx_videofile_server::pause(void)
 {
-  _pMediaControl->Stop();
+  _pMediaControl->Pause();
   _mode = 1;  // Paused mode
 }
 
@@ -344,7 +344,6 @@ void  directx_videofile_server::rewind(void)
 {
   LONGLONG pos = 0;
 
-  _pMediaControl->Stop();
   // Seek to the beginning
   _pMediaSeeking->SetPositions(&pos, AM_SEEKING_AbsolutePositioning,
       NULL, AM_SEEKING_NoPositioning);

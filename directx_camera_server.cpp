@@ -106,17 +106,11 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
     _started_graph = true;
   }
 
-  // Make sure that the grabber filter is still running; otherwise, we've
-  // gone past the end of the file or otherwise gotten to a stopping point
-  // and we'd wait forever for our image.
-  FILTER_STATE	filter_state;
   //XXX Should the app set the timeout period?
   //XXX This lets us watch a camera stream, clamping to the video rate of the
   //XXX camera.  It fails when trying to open the camera when it is allowed to
   //XXX run at 320x200, but works when we set it for 640x480.  Probably a
   //XXX misunderstanding of the video format...
-//XXX  _pGrabber->GetState(0, &filter_state);
-//XXX  if (filter_state == State_Running) {
 
     // Wait until there is a sample ready in the callback handler.  If there is,
     // copy it into our buffer and then tell it we are done processing the sample.
@@ -507,8 +501,6 @@ directx_camera_server::directx_camera_server() :
 {
   // No image in memory yet.
   _minX = _maxX = _minY = _maxY = 0;
-  _vrpn_buffer=NULL;
-  _vrpn_buffer_size=0;
 }
 
 /// Open nth available camera with specified resolution.
@@ -548,8 +540,6 @@ directx_camera_server::directx_camera_server(int which, unsigned width, unsigned
 #endif
 
   _status = true;
-  _vrpn_buffer=NULL;
-  _vrpn_buffer_size=0;
 }
 
 //---------------------------------------------------------------------
@@ -570,12 +560,16 @@ void  directx_camera_server::close_device(void)
   
 directx_camera_server::~directx_camera_server(void)
 {
+  // Get the callback device to immediately return all samples
+  // it has queued up, then shut down the filter graph.
+  _pCallback->shutdown();
   close_device();
-  if (_vrpn_buffer!=NULL) {
-    free(_vrpn_buffer);
-    _vrpn_buffer_size=0;
-  }
+
   if (_buffer != NULL) { delete [] _buffer; }
+
+  // Delete the callback object, so that it can clean up and
+  // make sure all of its threads exit.
+  delete _pCallback;
 }
 
 bool  directx_camera_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned minY, unsigned maxY,
@@ -752,9 +746,17 @@ bool directx_camera_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Syn
 directx_samplegrabber_callback::directx_samplegrabber_callback(void) :
   imageReady(false),
   imageDone(false),
-  imageSample(NULL)
+  imageSample(NULL),
+  _stayAlive(true)
 {
 }
+
+directx_samplegrabber_callback::~directx_samplegrabber_callback(void)
+{
+  // Make sure the other thread knows that it is okay to return the
+  // buffer and wait until it has had time to do so.
+  _stayAlive = false; Sleep(100);
+};
 
 HRESULT directx_samplegrabber_callback::QueryInterface(REFIID interfaceRequested, void **handleToInterfaceRequested)
 {
@@ -780,8 +782,10 @@ HRESULT directx_samplegrabber_callback::QueryInterface(REFIID interfaceRequested
 // will only read it when it is full.  The second sempaphore (imageDone) controls when
 // the handler routine can release a sample; it makes sure that the sample is not
 // released before the application thread is done processing it.
-// XXX The directx camera must be sure to free an open sample (if any) after changing
-// the state of the filter graph, so that this doesn't block indefinitely?
+// The directx camera must be sure to free an open sample (if any) after changing
+// the state of the filter graph, so that this doesn't block indefinitely.  This means
+// that the destructor for any object using this callback object has to destroy
+// this object.  The destructor sets _stayAlive to false to make sure this thread terminates.
 
 HRESULT directx_samplegrabber_callback::SampleCB(double time, IMediaSample *sample)
 {
@@ -792,8 +796,10 @@ HRESULT directx_samplegrabber_callback::SampleCB(double time, IMediaSample *samp
 
   // Wait until the image has been processed and then return the buffer to the
   // filter graph
-  while (!imageDone) { vrpn_SleepMsecs(1); }
-  imageDone = false;
+  while (!imageDone && _stayAlive) { vrpn_SleepMsecs(1); }
+  if (_stayAlive) {
+    imageDone = false;
+  }
 
   return S_OK;
 }

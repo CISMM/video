@@ -350,9 +350,6 @@ diaginc_server::diaginc_server(unsigned binning) :
   // No image in memory yet.
   _minX = _minY = _maxX = _maxY = 0;
 
-  _vrpn_buffer=NULL;
-  _vrpn_buffer_size=0;
-
   _status = true;
 }
 
@@ -376,10 +373,6 @@ diaginc_server::~diaginc_server(void)
   SP_CHECK_WARN(SpotExit(), "SpotExit");
   GlobalUnlock(_buffer );
   GlobalFree(_buffer );
-  if (_vrpn_buffer!=NULL){
-	  free(_vrpn_buffer);
-	  _vrpn_buffer_size=0;
-  }
 }
 
 // The min/max coordinates here are in post-binned space.  That is, the maximum should be

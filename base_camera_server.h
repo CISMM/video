@@ -48,9 +48,6 @@ protected:
   unsigned  _minX, _minY, _maxX, _maxY; //< Region of the image in memory
   unsigned  _binning;			//< How many camera pixels compressed into image pixel
 
-  void*     _vrpn_buffer; //this buffer will only be allocated once
-  unsigned  _vrpn_buffer_size; //the size of the vrpn_buffer
-
   virtual bool	open_and_find_parameters(void) {return false;};
   base_camera_server(unsigned binning = 1) {
     _binning = binning;

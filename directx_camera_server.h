@@ -90,6 +90,8 @@ public:
   directx_samplegrabber_callback(void);
   ~directx_samplegrabber_callback(void);
 
+  void shutdown(void) { _stayAlive = false; Sleep(100); }
+
   // Boolean flag telling whether there is a sample in the image
   // buffer ready for the application thread to consume.  Set to
   // true by the callback when there is an image there, and back
@@ -127,6 +129,7 @@ public:
 
 protected:
   BITMAPINFOHEADER  _bitmapInfo;  //< Describes format of the bitmap
+  bool	_stayAlive;		  //< Tells all threads to exit
 };
 
 #endif
