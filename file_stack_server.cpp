@@ -17,7 +17,7 @@ using namespace std;
   const char READSTRING[] = "r";
 #endif
 
-// This is to ensure that we only call MagickIncarnate once.
+// This is to ensure that we only call InitializeMagick once.
 bool file_stack_server::ds_majickInitialized = false;
 
 file_stack_server::file_stack_server(const char *filename, const char *magickfilesdir) :

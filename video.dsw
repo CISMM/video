@@ -93,6 +93,66 @@ Package=<4>
 
 ###############################################################################
 
+Project: "base_camera_server"=.\base_camera_server.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "cismm_video_optimizer"=.\cismm_video_optimizer.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name base_camera_server
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name BaseClasses
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name diaginc_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name edt_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name file_stack_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name nmBase
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name NMmp
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name nmSEM
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name roper_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name SEM_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name spot_tracker_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name directx_library
+    End Project Dependency
+}}}
+
+###############################################################################
+
 Project: "diaginc_library"=.\diaginc_library.dsp - Package Owner=<4>
 
 Package=<5>
@@ -101,6 +161,9 @@ Package=<5>
 
 Package=<4>
 {{{
+    Begin Project Dependency
+    Project_Dep_Name base_camera_server
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -116,6 +179,9 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name BaseClasses
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name base_camera_server
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -128,6 +194,9 @@ Package=<5>
 
 Package=<4>
 {{{
+    Begin Project Dependency
+    Project_Dep_Name base_camera_server
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -155,6 +224,9 @@ Package=<5>
 
 Package=<4>
 {{{
+    Begin Project Dependency
+    Project_Dep_Name base_camera_server
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -169,6 +241,9 @@ Package=<4>
 {{{
     Begin Project Dependency
     Project_Dep_Name spot_tracker_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name base_camera_server
     End Project Dependency
 }}}
 
@@ -236,6 +311,9 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name ImgFormat
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name base_camera_server
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -253,6 +331,9 @@ Package=<4>
     End Project Dependency
     Begin Project Dependency
     Project_Dep_Name spot_tracker_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name base_camera_server
     End Project Dependency
 }}}
 
@@ -341,6 +422,9 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name spot_tracker_library
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name base_camera_server
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -376,6 +460,9 @@ Package=<4>
     End Project Dependency
     Begin Project Dependency
     Project_Dep_Name file_stack_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name base_camera_server
     End Project Dependency
 }}}
 

@@ -50,7 +50,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /machine:I386
-# ADD LINK32 vrpn.lib wsock32.lib glut32.lib opengl32.lib tcl83.lib tk83.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /profile /machine:I386 /libpath:"../vrpn/pc_win32/Release" /libpath:"C:\Program Files\Roper Scientific\PVCAM" /libpath:"..\glut" /libpath:"..\external\pc_win32\lib"
+# ADD LINK32 vrpn.lib glut32.lib opengl32.lib wsock32.lib tcl83.lib tk83.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /profile /machine:I386 /libpath:"../vrpn/pc_win32/Release" /libpath:"C:\Program Files\Roper Scientific\PVCAM" /libpath:"..\glut" /libpath:"..\external\pc_win32\lib"
 
 !ELSEIF  "$(CFG)" == "airy_maker - Win32 Debug"
 

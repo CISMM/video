@@ -1,5 +1,5 @@
 #############################################################################
-# Sets up the control panel for the Video Spot Tracker program.
+# Sets up the control panel for the CISMM Video Optimizer program.
 # XXX Eventually, it should handle all of the controls.
 
 # Global variable to remember where they are saving files.
@@ -9,7 +9,7 @@ set fileinfo(open_dir) "C:\\"
 # Put the places for the controls to let the user pick a kernel.
 
 toplevel .kernel
-wm geometry .kernel +170+10
+wm geometry .kernel +185+10
 frame .kernel.options
 checkbutton .kernel.options.invert -text dark_spot -variable dark_spot
 pack .kernel.options.invert -anchor w
@@ -49,25 +49,6 @@ pack .kernel.optimize -side left
 bind .kernel <Destroy> {global quit ; set quit 1} 
 
 ###########################################################
-# Put the places for the controls for the rod kernels.
-# This window should only be visible when rod3 is turned on.
-
-toplevel .rod3
-wm geometry .rod3 +800+10
-wm withdraw .rod3
-set rod3 0
-trace variable rod3 w update_rod_window_visibility
-
-proc update_rod_window_visibility {nm el op} {
-	global rod3
-	if { $rod3 } {
-		wm deiconify .rod3
-	} else {
-		wm withdraw .rod3
-	}
-}
-
-###########################################################
 # Put the place for the controls for the clipping.
 # This window should only be visible when clipping is turned on.
 
@@ -97,14 +78,12 @@ proc update_clipping_window_visibility {nm el op} {
 set logging 0
 set logfilename ""
 toplevel .log
-wm geometry .log +170+110
+wm geometry .log +185+130
 label .log.label -textvariable logfilename
-pack .log.label -side bottom -fill x
+pack .log.label -side right -fill x
 trace variable logging w logging_changed
-checkbutton .log.button -text "Logging to file named below" -variable logging -anchor w
+checkbutton .log.button -text "Logging to file sequence named " -variable logging -anchor w
 pack .log.button -side left -fill x
-checkbutton .log.relative -text "Relative to active tracker start" -variable logging_relative -anchor w
-pack .log.relative -side left -fill x
 
 # Quit the program if this window is destroyed
 bind .log <Destroy> {global quit ; set quit 1} 
@@ -113,9 +92,8 @@ proc logging_changed { varName index op } {
     global logging logfilename fileinfo
 
     if {$logging == 1} {
-	set types { {"Spot tracker log files" "*.vrpn"} }
+	set types { {"CISMM Video Optimizer TIF files" "*.*"} }
 	set filename [tk_getSaveFile -filetypes $types \
-		-defaultextension ".vrpn" \
 		-initialdir $fileinfo(open_dir) \
 		-title "Name for log file"]
 	if {$filename != ""} {
@@ -131,7 +109,7 @@ proc logging_changed { varName index op } {
 }
 
 ###########################################################
-# Ask user for the name of the video file they want to open,
+# Ask user for the name of the video file they want to optimize,
 # or else set the quit value.  The variable to set for the
 # name is "device_filename".
 
@@ -143,10 +121,9 @@ proc ask_user_for_filename { } {
 	set device_filename [tk_getOpenFile -filetypes $types \
 		-defaultextension ".avi" \
 		-initialdir $fileinfo(open_dir) \
-		-title "Specify a video file to track in"]
+		-title "Specify a video file to optimize"]
 	# If we don't have a name, quit.
 	if {$device_filename == ""} {
 		set quit 1
 	} 	
 }
-

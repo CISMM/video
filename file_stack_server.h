@@ -37,6 +37,9 @@ public:
   virtual bool	get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint8 &val, int RGB = 0) const;
   virtual bool	get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &val, int RGB = 0) const;
 
+  /// How many colors are in the image.
+  virtual unsigned  get_num_colors() const { return 3; }
+
   /// Store the memory image to a PPM file.
   virtual bool  write_memory_to_ppm_file(const char *filename, int gain = 1, bool sixteen_bits = false) const;
 

@@ -1,24 +1,24 @@
-# Microsoft Developer Studio Project File - Name="file_stack_library" - Package Owner=<4>
+# Microsoft Developer Studio Project File - Name="base_camera_server" - Package Owner=<4>
 # Microsoft Developer Studio Generated Build File, Format Version 6.00
 # ** DO NOT EDIT **
 
 # TARGTYPE "Win32 (x86) Static Library" 0x0104
 
-CFG=file_stack_library - Win32 Debug
+CFG=base_camera_server - Win32 Debug
 !MESSAGE This is not a valid makefile. To build this project using NMAKE,
 !MESSAGE use the Export Makefile command and run
 !MESSAGE 
-!MESSAGE NMAKE /f "file_stack_library.mak".
+!MESSAGE NMAKE /f "base_camera_server.mak".
 !MESSAGE 
 !MESSAGE You can specify a configuration when running NMAKE
 !MESSAGE by defining the macro CFG on the command line. For example:
 !MESSAGE 
-!MESSAGE NMAKE /f "file_stack_library.mak" CFG="file_stack_library - Win32 Debug"
+!MESSAGE NMAKE /f "base_camera_server.mak" CFG="base_camera_server - Win32 Debug"
 !MESSAGE 
 !MESSAGE Possible choices for configuration are:
 !MESSAGE 
-!MESSAGE "file_stack_library - Win32 Release" (based on "Win32 (x86) Static Library")
-!MESSAGE "file_stack_library - Win32 Debug" (based on "Win32 (x86) Static Library")
+!MESSAGE "base_camera_server - Win32 Release" (based on "Win32 (x86) Static Library")
+!MESSAGE "base_camera_server - Win32 Debug" (based on "Win32 (x86) Static Library")
 !MESSAGE 
 
 # Begin Project
@@ -28,7 +28,7 @@ CFG=file_stack_library - Win32 Debug
 CPP=cl.exe
 RSC=rc.exe
 
-!IF  "$(CFG)" == "file_stack_library - Win32 Release"
+!IF  "$(CFG)" == "base_camera_server - Win32 Release"
 
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 0
@@ -41,7 +41,7 @@ RSC=rc.exe
 # PROP Intermediate_Dir "Release"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
-# ADD CPP /nologo /MT /W3 /GX /O2 /I "C:\Program Files\GnuWin32\include" /I "D:\Program Files\GnuWin32\include" /I "D:\Program Files\ImageMagick-5.5.7-Q16\include" /I "C:\Program Files\ImageMagick-5.5.7-Q16\include" /I "..\vrpn" /I "..\quat" /I "C:\nsrg\external\pc_win32\include" /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c /Tp
+# ADD CPP /nologo /MT /W3 /GX /O2 /I "D:\Program Files\ImageMagick-5.5.7-Q16\include" /I "C:\Program Files\ImageMagick-5.5.7-Q16\include" /I "..\vrpn" /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -51,20 +51,20 @@ LIB32=link.exe -lib
 # ADD BASE LIB32 /nologo
 # ADD LIB32 /nologo
 
-!ELSEIF  "$(CFG)" == "file_stack_library - Win32 Debug"
+!ELSEIF  "$(CFG)" == "base_camera_server - Win32 Debug"
 
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "file_stack_library___Win32_Debug"
-# PROP BASE Intermediate_Dir "file_stack_library___Win32_Debug"
+# PROP BASE Output_Dir "base_camera_server___Win32_Debug"
+# PROP BASE Intermediate_Dir "base_camera_server___Win32_Debug"
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 1
 # PROP Output_Dir "Debug"
 # PROP Intermediate_Dir "Debug"
 # PROP Target_Dir ""
-# ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
-# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I "C:\Program Files\GnuWin32\include" /I "D:\Program Files\GnuWin32\include" /I "D:\Program Files\ImageMagick-5.5.7-Q16\include" /I "C:\Program Files\ImageMagick-5.5.7-Q16\include" /I "..\vrpn" /I "..\quat" /I "C:\nsrg\external\pc_win32\include" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c /Tp
+# ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ  /c
+# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I "D:\Program Files\ImageMagick-5.5.7-Q16\include" /I "C:\Program Files\ImageMagick-5.5.7-Q16\include" /I "..\vrpn" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ  /c
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe
@@ -78,18 +78,14 @@ LIB32=link.exe -lib
 
 # Begin Target
 
-# Name "file_stack_library - Win32 Release"
-# Name "file_stack_library - Win32 Debug"
+# Name "base_camera_server - Win32 Release"
+# Name "base_camera_server - Win32 Debug"
 # Begin Group "Source Files"
 
 # PROP Default_Filter "cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 # Begin Source File
 
-SOURCE=.\file_list.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\file_stack_server.cpp
+SOURCE=.\base_camera_server.cpp
 # End Source File
 # End Group
 # Begin Group "Header Files"
@@ -97,11 +93,7 @@ SOURCE=.\file_stack_server.cpp
 # PROP Default_Filter "h;hpp;hxx;hm;inl"
 # Begin Source File
 
-SOURCE=.\file_list.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\file_stack_server.h
+SOURCE=.\base_camera_server.h
 # End Source File
 # End Group
 # End Target

@@ -1,3 +1,38 @@
+2004-09-07  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* base_camera_server.h : Modified this so that the camera base
+		class derives from image_wrapper, to avoid duplicating
+		code and excessive subclassing.  Added classes to make
+		a copy of an image and to transform an image.
+	* base_camera_server.cpp : Implements above code.
+	* file_stack_server.h : Same.
+	* image_wrapper.cpp : Code moved and adjusted per above.
+	* image_wrapper.h : Same.
+	* SEM_camera_server.h : Updated to use new camera base class.
+	* SEM_library.dsp : Same.
+	* airy_maker.dsp : Same.
+	* diaginc_library.dsp : Same.
+	* diaginc_server.h : Same.
+	* directx_library.dsp : Same.
+	* edt_server.h : Same.
+	* file_stack_library.dsp : Same.
+	* base_camera_server.h : Same.
+	* roper_library.dsp : Same.
+	* roper_server.h : Same.
+	* roper_spot_tracker.cpp : Same.
+	* roper_spot_tracker.dsp : Same.
+	* spot_tracker_library.dsp : Same.
+	* stack_collector.dsp : Same.
+	* test_spot_tracker.dsp : Same.
+	* video.dsw : Same.
+	* video_spot_tracker.dsp : Same.
+	* file_stack_server.cpp : Comment changes.
+	* video_spot_tracker.bat : Put back into DOS format.
+	* video_spot_tracker.cpp : Big changes to swap over to the new
+		base_camera_server class and image_wrapper (removed a bunch
+		of derived classes.
+	* video_spot_tracker.tcl : Removed ".stk" as a suffix.
+
 2004-09-03  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Incremented version number for release.

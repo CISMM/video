@@ -1,3 +1,6 @@
+//XXX Add an optional second tracker to do an orientation match in addition
+// to a shift match.
+
 //---------------------------------------------------------------------------
 // This section contains configuration settings for the Video Spot Tracker.
 // It is used to make it possible to compile and link the code when one or
@@ -9,6 +12,7 @@
 
 #define	VST_USE_ROPER
 //#define USE_METAMORPH	    // Metamorph reader not completed.
+const bool g_show_video = true;
 
 #ifdef	VST_USE_ROPER
 #pragma comment(lib,"D:\\Program Files\\Roper Scientific\\PVCAM\\pvcam32.lib")
@@ -41,8 +45,7 @@
 #include <GL/gl.h>
 #include <GL/glut.h>
 #include <quat.h>
-#include <vrpn_Connection.h>
-#include <vrpn_Tracker.h>
+#include <vrpn_Types.h>
 // This pragma tells the compiler not to tell us about truncated debugging info
 // due to name expansion within the string, list, and vector classes.
 #pragma warning( disable : 4786 )
@@ -54,19 +57,18 @@ using namespace std;
 static void cleanup();
 static void dirtyexit();
 
-const int MAX_TRACKERS = 100; // How many trackers can exist (for VRPN's tracker object)
 #ifndef	M_PI
 const double M_PI = 2*asin(1.0);
 #endif
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "03.02";
+const char *Version_string = "01.01";
 
 //--------------------------------------------------------------------------
 // Global constants
 
-const int KERNEL_DISC = 0;	  //< These must match the values used in video_spot_tracker.tcl.
+const int KERNEL_DISC = 0;	  //< These must match the values used in cismm_video_optimizer.tcl.
 const int KERNEL_CONE = 1;
 const int KERNEL_SYMMETRIC = 2;
 
@@ -176,37 +178,14 @@ bool		    g_already_posted = false;	  //< Posted redisplay since the last displa
 int		    g_mousePressX, g_mousePressY; //< Where the mouse was when the button was pressed
 int		    g_whichDragAction;		  //< What action to take for mouse drag
 
-vrpn_Connection	    *g_vrpn_connection = NULL;    //< Connection to send position over
-vrpn_Tracker_Server *g_vrpn_tracker = NULL;	  //< Tracker server to send positions
-vrpn_Connection	    *g_client_connection = NULL;  //< Connection on which to perform logging
-vrpn_Tracker_Remote *g_client_tracker = NULL;	  //< Client tracker object to case ping/pong server messages
 FILE		    *g_csv_file = NULL;		  //< File to save data in with .csv extension
-
-unsigned char	    *g_beadseye_image = NULL;	  //< Pointer to the storage for the beads-eye image
-unsigned char	    *g_landscape_image = NULL;	  //< Pointer to the storage for the fitness landscape image
-float		    *g_landscape_floats = NULL;	  //< Pointer to the storage for the fitness landscape raw values
-int		    g_beadseye_window;		  //< Glut window showing view from active bead
-int		    g_beadseye_size = 121;	  //< Size of beads-eye-view window XXX should be dynamic
-int		    g_landscape_window;		  //< Glut window showing local landscape of fitness func
-int		    g_landscape_size = 25;	  //< Size of optimization landscape window
-int		    g_landscape_strip_width = 101;//< Additional size of the graph showing X cross section
-
-int		    g_kymograph_width;		  //< Width of the kymograph window (computed at creation time)
-const int	    g_kymograph_height = 512;	  //< Height of the kymograph window
-unsigned char	    *g_kymograph_image = NULL;	  //< Pointer to the storage for the kymograph image
-float		    g_kymograph_centers[g_kymograph_height];  //< Where the cell-coordinate center of the spindle is.
-int		    g_kymograph_window;		  //< Glut window showing kymograph lines stacked into an image
-int		    g_kymograph_center_window;	  //< Glut window showing kymograph center-tracking
-int		    g_kymograph_filled = 0;	  //< How many lines of data are in there now.
 
 //--------------------------------------------------------------------------
 // Tcl controls and displays
-void  logfilename_changed(char *newvalue, void *);
 void  device_filename_changed(char *newvalue, void *);
+void  logfilename_changed(char *newvalue, void *);
 void  rebuild_trackers(int newvalue, void *);
 void  rebuild_trackers(float newvalue, void *);
-void  set_debug_visibility(int newvalue, void *);
-void  set_kymograph_visibility(int newvalue, void *);
 void  set_maximum_search_radius(int newvalue, void *);
 Tclvar_float		g_X("x");
 Tclvar_float		g_Y("y");
@@ -224,23 +203,18 @@ Tclvar_int_with_button	g_invert("dark_spot",NULL,1, rebuild_trackers);
 Tclvar_int_with_button	g_interpolate("interpolate",NULL,1, rebuild_trackers);
 Tclvar_int_with_button	g_areamax("areamax",NULL,0, set_maximum_search_radius);
 Tclvar_int_with_button	g_kernel_type("kerneltype", NULL, KERNEL_SYMMETRIC, rebuild_trackers);
-Tclvar_int_with_button	g_rod("rod3",".kernel.rod3",0, rebuild_trackers);
-Tclvar_float_with_scale	g_length("length", ".rod3", 10, 50, 20);
-Tclvar_float_with_scale	g_orientation("orient", ".rod3", 0, 359, 0);
 Tclvar_int_with_button	g_opt("optimize",".kernel.optimize");
 Tclvar_int_with_button	g_round_cursor("round_cursor","");
-Tclvar_int_with_button	g_small_area("small_area","");
 Tclvar_int_with_button	g_full_area("full_area","");
 Tclvar_int_with_button	g_mark("show_tracker","",1);
-Tclvar_int_with_button	g_show_video("show_video","",1);
-Tclvar_int_with_button	g_show_debug("show_debug","",0, set_debug_visibility);
 Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
-Tclvar_int_with_button	g_kymograph("kymograph","",0, set_kymograph_visibility);
 Tclvar_int_with_button	g_quit("quit","");
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
-Tclvar_int		g_log_relative("logging_relative");
 double			g_log_offset_x, g_log_offset_y;
+char			*g_logfile_base_name = NULL;
+copy_of_image		*g_log_last_image = NULL;
+unsigned		g_log_frame_number_last_logged = -1;
 bool g_video_valid = false; // Do we have a valid video frame in memory?
 
 //--------------------------------------------------------------------------
@@ -250,7 +224,6 @@ double	flip_y(double y)
 {
   return g_camera->get_num_rows() - 1 - y;
 }
-
 
 /// Open the wrapped camera we want to use depending on the name of the
 //  camera we're trying to open.
@@ -364,27 +337,6 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
 
 spot_tracker  *create_appropriate_tracker(void)
 {
-  // If we are using the oriented-rod kernel, we create a new one depending on the type
-  // of subordinate spot tracker that is being used.
-  if (g_rod) {
-    if (g_kernel_type == KERNEL_SYMMETRIC) {
-      symmetric_spot_tracker_interp *notused = NULL;
-      g_interpolate = 1;
-      return new rod3_spot_tracker_interp(notused, g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing, g_length, 0.0);
-    } else if (g_kernel_type == KERNEL_CONE) {
-      cone_spot_tracker_interp *notused = NULL;
-      g_interpolate = 1;
-      return new rod3_spot_tracker_interp(notused, g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing, g_length, 0.0);
-    } else if (g_interpolate) {
-      disk_spot_tracker_interp *notused = NULL;
-      return new rod3_spot_tracker_interp(notused, g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing, g_length, 0.0);
-    } else {
-      disk_spot_tracker *notused = NULL;
-      return new rod3_spot_tracker_interp(notused, g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing, g_length, 0.0);
-    }
-
-  // Not building a compound kernel, so just make a simple kernel of the appropriate type.
-  } else {
     if (g_kernel_type == KERNEL_SYMMETRIC) {
       g_interpolate = 1;
       return new symmetric_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
@@ -396,7 +348,31 @@ spot_tracker  *create_appropriate_tracker(void)
     } else {
       return new disk_spot_tracker(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
     }
-  }
+}
+
+static	bool  save_log_frame(unsigned frame_number)
+{
+    char  *filename = new char[strlen(g_logfile_base_name) + 15];
+    if (filename == NULL) {
+      fprintf(stderr, "Out of memory!\n");
+      return false;
+    }
+    g_log_frame_number_last_logged = frame_number;
+    sprintf(filename, "%s.opt.%04d.tif", g_logfile_base_name, frame_number);
+
+    // Make a transformed image class to re-index the copied image.
+    transformed_image shifted(*g_log_last_image, 
+	g_active_tracker->get_x() - g_log_offset_x,
+	g_active_tracker->get_y() - g_log_offset_y);
+
+    if (!shifted.write_to_tiff_file(filename, 1, true)) {
+      delete [] filename;
+      return false;
+    }
+    (*g_log_last_image) = *g_camera;
+
+    delete [] filename;
+    return true;
 }
 
 //--------------------------------------------------------------------------
@@ -416,9 +392,7 @@ void drawStringAtXY(double x, double y, char *string)
 
 
 // This is called when someone kills the task by closing Glut or some
-// other means we don't have control over.  If we try to delete the VRPN
-// objects here, we get a seg fault for some reason.  VRPN must have already
-// cleaned up our stuff for us.
+// other means we don't have control over.
 static void  dirtyexit(void)
 {
   static bool did_already = false;
@@ -439,9 +413,6 @@ static void  dirtyexit(void)
   }
   if (g_camera) { delete g_camera; g_camera = NULL; }
   if (g_glut_image) { delete [] g_glut_image; g_glut_image = NULL; };
-  if (g_beadseye_image) { delete [] g_beadseye_image; g_beadseye_image = NULL; };
-  if (g_landscape_image) { delete [] g_landscape_image; g_landscape_image = NULL; };
-  if (g_landscape_floats) { delete [] g_landscape_floats; g_landscape_floats = NULL; };
   if (g_play) { delete g_play; g_play = NULL; };
   if (g_rewind) { delete g_rewind; g_rewind = NULL; };
   if (g_step) { delete g_step; g_step = NULL; };
@@ -461,13 +432,7 @@ static void  cleanup(void)
   // Done with the camera and other objects.
   printf("Cleanly ");
 
-  // Do the dirty-exit stuff, then clean up VRPN stuff.
   dirtyexit();
-
-  if (g_vrpn_tracker) { delete g_vrpn_tracker; g_vrpn_tracker = NULL; };
-  if (g_vrpn_connection) { delete g_vrpn_connection; g_vrpn_connection = NULL; };
-  if (g_client_tracker) { delete g_client_tracker; g_client_tracker = NULL; };
-  if (g_client_connection) { delete g_client_connection; g_client_connection = NULL; };
 }
 
 void myDisplayFunc(void)
@@ -551,17 +516,7 @@ void myDisplayFunc(void)
       } else {
 	glColor3f(0,0,1);
       }
-      if (g_rod) {
-	// Horrible hack to make this work with rod type
-	double orient = static_cast<rod3_spot_tracker_interp*>((*loop)->tracker())->get_orientation();
-	double length = static_cast<rod3_spot_tracker_interp*>((*loop)->tracker())->get_length();
-	double dx = (length/2 * cos(orient * M_PI/180)) * (2.0/g_camera->get_num_columns());
-	double dy = (length/2 * sin(orient * M_PI/180)) * (2.0/g_camera->get_num_rows());
-	glBegin(GL_LINES);
-	  glVertex2f(x-dx,y-dy);
-	  glVertex2f(x+dx,y+dy);
-	glEnd();
-      } else if (g_round_cursor) {
+      if (g_round_cursor) {
 	double stepsize = M_PI / (*loop)->tracker()->get_radius();
 	double runaround;
 	glBegin(GL_LINE_STRIP);
@@ -579,16 +534,8 @@ void myDisplayFunc(void)
 	glEnd();
       }
       // Label the marker with its index
-      // If we are doing a kymograph, then label posterior and anterior
       char numString[10];
       sprintf(numString,"%d", (*loop)->index());
-      if (g_kymograph) {
-	switch ((*loop)->index()) {
-	case 2: sprintf(numString,"P"); break;
-	case 3: sprintf(numString,"A"); break;
-	default: break;
-	}
-      }
       drawStringAtXY(x+dx,y, numString);
     }
   }
@@ -610,75 +557,6 @@ void myDisplayFunc(void)
   glVertex3f( -1 + 2*((*g_minX-1) / (g_camera->get_num_columns()-1)),
 	      -1 + 2*((*g_minY-1) / (g_camera->get_num_rows()-1)) , 0.0 );
   glEnd();
-
-  // If we are running a kymograph, draw a green line through the first two
-  // trackers to show where we're collecting it from
-  if (g_kymograph && (g_trackers.size() >= 2)) {
-    list<Spot_Information *>::iterator  loop = g_trackers.begin();
-    double x0 = -1.0 + (*loop)->tracker()->get_x() * (2.0/g_camera->get_num_columns());
-    double y0 = -1.0 + ((*loop)->tracker()->get_y()) * (2.0/g_camera->get_num_rows());
-    loop++;
-    double x1 = -1.0 + (*loop)->tracker()->get_x() * (2.0/g_camera->get_num_columns());
-    double y1 = -1.0 + ((*loop)->tracker()->get_y()) * (2.0/g_camera->get_num_rows());
-
-    // Draw the line between them
-    glColor3f(0.5,0.9,0.5);
-    glBegin(GL_LINES);
-      glVertex2f(x0,y0);
-      glVertex2f(x1,y1);
-    glEnd();
-
-    // Find the center of the two (origin of cell coordinates) and the unit vector (dx,dy)
-    // going towards the second from the first.
-    double xcenter = (x0 + x1) / 2;
-    double ycenter = (y0 + y1) / 2;
-    double dist = sqrt( (x1-x0)*(x1-x0) + (y1-y0)*(y1-y0) );
-    if (dist == 0) { dist = 1; }  //< Avoid divide-by-zero below.
-    double dx = (x1 - x0) / dist;
-    double dy = (y1 - y0) / dist;
-
-    // Find the perpendicular to the line between them
-    double px = dy  * g_camera->get_num_rows() / g_camera->get_num_columns();
-    double py = -dx * g_camera->get_num_columns() / g_camera->get_num_rows();
-
-    // Draw the perpendicular line
-    glColor3f(0.5,0.9,0.5);
-    glBegin(GL_LINES);
-      glVertex2f(xcenter + 0.05 * px, ycenter + 0.05 * py);
-      glVertex2f(xcenter - 0.05 * px, ycenter - 0.05 * py);
-    glEnd();
-
-    // If we have the anterior and posterior, draw the perpendicular to
-    // the line between them through their center.
-    if (g_trackers.size() >= 4) {
-      // Find the two tracked points to use.
-      loop++; // Skip to the third point.
-      double cx0 = -1.0 + (*loop)->tracker()->get_x() * (2.0/g_camera->get_num_columns());
-      double cy0 = -1.0 + ((*loop)->tracker()->get_y()) * (2.0/g_camera->get_num_rows());
-      loop++;
-      double cx1 = -1.0 + (*loop)->tracker()->get_x() * (2.0/g_camera->get_num_columns());
-      double cy1 = -1.0 + ((*loop)->tracker()->get_y()) * (2.0/g_camera->get_num_rows());
-
-      // Find the center of the two (origin of cell coordinates) and the unit vector (dx,dy)
-      // going towards the second from the first.
-      double cxcenter = (cx0 + cx1) / 2;
-      double cycenter = (cy0 + cy1) / 2;
-      double cdist = sqrt( (cx1-cx0)*(cx1-cx0) + (cy1-cy0)*(cy1-cy0) );
-      if (cdist == 0) { cdist = 1; }  //< Avoid divide-by-zero below.
-      double cdx = (cx1 - cx0) / cdist;
-      double cdy = (cy1 - cy0) / cdist;
-
-      // Find the perpendicular to the line between them
-      double cpx = cdy  * g_camera->get_num_rows() / g_camera->get_num_columns();
-      double cpy = -cdx * g_camera->get_num_columns() / g_camera->get_num_rows();
-
-      // Draw the line
-      glBegin(GL_LINES);
-	glVertex2f(cxcenter + 500 * cpx, cycenter + 500 * cpy);
-	glVertex2f(cxcenter - 500 * cpx, cycenter - 500 * cpy);
-      glEnd();
-    }
-  }
 
   // Swap buffers so we can see it.
   glutSwapBuffers();
@@ -710,264 +588,6 @@ void myDisplayFunc(void)
   // Have no longer posted redisplay since the last display.
   g_already_posted = false;
 }
-
-// Draw the image from the point of view of the currently-active
-// tracked bead.  This uses the interpolating read function on the
-// image objects to provide as accurate a representation of what the
-// area surrounding the tracker center looks like.
-void myBeadDisplayFunc(void)
-{
-  // Clear the window and prepare to draw in the back buffer
-  glDrawBuffer(GL_BACK);
-  glClearColor(0.0, 0.0, 0.0, 0.0);
-  glClear(GL_COLOR_BUFFER_BIT);
-
-  if (g_show_video && g_active_tracker) {
-    // Copy pixels into the image buffer.
-    int x,y;
-    float xImageOffset = g_active_tracker->get_x() - (g_beadseye_size+1)/2.0;
-    float yImageOffset = g_active_tracker->get_y() - (g_beadseye_size+1)/2.0;
-    double  double_pix;
-
-    // If we are outside 2 radii, then leave it blank to avoid having a
-    // moving border that will make us think the spot is moving when it
-    // is not.
-    for (x = 0; x < x; x++) {
-      for (y = 0; y < g_beadseye_size; y++) {
-	g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = 0;
-	g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = 0;
-	g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = 0;
-	g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
-      }
-    }
-    double radius = g_active_tracker->get_radius();
-    if (g_rod) {
-      // Horrible hack to make this work with rod type
-      radius = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_length() / 2;
-    }
-    int min_x = (g_beadseye_size+1)/2 - 2 * radius;
-    int max_x = (g_beadseye_size+1)/2 + 2 * radius;
-    int min_y = (g_beadseye_size+1)/2 - 2 * radius;
-    int max_y = (g_beadseye_size+1)/2 + 2 * radius;
-
-    // Make sure we don't try to draw outside the allocated buffer
-    if (min_x < 0) { min_x = 0; }
-    if (min_y < 0) { min_y = 0; }
-    if (max_x > g_beadseye_size-1) { max_x = g_beadseye_size-1; }
-    if (max_y > g_beadseye_size-1) { max_y = g_beadseye_size-1; }
-
-    int shift = g_bitdepth - 8;
-    for (x = min_x; x < max_x; x++) {
-      for (y = min_y; y < max_y; y++) {
-	if (!g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix)) {
-	  g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = 0;
-	  g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = 0;
-	  g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = 0;
-	  g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
-	} else {
-	  g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = ((uns16)(double_pix)) >> shift;
-	  g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = ((uns16)(double_pix)) >> shift;
-	  g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = ((uns16)(double_pix)) >> shift;
-	  g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
-	}
-      }
-    }
-
-    // Store the pixels from the image into the frame buffer
-    // so that they cover the entire image (starting from lower-left
-    // corner, which is at (-1,-1)).
-    glRasterPos2f(-1, -1);
-    glDrawPixels(g_beadseye_size, g_beadseye_size,
-      GL_RGBA, GL_UNSIGNED_BYTE, g_beadseye_image);
-  }
-
-  // Swap buffers so we can see it.
-  glutSwapBuffers();
-}
-
-// Draw the image from the point of view of the currently-active
-// tracked bead.  This window shows the optimization value landscape in
-// the region around the current point.
-void myLandscapeDisplayFunc(void)
-{
-  // Clear the window and prepare to draw in the back buffer
-  glDrawBuffer(GL_BACK);
-  glClearColor(0.0, 0.0, 0.0, 0.0);
-  glClear(GL_COLOR_BUFFER_BIT);
-
-  if (g_show_video && g_active_tracker) {
-    int x,y;
-
-    // Find the raw fitness function values for a range of locations
-    // at 1-pixel steps surrounding the current location.  Store these
-    // into a raw floating-point buffer, and then set the optimizer back
-    // where it started.
-    // Solve for the max and min values in the floating-point buffer, then
-    // a scale and offset to map them to the range 0-255.
-    double min_val = 1e100, max_val = -1e100;
-    double start_x = g_active_tracker->get_x();
-    double start_y = g_active_tracker->get_y();
-    float xImageOffset = start_x - (g_landscape_size+1)/2.0;
-    float yImageOffset = start_y - (g_landscape_size+1)/2.0;
-    double this_val;
-    for (x = 0; x < g_landscape_size; x++) {
-      for (y = 0; y < g_landscape_size; y++) {
-	g_active_tracker->set_location(x + xImageOffset, y + yImageOffset);
-	this_val = g_active_tracker->check_fitness(*g_image);
-	g_landscape_floats[x + g_landscape_size * y] = this_val;
-	if (this_val < min_val) { min_val = this_val; }
-	if (this_val > max_val) { max_val = this_val; }
-      }
-    }
-    g_active_tracker->set_location(start_x, start_y);
-
-    // Copy pixels into the image buffer.
-    // Scale and offset them to fit in the range 0-255.
-    double scale = 255 / (max_val - min_val);
-    double offset = min_val * scale;
-    int	    int_val;
-    for (x = 0; x < g_landscape_size; x++) {
-      for (y = 0; y < g_landscape_size; y++) {
-	int_val = (int)( g_landscape_floats[x + g_landscape_size * y] * scale - offset );
-	g_landscape_image[0 + 4 * (x + g_landscape_size * (y))] = int_val;
-	g_landscape_image[1 + 4 * (x + g_landscape_size * (y))] = int_val;
-	g_landscape_image[2 + 4 * (x + g_landscape_size * (y))] = int_val;
-	g_landscape_image[3 + 4 * (x + g_landscape_size * (y))] = 255;
-      }
-    }
-
-    // Store the pixels from the image into the frame buffer
-    // so that they cover the entire image (starting from lower-left
-    // corner, which is at (-1,-1)).
-    glRasterPos2f(-1, -1);
-    glDrawPixels(g_landscape_size, g_landscape_size,
-      GL_RGBA, GL_UNSIGNED_BYTE, g_landscape_image);
-
-    // Draw a line graph showing the values along the X axis
-    double strip_start_x = -1 + 2 * ((double)(g_landscape_size)) / (g_landscape_size + g_landscape_strip_width);
-    double strip_step_x = (1 - strip_start_x) / g_landscape_strip_width;
-    xImageOffset = start_x - (g_landscape_strip_width+1)/2.0;
-    scale = 2 / (max_val - min_val);
-    offset = min_val*scale + 1; // Want to get -1 when subtract this and multiply by the scale.
-    glColor3f(1,1,1);
-    glBegin(GL_LINE_STRIP);
-    for (x = 0; x < g_landscape_strip_width; x++) {
-      // If we are using the rod tracker, we translate the kernel along its orientation
-      // axis.  Otherwise, we translate in X.
-      if (g_rod) {
-	// Horrible hack to make this work with rod type
-	double orient = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_orientation();
-	double length = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_length();
-	double dx =   cos(orient * M_PI/180);
-	double dy = - sin(orient * M_PI/180);
-	double delta = x - (g_landscape_strip_width+1)/2.0;
-	g_active_tracker->set_location(start_x + dx*delta, start_y + dy*delta);
-      } else {
-	g_active_tracker->set_location(x + xImageOffset, start_y);
-      }
-      this_val = g_active_tracker->check_fitness(*g_image);
-      glVertex3f( strip_start_x + x * strip_step_x, this_val * scale - offset,0);
-    }
-    glEnd();
-
-    // Put the tracker back where it started.
-    g_active_tracker->set_location(start_x, start_y);
-  }
-
-  // Swap buffers so we can see it.
-  glutSwapBuffers();
-}
-
-// This draws the graph of how the spindle center moves with
-// respect to the cell anterior-posterior axis.  This axis is
-// defined by trackers 2 and 3 (the third and fourth trackers),
-// which do not get optimized when the kymograph is run but
-// rather stay put in the image.
-void mykymographCenterDisplayFunc(void)
-{
-  // Clear the window and prepare to draw in the back buffer
-  glDrawBuffer(GL_BACK);
-  glClearColor(0.0, 0.0, 0.0, 0.0);
-  glClear(GL_COLOR_BUFFER_BIT);
-
-  if (g_show_video) {
-    int i;
-
-    // Draw the centerline for the image and indicators for grids off-center.
-    glColor3f(0.5,0.5,0.5);
-    glBegin(GL_LINES);
-      glVertex2f(0, 1);
-      glVertex2f(0,-1);
-    glEnd();
-
-    // Draw a dim mark every ten pixels
-    glColor3f(0.1,0.1,0.1);
-    glBegin(GL_LINES);
-    for (i = 10; i < 500; i += 10) {
-	glVertex2f(i * (2.0/g_kymograph_width), 1);
-	glVertex2f(i * (2.0/g_kymograph_width),-1);
-
-	glVertex2f(-i * (2.0/g_kymograph_width), 1);
-	glVertex2f(-i * (2.0/g_kymograph_width),-1);
-    }
-    glEnd();
-
-    // Draw a brighter mark every hundred pixels
-    glColor3f(0.2,0.2,0.2);
-    glBegin(GL_LINES);
-    for (i = 100; i < 500; i += 100) {
-	glVertex2f(i * (2.0/g_kymograph_width), 1);
-	glVertex2f(i * (2.0/g_kymograph_width),-1);
-
-	glVertex2f(-i * (2.0/g_kymograph_width), 1);
-	glVertex2f(-i * (2.0/g_kymograph_width),-1);
-    }
-    glEnd();
-
-    // Draw each center entry into the image.
-    glColor3f(1,1,0);
-    glBegin(GL_LINE_STRIP);
-      for (i = 0; i < g_kymograph_filled; i++) {
-	  double  x = g_kymograph_centers[i] * (2.0/g_kymograph_width);
-	  double  y = 1.0 - i * (2.0/g_kymograph_height);
-	  glVertex2f(x,y);
-      }
-    glEnd();
-  }
-
-  // Swap buffers so we can see it.
-  glutSwapBuffers();
-}
-
-// Draw the kymograph image.
-// This uses the interpolating read function on the
-// image objects to provide as accurate a representation of what the
-// line between the first two tracked spots looks like.
-void mykymographDisplayFunc(void)
-{
-  // Clear the window and prepare to draw in the back buffer
-  glDrawBuffer(GL_BACK);
-  glClearColor(0.0, 0.0, 0.0, 0.0);
-  glClear(GL_COLOR_BUFFER_BIT);
-
-  if (g_show_video) {
-
-    // Store the pixels from the image into the frame buffer
-    // so that they cover the entire image (starting from lower-left
-    // corner, which is at (-1,-1)).
-    glRasterPos2f(-1, -1);
-    glDrawPixels(g_kymograph_width, g_kymograph_height,
-      GL_RGBA, GL_UNSIGNED_BYTE, g_kymograph_image);
-
-    // Draw a tiny red dot at the center position just below the
-    // last line of pixels.
-
-  }
-
-  // Swap buffers so we can see it.
-  glutSwapBuffers();
-}
-
 static	double	timediff(struct timeval t1, struct timeval t2)
 {
 	return (t1.tv_usec - t2.tv_usec) / 1e6 +
@@ -995,51 +615,13 @@ void myIdleFunc(void)
   }
 
   // If they just asked for the full area, reset to that and
-  // then turn off the check-box.  Also turn off small-area.
+  // then turn off the check-box.
   if (g_full_area) {
-    g_small_area = 0;
     *g_minX = 0;
     *g_minY = 0;
     *g_maxX = g_camera->get_num_columns() - 1;
     *g_maxY = g_camera->get_num_rows() - 1;
     g_full_area = 0;
-  }
-
-  // If we are asking for a small region around the tracked dot,
-  // set the borders to be around the set of trackers.
-  // This will be a min/max over all of the
-  // bounding boxes.
-  if (g_opt && g_small_area && g_active_tracker) {
-    // Initialize it with values from the active tracker, which are stored
-    // in the global variables.
-    (*g_minX) = g_X - 4*g_Radius;
-    (*g_minY) = flip_y(g_Y) - 4*g_Radius;
-    (*g_maxX) = g_X + 4*g_Radius;
-    (*g_maxY) = flip_y(g_Y) + 4*g_Radius;
-
-    // Check them against all of the open trackers and push them to bound all
-    // of them.
-
-    list<Spot_Information *>::iterator  loop;
-    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-      double x = (*loop)->tracker()->get_x();
-      double y = ((*loop)->tracker()->get_y());
-      double fourRad = 4 * (*loop)->tracker()->get_radius();
-      if (g_rod) {
-	// Horrible hack to make this work with rod type
-	fourRad = 2 * static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_length();
-      }
-      if (*g_minX > x - fourRad) { *g_minX = x - fourRad; }
-      if (*g_maxX < x + fourRad) { *g_maxX = x + fourRad; }
-      if (*g_minY > y - fourRad) { *g_minY = y - fourRad; }
-      if (*g_maxY < y + fourRad) { *g_maxY = y + fourRad; }
-    }
-
-    // Make sure not to push them off the screen
-    if ((*g_minX) < 0) { (*g_minX) = 0; }
-    if ((*g_minY) < 0) { (*g_minY) = 0; }
-    if ((*g_maxX) >= g_camera->get_num_columns()) { (*g_maxX) = g_camera->get_num_columns() - 1; }
-    if ((*g_maxY) >= g_camera->get_num_rows()) { (*g_maxY) = g_camera->get_num_rows() - 1; }
   }
 
   // If we're doing a search for local maximum during optimization, then make a
@@ -1075,63 +657,23 @@ void myIdleFunc(void)
   }
   g_ready_to_display = true;
 
+  // If we've gotten a new valid frame, then it is time to store the image
+  // for the previous frame and get a copy of the current frame so that we
+  // can store it next time around.  We do this after saving the previous
+  // frame (named based on the base log file name and the past frame number).
+  if (g_log_last_image && g_video_valid) {
+    if (!save_log_frame(g_frame_number - 1)) {
+      fprintf(stderr,"Couldn't save log file\n");
+      cleanup();
+      exit(-1);
+    }
+  }
+
   if (g_active_tracker) { 
     g_active_tracker->set_radius(g_Radius);
-    if (g_rod) {
-      // Horrible hack to enable adjustment of a parameter that only exists on
-      // the rod tracker
-      static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->set_length(g_length);
-      static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->set_orientation(g_orientation);
-    }
   }
   if (g_opt && g_active_tracker) {
     double  x, y;
-
-    // Update the VRPN tracker position for each tracker and report it
-    // using the same time value for each.  Don't do the update if we
-    // don't currently have a valid video frame.  Sensors are indexed
-    // by their position in the list.  XXX Putting this here before the
-    // optimize loop means that we're reporting the PREVIOUS values of
-    // the optimizer (the ones for the frame just ending) rather than
-    // the CURRENT values.  This means we'll not write a value for the
-    // last frame in a video.  Before, we weren't writing a value for the first
-    // frame.  The way it is now, the user can single-step through a
-    // file and move the trackers around to line up on each frame before
-    // their values are saved.
-    // Remember to invert the Y value so that it logs based on the
-    // upper-left corner of the image.
-    if (g_vrpn_tracker && g_video_valid) {
-      static struct timeval start;
-      static bool first_time = true;
-      struct timeval now; gettimeofday(&now, NULL);
-      for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-	vrpn_float64  pos[3] = {(*loop)->tracker()->get_x() - g_log_offset_x, flip_y((*loop)->tracker()->get_y()) - g_log_offset_y, 0};
-	vrpn_float64  quat[4] = { 0, 0, 0, 1};
-	double orient = 0.0;
-	double length = 0.0;
-
-	// If we are tracking rods, then we adjust the orientation to match.
-	if (g_rod) {
-	  // Horrible hack to make this work with rod type
-	  orient = static_cast<rod3_spot_tracker_interp*>((*loop)->tracker())->get_orientation();
-	  length = static_cast<rod3_spot_tracker_interp*>((*loop)->tracker())->get_length();
-	}
-
-	// Rotation about the Z axis, reported in radians.
-	q_from_euler(quat, orient * (M_PI/180),0,0);
-	g_vrpn_tracker->report_pose((*loop)->index(), now, pos, quat);
-
-	// Also, write the data to the .csv file if one is open.
-	if (g_csv_file) {
-	  if (first_time) {
-	    start.tv_sec = now.tv_sec; start.tv_usec = now.tv_usec;
-	    first_time = false;
-	  }
-	  double interval = timediff(now, start);
-	  fprintf(g_csv_file, "%lf, %d, %lf,%lf,%lf, %lf, %lf,%lf\n", interval, (*loop)->index(), pos[0], pos[1], pos[2], (*loop)->tracker()->get_radius(), orient, length);
-	}
-      }
-    }
 
     // This variable is used to determine if we should consider doing maximum fits,
     // by determining if the frame number has changed since last time.
@@ -1141,7 +683,6 @@ void myIdleFunc(void)
     // Invert the Y values on the way in and out.
     // Don't let it adjust the radius here (otherwise it gets too
     // jumpy).
-    int kymocount = 0;
     for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
 
       // If the frame-number has changed, and we are doing global searches
@@ -1193,110 +734,9 @@ void myIdleFunc(void)
 
       // Here's where the tracker is optimized to its new location
       (*loop)->tracker()->optimize_xy(*g_image, x, y, (*loop)->tracker()->get_x(), (*loop)->tracker()->get_y() );
-
-      // If we are running a kymograph, then we don't optimize any trackers
-      // past the first two because they are only there as markers in the
-      // image for cell boundaries.
-      if (g_kymograph) {
-	if (++kymocount == 2) {
-	  break;
-	}
-      }
     }
 
     last_optimized_frame_number = g_frame_number;
-
-    // Update the kymograph if it is active and if we have a new video frame.
-    // This must be done AFTER the optimization because we need to find the right
-    // trace through the NEW image.  If we lost tracking, too bad...
-    if (g_kymograph && g_video_valid) {
-      // Make sure we have at least two trackers, which will define the
-      // frame of reference for the kymograph.  Also make sure that we are
-      // not out of display room in the kymograph.
-      if ( (g_trackers.size() >= 2) && (g_kymograph_filled+1 < g_kymograph_height) ) {
-
-	// Find the two tracked points to use.
-	list<Spot_Information *>::iterator  loop = g_trackers.begin();
-	double x0 = (*loop)->tracker()->get_x();
-	double y0 = (*loop)->tracker()->get_y();
-	loop++;
-	double x1 = (*loop)->tracker()->get_x();
-	double y1 = (*loop)->tracker()->get_y();
-
-	// Find the center of the two (origin of kymograph coordinates) and the unit vector (dx,dy)
-	// going towards the second from the first.
-	double xcenter = (x0 + x1) / 2;
-	double ycenter = (y0 + y1) / 2;
-	double dist = sqrt( (x1-x0)*(x1-x0) + (y1-y0)*(y1-y0) );
-	if (dist == 0) { dist = 1; }  //< Avoid divide-by-zero below.
-	double dx = (x1 - x0) / dist;
-	double dy = (y1 - y0) / dist;
-
-	// March along in the image from negative half-width to half-width
-	// and fill in the samples image values at these locations.
-	double step;
-	double double_pix;
-	int shift = g_bitdepth - 8;
-	for (step = -g_kymograph_width/2.0; step <= g_kymograph_width / 2.0; step++) {
-
-	  // Figure out where to look in the image
-	  double x = xcenter + step * dx;
-	  double y = ycenter + step * dy;
-
-	  // Figure out where to put this in the kymograph
-	  int kx = (int)(step + g_kymograph_width/2.0);
-	  int ky = g_kymograph_filled;
-
-	  // Look up the pixel in the image and put it into the kymograph if we get a reading.
-	  if (!g_image->read_pixel_bilerp(x, y, double_pix)) {
-	    g_kymograph_image[0 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
-	    g_kymograph_image[1 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
-	    g_kymograph_image[2 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
-	    g_kymograph_image[3 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 255;
-	  } else {
-	    // This assumes that the pixels are actually 8-bit values
-	    // and will clip if they go above this.  It also writes pixels
-	    // from the first channel into all colors of the image.  It uses
-	    // RGBA so that we don't have to worry about byte-alignment problems
-	    // that plagued us when using RGB pixels.
-	    g_kymograph_image[0 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (uns16)(double_pix) >> shift;
-	    g_kymograph_image[1 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (uns16)(double_pix) >> shift;
-	    g_kymograph_image[2 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (uns16)(double_pix) >> shift;
-	    g_kymograph_image[3 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 255;
-	  }
-	}
-
-	// Figure out the coordinates of the kymograph center in the coordinate system
-	// of the cell, where the third tracker (#2) is the posterior end and the fourth
-	// is the anterior end.
-	if (g_trackers.size() >= 4) {
-	  // Find the two tracked points to use.
-	  loop++; // Skip to the third point.
-	  double cx0 = (*loop)->tracker()->get_x();
-	  double cy0 = (*loop)->tracker()->get_y();
-	  loop++;
-	  double cx1 = (*loop)->tracker()->get_x();
-	  double cy1 = (*loop)->tracker()->get_y();
-
-	  // Find the center of the two (origin of cell coordinates) and the unit vector (dx,dy)
-	  // going towards the second from the first.
-	  double cxcenter = (cx0 + cx1) / 2;
-	  double cycenter = (cy0 + cy1) / 2;
-	  double cdist = sqrt( (cx1-cx0)*(cx1-cx0) + (cy1-cy0)*(cy1-cy0) );
-	  if (cdist == 0) { cdist = 1; }  //< Avoid divide-by-zero below.
-	  double cdx = (cx1 - cx0) / cdist;
-	  double cdy = (cy1 - cy0) / cdist;
-
-	  // Find the dot product between the spindle center and the cell center,
-	  // which is the value of the cell-centered ordinate.
-	  g_kymograph_centers[g_kymograph_filled] = 
-	    (xcenter - cxcenter) * cdx + (ycenter - cycenter) * cdy;
-	}
-
-	// We've added another line to the kymograph!
-	g_kymograph_filled++;
-      }
-    } 
   }
 
   //------------------------------------------------------------
@@ -1305,11 +745,6 @@ void myIdleFunc(void)
     g_X = (float)g_active_tracker->get_x();
     g_Y = (float)flip_y(g_active_tracker->get_y());
     g_Radius = (float)g_active_tracker->get_radius();
-    if (g_rod) {
-      // Horrible hack to make this work with rod type
-      g_orientation = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_orientation();
-      g_length = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_length();
-    }
   }
 
   //------------------------------------------------------------
@@ -1356,76 +791,28 @@ void myIdleFunc(void)
   if (!g_already_posted) {
     glutSetWindow(g_tracking_window);
     glutPostRedisplay();
-    glutSetWindow(g_beadseye_window);
-    glutPostRedisplay();
-    glutSetWindow(g_landscape_window);
-    glutPostRedisplay();
-    glutSetWindow(g_kymograph_window);
-    glutPostRedisplay();
-    glutSetWindow(g_kymograph_center_window);
-    glutPostRedisplay();
     g_already_posted = true;
-  }
-
-  //------------------------------------------------------------
-  // Let the VRPN objects send their reports.
-  if (g_vrpn_tracker) { g_vrpn_tracker->mainloop(); }
-  if (g_vrpn_connection) { g_vrpn_connection->mainloop(); }
-
-  //------------------------------------------------------------
-  // Let the logging connection do its thing if it is open.
-  if (g_client_tracker != NULL) {
-    g_client_tracker->mainloop();
-  }
-  if (g_client_connection != NULL) {
-    g_client_connection->mainloop();
-    g_client_connection->save_log_so_far();
   }
 
   //------------------------------------------------------------
   // Time to quit?
   if (g_quit) {
+    // If we have been logging, then see if we have saved the
+    // current frame's image.  If not, go ahead and do it now.
+    if (g_log_last_image && (g_log_frame_number_last_logged != g_frame_number)) {
+      if (!save_log_frame(g_frame_number)) {
+	fprintf(stderr, "logfile_changed: Could not save log frame\n");
+	cleanup();
+	exit(-1);
+      }
+    }
+
     cleanup();
     exit(0);
   }
   
   // Sleep a little while so that we don't eat the whole CPU.
   vrpn_SleepMsecs(1);
-}
-
-bool  delete_active_tracker(void)
-{
-  if (!g_active_tracker) {
-    return false;
-  } else {
-    // Delete the entry in the list that corresponds to the active tracker.
-    list <Spot_Information *>::iterator loop;
-    list <Spot_Information *>::iterator next;
-    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-      if ((*loop)->tracker() == g_active_tracker) {
-	next = loop; next++;
-	delete g_active_tracker;
-	delete *loop;
-	g_trackers.erase(loop);
-	break;
-      }
-    }
-
-    // Set the active tracker to the next one in the list if there is
-    // a next one.  Otherwise, try to set it to the first one on the list,
-    // if there is one.  Otherwise, set it to NULL.
-    if (next != g_trackers.end()) {
-      g_active_tracker = (*next)->tracker();
-    } else {
-      if (g_trackers.size() > 0) {
-	g_active_tracker = (*g_trackers.begin())->tracker();
-      } else {
-	g_active_tracker = NULL;
-      }
-    }
-
-    return true;
-  }
 }
 
 // This routine finds the tracker whose coordinates are
@@ -1456,14 +843,8 @@ void  activate_and_drag_nearest_tracker_to(double x, double y)
     g_X = g_active_tracker->get_x();
     g_Y = flip_y(g_active_tracker->get_y());
     g_Radius = g_active_tracker->get_radius();
-    if (g_rod) {
-      // Horrible hack to make this work with rod type
-      g_orientation = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_orientation();
-      g_length = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_length();
-    }
   }
 }
-
 
 void keyboardCallbackForGLUT(unsigned char key, int x, int y)
 {
@@ -1475,7 +856,8 @@ void keyboardCallbackForGLUT(unsigned char key, int x, int y)
 
   case 8:   // Backspace
   case 127: // Delete on Windows
-    delete_active_tracker();
+    // Nothing yet...
+    break;
   }
 }
 
@@ -1488,21 +870,17 @@ void mouseCallbackForGLUT(int button, int state, int x, int y)
     g_mousePressY = y = flip_y(y);
 
     switch(button) {
-      // The left button will create a new tracker and let the
-      // user specify its radius if they move far enough away
-      // from the pick point (it starts with a default of the same
-      // as the current active tracker).
-      // The new tracker becomes the active tracker.
-      case GLUT_LEFT_BUTTON:
+      // The right button will set the clipping window to a single-
+      // pixel-wide spot surrounding the click location and it will
+      // set the motion callback mode to expand the area as the user
+      // moves.
+      case GLUT_RIGHT_BUTTON:
 	if (state == GLUT_DOWN) {
 	  g_whichDragAction = 1;
-	  g_trackers.push_back(new Spot_Information(g_active_tracker = create_appropriate_tracker()));
-	  g_active_tracker->set_location(x, y);
-
-	  // Move the pointer to where the user clicked.
-	  // Invert Y to match the coordinate systems.
-	  g_X = x;
-	  g_Y = flip_y(y);
+	  *g_minX = x;
+	  *g_maxX = x;
+	  *g_minY = y;
+	  *g_maxY = y;
 	} else {
 	  // Nothing to do at release.
 	}
@@ -1514,10 +892,10 @@ void mouseCallbackForGLUT(int button, int state, int x, int y)
 	}
 	break;
 
-      // The right button will pull the closest existing tracker
+      // The left button will pull the closest existing tracker
       // to the location where the mouse button was pressed, and
       // then let the user pull it around the screen
-      case GLUT_RIGHT_BUTTON:
+      case GLUT_LEFT_BUTTON:
 	if (state == GLUT_DOWN) {
 	  g_whichDragAction = 2;
 	  activate_and_drag_nearest_tracker_to(x,y);
@@ -1536,22 +914,26 @@ void motionCallbackForGLUT(int x, int y) {
   case 0: //< Do nothing on drag.
     break;
 
-  // Set the radius of the active spot if we've moved far enough
-  // from where we pressed the button.
+  // Expand the selection area so that it is a rectangle centered
+  // on the press location, clipped to the boundaries of the video.
   case 1:
     {
-      // Clip the motion to stay within the window boundaries.
-      if (x < 0) { x = 0; };
-      if (y < 0) { y = 0; };
-      if (x >= (int)g_camera->get_num_columns()) { x = g_camera->get_num_columns() - 1; }
-      if (y >= (int)g_camera->get_num_rows()) { y = g_camera->get_num_rows() - 1; };
+      int x_dist = (int)(fabs(x-g_mousePressX));
+      int y_dist = (int)(fabs(y-g_mousePressY));
+      int max_dist;
+      if (x_dist > y_dist) { max_dist = x_dist; }
+      else { max_dist = y_dist; }
 
-      // Set the radius based on how far the user has moved from click
-      double radius = sqrt( (x - g_mousePressX) * (x - g_mousePressX) + (y - g_mousePressY) * (y - g_mousePressY) );
-      if (radius >= 3) {
-	g_active_tracker->set_radius(radius);
-	g_Radius = radius;
-      }
+      *g_minX = g_mousePressX - max_dist;
+      *g_maxX = g_mousePressX + max_dist;
+      *g_minY = g_mousePressY - max_dist;
+      *g_maxY = g_mousePressY + max_dist;
+
+      // Clip the size to stay within the window boundaries.
+      if (*g_minX < 0) { *g_minX = 0; };
+      if (*g_minY < 0) { *g_minY = 0; };
+      if (*g_maxX >= (int)g_camera->get_num_columns()) { *g_maxX = g_camera->get_num_columns() - 1; }
+      if (*g_maxY >= (int)g_camera->get_num_rows()) { *g_maxY = g_camera->get_num_rows() - 1; };
     }
     break;
 
@@ -1573,110 +955,70 @@ void motionCallbackForGLUT(int x, int y) {
 //--------------------------------------------------------------------------
 // Tcl callback routines.
 
-// If the logfilename becomes non-empty, then open a logging VRPN
-// connection to the server, so that we can track where the spot is
-// going.  If the file name becomes empty again, then delete the
-// connection so that it will store the logged data.  If the name
-// changes, and was not empty before, then close the existing
-// connection and start a new one.
-// We use the "newvalue" here rather than the file name because the
-// file name gets truncated to the maximum TCLVAR string length.
-// Also do the same for a comma-separated values file, replacing the
-// .vrpn extension with .csv
-
-void  logfilename_changed(char *newvalue, void *)
-{
-  // Close the old connection, if there was one.
-  if (g_client_tracker != NULL) {
-    delete g_client_tracker;
-    g_client_tracker = NULL;
-  }
-  if (g_client_connection != NULL) {
-    delete g_client_connection;
-    g_client_connection = NULL;
-  }
-
-  // Close the old CSV log file, if there was one.
-  if (g_csv_file != NULL) {
-    fclose(g_csv_file);
-    g_csv_file = NULL;
-  }
-
-  // Open a new connection and .csv file, if we have a non-empty name.
-  if (strlen(newvalue) > 0) {
-
-    // Make sure that the file does not exist by deleting it if it does.
-    // The Tcl code had a dialog box that asked the user if they wanted
-    // to overwrite, so this is "safe."
-    FILE *in_the_way;
-    if ( (in_the_way = fopen(newvalue, "r")) != NULL) {
-      fclose(in_the_way);
-      int err;
-      if ( (err=remove(newvalue)) != 0) {
-	fprintf(stderr,"Error: could not delete existing logfile %s\n", newvalue);
-	perror("   Reason");
-	cleanup();
-	exit(-1);
-      }
-    }
-    g_client_connection = vrpn_get_connection_by_name("Spot@localhost", newvalue);
-    g_client_tracker = new vrpn_Tracker_Remote("Spot@localhost");
-
-    // Open the CSV file and put the titles on.
-    // Make sure that the file does not exist by deleting it if it does.
-    // The Tcl code had a dialog box that asked the user if they wanted
-    // to overwrite, so this is "safe."
-    char *csvname = new char[strlen(newvalue)+1];	// Remember the closing '\0'
-    if (csvname == NULL) {
-      fprintf(stderr, "Out of memory when allocating CSV file name\n");
-      cleanup();
-      exit(-1);
-    }
-    strcpy(csvname, newvalue);
-    strcpy(&csvname[strlen(csvname)-5], ".csv");
-    if ( (in_the_way = fopen(csvname, "r")) != NULL) {
-      fclose(in_the_way);
-      int err;
-      if ( (err=remove(csvname)) != 0) {
-	fprintf(stderr,"Error: could not delete existing logfile %s\n", (char*)(csvname));
-	perror("   Reason");
-	cleanup();
-	exit(-1);
-      }
-    }
-    if ( NULL == (g_csv_file = fopen(csvname, "w")) ) {
-      fprintf(stderr,"Cannot open CSV file for writing: %s\n", csvname);
-    } else {
-      fprintf(g_csv_file, "Time,Spot ID,X,Y,Z,Radius,Orientation (if meaningful),Length (if meaningful)\n");
-    }
-    delete [] csvname;
-  }
-
-  // Set the offsets to use when logging.  If we are not doing relative logging,
-  // then these offsets are 0,0.  If we are, then they are the current position of
-  // the active tracker (if it exists).
-  g_log_offset_x = g_log_offset_y = 0;
-  if (g_log_relative && g_active_tracker) {
-    g_log_offset_x = g_active_tracker->get_x();
-    g_log_offset_y = flip_y(g_active_tracker->get_y());
-  }
-}
-
 // If the device filename becomes non-empty, then set the global
 // device name to match what it is set to.
 
 void  device_filename_changed(char *newvalue, void *)
 {
-  // Open a new connection and .csv file, if we have a non-empty name.
   if (strlen(newvalue) > 0) {
     g_device_name = new char[strlen(newvalue)+1];
     strcpy(g_device_name, newvalue);
   }
 }
 
-// If the value of the interpolate box changes, then create a new spot
-// tracker of the appropriate type in the same location and with the
-// same radius as the one that was used before.
+// If the logfilename becomes non-empty, then start a new sequence
+// of images to be stored.  This is done by setting the global log
+// file base name to the value of the file name.
+// We use the "newvalue" here rather than the file name because the
+// file name gets truncated to the maximum TCLVAR string length.
+
+void  logfilename_changed(char *newvalue, void *)
+{
+  static  char	name_buffer[4096];
+
+  // If we have been logging, then see if we have saved the
+  // current frame's image.  If not, go ahead and do it now.
+  if (g_log_last_image && (g_log_frame_number_last_logged != g_frame_number)) {
+    if (!save_log_frame(g_frame_number)) {
+      fprintf(stderr, "logfile_changed: Could not save log frame\n");
+      cleanup();
+      exit(-1);
+    }
+  }
+
+  // Stop the old logging by getting rid of the last log image
+  // if there is one and resetting the logging parameters.
+  if (g_log_last_image) {
+    delete g_log_last_image;
+    g_log_last_image = NULL;
+  }
+  g_log_frame_number_last_logged = -1;
+  
+  // If we have an empty name, then clear the global logging base
+  // name so that no more files will be saved.
+  strncpy(name_buffer, newvalue, sizeof(name_buffer)-1);
+  name_buffer[sizeof(name_buffer)-1] = '\0';
+  if (strlen(newvalue) == 0) {
+    g_logfile_base_name = NULL;
+    return;
+  }
+
+  // Store the name.
+  g_logfile_base_name = name_buffer;
+
+  // Make a copy of the current image so that we can save it when
+  // it is appropriate to do so.
+  g_log_last_image = new copy_of_image(*g_camera);
+
+  // Set the offsets to use when logging to the current position of
+  // the zeroeth tracker.
+  g_log_offset_x = g_active_tracker->get_x();
+  g_log_offset_y = g_active_tracker->get_y();
+}
+
+// Routine that rebuilds all trackers with the format that matches
+// current settings.  This callback is called when one of the Tcl
+// integer-with-buttons changes its value.
 
 void  rebuild_trackers(int newvalue, void *)
 {
@@ -1703,60 +1045,6 @@ void  rebuild_trackers(int newvalue, void *)
     }
     (*loop)->tracker()->set_location(x,y);
     (*loop)->tracker()->set_radius(r);
-  }
-}
-
-// Hide or show all of the debugging windows
-void  set_debug_visibility(int newvalue, void *)
-{
-  if (g_ready_to_display) {
-    if (newvalue) {
-      glutSetWindow(g_beadseye_window);
-      glutShowWindow();
-      glutSetWindow(g_landscape_window);
-      glutShowWindow();
-    } else {
-      glutSetWindow(g_beadseye_window);
-      glutHideWindow();
-      glutSetWindow(g_landscape_window);
-      glutHideWindow();
-    }
-  }
-}
-
-void  initializekymograph(void) {
-  // Mark the kymograph as not filled.
-  g_kymograph_filled = 0;
-
-  // Fill the image buffer with black
-  int x,y;
-  for (x = 0; x < g_kymograph_width; x++) {
-    for (y = 0; y < g_kymograph_height; y++) {
-      g_kymograph_image[0 + 4 * (x + g_kymograph_width * (g_kymograph_height - 1 - y))] = 0;
-      g_kymograph_image[1 + 4 * (x + g_kymograph_width * (g_kymograph_height - 1 - y))] = 0;
-      g_kymograph_image[2 + 4 * (x + g_kymograph_width * (g_kymograph_height - 1 - y))] = 0;
-      g_kymograph_image[3 + 4 * (x + g_kymograph_width * (g_kymograph_height - 1 - y))] = 255;
-    }
-  }
-}
-
-
-// Hide or show the kymograph windows
-void  set_kymograph_visibility(int newvalue, void *)
-{
-  if (g_ready_to_display) {
-    if (newvalue) {
-      initializekymograph();
-      glutSetWindow(g_kymograph_window);
-      glutShowWindow();
-      glutSetWindow(g_kymograph_center_window);
-      glutShowWindow();
-    } else {
-      glutSetWindow(g_kymograph_center_window);
-      glutHideWindow();
-      glutSetWindow(g_kymograph_window);
-      glutHideWindow();
-    }
   }
 }
 
@@ -1851,7 +1139,7 @@ int main(int argc, char *argv[])
 
   //------------------------------------------------------------------
   // Put the version number into the main window.
-  sprintf(command, "label .versionlabel -text Video_spot_tracker_v:%s", Version_string);
+  sprintf(command, "label .versionlabel -text CISMM_Video_Optimizer_v:%s", Version_string);
   if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
           fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
                   tk_control_interp->result);
@@ -1868,7 +1156,7 @@ int main(int argc, char *argv[])
   // Load the specialized Tcl code needed by this program.  This must
   // be loaded before the Tclvar_init() routine is called because it
   // puts together some of the windows needed by the variables.
-  sprintf(command, "source video_spot_tracker.tcl");
+  sprintf(command, "source cismm_video_optimizer.tcl");
   if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
           fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
                   tk_control_interp->result);
@@ -1981,18 +1269,12 @@ int main(int argc, char *argv[])
   g_maxY = new Tclvar_float_with_scale("maxY", ".clipping", 0, g_camera->get_num_rows()-1, g_camera->get_num_rows()-1);
 
   //------------------------------------------------------------------
-  // Set up the VRPN server connection and the tracker object that will
-  // report the position when tracking is turned on.
-  g_vrpn_connection = new vrpn_Synchronized_Connection();
-  g_vrpn_tracker = new vrpn_Tracker_Server("Spot", g_vrpn_connection, MAX_TRACKERS);
-
-  //------------------------------------------------------------------
   // Initialize GLUT and create the window that will display the
   // video -- name the window after the device that has been
   // opened in VRPN.  Also set mouse callbacks.
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(175, 220);
+  glutInitWindowPosition(190, 230);
   glutInitWindowSize(g_camera->get_num_columns(), g_camera->get_num_rows());
 #ifdef DEBUG
   printf("initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());
@@ -2016,101 +1298,15 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-  //------------------------------------------------------------------
-  // Create the window that will be used for the "Bead's-eye view"
-  glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(375, 140);
-  glutInitWindowSize(g_beadseye_size, g_beadseye_size);
-  g_beadseye_window = glutCreateWindow("Tracked");
+  // Create a tracker and place it in the center of the window.
+  g_trackers.push_back(new Spot_Information(g_active_tracker = create_appropriate_tracker()));
+  g_active_tracker->set_location(g_camera->get_num_columns()/2, g_camera->get_num_rows()/2);
 
-  // Create the buffer that Glut will use to send to the beads-eye window.  This is allocating an
-  // RGBA buffer.  It needs to be 4-byte aligned, so we allocated it as a group of
-  // words and then cast it to the right type.  We're using RGBA rather than just RGB
-  // because it also solves the 4-byte alignment problem caused by funky sizes of image
-  // that are RGB images.
-  if ( (g_beadseye_image = (unsigned char *)(void*)new vrpn_uint32
-      [g_beadseye_size * g_beadseye_size]) == NULL) {
-    fprintf(stderr,"Out of memory when allocating beads-eye image!\n");
-    fprintf(stderr,"  (Image is %u by %u)\n", g_beadseye_size, g_beadseye_size);
-    if (g_camera) { delete g_camera; g_camera = NULL; }
-    cleanup();
-    exit(-1);
-  }
-
-  //------------------------------------------------------------------
-  // Create the window that will be used for the "Landscape view"
-  glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(375 + 10 + g_beadseye_size, 140);
-  glutInitWindowSize(g_landscape_size + g_landscape_strip_width, g_landscape_size);
-  g_landscape_window = glutCreateWindow("Landscape");
-
-  // Create the floating-point buffer that will hold the fitness values before
-  // they are scaled to match the displayable range.
-  if ( (g_landscape_floats = new vrpn_float32
-      [g_landscape_size * g_landscape_size]) == NULL) {
-    fprintf(stderr,"Out of memory when allocating landscape float buffer!\n");
-    fprintf(stderr,"  (Image is %u by %u)\n", g_landscape_size, g_landscape_size);
-    if (g_camera) { delete g_camera; g_camera = NULL; }
-    cleanup();
-    exit(-1);
-  }
-
-  // Create the buffer that Glut will use to send to the landscape window.  This is allocating an
-  // RGBA buffer.  It needs to be 4-byte aligned, so we allocated it as a group of
-  // words and then cast it to the right type.  We're using RGBA rather than just RGB
-  // because it also solves the 4-byte alignment problem caused by funky sizes of image
-  // that are RGB images.
-  if ( (g_landscape_image = (unsigned char *)(void*)new vrpn_uint32
-      [g_landscape_size * g_landscape_size]) == NULL) {
-    fprintf(stderr,"Out of memory when allocating landscape image!\n");
-    fprintf(stderr,"  (Image is %u by %u)\n", g_landscape_size, g_landscape_size);
-    if (g_camera) { delete g_camera; g_camera = NULL; }
-    cleanup();
-    exit(-1);
-  }
-
-  //------------------------------------------------------------------
-  // Create the window that will be used for the kymograph
-  glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(190 + g_camera->get_num_columns(), 140);
-  initializekymograph();
-
-  // Figure out how wide the kymograph needs to be based on the window size.
-  g_kymograph_width = g_camera->get_num_columns();
-
-  // Create the buffer that Glut will use to send to the kymograph window.  This is allocating an
-  // RGBA buffer.  It needs to be 4-byte aligned, so we allocated it as a group of
-  // words and then cast it to the right type.  We're using RGBA rather than just RGB
-  // because it also solves the 4-byte alignment problem caused by funky sizes of image
-  // that are RGB images.
-  if ( (g_kymograph_image = (unsigned char *)(void*)new vrpn_uint32
-      [g_kymograph_width * g_kymograph_height]) == NULL) {
-    fprintf(stderr,"Out of memory when allocating kymograph image!\n");
-    fprintf(stderr,"  (Image is %u by %u)\n", g_kymograph_width, g_kymograph_height);
-    cleanup();
-    exit(-1);
-  }
-  glutInitWindowSize(g_kymograph_width, g_kymograph_height);
-  g_kymograph_window = glutCreateWindow("kymograph");
-  glutInitWindowPosition(190 + g_camera->get_num_columns(), 440);
-  g_kymograph_center_window = glutCreateWindow("kymograph_center");
 
   // Set the display functions for each window and idle function for GLUT (they
   // will do all the work) and then give control over to GLUT.
   glutSetWindow(g_tracking_window);
   glutDisplayFunc(myDisplayFunc);
-  glutSetWindow(g_beadseye_window);
-  glutDisplayFunc(myBeadDisplayFunc);
-  glutHideWindow();
-  glutSetWindow(g_landscape_window);
-  glutDisplayFunc(myLandscapeDisplayFunc);
-  glutHideWindow();
-  glutSetWindow(g_kymograph_window);
-  glutDisplayFunc(mykymographDisplayFunc);
-  glutHideWindow();
-  glutSetWindow(g_kymograph_center_window);
-  glutDisplayFunc(mykymographCenterDisplayFunc);
-  glutHideWindow();
   glutIdleFunc(myIdleFunc);
 
   glutMainLoop();

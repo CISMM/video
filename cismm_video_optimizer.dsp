@@ -1,24 +1,24 @@
-# Microsoft Developer Studio Project File - Name="video_spot_tracker" - Package Owner=<4>
+# Microsoft Developer Studio Project File - Name="cismm_video_optimizer" - Package Owner=<4>
 # Microsoft Developer Studio Generated Build File, Format Version 6.00
 # ** DO NOT EDIT **
 
 # TARGTYPE "Win32 (x86) Console Application" 0x0103
 
-CFG=video_spot_tracker - Win32 Debug
+CFG=cismm_video_optimizer - Win32 Debug
 !MESSAGE This is not a valid makefile. To build this project using NMAKE,
 !MESSAGE use the Export Makefile command and run
 !MESSAGE 
-!MESSAGE NMAKE /f "video_spot_tracker.mak".
+!MESSAGE NMAKE /f "cismm_video_optimizer.mak".
 !MESSAGE 
 !MESSAGE You can specify a configuration when running NMAKE
 !MESSAGE by defining the macro CFG on the command line. For example:
 !MESSAGE 
-!MESSAGE NMAKE /f "video_spot_tracker.mak" CFG="video_spot_tracker - Win32 Debug"
+!MESSAGE NMAKE /f "cismm_video_optimizer.mak" CFG="cismm_video_optimizer - Win32 Debug"
 !MESSAGE 
 !MESSAGE Possible choices for configuration are:
 !MESSAGE 
-!MESSAGE "video_spot_tracker - Win32 Release" (based on "Win32 (x86) Console Application")
-!MESSAGE "video_spot_tracker - Win32 Debug" (based on "Win32 (x86) Console Application")
+!MESSAGE "cismm_video_optimizer - Win32 Release" (based on "Win32 (x86) Console Application")
+!MESSAGE "cismm_video_optimizer - Win32 Debug" (based on "Win32 (x86) Console Application")
 !MESSAGE 
 
 # Begin Project
@@ -28,7 +28,7 @@ CFG=video_spot_tracker - Win32 Debug
 CPP=cl.exe
 RSC=rc.exe
 
-!IF  "$(CFG)" == "video_spot_tracker - Win32 Release"
+!IF  "$(CFG)" == "cismm_video_optimizer - Win32 Release"
 
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 0
@@ -52,12 +52,12 @@ LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /machine:I386
 # ADD LINK32 libtiff.a CORE_RL_magick_.lib SpotCamVC.lib glut32.lib opengl32.lib vrpn.lib quat.lib wsock32.lib tcl83.lib tk83.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /profile /machine:I386 /libpath:"../vrpn/pc_win32/Release" /libpath:"../quat/pc_win32/Release" /libpath:"C:\Program Files\GnuWin32\lib" /libpath:"D:\Program Files\GnuWin32\lib" /libpath:"C:\Program Files\ImageMagick-5.5.7-Q16\lib" /libpath:"D:\Program Files\ImageMagick-5.5.7-Q16\lib" /libpath:"..\glut" /libpath:"C:\nsrg\external\pc_win32\lib"
 
-!ELSEIF  "$(CFG)" == "video_spot_tracker - Win32 Debug"
+!ELSEIF  "$(CFG)" == "cismm_video_optimizer - Win32 Debug"
 
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 1
-# PROP BASE Output_Dir "video_spot_tracker___Win32_Debug"
-# PROP BASE Intermediate_Dir "video_spot_tracker___Win32_Debug"
+# PROP BASE Output_Dir "Debug"
+# PROP BASE Intermediate_Dir "Debug"
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 1
@@ -66,7 +66,8 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c
-# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I "D:\Program Files\ImageMagick-5.5.7-Q16\include" /I "C:\Program Files\ImageMagick-5.5.7-Q16\include" /I "C:\nsrg\external\pc_win32\include" /I "C:\Program Files\Roper Scientific\PVCAM" /I "..\vrpn" /I "..\quat" /I "C:\DXSDK\include" /I "C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses" /I "../glut" /I "..\nano\src\app\nano\lib\nmSEM" /I "..\nano\src\lib\nmBase" /I "..\nano\src\lib\nmMP" /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /Fr /YX /FD /GZ /c /Tp
+# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I "D:\Program Files\ImageMagick-5.5.7-Q16\include" /I "C:\Program Files\ImageMagick-5.5.7-Q16\include" /I "C:\nsrg\external\pc_win32\include" /I "C:\Program Files\Roper Scientific\PVCAM" /I "..\vrpn" /I "..\quat" /I "C:\DXSDK\include" /I "C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses" /I "../glut" /I "..\nano\src\app\nano\lib\nmSEM" /I "..\nano\src\lib\nmBase" /I "..\nano\src\lib\nmMP" /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c /Tp
+# SUBTRACT CPP /Fr
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe
@@ -80,18 +81,18 @@ LINK32=link.exe
 
 # Begin Target
 
-# Name "video_spot_tracker - Win32 Release"
-# Name "video_spot_tracker - Win32 Debug"
+# Name "cismm_video_optimizer - Win32 Release"
+# Name "cismm_video_optimizer - Win32 Debug"
 # Begin Group "Source Files"
 
 # PROP Default_Filter "cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 # Begin Source File
 
-SOURCE=.\Tcl_Linkvar.C
+SOURCE=.\cismm_video_optimizer.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\video_spot_tracker.cpp
+SOURCE=.\Tcl_Linkvar.C
 # End Source File
 # End Group
 # Begin Group "Header Files"

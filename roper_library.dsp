@@ -93,10 +93,6 @@ SOURCE=.\roper_server.cpp
 # PROP Default_Filter "h;hpp;hxx;hm;inl"
 # Begin Source File
 
-SOURCE=.\base_camera_server.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\roper_server.h
 # End Source File
 # End Group

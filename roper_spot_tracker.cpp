@@ -29,28 +29,6 @@ Tclvar_int_with_button	g_globalopt("global_optimize_now","",1);
 Tclvar_int_with_button	g_quit("quit","");
 
 
-class roper_imager: public roper_server, public image_wrapper
-{
-public:
-  virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
-    minx = _minX; miny = _minY; maxx = _maxX; maxy = _maxY;
-  }
-  virtual bool	read_pixel(int x, int y, double &result) const {
-    uns16 val;
-    if (get_pixel_from_memory(x, y, val)) {
-      result = val;
-      return true;
-    } else {
-      return false;
-    }
-  }
-  virtual double read_pixel_nocheck(int x, int y) const {
-    uns16 val;
-    get_pixel_from_memory(x, y, val);
-    return val;
-  }
-};
-
 int main(unsigned argc, char *argv[])
 {
   //------------------------------------------------------------------
@@ -124,7 +102,7 @@ int main(unsigned argc, char *argv[])
 
   //------------------------------------------------------------------
   // Open the roper camera
-  roper_imager  *roper = new roper_imager;
+  roper_server  *roper = new roper_server;
 
   // Verify that the Roper camera is working.
   if (!roper->working()) {

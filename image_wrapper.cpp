@@ -92,7 +92,7 @@ void disc_image::read_range(int &minx, int &maxx, int &miny, int &maxy) const
 
 // Read a pixel from the image into a double; return true if the pixel
 // was in the image, false if it was not.
-bool disc_image::read_pixel(int x, int y, double &result) const
+bool disc_image::read_pixel(int x, int y, double &result, unsigned /* RGB ignored */) const
 {
   int index;
   if (find_index(x,y, index)) {
@@ -103,7 +103,7 @@ bool disc_image::read_pixel(int x, int y, double &result) const
   }
 }
 
-double disc_image::read_pixel_nocheck(int x, int y) const
+double disc_image::read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) const
 {
   int index;
   if (find_index(x,y, index)) {
@@ -215,7 +215,7 @@ void cone_image::read_range(int &minx, int &maxx, int &miny, int &maxy) const
 
 // Read a pixel from the image into a double; return true if the pixel
 // was in the image, false if it was not.
-bool cone_image::read_pixel(int x, int y, double &result) const
+bool cone_image::read_pixel(int x, int y, double &result, unsigned /* RGB ignored */) const
 {
   int index;
   if (find_index(x,y, index)) {
@@ -226,7 +226,7 @@ bool cone_image::read_pixel(int x, int y, double &result) const
   }
 }
 
-double cone_image::read_pixel_nocheck(int x, int y) const
+double cone_image::read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) const
 {
   int index;
   if (find_index(x,y, index)) {
@@ -237,76 +237,3 @@ double cone_image::read_pixel_nocheck(int x, int y) const
 
 }
 
-copy_of_image::copy_of_image(const image_wrapper &copyfrom) :
-  _minx(-1), _maxx(-1), _miny(-1), _maxy(-1),
-  _numx(-1), _numy(-1), _image(NULL)
-{
-  *this = copyfrom;
-}
-
-void copy_of_image::operator=(const image_wrapper &copyfrom)
-{
-  // If the dimensions don't match, then get a new image buffer
-  int minx, miny, maxx, maxy;
-  copyfrom.read_range(minx, maxx, miny, maxy);
-  if ( (minx != _minx) || (maxx != _maxx) || (miny != _miny) || (maxy != _maxy) ) {
-    if (_image != NULL) { delete [] _image; }
-    _minx = minx; _maxx = maxx; _miny = miny; _maxy = maxy;
-    _numx = (_maxx - _minx) + 1;
-    _numy = (_maxy - _miny) + 1;
-    _image = new double[_numx * _numy];
-    if (_image == NULL) {
-      _numx = _numy = _minx = _maxx = _miny = _maxy = 0;
-      return;
-    }
-  }
-
-  // Copy the values from the image
-  int x, y;
-  for (x = _minx; x <= _maxx; x++) {
-    int xindex = x - _minx;
-    for (y = _miny; y <= _maxy; y++) {
-      int yindex = y - _miny;
-      _image[xindex + _numx * yindex] = copyfrom.read_pixel_nocheck(x, y);
-    }
-  }
-}
-
-copy_of_image::~copy_of_image()
-{
-  if (_image) {
-    delete [] _image;
-  }
-}
-
-void  copy_of_image::read_range(int &minx, int &maxx, int &miny, int &maxy) const
-{
-  minx = _minx;
-  maxx = _maxx;
-  miny = _miny;
-  maxy = _maxy;
-}
-
-bool  copy_of_image::read_pixel(int x, int y, double &result) const
-{
-  if ( (x < _minx) || (x > _maxx) || (y < _miny) || (y > _maxy) ) {
-    return false;
-  }
-  if (_image == NULL) {
-    return false;
-  }
-  int xindex = x - _minx;
-  int yindex = y - _miny;
-  result = _image[xindex + _numx * yindex];
-  return true;
-}
-
-double	copy_of_image::read_pixel_nocheck(int x, int y) const
-{
-  if (_image == NULL) {
-    return 0.0;
-  }
-  int xindex = x - _minx;
-  int yindex = y - _miny;
-  return _image[xindex + _numx * yindex];
-}
