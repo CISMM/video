@@ -78,3 +78,14 @@ bool test_image::read_pixel(int x, int y, double &result) const
     return false;
   }
 }
+
+double test_image::read_pixel_nocheck(int x, int y) const
+{
+  int index;
+  if (find_index(x,y, index)) {
+    return _image[index];
+  } else {
+    return 0.0;
+  }
+
+}

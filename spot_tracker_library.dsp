@@ -91,6 +91,10 @@ SOURCE=.\image_wrapper.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\spot_math.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\spot_tracker.cpp
 # End Source File
 # End Group
@@ -100,6 +104,10 @@ SOURCE=.\spot_tracker.cpp
 # Begin Source File
 
 SOURCE=.\image_wrapper.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\spot_math.h
 # End Source File
 # Begin Source File
 

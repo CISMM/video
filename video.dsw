@@ -33,6 +33,21 @@ Package=<4>
 
 ###############################################################################
 
+Project: "airy_maker"=.\airy_maker.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name spot_tracker_library
+    End Project Dependency
+}}}
+
+###############################################################################
+
 Project: "argonot"=.\argonot.dsp - Package Owner=<4>
 
 Package=<5>

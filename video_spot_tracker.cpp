@@ -101,7 +101,7 @@ class roper_imager: public roper_server, public image_wrapper
 public:
   // XXX Starts with binning of 2 to get the image size down so that
   // it fits on the screen.
-  roper_imager::roper_imager() : roper_server(2), image_wrapper() {} ;
+  roper_imager::roper_imager() : roper_server(3), image_wrapper() {} ;
   virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
     minx = _minX; miny = _minY; maxx = _maxX; maxy = _maxY;
   }

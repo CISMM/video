@@ -1,3 +1,22 @@
+2003-11-10  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* airey_maker.cpp : Code to build an airy disk and lay it out with
+		respect to pixels.
+	* airey_maker.dsp : Same.
+	* airey_maker.tcl : Same.
+	* spot_math.cpp : Same.
+	* spot_math.h : Same.
+	* image_wrapper.h : Added read_pixel_nocheck() method needed to
+		instantiate an instance of the object.  Added math.h for
+		floor().
+	* image_wrapper.cpp : Same.
+	* roper_example.cpp : Prettified, edited to test more things.
+	* roper_server.cpp : Fixed several bugs in the server involving
+		how binning works and sending data over a VRPN connection.
+		Hacked it to send bytes rather than shorts; it wraps when
+		too bright, but can be read by the 3DFM-UI client.
+	* vrpn_tempimager_server.cpp : Adjusted version number.
+
 2003-10-05  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
         * edt_video_take.cpp : Added command-line option to swap every other

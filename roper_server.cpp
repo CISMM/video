@@ -352,12 +352,15 @@ bool  roper_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned 
 {
   //---------------------------------------------------------------------
   // In case we fail, clear these
-  //XXX This will miss the last pixel(s) when binning since they are past the max.
-  //XXX Copy from the Spot code if it works.
+
+  //---------------------------------------------------------------------
+  // Set the size of the window to include all pixels if there were not
+  // any binning.  This means adding all but 1 of the binning back at
+  // the end to cover the pixels that are within that bin.
   _minX = minX * _binning;
-  _maxX = maxX * _binning;
+  _maxX = maxX * _binning + (_binning-1);
   _minY = minY * _binning;
-  _maxY = maxY * _binning;
+  _maxY = maxY * _binning + (_binning-1);
 
   //---------------------------------------------------------------------
   // If the maxes are greater than the mins, set them to the size of
@@ -547,11 +550,13 @@ bool roper_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized
     // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION)
     unsigned  num_x = get_num_columns();
     unsigned  num_y = get_num_rows();
-    int nRowsPerRegion=vrpn_IMAGER_MAX_REGIONu16/num_x;
+    int nRowsPerRegion = vrpn_IMAGER_MAX_REGIONu8/(num_x*sizeof(vrpn_uint8)) - 1;
     unsigned y;
+    //XXX This is hacked to send 8-bit values. Need to modify reader to handle 16-bit ints.
+    const int stride = 2;
     for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
       svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1,
-	(uns16 *)_memory, 1, _num_columns);
+	(uns8 *)_memory, stride, num_x * stride);
       svr->mainloop();
     }
 

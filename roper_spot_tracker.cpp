@@ -44,6 +44,11 @@ public:
       return false;
     }
   }
+  virtual double read_pixel_nocheck(int x, int y) const {
+    uns16 val;
+    get_pixel_from_memory(x, y, val);
+    return val;
+  }
 };
 
 int main(unsigned argc, char *argv[])
