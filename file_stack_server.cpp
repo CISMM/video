@@ -5,6 +5,8 @@
 
 #include "file_stack_server.h"
 #include "file_list.h"
+
+#define QuantumLeap
 #include <magick/api.h>
 
 #include <list>
@@ -19,7 +21,7 @@ using namespace std;
 // This is to ensure that we only call MagickIncarnate once.
 bool file_stack_server::ds_majickInitialized = false;
 
-file_stack_server::file_stack_server(const char *filename) :
+file_stack_server::file_stack_server(const char *filename, const char *magickfilesdir) :
 d_buffer(NULL),
 d_mode(SINGLE),
 d_xFileSize(0),
@@ -31,7 +33,9 @@ d_yFileSize(0)
   // If we've not called MagickIncarnate(), do so now
   if (!ds_majickInitialized) {
       ds_majickInitialized = true;
-      MagickIncarnate("C:/nsrg/external/pc_win32/bin/PATHTOIMAGEMAGICKFILES");
+#ifdef	_WIN32
+      InitializeMagick(magickfilesdir);
+#endif
   }
 
   // Get a list of the files in the same directory as the file we
@@ -62,8 +66,6 @@ d_yFileSize(0)
 
 file_stack_server::~file_stack_server(void)
 {
-  //XXX Close any currently-open file
-
   // Free the space taken by the in-memory image (if allocated)
   if (d_buffer) {
     delete [] d_buffer;
@@ -107,7 +109,6 @@ bool  file_stack_server::read_image_from_file(const string filename)
   //Initialize the image info structure and read an image.
   GetExceptionInfo(&exception);
   image_info=CloneImageInfo((ImageInfo *) NULL);
-  printf("XXX reading %s\n", filename.c_str());
   (void) strcpy(image_info->filename,filename.c_str());
   image=ReadImage(image_info,&exception);
   if (image == (Image *) NULL) {
@@ -127,7 +128,6 @@ bool  file_stack_server::read_image_from_file(const string filename)
   if (d_xFileSize == 0) {
     d_xFileSize = image->columns;
     d_yFileSize = image->rows;
-    printf("XXX Image depth is %d\n", image->depth);
   } else if ( (d_xFileSize != image->columns) || (d_yFileSize != image->rows) ) {
     fprintf(stderr,"file_stack_server::read_image_from_file(): Image size differs\n");
     return false;

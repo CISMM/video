@@ -1,5 +1,18 @@
 2004-03-04  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* file_stack_server.cpp : Updated to use the 16-bit build of
+		ImageMagick 5.5.7.
+	* file_stack_server.h : Same.
+	* video_spot_tracker.cpp : Same.  Also added a slider to control
+		the shift in the displayed image based on the bit depth.
+	* video_spot_tracker.html : Updated to describe new version and
+		new features.
+	* GUI.jpg : Updated with the new control panel image.
+	* video_spot_tracker.tcl : Updated to let the user select a TIFF or
+		BMP file instead of an AVI file if they want.
+
+2004-03-04  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* file_list.h : Function to produce a list of the files in a
 		directory that are in a numbered sequence given
 		the name of one of the files.

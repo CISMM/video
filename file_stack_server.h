@@ -4,7 +4,7 @@
 
 class file_stack_server : public base_camera_server {
 public:
-  file_stack_server(const char *filename);
+  file_stack_server(const char *filename, const char *magickFilesDir);
   virtual ~file_stack_server(void);
 
   /// Start the stored video playing.

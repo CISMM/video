@@ -1,20 +1,19 @@
 <title>Video Spot Tracker v02.03</title>
 <h1>Video Spot Tracker version 02.03</h1>
-<p><img src="GUI.jpg" width="161" height="767" align="right">The <i><b>Video Spot 
-  Tracker</b></i> program is used to track the motion of one or more spots in 
-  a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible 
-  video file, from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible 
-  camera, from a <a href="http://roperscientific.com">Roper Scientific</a> camera, 
-  or from a <a href="http://diaginc.com">DiagInc</a> SPOT camera. The program 
-  currently runs only on Windows, but it uses the portable openGL library for 
-  rendering and the portable Tcl/Tk for user interface control.</p>
+<p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
+  one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
+  DirectShow</a>-compatible video file, from a <a href="http://www.microsoft.com/directx">Microsoft 
+  DirectShow</a>-compatible camera, from a <a href="http://roperscientific.com">Roper 
+  Scientific</a> camera, or from a <a href="http://diaginc.com">DiagInc</a> SPOT 
+  camera. The program currently runs only on Windows, but it uses the portable 
+  openGL library for rendering and the portable Tcl/Tk for user interface control.</p>
 <h2>Running the program</h2>
 <p>The program is run by dragging a video file onto the desktop icon that was 
   created when the program was installed. It can also be run by selecting one 
   of the camera-specific shortcuts from <i><b>Start Menu/All Programs/NSRG/Video 
   Spot Tracker v02.03</b></i>. If you run the program directly by double-clicking 
   on the icon, it will ask for a video (AVI) file that it should open.</p>
-<h2>Using the program</h2>
+<h2><img src="GUI.jpg" width="161" height="751" align="right">Using the program</h2>
 <p>When the program is run, four windows will appear. The image window that appears 
   to the lower right contains the first image within the video file or a continually-updating 
   image from a live camera feed. The control panel named <b><i>tk</i></b> that 
@@ -31,6 +30,23 @@
   on the &quot;0&quot; beneath the <i><b>red_green_blue </b></i>slider and type 
   its number into the dialog box that appears. Enter 1 for green and 2 for blue. 
   The video window should change to display the selected channel.</p>
+<h3>Selecting the Image bit depth</h3>
+<p>A <i>bit</i> is a computer term for an entity that can take on two values, 
+  stored as zero and one. Using several bits in parallel enables the encoding 
+  of integers: binary notations is like decimal notation but each digit can only 
+  have the value zero or one before wrapping around. Counting proceeds as follows: 
+  000, 001, 010, 011, 100 corresponds to decimal 0,1,2,3,4. Stacking 8 bits together 
+  (a bit depth of 8) covers the range 0-255. Stacking 12 bits covers the range 
+  0-4095. The default bit depth in <i>Video Spot Tracker</i> is 8 bits per pixel. 
+  This is correct for AVI files and many common file formats. Most scientific 
+  cameras, however, operate at 12 bits per pixel. When such an image is loaded 
+  into Video Spot Tracker, it produces a strange-looking image with dark spots 
+  where there should be bright spots, or bands of dark and light. While this will 
+  not interfere with the tracking (it is only a problem of mapping 12 bits of 
+  color to 8 bits of displayable color on the screen), it looks unappealing. By 
+  adjusting the bit depth to exceed the number of bits that are used in the image, 
+  these colors can be brought into range. To repeat, <b><i>this setting has no 
+  effect on tracking, only on the images shown on the screen</i></b>.</p>
 <h3>Selecting spots to track</h3>
 <p>To select the first spot to track, click on its center with the left mouse 
   button. A red plus sign will appear at the location you have selected. If you 
@@ -217,27 +233,34 @@
   Systems for Microscopy and Manipulation</a> at the University of North Carolina 
   at Chapel Hill.</p>
 <h2></h2>
-<p>An installer for the program and manual can be downloaded from the <a href="http://www.cs.unc.edu/Research/nano/cismm/download/index.html">software 
-  download page</a>. To run it, you must also download and install the <b><i>NSRG 
-  Runtime</i></b> package, which is also available on that page.</p>
+<p>An installer for the program and manual can be downloaded from the <a href="http://www.cs.unc.edu/Research/nano/cismm/download/index.html">CISMM 
+  software download page</a>. To run it, you must also download and install <b><u>version 
+  01.05 or higher</u> </b>of the <i>NSRG Runtime</i> package, which is also available 
+  on that page. It also requires <a href="http://www.microsoft.com/directx">Microsoft 
+  <i>Direct X</i></a> version 9.0a or higher. These packages can be installed 
+  in any order.</p>
 <h2>Version Information</h2>
 <h3>Version 2.03:</h3>
 <ul>
-  <li> This version will cleanly exit when one of the initially-displayed windows 
-    is closed by clicking on its (X) in the corner. If the main control panel 
-    is closed, it spits out a bunch of messages about not being able to destroy 
-    objects; these are harmless, indicating only that we are trying to get rid 
-    of things that are already gotten rid of.</li>
+  <li>Is able to load a series of TIFF (or .BMP, or other image file format) files 
+    and play through them sequentially as if they were a movie. The files must 
+    have sequentially-numbered names (there can be gaps between the numbers, but 
+    the gap must be consistent between each pair of file names). The files can 
+    be 8 bits or 16 bits (or 12 bits in 16, which is a common format for TIFF 
+    files exported by camera-control software).</li>
+  <li>Will exit cleanly when one of the initially-displayed windows is closed 
+    by clicking on its (X) in the corner. If the main control panel is closed, 
+    it spits out a bunch of messages about not being able to destroy objects; 
+    these are harmless, indicating only that we are trying to get rid of things 
+    that are already gotten rid of.</li>
+  <li> Fixes a bug where trying to rewind or quit the program while the video 
+    was playing on a directx video file could cause the program to hang.</li>
 </ul>
-  <li> This version fixes a bug where trying to rewind or quit the program
-     while the video was playing on a directx video file could cause the
-     program to hang.</li>
-</ul>
-<h3>Version 2.02:</h3>
+  <h3>Version 2.02:</h3>
 <ul>
-  <li> This version will load in UNC's optical fluorescence files that are in 
-    SEM format more rapidly than earlier versions. It also doesn't keep them in 
-    memory, which will enable loading larger files.</li>
+  <li> Will load in UNC's optical fluorescence files that are in SEM format more 
+    rapidly than earlier versions. It also doesn't keep them in memory, which 
+    will enable loading larger files.</li>
 </ul>
 <h3></h3>
 <h3>Version 2.01:</h3>

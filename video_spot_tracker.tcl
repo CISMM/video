@@ -118,7 +118,7 @@ set device_filename ""
 proc ask_user_for_filename { } {
 	global device_filename quit fileinfo
 		
-	set types { {"Video Files" "*.avi"} }
+	set types { {"Image Stack Files" "*.avi *.tif *.bmp"} }
 	set device_filename [tk_getOpenFile -filetypes $types \
 		-defaultextension ".avi" \
 		-initialdir $fileinfo(open_dir) \

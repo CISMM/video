@@ -91,7 +91,7 @@ public:
 
 class FileStack_Controllable_Video : public Controllable_Video, public file_stack_server {
 public:
-  FileStack_Controllable_Video(const char *filename) : file_stack_server(filename) {};
+  FileStack_Controllable_Video(const char *filename) : file_stack_server(filename, "C:/nsrg/external/pc_win32/bin/ImageMagick-5.5.7-Q16/MAGIC_DIR_PATH") {};
   virtual ~FileStack_Controllable_Video() {};
   void play(void) { file_stack_server::play(); }
   void pause(void) { file_stack_server::pause(); }
@@ -127,8 +127,6 @@ bool		    g_ready_to_display = false;	  //< Don't unless we get an image
 bool		    g_already_posted = false;	  //< Posted redisplay since the last display?
 int		    g_mousePressX, g_mousePressY; //< Where the mouse was when the button was pressed
 int		    g_whichDragAction;		  //< What action to take for mouse drag
-
-int		    g_shift = 0;	  //< How many bits to shift right to get to 8
 
 vrpn_Connection	*g_vrpn_connection = NULL;    //< Connection to send position over
 vrpn_Tracker_Server *g_vrpn_tracker = NULL;   //< Tracker server to send positions
@@ -172,6 +170,7 @@ Tclvar_float_with_scale	*g_minY;
 Tclvar_float_with_scale	*g_maxY;
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
 Tclvar_float_with_scale	g_colorIndex("red_green_blue", "", 0, 2, 0);
+Tclvar_float_with_scale	g_bitdepth("bit_depth", "", 8, 12, 8);
 Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_trackers);
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
 Tclvar_int_with_button	g_invert("dark_spot",".kernel.invert",1, rebuild_trackers);
@@ -379,24 +378,20 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
     roper_imager *r = new roper_imager();
     *camera = r;
     *imager = r;
-    g_shift = 4;
   } else if (!strcmp(type, "diaginc")) {
     diaginc_imager *r = new diaginc_imager();
     *camera = r;
     *imager = r;
-    g_shift = 4;
     g_exposure = 80;	// Seems to be the minimum exposure for the one we have
   } else if (!strcmp(type, "directx")) {
     // Passing width and height as zero leaves it open to whatever the camera has
     directx_imager *d = new directx_imager(1,0,0);	// Use camera #1 (first one found)
     *camera = d;
     *imager = d;
-    g_shift = 0;
   } else if (!strcmp(type, "directx640x480")) {
     directx_imager *d = new directx_imager(1,640,480);	// Use camera #1 (first one found)
     *camera = d;
     *imager = d;
-    g_shift = 0;
 
   // If this is a VRPN URL for an SEM device, then open the file and set up
   // to read from that device.
@@ -405,7 +400,6 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
     *camera = s;
     *video = s;
     *imager = s;
-    g_shift = 8;
 
   // Unknown type, so we presume that it is a file.  Now we figure out what
   // kind of file based on the extension and open the appropriate type of
@@ -420,7 +414,6 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       *camera = f;
       *video = f;
       *imager = f;
-      g_shift = 0;
 
     // If the extension is ".sem" then we assume it is a VRPN-format file
     // with an SEM device in it, so we form the name of the device and open
@@ -437,7 +430,6 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       *camera = s;
       *video = s;
       *imager = s;
-      g_shift = 8;
       delete [] name;
 
     // If the extension is ".tif" or ".tiff" or ".bmp" then we assume it is a VRPN-format file
@@ -453,7 +445,6 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       *camera = s;
       *video = s;
       *imager = s;
-      g_shift = 0;    // XXX Assuming 8-bit TIFF file... need a control for this
 
     // File of unknown type.  We assume that it is something that DirectX knows
     // how to open.
@@ -462,7 +453,6 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       *camera = f;
       *video = f;
       *imager = f;
-      g_shift = 0;
     }
   }
   return true;
@@ -602,6 +592,7 @@ void myDisplayFunc(void)
 #ifdef DEBUG
     printf("XXX Filling pixels %d,%d through %d,%d\n", (int)(*g_minX),(int)(*g_minY), (int)(*g_maxX), (int)(*g_maxY));
 #endif
+    int shift = g_bitdepth - 8;
     for (r = *g_minY; r <= *g_maxY; r++) {
       for (c = *g_minX; c <= *g_maxX; c++) {
 	if (!g_camera->get_pixel_from_memory(c, r, uns_pix, g_colorIndex)) {
@@ -615,9 +606,9 @@ void myDisplayFunc(void)
 	// from the first channel into all colors of the image.  It uses
 	// RGBA so that we don't have to worry about byte-alignment problems
 	// that plagued us when using RGB pixels.
-	g_glut_image[0 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> g_shift;
-	g_glut_image[1 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> g_shift;
-	g_glut_image[2 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> g_shift;
+	g_glut_image[0 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> shift;
+	g_glut_image[1 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> shift;
+	g_glut_image[2 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> shift;
 	g_glut_image[3 + 4 * (c + g_camera->get_num_columns() * r)] = 255;
 
 #ifdef DEBUG
@@ -864,6 +855,7 @@ void myBeadDisplayFunc(void)
     int min_y = (g_beadseye_size+1)/2 - 2 * radius;
     int max_y = (g_beadseye_size+1)/2 + 2 * radius;
 
+    int shift = g_bitdepth - 8;
     for (x = min_x; x < max_x; x++) {
       for (y = min_y; y < max_y; y++) {
 	if (!g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix)) {
@@ -877,9 +869,9 @@ void myBeadDisplayFunc(void)
 	  // from the first channel into all colors of the image.  It uses
 	  // RGBA so that we don't have to worry about byte-alignment problems
 	  // that plagued us when using RGB pixels.
-	  g_beadseye_image[0 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = (int)(double_pix) >> g_shift;
-	  g_beadseye_image[1 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = (int)(double_pix) >> g_shift;
-	  g_beadseye_image[2 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = (int)(double_pix) >> g_shift;
+	  g_beadseye_image[0 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = (int)(double_pix) >> shift;
+	  g_beadseye_image[1 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = (int)(double_pix) >> shift;
+	  g_beadseye_image[2 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = (int)(double_pix) >> shift;
 	  g_beadseye_image[3 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 255;
 	}
       }
@@ -1285,6 +1277,7 @@ void myIdleFunc(void)
 	// and fill in the samples image values at these locations.
 	double step;
 	double double_pix;
+	int shift = g_bitdepth - 8;
 	for (step = -g_kymograph_width/2.0; step <= g_kymograph_width / 2.0; step++) {
 
 	  // Figure out where to look in the image
@@ -1307,9 +1300,9 @@ void myIdleFunc(void)
 	    // from the first channel into all colors of the image.  It uses
 	    // RGBA so that we don't have to worry about byte-alignment problems
 	    // that plagued us when using RGB pixels.
-	    g_kymograph_image[0 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (int)(double_pix) >> g_shift;
-	    g_kymograph_image[1 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (int)(double_pix) >> g_shift;
-	    g_kymograph_image[2 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (int)(double_pix) >> g_shift;
+	    g_kymograph_image[0 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (int)(double_pix) >> shift;
+	    g_kymograph_image[1 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (int)(double_pix) >> shift;
+	    g_kymograph_image[2 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (int)(double_pix) >> shift;
 	    g_kymograph_image[3 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 255;
 	  }
 	}
@@ -1753,7 +1746,7 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Usage: %s [roper|diaginc|directx|directx640x480|filename]\n", argv[0]);
     exit(-1);
   };
-
+  
   // Set up exit handler to make sure we clean things up no matter
   // how we are quit.  We hope that we exit in a good way and so
   // cleanup() gets called, but if not then we do a dirty exit.
