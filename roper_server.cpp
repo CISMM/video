@@ -594,3 +594,204 @@ bool roper_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Con
     svrcon->mainloop();
     return true;
 }
+
+static const unsigned SPE_HEADER_SIZE = 4100;
+static const unsigned SPE_XDIM_OFFSET = 42;
+static const unsigned SPE_YDIM_OFFSET = 656;
+static const unsigned SPE_NUMFRAMES_OFFSET = 1446;
+
+spe_file_server::spe_file_server(const char *filename) :
+d_buffer(NULL),
+d_infile(NULL),
+d_numFrames(0)
+{
+  // In case we fail somewhere along the way
+  _status = false;
+
+  // Open the file whose name is passed in for binary reading.
+#ifdef	_WIN32
+  d_infile = fopen(filename, "rb");
+#else
+  d_infile = fopen(filename, "r");
+#endif
+  if (d_infile == NULL) {
+    char  msg[1024];
+    sprintf(msg, "spe_file_server::spe_file_server: Could not open file %s", filename);
+    perror(msg);
+  }
+
+  // Set the mode to pause.
+  d_mode = PAUSE;
+
+  // Read the header information from the file to determine the number of samples
+  // in X, Y, and Z. (columns, rows, and frames).
+  vrpn_uint8  header[SPE_HEADER_SIZE];
+  if (fread(header, SPE_HEADER_SIZE, 1, d_infile) != 1) {
+    fprintf(stderr,"spe_file_server::spe_file_server: Could not read header\n");
+    return;
+  }
+  _num_columns = static_cast<vrpn_uint16>(header[SPE_XDIM_OFFSET]);
+  _num_rows = static_cast<vrpn_uint16>(header[SPE_YDIM_OFFSET]);
+  d_numFrames = static_cast<vrpn_uint32>(header[SPE_NUMFRAMES_OFFSET]);
+
+  // Allocate space to read a frame from the file
+  if ( (d_buffer = new vrpn_uint16[_num_columns * _num_rows]) == NULL) {
+    fprintf(stderr,"spe_file_server::spe_file_server: Out of memory\n");
+    return;
+  }
+
+  // Read one frame when we start
+  d_mode = SINGLE;
+
+  // Everything opened okay.
+  _minX = _minY = 0;
+  _maxX = _num_columns-1;
+  _maxY = _num_rows-1;
+  _binning = 1;
+  _status = true;
+}
+
+spe_file_server::~spe_file_server(void)
+{
+  // Close the file
+  if (d_infile != NULL) {
+    fclose(d_infile);
+  }
+
+  // Free the space taken by the in-memory image (if allocated)
+  if (d_buffer) {
+    delete [] d_buffer;
+  }
+}
+
+void  spe_file_server::play()
+{
+  d_mode = PLAY;
+}
+
+void  spe_file_server::pause()
+{
+  d_mode = PAUSE;
+}
+
+void  spe_file_server::rewind()
+{
+  // Seek to the beginning of the file (after the header).
+  if (d_infile != NULL) {
+    fseek(d_infile, SPE_HEADER_SIZE, SEEK_SET);
+  }
+
+  // Read one frame when we start
+  d_mode = SINGLE;
+}
+
+void  spe_file_server::single_step()
+{
+  d_mode = SINGLE;
+}
+
+bool  spe_file_server::read_image_to_memory(unsigned minX, unsigned maxX,
+					    unsigned minY, unsigned maxY,
+					    double exposure_time_millisecs)
+{
+  // If we're paused, then return without an image and try not to eat the whole CPU
+  if (d_mode == PAUSE) {
+    vrpn_SleepMsecs(10);
+    return false;
+  }
+
+  // If we're doing single-frame, then set the mode to pause for next time so that we
+  // won't keep trying to read frames.
+  if (d_mode == SINGLE) {
+    d_mode = PAUSE;
+  }
+
+  // Make sure we have both a file and a buffer pointer that are valid.
+  if ( (d_infile == NULL) || (d_buffer == NULL)) {
+    return false;
+  }
+
+  // Try to read one frame from the current location in the file.  If we fail in the read,
+  // set the mode to paused so we don't keep trying.
+  if (fread(d_buffer, sizeof(d_buffer[0]), _num_columns * _num_rows, d_infile) != _num_columns * _num_rows) {
+    d_mode = PAUSE;
+    return false;
+  }
+
+  // Okay, we got a new frame!
+  return true;
+}
+
+/// Get pixels out of the memory buffer
+bool  spe_file_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint8 &val, int /* ignore color */) const
+{
+  // Make sure we are within the range of allowed pixels
+  if ( (X < _minX) || (Y < _minY) || (X > _maxX) || (Y > _maxY) ) {
+    return false;
+  }
+
+  // Fill in the pixel value, assuming pixels vary in X fastest in the file.
+  // Invert Y so that the image shown in the spot tracker program matches the
+  // images shown in the capture program.  This stores the high-order 8 bits into
+  // the buffer.
+  val = (d_buffer[ X + (_maxY - Y) * _num_columns ] >> 8);
+  return true;
+}
+
+bool  spe_file_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &val, int /* ignore color */) const
+{
+  // Make sure we are within the range of allowed pixels
+  if ( (X < _minX) || (Y < _minY) || (X > _maxX) || (Y > _maxY) ) {
+    return false;
+  }
+
+  // Fill in the pixel value, assuming pixels vary in X fastest in the file.
+  val = d_buffer[ X + (_maxY - Y) * _num_columns ];
+  return true;
+}
+
+/// Store the memory image to a PPM file.
+bool  spe_file_server::write_memory_to_ppm_file(const char *filename, int gain, bool sixteen_bits) const
+{
+  //XXX;
+  fprintf(stderr,"spe_file_server::write_memory_to_ppm_file(): Not yet implemented\n");
+  return false;
+
+  return true;
+}
+
+/// Send whole image over a vrpn connection
+// XXX This needs to be tested
+bool  spe_file_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
+{
+    _minX=_minY=0;
+    _maxX=_num_columns - 1;
+    _maxY=_num_rows - 1;
+    read_image_to_memory(_minX, _maxX, _minY, _maxY, (int)g_exposure);
+
+    if (!_status) {
+      return false;
+    }
+    if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
+      fprintf(stderr,"spe_file_server::get_pixel_from_memory(): No image in memory\n");
+      return false;
+    }
+
+    // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION)
+    unsigned  num_x = get_num_columns();
+    unsigned  num_y = get_num_rows();
+    int nRowsPerRegion=vrpn_IMAGER_MAX_REGIONu16/num_x;
+    unsigned y;
+    svr->send_begin_frame(0, num_x-1, 0, num_y-1);
+    for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
+      svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1,
+	(vrpn_uint8 *)d_buffer, 1, get_num_columns());
+      svr->mainloop();
+    }
+    svr->send_end_frame(0, num_x-1, 0, num_y-1);
+    svr->mainloop();
+
+    // Mainloop the server connection (once per server mainloop, not once per object).
+    svrcon->mainloop();
+    return true;
+}

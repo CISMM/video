@@ -61,7 +61,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "03.06";
+const char *Version_string = "03.07";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -137,6 +137,16 @@ public:
   void pause(void) { edt_pulnix_raw_file_server::pause(); }
   void rewind(void) { pause(); edt_pulnix_raw_file_server::rewind(); }
   void single_step(void) { edt_pulnix_raw_file_server::single_step(); }
+};
+
+class SPE_Controllable_Video : public Controllable_Video, public spe_file_server {
+public:
+  SPE_Controllable_Video(const char *filename) : spe_file_server(filename) {};
+  virtual ~SPE_Controllable_Video() {};
+  void play(void) { spe_file_server::play(); }
+  void pause(void) { spe_file_server::pause(); }
+  void rewind(void) { pause(); spe_file_server::rewind(); }
+  void single_step(void) { spe_file_server::single_step(); }
 };
 
 class FileStack_Controllable_Video : public Controllable_Video, public file_stack_server {
@@ -287,6 +297,7 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     // it fits on the screen.
     roper_server *r = new roper_server(2);
     *camera = r;
+    g_bitdepth = 12;
   } else
 #endif  
   if (!strcmp(type, "diaginc")) {
@@ -295,6 +306,7 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     diaginc_server *r = new diaginc_server(2);
     *camera = r;
     g_exposure = 80;	// Seems to be the minimum exposure for the one we have
+    g_bitdepth = 12;
   } else if (!strcmp(type, "directx")) {
     // Passing width and height as zero leaves it open to whatever the camera has
     directx_camera_server *d = new directx_camera_server(1,0,0);	// Use camera #1 (first one found)
@@ -318,10 +330,20 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
 
     // If the extension is ".raw" then we assume it is a Pulnix file and open
     // it that way.
-    if (strcmp(".raw", &type[strlen(type)-4]) == 0) {
+    if (  (strcmp(".raw", &type[strlen(type)-4]) == 0) ||
+	  (strcmp(".RAW", &type[strlen(type)-4]) == 0) ) {
       Pulnix_Controllable_Video *f = new Pulnix_Controllable_Video(type);
       *camera = f;
       *video = f;
+
+    // If the extension is ".spe" then we assume it is a Roper file and open
+    // it that way.
+    } else if ( (strcmp(".spe", &type[strlen(type)-4]) == 0) ||
+		(strcmp(".SPE", &type[strlen(type)-4]) == 0) ) {
+      SPE_Controllable_Video *f = new SPE_Controllable_Video(type);
+      *camera = f;
+      *video = f;
+      g_bitdepth = 12;
 
     // If the extension is ".sem" then we assume it is a VRPN-format file
     // with an SEM device in it, so we form the name of the device and open
@@ -421,7 +443,11 @@ spot_tracker_XY  *create_appropriate_xytracker(void)
 
 spot_tracker_Z  *create_appropriate_ztracker(void)
 {
-  return new radial_average_tracker_Z(g_psf_filename, g_precision);
+  if (strlen(g_psf_filename) <= 0) {
+    return NULL;
+  } else {
+    return new radial_average_tracker_Z(g_psf_filename, g_precision);
+  }
 }
 
 //--------------------------------------------------------------------------
@@ -2010,6 +2036,7 @@ void  handle_optimize_z_change(int newvalue, void *)
 	  (*loop)->set_ztracker(NULL);
 	}
       }
+      g_psf_filename = "";
     }
 
   // User is turning off Z tracking, so destroy any existing
@@ -2021,10 +2048,9 @@ void  handle_optimize_z_change(int newvalue, void *)
 	(*loop)->set_ztracker(NULL);
       }
     }
+    g_psf_filename = "";
   }
-
 }
-
 
 
 //--------------------------------------------------------------------------
