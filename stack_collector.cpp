@@ -1,15 +1,30 @@
+//XXX Let the user set a directory to save in
+//XXX Make an HTML page in the directory describing the data set
+
+//XXX There is an infinite-loop problem with the focus control setting.
+//    It jumps back to the initial value when the slider is slid.  This
+//    happens with the Nikon stage; try this one out before going to the
+//    MCL stage (which could have serious clicking problems).
 //XXX There are some off-by-1 errors in the way the red lines are drawn, maybe to
 //    do with binning > 1.
 //XXX It is not possible to select all the way to the top or right
 //    because the window is only half the number of pixels in the
 //    image, so it always wants to skip the last column.  This is only
 //    true when binning is greater than 1.
+//XXX The nikon focus reports take a long time to come when the
+//    user manually focuses (like eight seconds after they stop
+//    moving).  This happens even with the original server.
+//    With the new server and old code, it quickly reports the
+//    new analog location once it has moved there.  This seems
+//    to be a feature of the microscope.
 
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <vrpn_Connection.h>
-#include <vrpn_nikon_controls.h>
+#include <vrpn_Tracker.h>
+#include <vrpn_Poser.h>
+#include <vrpn_Generic_server_object.h>
 #include "roper_server.h"
 #include "directx_camera_server.h"
 #include "directx_videofile_server.h"
@@ -26,13 +41,12 @@
 
 //#define	FAKE_CAMERA
 const unsigned FAKE_CAMERA_SIZE = 256;
-//#define	FAKE_NIKON
+//#define	FAKE_STAGE
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "02.01";
+const char *Version_string = "02.02";
 char  *g_device_name = NULL;			  //< Name of the device to open
-double  g_focus = 0;    // Current setting for the microscope focus
 bool	g_focus_changed = false;
 base_camera_server  *g_camera = NULL;
 int	g_max_image_width = 1392;
@@ -45,26 +59,26 @@ unsigned char *g_image = NULL;		//< Pointer to the storage for the image
 bool	g_already_posted = false;	//< Posted redisplay since the last display?
 int	g_mousePressX, g_mousePressY;	//< Where the mouse was when the button was pressed
 
-#ifndef	FAKE_NIKON
 vrpn_Synchronized_Connection	*con = NULL;
-vrpn_Nikon_Controls		*nikon = NULL;
-vrpn_Analog_Remote		*ana = NULL;
-vrpn_Analog_Output_Remote	*anaout = NULL;
-#endif
+vrpn_Generic_Server_Object      *svr = NULL;
 
-// The number of ticks (counts) on the Nikon focus control to take if
-// you want to move it by a micron. Since there is one count per 50
-// nanometers, this will be 20 steps per micron (50 * 20 = 1000).
-const double  TICKS_PER_MICRON = 20;
+vrpn_Tracker_Remote		*read_z = NULL;
+vrpn_Poser_Remote	        *set_z = NULL;
+
+// The number of meters per micron.
+const double  METERS_PER_MICRON = 1e-6;
 
 //--------------------------------------------------------------------------
 // Tcl controls and displays
 
 void  handle_preview_change(int newvalue, void *);
+void  handle_tcl_focus_change(float newvalue, void *);
+void  move_focus_and_wait_until_it_gets_there(double where_to_go_meters);
 Tclvar_float_with_scale	*g_minX;
 Tclvar_float_with_scale	*g_maxX;
 Tclvar_float_with_scale	*g_minY;
 Tclvar_float_with_scale	*g_maxY;
+Tclvar_float_with_scale	g_focus("focus_microns", "", 0, 100, 50, handle_tcl_focus_change);
 Tclvar_float_with_scale	g_focusDown("focus_lower_microns", "", -20, 0, -5);
 Tclvar_float_with_scale	g_focusUp("focus_raise_microns", "", 0, 20, 5);
 Tclvar_float_with_scale	g_focusStep("focus_step_microns", "", (float)0.05, 5, 1);
@@ -72,6 +86,7 @@ Tclvar_float_with_scale	g_repeat("repeat", "", (float)1, 20, 1);
 Tclvar_float_with_scale	g_min_repeat_wait_sec("min_repeat_wait_secs", "", (float)0, 60, 0);
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
 Tclvar_float_with_scale	g_gain("gain", "", 1, 32, 1);
+Tclvar_float_with_scale	g_close_enough("position_error_microns", "", 0.001, 1, 0.05);
 Tclvar_int_with_button	g_quit("quit","");
 // When the user pushes this button, the stack starts to be taken and it
 // continues until the end, then the program turns this back off.
@@ -159,6 +174,15 @@ void myDisplayFunc(void)
 
   // Have no longer posted redisplay since the last display.
   g_already_posted = false;
+}
+
+void  handle_tcl_focus_change(float newvalue_microns, void *)
+{
+  // XXX We want to enable control over the MCL stage
+  // here.  Maybe also control over the Nikon.  First, we
+  // need to figure out how to make it not oscillate back
+  // and forth between the value coming our way through
+  // VRPN and the value coming our way through Tcl.
 }
 
 void  handle_preview_change(int newvalue, void *)
@@ -270,14 +294,32 @@ void motionCallbackForGLUT(int x, int y) {
   return;
 }
 
-//--------------------------------------------------------------------------
-// Handles updates for the analog from the microscope by setting the
-// focus to that location and telling that the focus has changed.
-
-void VRPN_CALLBACK handle_focus_change(void *, const vrpn_ANALOGCB info)
+void  cleanup(void)
 {
-  g_focus = info.channel[0];
-  g_focus_changed = true;
+  glFinish();
+  glutDestroyWindow(g_window_id);
+
+  if (g_camera != NULL) { delete g_camera; };
+
+#ifndef	FAKE_STAGE
+  if (read_z) { delete read_z; read_z = NULL; };
+  if (set_z) { delete set_z; set_z = NULL; };
+  if (svr) { delete svr; svr = NULL; };
+  if (con) { delete con; con = NULL; };
+#endif
+}
+
+//--------------------------------------------------------------------------
+// Handles updates for the Stage from the microscope by setting the
+// focus to that location (in microns) and telling that the focus has changed.
+
+void VRPN_CALLBACK handle_vrpn_focus_change(void *, const vrpn_TRACKERCB info)
+{
+  if (info.sensor == 0) {
+    g_focus = info.pos[2] / METERS_PER_MICRON;
+    g_focus_changed = true;
+    //printf("XXX New focus %g\n", (float)g_focus);
+  }
 }
 
 static	double	duration(struct timeval t1, struct timeval t2)
@@ -298,6 +340,15 @@ void  wait_until_enough_time_has_passed_since(const struct timeval last_stack_st
     while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
 
     //------------------------------------------------------------
+    // This is called once every time through the main loop.  It
+    // pushes changes in the C variab`les over to Tcl.
+
+    if (Tclvar_mainloop()) {
+	    fprintf(stderr,"Mainloop failed\n");
+	    exit(-1);
+    }
+
+    //------------------------------------------------------------
     // If the user has deselected the "take_stack" or pressed "quit" then
     // break out of the loop.
     if ( g_quit || !g_take_stack) {
@@ -311,33 +362,46 @@ void  wait_until_enough_time_has_passed_since(const struct timeval last_stack_st
   } while (duration(now, last_stack_started) < g_min_repeat_wait_sec);
 }
 
-// Where_to_go is in number of ticks, not in microns.
-void  move_nikon_focus_and_wait_until_it_gets_there(double where_to_go) {
-#ifndef	FAKE_NIKON
-	  // Request that the Nikon focus go to where we want it
-	  anaout->request_change_channel_value(0, where_to_go);
-	  // Wait until the focus gets to where we asked it to be
-	  while (g_focus != where_to_go) {
-	    if (nikon) { nikon->mainloop(); }
-	    anaout->mainloop();
-	    ana->mainloop();
-	    vrpn_SleepMsecs(1);
-	  }
-#endif
-}
+void  move_focus_and_wait_until_it_gets_there(double where_to_go_meters) {
+#ifndef	FAKE_STAGE
+  // Request that the camera focus go where we want it to
+  vrpn_float64  pos[3] = { 0, 0, where_to_go_meters };
+  vrpn_float64  quat[4] = { 0, 0, 0, 1 };
+  struct timeval now;
+  gettimeofday(&now, NULL);
+  set_z->request_pose(now, pos, quat);
+  // Wait until the focus gets close enough to where we asked it to be
+  double err;
+  do {
+    if (svr) { svr->mainloop(); }
+    if (con) { con->mainloop(); }
+    set_z->mainloop();
+    read_z->mainloop();
+    vrpn_SleepMsecs(1);
 
-void  cleanup(void)
-{
-  glFinish();
-  glutDestroyWindow(g_window_id);
+    //------------------------------------------------------------
+    // If the user has deselected the "take_stack" or pressed "quit" then
+    // break out of the wait.
+    while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
+    if ( g_quit || !g_take_stack) {
+      if (g_quit) {
+	cleanup();
+	exit(0);
+      }
+      return;
+    }
 
-  if (g_camera != NULL) { delete g_camera; };
+    //------------------------------------------------------------
+    // This is called once every time through the main loop.  It
+    // pushes changes in the C variab`les over to Tcl.
 
-#ifndef	FAKE_NIKON
-  if (ana) { delete ana; ana = NULL; };
-  if (anaout) { delete anaout; anaout = NULL; };
-  if (nikon) { delete nikon; nikon = NULL; };
-  if (con) { delete con; con = NULL; };
+    if (Tclvar_mainloop()) {
+	    fprintf(stderr,"Mainloop failed\n");
+	    exit(-1);
+    }
+    err = fabs((float)g_focus - where_to_go_meters/METERS_PER_MICRON);
+  } while (err > ((float)g_close_enough));
+  printf("Found focus at %lg\n", (float)g_focus);
 #endif
 }
 
@@ -345,35 +409,41 @@ void myIdleFunc(void)
 {
     // If we are previewing, then read from the camera and put
     // the image into the preview window.  Also, mainloop the
-    // analog to ensure that we hear about the latest position
+    // tracker to ensure that we hear about the latest position
     // of the focus.
     if (g_preview) {
 #ifndef	FAKE_CAMERA
       g_camera->read_image_to_memory((int)*g_minX,(int)*g_maxX, (int)*g_minY,(int)*g_maxY, g_exposure);
 #endif
       preview_image(g_camera);
-#ifndef	FAKE_NIKON
-      ana->mainloop();
+#ifndef	FAKE_STAGE
+      if (svr) { svr->mainloop(); }
+      if (con) { con->mainloop(); }
+      read_z->mainloop();
 #endif
     }
 
     // If we've been asked to take a stack, do it.
     if (g_take_stack) {
+      // All of these variables are in microns, so we need to convert from user-interface values
+      // (which are in microns).  The VRPN values are reported in meters, so they don't get
+      // converted here.
       double  startfocus;		      //< Where the focus started at connection time
-      double  focusdown = g_focusDown * TICKS_PER_MICRON;   //< How far down to go when adjusting the focus (in ticks)
-      double  focusstep = g_focusStep * TICKS_PER_MICRON;   //< Step size to change the focus by (in ticks)
-      double  focusup = g_focusUp * TICKS_PER_MICRON;	    //< How far above initial to set the focus (in ticks)
+      double  focusdown = g_focusDown * METERS_PER_MICRON;    //< How far down to go when adjusting the focus (in meters)
+      double  focusstep = g_focusStep * METERS_PER_MICRON;    //< Step size to change the focus by (in meters)
+      double  focusup = g_focusUp * METERS_PER_MICRON;	      //< How far above initial to set the focus (in meters)
       double  focusloop;		      //< Used to step the focus
       int     repeat;			      //< Used to enable multiple scans
 
-      // Wait until we hear where the focus is from the Nikon
-#ifndef	FAKE_NIKON
+      // Wait until we hear where the focus is from the stage
+#ifndef	FAKE_STAGE
       g_focus_changed = false;
-      printf("Waiting for response from Nikon\n");
-      while (g_focus == 0) {
-	if (nikon) { nikon->mainloop(); }
-	anaout->mainloop();
-	ana->mainloop();
+      printf("Waiting for response from Focus control\n");
+      while (!g_focus_changed) {
+	if (svr) { svr->mainloop(); }
+        if (con) { con->mainloop(); }
+	set_z->mainloop();
+	read_z->mainloop();
 
 	//------------------------------------------------------------
 	// If the user has deselected the "take_stack" or pressed "quit" then
@@ -388,11 +458,20 @@ void myIdleFunc(void)
 	  return;
 	}
 
+        //------------------------------------------------------------
+        // This is called once every time through the main loop.  It
+        // pushes changes in the C variab`les over to Tcl.
+
+        if (Tclvar_mainloop()) {
+	        fprintf(stderr,"Mainloop failed\n");
+	        exit(-1);
+        }
+
 	vrpn_SleepMsecs(1);
       }
 #endif
-      printf("  (Initial focus found at %ld)\n", (long)g_focus);
-      startfocus = g_focus;
+      printf("  (Initial focus found at %g)\n", ((float)g_focus));
+      startfocus = g_focus * METERS_PER_MICRON;
 
       struct timeval last_stack_started;
 
@@ -412,15 +491,15 @@ void myIdleFunc(void)
 	// trouble with hysteresis), if the flag is set asking for this.
 	if (g_step_past_bottom) {
 	  double beyond = startfocus + focusdown - focusstep;
-	  printf("Stepping past bottom to %ld\n", (long)beyond);
-	  move_nikon_focus_and_wait_until_it_gets_there(beyond);
+	  printf("Stepping past bottom to %lg\n", beyond/METERS_PER_MICRON);
+	  move_focus_and_wait_until_it_gets_there(beyond);
 	}
 
 	// Loop through the requested focus levels and read images.
 	for (focusloop = startfocus + focusdown; focusloop <= startfocus + focusup; focusloop += focusstep) {
 
-	  printf("Going to %ld\n", (long)focusloop);
-	  move_nikon_focus_and_wait_until_it_gets_there(focusloop);
+	  printf("Going to %lg\n", focusloop/METERS_PER_MICRON);
+	  move_focus_and_wait_until_it_gets_there(focusloop);
 
 	  // Read the image from the camera.  If we are previewing,
 	  // then display the image in the video window.  We read
@@ -436,7 +515,9 @@ void myIdleFunc(void)
 #endif
 	  // Write the image to a TIFF file.
 	  char name[1024];
-	  sprintf(name, "output_image_G%03dR%02dNM%07ld.tif", (int)g_gain, repeat, (long)(focusloop-focusdown)*50);
+          // The file name stores the REQUESTED height of the stack in nanometers, rounded to the nearest nm.
+          // Store the stack relative to having a zero value at is lowest sampled location.
+	  sprintf(name, "output_image_G%03dR%02dNM%07ld.tif", (int)g_gain, repeat, (long)((focusloop-focusdown)/METERS_PER_MICRON*1000 + 0.5) );
 	  printf("Writing image to %s\n", name);
 #ifndef	FAKE_CAMERA
 	  // Write the selected subregion to a TIFF file.
@@ -448,6 +529,15 @@ void myIdleFunc(void)
 
 	  while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
 
+          //------------------------------------------------------------
+          // This is called once every time through the main loop.  It
+          // pushes changes in the C variab`les over to Tcl.
+
+          if (Tclvar_mainloop()) {
+	          fprintf(stderr,"Mainloop failed\n");
+	          exit(-1);
+          }
+
 	  //------------------------------------------------------------
 	  // If the user has deselected the "take_stack" or pressed "quit" then
 	  // break out of the loop.
@@ -458,16 +548,8 @@ void myIdleFunc(void)
       }
 
       // Put the focus back where it started.
-#ifndef	FAKE_NIKON
-      printf("Setting focus back to %ld\n", (long)startfocus);
-      anaout->request_change_channel_value(0, startfocus);
-      while (g_focus != startfocus) {
-	  if (nikon) { nikon->mainloop(); }
-	  anaout->mainloop();
-	  ana->mainloop();
-	  vrpn_SleepMsecs(1);
-      }
-#endif
+      printf("Setting focus back to %lg\n", startfocus/METERS_PER_MICRON);
+      move_focus_and_wait_until_it_gets_there(startfocus);
       printf("Done with stack\n");
       g_take_stack = 0;
     }
@@ -518,8 +600,12 @@ void myIdleFunc(void)
 
 int main(int argc, char *argv[])
 {
-  char	*Nikon_name = "Focus";
-  bool	 use_local_server = true;
+  g_device_name = "directx";
+  char  *config_file_name = "nikon.cfg";
+  char	*Stage_name = "Focus";
+  bool	use_local_server = true;
+  con = NULL;
+  svr = NULL;
 
   //------------------------------------------------------------------
   // If there is a command-line argument, treat it as the name of a
@@ -527,41 +613,64 @@ int main(int argc, char *argv[])
   switch (argc) {
 
   case 1:
-    // No arguments, so ask the user for a file name
-    g_device_name = "directx";
+    // No arguments, so default to directx and local nikon server
     break;
 
   case 2:
-    // Camera device type is named
+    // Camera device type is named; still use default local nikon server
     g_device_name = argv[1];
     break;
 
   case 3:
-    // Camera device name and Nikon analog/analogout device name both specified
+    // Camera device name and Stage Tracker/Poser device name both specified.
+    // If the stage name contains "@", we try to connect to a remote stage controller;
+    // otherwise, create the name of a configuration file by adding ".cfg" to the name
+    // passed in.
     g_device_name = argv[1];
-    Nikon_name = argv[2];
-    use_local_server = false;
+    Stage_name = argv[2];
+    if (strchr(Stage_name, '@') != NULL) {
+      use_local_server = false;
+    } else {
+      config_file_name = new char[strlen(Stage_name) + 4];
+      if (config_file_name == NULL) {
+        fprintf(stderr,"Out of memory allocating configuratin file name\n");
+        exit(-1);
+      }
+
+      // Store the configuration file name.  The stage name should remain
+      // "Focus", as the config file should make the Tracker and Poser
+      // devices report this.
+      use_local_server = true;
+      sprintf(config_file_name, "%s.cfg", Stage_name);
+      Stage_name = "Focus";
+    }
     break;
 
   default:
-    fprintf(stderr, "Usage: %s [edt|roper|diaginc|directx|directx640x480|filename] [Nikon_server_name@hostname]\n", argv[0]);
+    fprintf(stderr, "Usage: %s [edt|roper|diaginc|directx|directx640x480 [nikon|mcl|Stage_server_name@hostname]]\n", argv[0]);
+    fprintf(stderr, "       default camera is directx\n");
+    fprintf(stderr, "       default stage control is nikon\n");
     exit(-1);
   };
 
-#ifndef	FAKE_NIKON
+#ifndef	FAKE_STAGE
   if (use_local_server) {
+
+    // Open a connection on which to talk between the server and client
+    // portions of the code.  Then, start a VRPN generic server object
+    // whose job it is to set up a Tracker to report stage position (Z) in
+    // meters and a Poser whose job it is to move the stage in Z in
+    // meters.  Both servers should have the name "Focus".  Other
+    // auxilliary servers may be needed as well.
     con = new vrpn_Synchronized_Connection();
-    nikon = new vrpn_Nikon_Controls("Focus", con);
-    ana = new vrpn_Analog_Remote("Focus", con);
-    anaout = new vrpn_Analog_Output_Remote("Focus", con);
-  } else {
-    con = NULL;
-    nikon = NULL;
-    ana = new vrpn_Analog_Remote(Nikon_name);
-    anaout = new vrpn_Analog_Output_Remote(Nikon_name);
+
+    svr = new vrpn_Generic_Server_Object(con, config_file_name);
+    Stage_name = "Focus";
   }
-  ana->register_change_handler(NULL, handle_focus_change);
 #endif
+  read_z = new vrpn_Tracker_Remote(Stage_name, con);
+  set_z = new vrpn_Poser_Remote(Stage_name, con);
+  read_z->register_change_handler(NULL, handle_vrpn_focus_change);
 
   //------------------------------------------------------------------
   // Verify that the camera is working.
@@ -602,7 +711,7 @@ int main(int argc, char *argv[])
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
   glutInitWindowSize(g_window_width, g_window_height);
-  glutInitWindowPosition(100, 100);
+  glutInitWindowPosition(370, 40);
   g_window_id = glutCreateWindow("Preview");
   // Set the display function and idle function for GLUT (they
   // will do all the work) and then give control over to GLUT.
@@ -637,6 +746,12 @@ int main(int argc, char *argv[])
           fprintf(stderr,"%s\n", tk_control_interp->result);
           return(-1);
   }
+  sprintf(command, "wm geometry . +10+10");
+  if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
+          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+                  tk_control_interp->result);
+          return(-1);
+  }
 
   //------------------------------------------------------------------
   // Loading the particular definition files we need.  russ_widgets is
@@ -653,6 +768,12 @@ int main(int argc, char *argv[])
           return(-1);
   }
   sprintf(command, "toplevel .clip");
+  if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
+          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+                  tk_control_interp->result);
+          return(-1);
+  }
+  sprintf(command, "wm geometry .clip +200+10");
   if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
           fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
                   tk_control_interp->result);

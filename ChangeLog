@@ -1,3 +1,19 @@
+2005-02-02  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* stack_collector.cpp : Modified so that it uses a remote
+		Tracker and Poser object on top of an Analog and
+		AnalogOut object to drive either a Nikon base or
+		the Mad City Labs stage.  The MCL code does not yet
+		let you control the stage position from within the
+		program, so focus control on Nikon needs to be used
+		to set up.
+	* nikon.cfg : Configuration file to run a VRPN server that
+		wraps a Nikon with an appropriate Poser and Tracker.
+	* mcl.cfg : Configuration file to run a VRPN server that
+		wraps a pair of National Instruments boards with
+		appropriate Tracker and Poser for positioning.
+	* stack_collector.dsp : Modified to build new version.
+
 2005-01-24  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Version 4.00.  Changes the output
