@@ -19,7 +19,7 @@ const int MINOR_VERSION = 3;
 base_camera_server  *g_camera;	//< The camera we're going to read from
 
 /// Open the camera we want to use (Roper or DirectX)
-bool  init_camera_code(const char *type)
+bool  init_camera_code(const char *type, int which = 1)
 {
   if (!strcmp(type, "roper")) {
     g_camera = new roper_server();
@@ -28,7 +28,7 @@ bool  init_camera_code(const char *type)
       return false;
     }
   } else if (!strcmp(type, "directx")) {
-    g_camera = new directx_camera_server(1);
+    g_camera = new directx_camera_server(which);
     if (!g_camera->working()) {
       fprintf(stderr,"init_camera_code(): Can't open DirectX camera server\n");
       return false;
@@ -142,9 +142,27 @@ void handle_cntl_c(int) {
 
 int main(unsigned argc, char *argv[])
 {
+  char	*devicename;	  // Name of the device to open
+  int	devicenum;	  // Which, if there are more than one, to open
+  if (argc == 1) {
+    devicename = "directx";
+    devicenum = 1;
+  } else if (argc == 2) {
+    devicename = argv[1];
+    devicenum = 1;
+  } else if (argc == 3) {
+    devicename = argv[1];
+    devicenum = atoi(argv[2]);
+  } else {
+    fprintf(stderr,"Usage: %s [devicename [devicenum]]\n",argv[0]);
+    fprintf(stderr,"       devicename: roper or directx\n");
+    fprintf(stderr,"       devicenum: Which one to use (starting with 1) if there are multiple\n");
+    exit(-1);
+  }
+    
   printf("video_tempImager_server version %02d.%02d\n", MAJOR_VERSION, MINOR_VERSION);
 
-  if (!init_camera_code("directx")) { return -1; }
+  if (!init_camera_code(devicename, devicenum)) { return -1; }
   if (!init_server_code()) { return -1; }
 
   // Set up handler for all these signals to set done

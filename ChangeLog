@@ -1,3 +1,13 @@
+2002-10-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* roper_server.cpp : Changes to make it work now that it is derived from
+		the base camera class.
+	* roper_server.h : Same.
+	* video_spot_tracker.cpp : Extra debugging print.
+	* video_tempimager_server.cpp : Can tell which of several cameras of the
+		same type you want to start.  On the command line, you tell it
+		the type of device and which to use.
+
 2002-10-10  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
         * base_camera_server.h : Adds parameter to PPM write for 16-bit files.

@@ -107,6 +107,7 @@ bool roper_server::open_and_find_parameters(void)
   // name of the first camera, open it, and make sure that it has
   // no critical failures.
   int16	  num_cameras;
+  int16	  num_rows, num_columns;
   char	  camera_name[CAM_NAME_LEN];
   PL_CHECK_EXIT(pl_cam_get_total(&num_cameras), "pl_cam_get_total");
   if (num_cameras <= 0) {
@@ -119,10 +120,12 @@ bool roper_server::open_and_find_parameters(void)
   PL_CHECK_EXIT(pl_cam_get_diags(_camera_handle), "pl_cam_get_diags");
 
   // Find out the parameters available on this camera
-  PL_CHECK_EXIT(pl_get_param(_camera_handle, PARAM_PAR_SIZE, ATTR_CURRENT, &_num_rows),
+  PL_CHECK_EXIT(pl_get_param(_camera_handle, PARAM_PAR_SIZE, ATTR_CURRENT, &num_rows),
     "PARAM_PAR_SIZE");
-  PL_CHECK_EXIT(pl_get_param(_camera_handle, PARAM_SER_SIZE, ATTR_CURRENT, &_num_columns),
+  PL_CHECK_EXIT(pl_get_param(_camera_handle, PARAM_SER_SIZE, ATTR_CURRENT, &num_columns),
     "PARAM_SER_SIZE");
+  _num_rows = num_rows;
+  _num_columns = num_columns;
 
   // XXX Find the list of available exposure settings..
 
@@ -174,7 +177,7 @@ roper_server::~roper_server(void)
   GlobalFree(_buffer );
 }
 
-bool  roper_server::read_image_to_memory(int minX, int maxX, int minY, int maxY,
+bool  roper_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned minY, unsigned maxY,
 					 double exposure_time_millisecs)
 {
   //---------------------------------------------------------------------

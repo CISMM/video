@@ -449,6 +449,7 @@ int main(int argc, char *argv[])
   if ( (g_glut_image = new unsigned char
       [g_camera->get_num_columns() * g_camera->get_num_rows() * 3]) == NULL) {
     fprintf(stderr,"Out of memory when allocating image!\n");
+    fprintf(stderr,"  (Image is %u by %u)\n", g_camera->get_num_columns(), g_camera->get_num_rows());
     delete g_camera;
     exit(-1);
   }
