@@ -28,7 +28,7 @@ bool  init_camera_code(const char *type)
       return false;
     }
   } else if (!strcmp(type, "directx")) {
-    g_camera = new directx_camera_server();
+    g_camera = new directx_camera_server(1);
     if (!g_camera->working()) {
       fprintf(stderr,"init_camera_code(): Can't open DirectX camera server\n");
       return false;

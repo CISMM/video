@@ -18,7 +18,17 @@ public:
   virtual ~directx_videofile_server(void);
   virtual void close_device(void);
 
+  /// Start the stored video playing.
+  virtual void play(void);
+
+  /// Pause the stored video
+  virtual void pause(void);
+
+  /// Rewind the stored video to the beginning (also pauses).
+  virtual void rewind(void);
+
 protected:
+  IMediaSeeking *_pMediaSeeking;
   virtual bool	open_and_find_parameters(const char *filename);
 };
 

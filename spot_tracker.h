@@ -17,8 +17,11 @@ public:
 
   // Optimize starting at the specified location to find the best-fit disk.
   // Take only one optimization step.  Return whether we ended up finding a
-  // better location/radius or not.  Return new location in any case.
-  bool	take_single_optimization_step(const image_wrapper &image, double &x, double &y);
+  // better location/radius or not.  Return new location in any case.  The
+  // boolean parameters tell whether to try stepping in each of X, Y, and
+  // Radius.
+  bool	take_single_optimization_step(const image_wrapper &image, double &x, double &y,
+				      bool do_x = true, bool do_y = true, bool do_r = true);
   // Same thing, but say where to start.  This means that we should measure the
   // fitness at that location before trying the steps.
   bool  take_single_optimization_step(const image_wrapper &image, double &x, double &y,
@@ -33,18 +36,25 @@ public:
   // Same thing, but say where to start
   void	optimize(const image_wrapper &image, double &x, double &y, double startx, double starty)
 	    { _x = startx; _y = starty; optimize(image, x, y); };
+  /// Optimize in X and Y only, not in radius.
+  void	optimize_xy(const image_wrapper &image, double &x, double &y);
+  void	optimize_xy(const image_wrapper &image, double &x, double &y, double startx, double starty)
+	    { _x = startx; _y = starty; optimize_xy(image, x, y); };
 
-  // Find the best fit for the spot detector within the image, taking steps
+  /// Find the best fit for the spot detector within the image, taking steps
   // that are 1/4 of the bead's radius.
   void	locate_good_fit_in_image(const image_wrapper &image, double &x, double &y);
 
-  // Check the fitness of the disk against an image, at the current parameter settings.
+  /// Check the fitness of the disk against an image, at the current parameter settings.
   // Return the fitness value there.
   double  check_fitness(const image_wrapper &image);
 
-  // Get at internal information
+  /// Get at internal information
   double  get_radius(void) const { return _rad; };
   double  get_fitness(void) const { return _fitness; };
+
+  /// Set the radius for the bead.
+  void	set_radius(const double r) { _rad = r; };
 
 protected:
   double  _rad;	      //< Current radius of the disk

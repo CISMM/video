@@ -10,17 +10,17 @@ public:
   roper_server(void);
   virtual ~roper_server(void);
 
-  /// Read an image to a memory buffer
+  /// Read an image to a memory buffer.  Exposure time is in milliseconds
   bool	read_image_to_memory(int minX = 0, int maxX = -1,
 			     int minY = 0, int maxY = -1,
-			     double exposure_time = 250.0);
+			     double exposure_time_millisecs = 250.0);
 
   /// Get pixels out of the memory buffer
   bool	get_pixel_from_memory(int X, int Y, vrpn_uint8 &val, int RGB = 0) const;
   bool	get_pixel_from_memory(int X, int Y, vrpn_uint16 &val, int RGB = 0) const;
 
   /// Store the memory image to a PPM file.
-  bool  write_memory_to_ppm_file(const char *filename) const;
+  bool  write_memory_to_ppm_file(const char *filename, bool sixteen_bits = false) const;
 
 protected:
   bool	  _status;		      // True is working, false is not
@@ -36,5 +36,5 @@ protected:
   virtual bool open_and_find_parameters(void);
   virtual bool read_one_frame(const int16 camera_handle,
 		       const rgn_type &region_description,
-		       const uns32 exposure_time);
+		       const uns32 exposure_time_millisecs);
 };

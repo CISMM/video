@@ -1,7 +1,12 @@
-//XXX Provide file controls if we opened a file.  Rewind, play, pause (start paused).
-//XXX Why is it the case that the file plays back more rapidly than it was recorded?
+//XXX PerfectOrbit video doesn't seem to play once it has been loaded!
+//    Pausing does make it jump to the end, like other videos
+//    LongOrbit behaves the same way... (both are large files)
+//    BigBeadCatch plays herky-jerky, especially with larger radius optimizer
+//    The test.avi program seemed to work smoothly.
 //XXX Make it so you can click with the mouse where you want it to track.
 //XXX Make it a vrpn_Tracker that reports the tracked position.
+//XXX Make tracking not get lost so easily.
+//XXX Pause seems to be broken on the video playback -- it skips to the end.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,6 +36,7 @@ const char *Version_string = "01.00";
 
 base_camera_server  *g_camera;	    //< Camera used to get an image
 image_wrapper	    *g_image;	    //< Image wrapper for the camera
+directx_videofile_server  *g_video = NULL;  //< Video controls, if we have them
 unsigned char	    *g_glut_image = NULL; //< Pointer to the storage for the image
 disk_spot_tracker   g_tracker(5,true);   //< Follows the bead around.  Dark bead on light
 bool		    g_ready_to_display = false;	//< Don't unless we get an image
@@ -49,6 +55,7 @@ Tclvar_int_with_button	g_opt("optimize","");
 Tclvar_int_with_button	g_globalopt("global_optimize_now","",1);
 Tclvar_int_with_button	g_mark("show_tracker","");
 Tclvar_int_with_button	g_quit("quit","");
+Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL;
 
 //--------------------------------------------------------------------------
 // Cameras wrapped by image wrapper and function to return wrapped cameras.
@@ -106,7 +113,8 @@ public:
 };
 
 /// Open the wrapped camera we want to use (Roper or DirectX)
-bool  get_camera_and_imager(const char *type, base_camera_server **camera, image_wrapper **imager)
+bool  get_camera_and_imager(const char *type, base_camera_server **camera, image_wrapper **imager,
+			    directx_videofile_server **video)
 {
   if (!strcmp(type, "roper")) {
     roper_imager *r = new roper_imager();
@@ -120,6 +128,7 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
     fprintf(stderr,"get_camera_and_imager(): Assuming filename (%s)\n", type);
     directx_file_imager	*f = new directx_file_imager(type);
     *camera = f;
+    *video = f;
     *imager = f;
   }
   return true;
@@ -134,6 +143,8 @@ static void  cleanup(void)
   printf("Exiting\n");
   delete g_camera;
   if (g_glut_image) { delete [] g_glut_image; };
+  if (g_play) { delete g_play; };
+  if (g_rewind) { delete g_rewind; };
 }
 
 void myDisplayFunc(void)
@@ -236,17 +247,21 @@ void myIdleFunc(void)
   g_ready_to_display = true;
 
   if (g_opt) {
-    static  double  x = 0, y = 0;
+    double  x, y;
+    g_tracker.set_radius(g_Radius);
 
     // If the user has requested a global search, do this once and then reset the
-    // checkbox.
+    // checkbox.  Otherwise, keep tracking the last feature found.
     if (g_globalopt) {
       g_tracker.locate_good_fit_in_image(*g_image, x,y);
+      g_tracker.optimize(*g_image, x, y);
       g_globalopt = 0;
+    } else {
+      // Optimize to find the best fit starting from last position.
+      // Don't let it adjust the radius here (otherwise it gets too
+      // jumpy).
+      g_tracker.optimize_xy(*g_image, x, y, g_X, g_Y);
     }
-
-    // Optimize to find the best fit in the image.
-    g_tracker.optimize(*g_image, x, y);
 
     // Show the result
     g_X = (float)x;
@@ -266,6 +281,33 @@ void myIdleFunc(void)
 
   if (Tclvar_mainloop()) {
     fprintf(stderr,"Tclvar Mainloop failed\n");
+  }
+
+  //------------------------------------------------------------
+  // If we have a video object, let the video controls operate
+  // on it.
+  if (g_video) {
+    static  int	last_play = 0;
+
+    // If the user has pressed rewind, go the the beginning of
+    // the stream and then pause (by clearing play).
+    if (*g_rewind) {
+      g_video->rewind();
+      *g_play = 0;
+      *g_rewind = 0;
+    }
+
+    // If the user has pressed play, start the video playing.
+    if (!last_play && *g_play) {
+      g_video->play();
+      *g_rewind = 0;
+    }
+
+    // If the user has cleared play, then pause the video
+    if (last_play && !(*g_play)) {
+      g_video->pause();
+    }
+    last_play = *g_play;
   }
 
   //------------------------------------------------------------
@@ -375,11 +417,16 @@ int main(int argc, char *argv[])
   }
 
   //------------------------------------------------------------------
-  // Open the camera and image wrapper.
-  if (!get_camera_and_imager(device_name, &g_camera, &g_image)) {
+  // Open the camera and image wrapper.  If we have a video file, then
+  // set up the Tcl controls to run it.
+  if (!get_camera_and_imager(device_name, &g_camera, &g_image, &g_video)) {
     fprintf(stderr,"Cannot open camera/imager\n");
     if (g_camera) { delete g_camera; }
     exit(-1);
+  }
+  if (g_video) {  // Put these in a separate control panel?
+    g_play = new Tclvar_int_with_button("play_video","",1);
+    g_rewind = new Tclvar_int_with_button("rewind_video","");
   }
 
   // Verify that the camera is working.

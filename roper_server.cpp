@@ -48,7 +48,7 @@ static	unsigned long	duration(struct timeval t1, struct timeval t2)
 
 bool  roper_server::read_one_frame(const int16 camera_handle,
 		       const rgn_type &region_description,
-		       const uns32 exposure_time) {
+		       const uns32 exposure_time_millisecs) {
   int16	progress = EXPOSURE_IN_PROGRESS;
   uns32	trash;
   uns32	buffer_size;	// Size required to hold the data
@@ -58,7 +58,7 @@ bool  roper_server::read_one_frame(const int16 camera_handle,
   // enough to hold the image.
   PL_CHECK_RETURN(pl_exp_init_seq(), "pl_exp_init_seq");
   PL_CHECK_RETURN(pl_exp_setup_seq(camera_handle, 1, 1,
-    &region_description, TIMED_MODE, exposure_time, &buffer_size), "pl_exp_setup_seq");
+    &region_description, TIMED_MODE, exposure_time_millisecs, &buffer_size), "pl_exp_setup_seq");
   if (buffer_size > _buflen) {
     fprintf(stderr,"read_one_frame: Buffer passed in too small\n");
     return FALSE;
@@ -67,8 +67,8 @@ bool  roper_server::read_one_frame(const int16 camera_handle,
   // Start it reading one exposure
   PL_CHECK_RETURN(pl_exp_start_seq(camera_handle, _buffer), "pl_exp_start_seq");
 
-  // Wait for it to be done reading
-  const double READ_TIMEOUT = 1.0;
+  // Wait for it to be done reading; timeout in 1 second longer than exposure should be
+  const double READ_TIMEOUT = exposure_time_millisecs*1000 + 1;
   struct  timeval start, now;
   gettimeofday(&start, NULL);
   do {
@@ -175,7 +175,7 @@ roper_server::~roper_server(void)
 }
 
 bool  roper_server::read_image_to_memory(int minX, int maxX, int minY, int maxY,
-					 double exposure_time)
+					 double exposure_time_millisecs)
 {
   //---------------------------------------------------------------------
   // In case we fail, clear these
@@ -211,13 +211,13 @@ bool  roper_server::read_image_to_memory(int minX, int maxX, int minY, int maxY,
   region_description.p2 = _maxY;
   region_description.sbin = 1;
   region_description.pbin = 1;
-  PL_CHECK_RETURN(read_one_frame(_camera_handle, region_description, (int)exposure_time),
+  PL_CHECK_RETURN(read_one_frame(_camera_handle, region_description, (int)exposure_time_millisecs),
     "read_one_frame");
 
   return true;
 }
 
-bool  roper_server::write_memory_to_ppm_file(const char *filename) const
+bool  roper_server::write_memory_to_ppm_file(const char *filename, bool sixteen_bits) const
 {
   //---------------------------------------------------------------------
   // Make sure the region is non-zero (so we've read an image)
@@ -227,40 +227,61 @@ bool  roper_server::write_memory_to_ppm_file(const char *filename) const
   }
 
   //---------------------------------------------------------------------
-  // Map the 12 bits to the range 0-255, and then write out an
-  // uncompressed grayscale PPM file with the values scaled to this range.
-  uns16	   *vals = (uns16 *)_memory;
-  unsigned char *pixels;
-  // This buffer will be oversized if min and max don't span the whole window.
-  if ( (pixels = new unsigned char[_buflen/2]) == NULL) {
-    fprintf(stderr, "Can't allocate memory for stored image\n");
-    return false;
-  }
-  unsigned r,c;
-  uns16 minimum = vals[0];
-  uns16 maximum = vals[0];
-  uns16	cols = (_maxX - _minX) + 1;
-  uns16	rows = (_maxY - _minY) + 1;
-  for (r = 0; r < rows; r++) {
-    for (c = 0; c < cols; c++) {
-      if (vals[r*cols + c] < minimum) { minimum = vals[r*cols+c]; }
-      if (vals[r*cols + c] > maximum) { maximum= vals[r*cols+c]; }
+  // If we are not doing 16 bits, map the 12 bits to the range 0-255, and then write out an
+  // uncompressed 8-bit grayscale PPM file with the values scaled to this range.
+  if (!sixteen_bits) {
+    uns16	   *vals = (uns16 *)_memory;
+    unsigned char *pixels;
+    // This buffer will be oversized if min and max don't span the whole window.
+    if ( (pixels = new unsigned char[_buflen/2]) == NULL) {
+      fprintf(stderr, "Can't allocate memory for stored image\n");
+      return false;
     }
-  }
-  printf("Minimum = %d, maximum = %d\n", minimum, maximum);
-  uns16 offset = 0;
-  double scale = 255.0 / 4095.0;
-  for (r = 0; r < rows; r++) {
-    for (c = 0; c < cols; c++) {
-      pixels[r*cols + c] = (unsigned char)((vals[r*cols+c] - offset) * scale);
+    unsigned r,c;
+    uns16 minimum = vals[0];
+    uns16 maximum = vals[0];
+    uns16	cols = (_maxX - _minX) + 1;
+    uns16	rows = (_maxY - _minY) + 1;
+    for (r = 0; r < rows; r++) {
+      for (c = 0; c < cols; c++) {
+	if (vals[r*cols + c] < minimum) { minimum = vals[r*cols+c]; }
+	if (vals[r*cols + c] > maximum) { maximum= vals[r*cols+c]; }
+      }
     }
-  }
-  FILE *of = fopen(filename, "wb");
-  fprintf(of, "P5\n%d %d\n%d\n", cols, rows, 255);
-  fwrite(pixels, 1, cols*rows, of);
-  fclose(of);
-  delete [] pixels;
+    printf("Minimum = %d, maximum = %d\n", minimum, maximum);
+    uns16 offset = 0;
+    double scale = 255.0 / 4095.0;
+    for (r = 0; r < rows; r++) {
+      for (c = 0; c < cols; c++) {
+	pixels[r*cols + c] = (unsigned char)((vals[r*cols+c] - offset) * scale);
+      }
+    }
+    FILE *of = fopen(filename, "wb");
+    fprintf(of, "P5\n%d %d\n%d\n", cols, rows, 255);
+    fwrite(pixels, 1, cols*rows, of);
+    fclose(of);
+    delete [] pixels;
 
+  // If we are doing 16 bits, write out a 16-bit file.
+  } else {
+    uns16 *vals = (uns16 *)_memory;
+    unsigned r,c;
+    uns16 minimum = vals[0];
+    uns16 maximum = vals[0];
+    uns16 cols = (_maxX - _minX) + 1;
+    uns16 rows = (_maxY - _minY) + 1;
+    for (r = 0; r < rows; r++) {
+      for (c = 0; c < cols; c++) {
+	if (vals[r*cols + c] < minimum) { minimum = vals[r*cols+c]; }
+	if (vals[r*cols + c] > maximum) { maximum= vals[r*cols+c]; }
+      }
+    }
+    printf("Minimum = %d, maximum = %d\n", minimum, maximum);
+    FILE *of = fopen(filename, "wb");
+    fprintf(of, "P5\n%d %d\n%d\n", cols, rows, 4095);
+    fwrite(vals, sizeof(uns16), cols*rows, of);
+    fclose(of);
+  }
   return true;
 }
 

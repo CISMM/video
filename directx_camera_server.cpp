@@ -52,7 +52,9 @@ static HRESULT ConnectTwoFilters(IGraphBuilder *pGraph, IBaseFilter *pFirst, IBa
 
 /** The first time we are called, start the filter graph running in continuous
     mode and grab the first image that comes out.  Later times, grab each new
-    image as it comes.
+    image as it comes.  The "mode" parameter tells what mode we are in:
+      Mode 0 = Run()
+      Mode 1 = Pause()
     */
 bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
 			      unsigned minY, unsigned maxY,
@@ -103,10 +105,22 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
   // Run the graph and wait until it captures a frame into its buffer
   //XXX do we need this?pMediaFilter->SetSyncSource(NULL); // Turn off the reference clock.
   // This version sets it without having to query a new interface.  It doesn't seem to make
-  // any difference with the Hauppauge card (still only grabs first frame).
+  // any difference with the Hauppauge card (still only grabs first frame).  Also doesn't make
+  // any difference with the movies that don't play through.
   //_pSampleGrabberFilter->SetSyncSource(NULL);
 
-  hr = _pMediaControl->Run();
+  switch (_mode) {
+    case 0: // Case 0 = run
+      hr = _pMediaControl->Run();
+      break;
+    case 1: // Case 1 = paused
+      hr = _pMediaControl->Pause();
+      break;
+    default:
+      fprintf(stderr, "directx_camera_server::read_one_frame(): Unknown mode (%d)\n", _mode);
+      _status = false;
+      return false;
+  }
   if ( (hr != S_OK) && (hr != S_FALSE) ){
     fprintf(stderr,"directx_camera_server::read_one_frame(): Can't run filter graph\n");
     _status = false;
@@ -122,7 +136,8 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
   // on the Hauppauge (sp?) WinTV card -- it captures the first frame after
   // the card is opened and then repeatedly reads the same frame out of the
   // card (it thinks it is getting new frames, but they are all the first
-  // frame over and over again).
+  // frame over and over again).  Also, we get the first frame over and over
+  // again for some videofile clips (BigBeadSmallMovie, LongOrbit, PerfectOrbit).
   hr = _pEvent->WaitForCompletion(1000, &scrap);
   if ( (hr != S_OK) && (hr != VFW_E_WRONG_STATE) ) {
     if (hr == E_ABORT) {
@@ -361,7 +376,8 @@ directx_camera_server::directx_camera_server(const int which) :
   _pEvent(NULL),
   _pSampleGrabberFilter(NULL),
   _pGrabber(NULL),
-  _started_graph(false)
+  _started_graph(false),
+  _mode(0)
 {
   //---------------------------------------------------------------------
 
@@ -455,7 +471,7 @@ bool  directx_camera_server::read_image_to_memory(unsigned minX, unsigned maxX, 
   return true;
 }
 
-bool  directx_camera_server::write_memory_to_ppm_file(const char *filename) const
+bool  directx_camera_server::write_memory_to_ppm_file(const char *filename, bool sixteen_bits) const
 {
   // XXX This will depend on what kind of pixels we have!
 
@@ -477,7 +493,11 @@ bool  directx_camera_server::write_memory_to_ppm_file(const char *filename) cons
   }
 
   //---------------------------------------------------------------------
-  // Write out an uncompressed RGB PPM file.
+  // Write out an uncompressed RGB PPM file.  We ignore the "16bits" request
+  // because we don't have 16 bits to put in there!
+  if (sixteen_bits) {
+    fprintf(stderr, "directx_camera_server::write_memory_to_ppm_file(): 16 bits requested, ignoring\n");
+  }
   FILE *of = fopen(filename, "wb");
   if (of == NULL) {
     fprintf(stderr, "directx_camera_server::write_memory_to_ppm_file(): Can't open %s for write\n", filename);

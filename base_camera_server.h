@@ -27,7 +27,7 @@ public:
   virtual unsigned  get_num_colors() const { return 0; };
 
   /// Store the memory image to a PPM file.
-  virtual bool  write_memory_to_ppm_file(const char *filename) const {return false;};
+  virtual bool  write_memory_to_ppm_file(const char *filename, bool sixteen_bits = false) const {return false;};
 
 protected:
   bool	    _status;			// True is working, false is not

@@ -32,56 +32,64 @@ disk_spot_tracker::disk_spot_tracker(double radius, bool inverted, double pixela
 // Optimize starting at the specified location to find the best-fit disk.
 // Take only one optimization step.  Return whether we ended up finding a
 // better location or not.  Return new location in any case.  One step means
-// one step in X,Y, and radius space each.
-bool  disk_spot_tracker::take_single_optimization_step(const image_wrapper &image, double &x, double &y)
+// one step in X,Y, and radius space each.  The boolean parameters tell
+// whether to optimize in each direction (X, Y, and Radius).
+bool  disk_spot_tracker::take_single_optimization_step(const image_wrapper &image, double &x, double &y,
+						       bool do_x, bool do_y, bool do_r)
 {
   double  new_fitness;	    //< Checked fitness value to see if it is better than current one
   bool	  betterxy = false; //< Do we find a better location?
   bool	  betterrad = false;//< Do we find a better radius?
 
   // Try going in +/- X and see if we find a better location.
-  _x += _pixelstep;	// Try going a step in +X
-  if ( _fitness < (new_fitness = check_fitness(image)) ) {
-    _fitness = new_fitness;
-    betterxy = true;
-  } else {
-    _x -= 2*_pixelstep;	// Try going a step in -X
+  if (do_x) {
+    _x += _pixelstep;	// Try going a step in +X
     if ( _fitness < (new_fitness = check_fitness(image)) ) {
       _fitness = new_fitness;
       betterxy = true;
     } else {
-      _x += _pixelstep;	// Back where we started in X
+      _x -= 2*_pixelstep;	// Try going a step in -X
+      if ( _fitness < (new_fitness = check_fitness(image)) ) {
+	_fitness = new_fitness;
+	betterxy = true;
+      } else {
+	_x += _pixelstep;	// Back where we started in X
+      }
     }
   }
 
   // Try going in +/- Y and see if we find a better location.
-  _y += _pixelstep;	// Try going a step in +Y
-  if ( _fitness < (new_fitness = check_fitness(image)) ) {
-    _fitness = new_fitness;
-    betterxy = true;
-  } else {
-    _y -= 2*_pixelstep;	// Try going a step in -Y
+  if (do_y) {
+    _y += _pixelstep;	// Try going a step in +Y
     if ( _fitness < (new_fitness = check_fitness(image)) ) {
       _fitness = new_fitness;
       betterxy = true;
     } else {
-      _y += _pixelstep;	// Back where we started in Y
+      _y -= 2*_pixelstep;	// Try going a step in -Y
+      if ( _fitness < (new_fitness = check_fitness(image)) ) {
+	_fitness = new_fitness;
+	betterxy = true;
+      } else {
+	_y += _pixelstep;	// Back where we started in Y
+      }
     }
   }
 
   // Try going in +/- radius and see if we find a better value.
   // Don't let the radius get below 1 pixel.
-  _rad += _radstep;	// Try going a step in +radius
-  if ( _fitness < (new_fitness = check_fitness(image)) ) {
-    _fitness = new_fitness;
-    betterrad = true;
-  } else {
-    _rad -= 2*_radstep;	// Try going a step in -radius
-    if ( (_rad >= 1) && (_fitness < (new_fitness = check_fitness(image))) ) {
+  if (do_r) {
+    _rad += _radstep;	// Try going a step in +radius
+    if ( _fitness < (new_fitness = check_fitness(image)) ) {
       _fitness = new_fitness;
       betterrad = true;
     } else {
-      _rad += _radstep;	// Back where we started in radius
+      _rad -= 2*_radstep;	// Try going a step in -radius
+      if ( (_rad >= 1) && (_fitness < (new_fitness = check_fitness(image))) ) {
+	_fitness = new_fitness;
+	betterrad = true;
+      } else {
+	_rad += _radstep;	// Back where we started in radius
+      }
     }
   }
 
@@ -214,6 +222,31 @@ void  disk_spot_tracker::optimize(const image_wrapper &image, double &x, double 
       _pixelstep /= 2;
     } else if ( _radstep > _radacc ) {
       _radstep /= 2;
+    } else {
+      break;
+    }
+  } while (true);
+}
+
+// Continue to optimize until we can't do any better (the step size drops below
+// the minimum.  Only try moving in X and Y, not changing the radius,
+void  disk_spot_tracker::optimize_xy(const image_wrapper &image, double &x, double &y)
+{
+  // Set the step sizes to a large value to start with
+  _pixelstep = 2;
+
+  // Find out what our current value is (presumably this is a new image)
+  _fitness = check_fitness(image);
+
+  // Try with ever-smaller steps until we reach the smallest size and
+  // can't do any better.
+  do {
+    // Repeat the optimization steps until we can't do any better.
+    while (take_single_optimization_step(image, x, y, true, true, false)) {};
+
+    // Try to see if we reducing the step sizes helps.
+    if ( _pixelstep > _pixelacc ) {
+      _pixelstep /= 2;
     } else {
       break;
     }

@@ -1,3 +1,26 @@
+2002-10-10  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+        * base_camera_server.h : Adds parameter to PPM write for 16-bit files.
+        * directx_camera_server.cpp : Adds 16-bit PPM write.
+                Adds the ability to pause the video (mostly for use by the derived
+                class that reads from stored video files).
+        * directx_camera_server.h : Same.
+        * directx_videofile_server.cpp : Trying to make it work better.  It still
+                skips to the end of the file when you pause.  Some streams still
+                don't play past the first frame.
+        * directx_videofile_server.h : Adds controls for play, rewind, pause.
+        * roper_server.cpp : Adds 16-bit write for PPM files.
+                Renames parameter to make sure milliseconds is explicit.
+        * roper_server.h : Same.
+        * spot_tracker.cpp : Adds routine to optimize in X,Y but not radius.
+        * spot_tracker.h : Same.
+        * stack_collector.cpp : Adds "Sixteen bits" button for image collection.
+                Stops the stack in the middle if "snap" unchecked or "quit".
+        * video_spot_tracker.cpp : 
+                Adds play/rewind buttons for when open a video file.
+        * test_directx_library.cpp : New constructor parameter.
+        * video_tempimager_server.cpp : New constructor parameter.
+
 2002-09-13  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* stack_collector.cpp : Modified to use new vrpn_Analog_Output.  Not tested.

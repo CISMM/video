@@ -136,6 +136,16 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
   ConnectTwoFilters(_pGraph, _pSampleGrabberFilter, pNull);
   
   //-------------------------------------------------------------------
+  // Find the control that lets you seek in the media (rewind uses this).
+
+  if (FAILED(_pGraph->QueryInterface(IID_IMediaSeeking, (void **)&_pMediaSeeking))) {
+    fprintf(stderr,"directx_videofile_server::open_and_find_parameters(): Can't create media seeker\n");
+    pSrc->Release();
+    pNull->Release();
+    return false;
+  }
+
+  //-------------------------------------------------------------------
   // Find _num_rows and _num_columns, which is the maximum size.
   _pGrabber->GetConnectedMediaType(&mt);
   VIDEOINFOHEADER *pVih;
@@ -190,10 +200,10 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
   return true;
 }
 
-directx_videofile_server::directx_videofile_server(const char *filename)
+directx_videofile_server::directx_videofile_server(const char *filename) :
+  _pMediaSeeking(NULL)
 {
   //---------------------------------------------------------------------
-
   if (!open_and_find_parameters(filename)) {
     fprintf(stderr, "directx_videofile_server::directx_videofile_server(): Cannot open file %s\n",
       filename);
@@ -215,6 +225,9 @@ directx_videofile_server::directx_videofile_server(const char *filename)
   // No image in memory yet.
   _minX = _minY = _maxX = _maxY = 0;
 
+  //---------------------------------------------------------------------
+  // Set mode to running, status to good and return
+  _mode = 0;
   _status = true;
 }
 
@@ -223,9 +236,41 @@ directx_videofile_server::directx_videofile_server(const char *filename)
 
 void  directx_videofile_server::close_device(void)
 {
+  if (_pMediaSeeking) { _pMediaSeeking->Release(); }
 }
   
 directx_videofile_server::~directx_videofile_server(void)
 {
   close_device();
+}
+
+/** Begin playing the video file from the current location. */
+void  directx_videofile_server::play(void)
+{
+  _pMediaControl->Run();
+  _mode = 0;  // Running mode
+}
+
+/** Pause the video file at the current location. */
+void  directx_videofile_server::pause(void)
+{
+  _pMediaControl->Stop();
+  _mode = 1;  // Paused mode
+  // XXX For some reason, this skips to the end of the stream
+  // when it pauses.  If we try to read the current position
+  // and seek there, it seems to get the end position as the
+  // current position.  However, rewind seems to do the right
+  // thing.
+}
+
+/** Rewind the videofile to the beginning and pause it. */
+void  directx_videofile_server::rewind(void)
+{
+  LONGLONG pos = 0;
+
+  _pMediaControl->Stop();
+  // Seek to the beginning
+  _pMediaSeeking->SetPositions(&pos, AM_SEEKING_AbsolutePositioning,
+      NULL, AM_SEEKING_NoPositioning);
+  pause();
 }

@@ -4,7 +4,7 @@
 
 void main(unsigned argc, char *argv[])
 {
-  directx_camera_server	server;
+  directx_camera_server	server(1);
 
   if (!server.working()) {
     fprintf(stderr,"Cannot open camera\n");

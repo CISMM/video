@@ -9,7 +9,7 @@
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.01";
+const char *Version_string = "01.02";
 
 double  g_focus = 0;    // Current setting for the microscope focus
 bool	g_focus_changed = false;
@@ -24,8 +24,9 @@ Tclvar_float_with_scale	g_focusDown("focus_lower_microns", "", -20, 0, -5);
 Tclvar_float_with_scale	g_focusUp("focus_raise_microns", "", 0, 20, 5);
 Tclvar_float_with_scale	g_focusStep("focus_step_microns", "", (float)0.05, 5, 1);
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
-Tclvar_int_with_button	g_snap("snap","");
 Tclvar_int_with_button	g_quit("quit","");
+Tclvar_int_with_button	g_snap("snap","");
+Tclvar_int_with_button	g_sixteenbits("sixteen_bits","");
 
 
 // Handles updates for the analog from the microscope by setting the
@@ -156,7 +157,20 @@ int main(unsigned argc, char *argv[])
 	sprintf(name, "output_image_%ld.pgm", (long)focusloop);
 	printf("Writing image to %s\n", name);
 	roper->read_image_to_memory((int)g_minX,(int)g_maxX, (int)g_minY,(int)g_maxY, g_exposure);
-	roper->write_memory_to_ppm_file(name);
+	roper->write_memory_to_ppm_file(name, g_sixteenbits != 0);
+
+	//------------------------------------------------------------
+	// This must be done in any Tcl app, to allow Tcl/Tk to handle
+	// events.
+
+	while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
+
+	//------------------------------------------------------------
+	// If the user has deselected the "snap" or pressed "quit" then
+	// break out of the loop.
+	if ( g_quit || !g_snap) {
+	  break;
+	}
       }
 
       // Put the focus back where it started.
