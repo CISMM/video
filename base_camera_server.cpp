@@ -106,6 +106,13 @@ copy_of_image::copy_of_image(const image_wrapper &copyfrom) :
   *this = copyfrom;
 }
 
+copy_of_image::copy_of_image(const copy_of_image &copyfrom) :
+  _minx(-1), _maxx(-1), _miny(-1), _maxy(-1),
+  _numx(-1), _numy(-1), _image(NULL), _numcolors(0)
+{
+  *this = (const image_wrapper &)copyfrom;
+}
+
 void copy_of_image::operator=(const image_wrapper &copyfrom)
 {
   // If the dimensions don't match, then get a new image buffer
@@ -113,7 +120,7 @@ void copy_of_image::operator=(const image_wrapper &copyfrom)
   copyfrom.read_range(minx, maxx, miny, maxy);
   if ( (minx != _minx) || (maxx != _maxx) || (miny != _miny) || (maxy != _maxy) ||
        (get_num_colors() != copyfrom.get_num_colors()) ) {
-    if (_image != NULL) { delete [] _image; }
+    if (_image != NULL) { delete [] _image; _image = NULL; }
     _minx = minx; _maxx = maxx; _miny = miny; _maxy = maxy;
     _numx = (_maxx - _minx) + 1;
     _numy = (_maxy - _miny) + 1;
@@ -142,7 +149,7 @@ void copy_of_image::operator=(const image_wrapper &copyfrom)
 copy_of_image::~copy_of_image()
 {
   if (_image) {
-    delete [] _image;
+    delete [] _image; _image = NULL;
   }
   image_wrapper::~image_wrapper();
 }
@@ -192,7 +199,7 @@ subtracted_image::subtracted_image(const image_wrapper &first, const image_wrapp
     return;
   }
 
-  // Copy the values from the images, offsetting aas we go
+  // Subtract the values from the images, offsetting as we go
   int x, y;
   unsigned c;
   for (x = _minx; x <= _maxx; x++) {
@@ -207,7 +214,7 @@ subtracted_image::subtracted_image(const image_wrapper &first, const image_wrapp
 subtracted_image::~subtracted_image()
 {
   if (_image) {
-    delete [] _image;
+    delete [] _image; _image = NULL;
   }
   image_wrapper::~image_wrapper();
 }
@@ -223,6 +230,71 @@ bool  subtracted_image::read_pixel(int x, int y, double &result, unsigned rgb) c
 }
 
 double	subtracted_image::read_pixel_nocheck(int x, int y, unsigned rgb) const
+{
+  if (_image == NULL) {
+    return 0.0;
+  }
+  return _image[index(x, y, rgb)];
+}
+
+averaged_image::averaged_image(const image_wrapper &first, const image_wrapper &second) :
+  _minx(-1), _maxx(-1), _miny(-1), _maxy(-1),
+  _numx(-1), _numy(-1), _image(NULL), _numcolors(0)
+{
+  // Check to make sure that the two images match.
+  int minx, miny, maxx, maxy;
+  first.read_range(minx, maxx, miny, maxy);
+  int minx2, miny2, maxx2, maxy2;
+  second.read_range(minx2, maxx2, miny2, maxy2);
+  if ( (first.get_num_colors() != second.get_num_colors()) ||
+       (minx != minx2) || (miny != miny2) || (maxx != maxx2) || (maxy != maxy2) ) {
+    fprintf(stderr,"averaged_image::averaged_image(): Two images differ in dimension\n");
+    return;
+  }
+
+  // Get our image buffer
+  _minx = minx; _maxx = maxx; _miny = miny; _maxy = maxy;
+  _numx = (_maxx - _minx) + 1;
+  _numy = (_maxy - _miny) + 1;
+  _numcolors = first.get_num_colors();
+  _image = new double[_numx * _numy * get_num_colors()];
+  if (_image == NULL) {
+    _numx = _numy = _minx = _maxx = _miny = _maxy = _numcolors = 0;
+    fprintf(stderr,"averaged_image::averaged_image(): Out of memory\n");
+    return;
+  }
+
+  // Average the values from the images, offsetting as we go
+  int x, y;
+  unsigned c;
+  for (x = _minx; x <= _maxx; x++) {
+    for (y = _miny; y <= _maxy; y++) {
+      for (c = 0; c < get_num_colors(); c++) {
+	_image[index(x, y, c)] = ( first.read_pixel_nocheck(x, y, c) + second.read_pixel_nocheck(x, y, c) ) / 2;
+      }
+    }
+  }
+}
+
+averaged_image::~averaged_image()
+{
+  if (_image) {
+    delete [] _image; _image = NULL;
+  }
+  image_wrapper::~image_wrapper();
+}
+
+bool  averaged_image::read_pixel(int x, int y, double &result, unsigned rgb) const
+{
+  if ( (_image == NULL) || (x < _minx) || (x > _maxx) || (y < _miny) || (y > _maxy) ) {
+    result = 0.0;
+    return false;
+  }
+  result = _image[index(x, y, rgb)];
+  return true;
+}
+
+double	averaged_image::read_pixel_nocheck(int x, int y, unsigned rgb) const
 {
   if (_image == NULL) {
     return 0.0;
@@ -265,7 +337,7 @@ image_metric::image_metric(const image_wrapper &copyfrom) :
 image_metric::~image_metric()
 {
   if (_image) {
-    delete [] _image;
+    delete [] _image; _image = NULL;
   }
   image_wrapper::~image_wrapper();
 }

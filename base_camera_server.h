@@ -131,6 +131,9 @@ public:
   copy_of_image(const image_wrapper &copyfrom);
   ~copy_of_image();
 
+  // Override the default copy constructor so that it calls the above, deep copy.
+  copy_of_image(const copy_of_image &copyfrom);
+
   // Tell what the range is for the image.
   virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
     minx = _minx; miny = _miny; maxx = _maxx; maxy = _maxy;
@@ -149,6 +152,9 @@ public:
 
   /// Copy new values from the image that is passed in, reallocating if needed
   void	operator= (const image_wrapper &copyfrom);
+
+  // Override default copy behavior to avoid shallow copy
+  const copy_of_image &operator= (const copy_of_image &copyfrom) { *this = (const image_wrapper &)copyfrom; return *this; }
 
 protected:
   int _minx, _maxx, _miny, _maxy;   //< Coordinates for the pixels (copied from other image)
@@ -373,8 +379,42 @@ public:
   /// Read a pixel from the image into a double; Don't check boundaries.
   virtual double read_pixel_nocheck(int x, int y, unsigned rgb = 0) const;
 
-  /// Copy new values from the image that is passed in, reallocating if needed
-  void	operator= (const image_wrapper &copyfrom);
+protected:
+  int _minx, _maxx, _miny, _maxy;   //< Coordinates for the pixels (copied from other image)
+  int _numx, _numy;		    //< Calculated based on the above min/max values
+  int _numcolors;		    //< How many colors do we have
+  double  *_image;		    //< Holds the values copied from the other image
+
+  inline int index(int x, int y, unsigned rgb) const {
+    int xindex = x - _minx;
+    int yindex = y - _miny;
+    return rgb + get_num_colors() * (xindex + _numx * yindex);
+  };
+};
+
+//----------------------------------------------------------------------------
+// Concrete version of above virtual base class that creates itself by averaging
+// two images.  New = (first + second) / 2;
+
+class averaged_image: public image_wrapper {
+public:
+  averaged_image(const image_wrapper &first, const image_wrapper &second);
+  ~averaged_image();
+
+  // Tell what the range is for the image.
+  virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
+    minx = _minx; miny = _miny; maxx = _maxx; maxy = _maxy;
+  }
+
+  /// Return the number of colors that the image has
+  virtual unsigned  get_num_colors() const { return _numcolors; };
+
+  /// Read a pixel from the image into a double; return true if the pixel
+  // was in the image, false if it was not.
+  virtual bool	read_pixel(int x, int y, double	&result, unsigned rgb = 0) const;
+
+  /// Read a pixel from the image into a double; Don't check boundaries.
+  virtual double read_pixel_nocheck(int x, int y, unsigned rgb = 0) const;
 
 protected:
   int _minx, _maxx, _miny, _maxy;   //< Coordinates for the pixels (copied from other image)

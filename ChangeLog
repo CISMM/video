@@ -1,3 +1,24 @@
+2004-11-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* base_camera_server.cpp : Override the default copy
+		constructor on the copy_of_image class so that
+		it does a deep copy.  Added an everaged_image
+		class that averages two images.
+	* base_camera_server.h : Same.
+	* cismm_video_optimizer.tcl : Added a control to subtract
+		the average of neighboring images from the current
+		image (attempt at Z sharpening).
+	* cismm_video_optimizer.cpp : Same.
+	* edt_library.dsp : Removed file not needed in new
+		version (3.3.3.5) of the EDT library.
+	* edt_server.cpp : Implemented the code to send a
+		message on a VRPN connection.
+	* edt_server.h : Changed the swap-lines default parameter
+		to false, because this bug was fixed in version
+		3.3.3.5 of the EDT library.
+	* video.dsw : Changed dependencies.
+	* video_tempimager_server.cpp : Added EDT as a camera type.
+
 2004-11-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* base_camera_server.cpp : Added virtual destructors to

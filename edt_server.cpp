@@ -229,10 +229,24 @@ bool  edt_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_
   // Make sure we have a valid, open device
   if (!_status) { return false; };
 
-  ///XXX;
-  fprintf(stderr,"edt_server::send_vrpn_image(): Not yet implemented\n");
-  return false;
+  unsigned y;
 
+  // Get a new image into the buffer.
+  _minX=_minY=0;
+  _maxX=_num_columns - 1;
+  _maxY=_num_rows - 1;
+  read_image_to_memory(_minX, _maxX, _minY, _maxY, (int)g_exposure);
+
+  // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION).
+  int nRowsPerRegion=vrpn_IMAGER_MAX_REGIONu8/_num_columns;
+  for(y=0; y<_num_rows; y+=nRowsPerRegion) {
+    svr->send_region_using_base_pointer(svrchan,0,_num_columns-1,y,__min(_num_rows,y+nRowsPerRegion)-1,
+      d_buffer, 1, _num_columns, _num_rows, true);
+    svr->mainloop();
+  }
+
+  // Mainloop the server connection (once per server mainloop, not once per object).
+  svrcon->mainloop();
   return true;
 }
 

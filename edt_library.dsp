@@ -105,10 +105,6 @@ SOURCE=C:\EDT\pdv\edt_xilinx.c
 # End Source File
 # Begin Source File
 
-SOURCE=C:\EDT\pdv\libddcam.c
-# End Source File
-# Begin Source File
-
 SOURCE=C:\EDT\pdv\libdvu.c
 # End Source File
 # Begin Source File

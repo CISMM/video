@@ -8,9 +8,10 @@
 #include  "roper_server.h"
 #include  "diaginc_server.h"
 #include  "directx_camera_server.h"
+#include  "edt_server.h"
 
 const int MAJOR_VERSION = 1;
-const int MINOR_VERSION = 0;
+const int MINOR_VERSION = 1;
 
 //-----------------------------------------------------------------
 // This section contains code to initialize the camera and read its
@@ -37,6 +38,13 @@ bool  init_camera_code(const char *type, int which = 1)
     g_camera = new diaginc_server(g_bincount);
     if (!g_camera->working()) {
       fprintf(stderr,"init_camera_code(): Can't open diaginc camera server\n");
+      return false;
+    }
+  } else if (!strcmp(type, "edt")) {
+    printf("Opening ETD Camera\n");
+    g_camera = new edt_server();
+    if (!g_camera->working()) {
+      fprintf(stderr,"init_camera_code(): Can't open EDT camera server\n");
       return false;
     }
   } else if (!strcmp(type, "directx")) {
@@ -131,7 +139,7 @@ void  Usage(const char *s)
   fprintf(stderr,"       -expose: Exposure time in milliseconds (default 250)\n");
   fprintf(stderr,"       -bin: How many pixels to average in x and y (default 1)\n");
   fprintf(stderr,"       -res: Resolution in x and y (default 320 200)\n");
-  fprintf(stderr,"       devicename: roper, diaginc, or directx (default is directx)\n");
+  fprintf(stderr,"       devicename: roper, edt, diaginc, or directx (default is directx)\n");
   fprintf(stderr,"       devicenum: Which (starting with 1) if there are multiple (default 1)\n");
   fprintf(stderr,"       logfilename: Name of file to store outgoing log in (default NULL)\n");
   exit(-1);

@@ -140,6 +140,8 @@ radiobutton .imagemix.subtract.mean -variable subtract -text subtract_mean -valu
 pack .imagemix.subtract.mean -anchor w
 radiobutton .imagemix.subtract.single -variable subtract -text subtract_single -value 4
 pack .imagemix.subtract.single -anchor w
+radiobutton .imagemix.subtract.neighbors -variable subtract -text subtract_neighbors -value 5
+pack .imagemix.subtract.neighbors -anchor w
 frame .imagemix.statistics
 pack .imagemix.statistics -side left
 

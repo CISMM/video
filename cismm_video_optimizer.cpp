@@ -79,6 +79,7 @@ const int SUBTRACT_MIN = 1;
 const int SUBTRACT_MAX = 2;
 const int SUBTRACT_MEAN = 3;
 const int SUBTRACT_SINGLE = 4;
+const int SUBTRACT_NEIGHBORS = 5;
 
 //--------------------------------------------------------------------------
 // Some classes needed for use in the rest of the program.
@@ -171,10 +172,13 @@ public:
 // global access to the objects we will be using.
 
 char  *g_device_name = NULL;			  //< Name of the device to open
-base_camera_server  *g_camera = NULL;			  //< Camera used to get an image
-image_wrapper	    *g_image_to_display = NULL;	  //< Image that we're supposed to display.
+base_camera_server  *g_camera = NULL;		  //< Camera used to get an image
+image_wrapper	    *g_image_to_display = NULL;	  //< Image that we're supposed to display
 copy_of_image	    *g_last_image = NULL;	  //< Copy of the last image we had, if any
+copy_of_image	    *g_this_image = NULL;	  //< Copy of the current image we are using
+copy_of_image	    *g_next_image = NULL;	  //< Copy of the next image we will use
 copy_of_image	    *g_subtract_image = NULL;	  //< Image to subtract from the current image
+averaged_image	    *g_averaged_image = NULL;	  //< Averaged image for when we are going neighbor subtraction
 image_metric	    *g_min_image = NULL;	  //< Accumulates minimum of images
 image_metric	    *g_max_image = NULL;	  //< Accumulates maximum of images
 image_metric	    *g_mean_image = NULL;	  //< Accumulates mean of images
@@ -782,17 +786,6 @@ void myIdleFunc(void)
     g_full_area = 0;
   }
 
-  // If we're doing a search for local maximum during optimization, then make a
-  // copy of the previous image before reading a new one.
-
-  if (g_search_radius > 0) {
-    if (g_last_image == NULL) {
-      g_last_image = new copy_of_image(*g_camera);
-    } else {
-      *g_last_image = *g_camera;
-    }
-  }
-
   // Read an image from the camera into memory, within a structure that
   // is wrapped by an image_wrapper object that the tracker can use.
   // Tell Glut that it can display an image.
@@ -811,23 +804,72 @@ void myIdleFunc(void)
       g_video_valid = false;
     }
   } else {
-    // Got a valid video frame; can log it.  Add to the frame number.
+    // Got a valid video frame.
+    
+    // Make a copy of "this" frame into the last frame.
+    if (g_last_image == NULL) {
+      //printf("XXX Creating g_last_image\n");
+      g_last_image = new copy_of_image(*g_this_image);
+    } else {
+      //printf("XXX Copying g_last_image\n");
+      *g_last_image = *g_this_image;
+    }
+
+    // If we already have a valid "next" frame, store it into "this"
+    // frame.  If not, then store the just-read frame as the "this"
+    // frame.
+
+    if (g_next_image) {
+      *g_this_image = *g_next_image;
+    } else {
+      *g_this_image = *g_camera;
+    }
+
+    // If we already have a valid "next" buffer, then store the just-
+    // read image there.  If we do not, then try to read another new
+    // frame to put into the next image, to prime the pump.
+    if (g_next_image) {
+      *g_next_image = *g_camera;
+    } else {
+      if (g_camera->read_image_to_memory(0,-1, 0,-1, g_exposure)) {
+	g_next_image = new copy_of_image(*g_camera);
+      }
+    }
+
+    // Say that we have a valid frame (triggers some calculations)
+    // and bump the current frame number.
     g_video_valid = true;
     g_frame_number++;
   }
+
+  // If we didn't get a valid video frame, but we have a valid next frame,
+  // then we shift from the "next" image to this one and delete the next
+  // image.
+  // XXX Bug: When we pause the video, this will result in the next image
+  // being played out, and then re-priming when we start up again, which will
+  // cause a skip in the logged output for any mode that uses the next image
+  // in its calculation.
+  if (!g_video_valid && g_next_image) {
+    *g_this_image = *g_next_image;
+    delete g_next_image;
+    g_next_image = NULL;
+    g_video_valid = true;
+    g_frame_number++;
+  }
+
   g_ready_to_display = true;
 
   // If we have a valid video frame, do any required accumulation into
   // the image statistic buffers.
   if (g_video_valid) {
     if (g_min_image) {
-      (*g_min_image) += *g_camera;
+      (*g_min_image) += *g_this_image;
     }
     if (g_max_image) {
-      (*g_max_image) += *g_camera;
+      (*g_max_image) += *g_this_image;
     }
     if (g_mean_image) {
-      (*g_mean_image) += *g_camera;
+      (*g_mean_image) += *g_this_image;
     }
   }
 
@@ -835,7 +877,7 @@ void myIdleFunc(void)
   // image to display at the camera image.  If so, point the image to display
   // at the calculated image.
   if (g_subtract == SUBTRACT_NONE) {
-    g_image_to_display = g_camera;
+    g_image_to_display = g_this_image;
   } else {
     image_wrapper *img = NULL;
     switch (g_subtract) {
@@ -851,6 +893,23 @@ void myIdleFunc(void)
     case SUBTRACT_MEAN:
       img = g_mean_image;
       break;
+    case SUBTRACT_NEIGHBORS:
+      // Replace the subtraction image with the average of the next and
+      // last images, if they both exist -- then point at the subtracted
+      // image as the one to display.
+      if (g_averaged_image) {
+	delete g_averaged_image;
+	g_averaged_image = NULL;
+      }
+      if (g_last_image && g_next_image) {
+	g_averaged_image = new averaged_image(*g_last_image, *g_next_image);
+	img = g_averaged_image;
+      } else {
+	// If we don't have the images needed to compute the average, then
+	// subtract the current image (making it black).
+	img = g_this_image;
+      }
+      break;
     };
     if (img) {
       // Get rid of the old calculated image, if we have one
@@ -859,7 +918,7 @@ void myIdleFunc(void)
       // The offset is determined by the maximum value that can be displayed in an
       // image with half as many values as the present image.
       double offset = (1 << (((unsigned)(g_bitdepth))-1) ) - 1;
-      g_calculated_image = new subtracted_image(*g_camera, *img, offset);
+      g_calculated_image = new subtracted_image(*g_this_image, *img, offset);
       if (g_calculated_image == NULL) {
 	fprintf(stderr, "Out of memory when calculating image\n");
 	cleanup();
@@ -873,7 +932,7 @@ void myIdleFunc(void)
     }
   };
 
-  // Decide which image to display.  For the calculated image, leave things
+  // Decide which image to display.  For calculated images, leave things
   // alone.  For the others, set to the appropriate image.
   switch (g_display_which_image) {
   case DISPLAY_COMPUTED:
@@ -966,12 +1025,12 @@ void myIdleFunc(void)
 	int x_offset, y_offset;
 	int best_x_offset = 0;
 	int best_y_offset = 0;
-	double best_value = max_find.check_fitness(*g_camera);
+	double best_value = max_find.check_fitness(*g_this_image);
 	for (x_offset = -floor(g_search_radius); x_offset <= floor(g_search_radius); x_offset++) {
 	  for (y_offset = -floor(g_search_radius); y_offset <= floor(g_search_radius); y_offset++) {
 	    if ( (x_offset * x_offset) + (y_offset * y_offset) <= radsq) {
 	      max_find.set_location(x_base + x_offset, y_base + y_offset);
-	      double val = max_find.check_fitness(*g_camera);
+	      double val = max_find.check_fitness(*g_this_image);
 	      if (val > best_value) {
 		best_x_offset = x_offset;
 		best_y_offset = y_offset;
@@ -987,7 +1046,7 @@ void myIdleFunc(void)
       }
 
       // Here's where the tracker is optimized to its new location
-      (*loop)->tracker()->optimize_xy(*g_camera, x, y, (*loop)->tracker()->get_x(), (*loop)->tracker()->get_y() );
+      (*loop)->tracker()->optimize_xy(*g_this_image, x, y, (*loop)->tracker()->get_x(), (*loop)->tracker()->get_y() );
     }
 
     last_optimized_frame_number = g_frame_number;
@@ -1031,12 +1090,17 @@ void myIdleFunc(void)
     // the stream and then pause (by clearing play).  This has
     // to come after the checking for stop play above so that the
     // video doesn't get paused.  Also, reset the frame count
-    // when we rewind.
+    // when we rewind and delete the "next" image, which does
+    // not exist anymore.
     if (*g_rewind) {
       *g_play = 0;
       *g_rewind = 0;
       g_video->rewind();
       g_frame_number = -1;
+      if (g_next_image) {
+	delete g_next_image;
+	g_next_image = NULL;
+      }
     }
   }
 
@@ -1386,7 +1450,7 @@ void  subtract_changed(int newvalue, void *)
     g_subtract_image = NULL;
   }
   if (newvalue == SUBTRACT_SINGLE) {
-    g_subtract_image = new copy_of_image(*g_camera);
+    g_subtract_image = new copy_of_image(*g_this_image);
   }
 
   switch (newvalue) {
@@ -1404,7 +1468,7 @@ void  accumulate_min_changed(int newvalue, void *)
 {
   if (newvalue == 1) {
     if (!g_min_image) {
-      g_min_image = new minimum_image(*g_camera);
+      g_min_image = new minimum_image(*g_this_image);
     }
   }
 }
@@ -1417,7 +1481,7 @@ void  accumulate_max_changed(int newvalue, void *)
 {
   if (newvalue == 1) {
     if (!g_max_image) {
-      g_max_image = new maximum_image(*g_camera);
+      g_max_image = new maximum_image(*g_this_image);
     }
   }
 }
@@ -1430,7 +1494,7 @@ void  accumulate_mean_changed(int newvalue, void *)
 {
   if (newvalue == 1) {
     if (!g_mean_image) {
-      g_mean_image = new mean_image(*g_camera);
+      g_mean_image = new mean_image(*g_this_image);
     }
   }
 }
@@ -1620,6 +1684,22 @@ int main(int argc, char *argv[])
     cleanup();
     exit(-1);
   }
+  // Verify that the camera is working.
+  if (!g_camera->working()) {
+    fprintf(stderr,"Could not establish connection to camera\n");
+    if (g_camera) { delete g_camera; g_camera = NULL; }
+    cleanup();
+    exit(-1);
+  }
+
+  g_this_image = new copy_of_image(*g_camera);
+  if (g_this_image == NULL) {
+    fprintf(stderr,"Cannot create current-copy image\n");
+    if (g_camera) { delete g_camera; g_camera = NULL; }
+    cleanup();
+    exit(-1);
+  }
+
   if (g_video) {  // Put these in a separate control panel?
     // Start out paused at the beginning of the file.
     g_play = new Tclvar_int_with_button("play_video","",0);
@@ -1650,17 +1730,6 @@ int main(int argc, char *argv[])
 	    return(-1);
     }
   }
-
-  // Verify that the camera is working.
-  if (!g_camera->working()) {
-    fprintf(stderr,"Could not establish connection to camera\n");
-    if (g_camera) { delete g_camera; g_camera = NULL; }
-    cleanup();
-    exit(-1);
-  }
-
-  // Display the camera image until further notice.
-  g_image_to_display = g_camera;
 
   //------------------------------------------------------------------
   // Initialize the controls for the clipping based on the size of

@@ -2,7 +2,11 @@
 
 class edt_server : public base_camera_server {
 public:
-  edt_server(bool swap_lines = true, unsigned num_buffers = 1);
+  // Version 3303 of the library would flip every other line
+  // improperly on our Pulnix cameras, so I had this swap_lines
+  // entry, and it defaulted to true.  Version 3335 of the
+  // drivers fixes this, so the default is now false.
+  edt_server(bool swap_lines = false, unsigned num_buffers = 1);
   virtual ~edt_server(void);
 
   /// Read an image to a memory buffer.  Exposure time is in milliseconds.
