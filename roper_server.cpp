@@ -531,7 +531,6 @@ bool	roper_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &va
   return true;
 }
 
-// XXX This routine needs to be tested.
 bool roper_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
 {
     _minX=_minY=0;
@@ -553,10 +552,12 @@ bool roper_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized
     int nRowsPerRegion = vrpn_IMAGER_MAX_REGIONu8/(num_x*sizeof(vrpn_uint8)) - 1;
     unsigned y;
     //XXX This is hacked to send 8-bit values. Need to modify reader to handle 16-bit ints.
+    // For these, stride will be 1 and offset will be 0, and the code will use memcpy() to copy the values.
     const int stride = 2;
+    const int offset = 0;
     for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
       svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1,
-	(uns8 *)_memory, stride, num_x * stride);
+	(uns8 *)_memory + offset, stride, num_x * stride);
       svr->mainloop();
     }
 

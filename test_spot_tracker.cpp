@@ -2,7 +2,6 @@
 #include  <stdlib.h>
 #include  <stdio.h>
 #include  "spot_tracker.h"
-#include  "bessel.h"
 
 // Hacked version of gettimeofday() from VRPN.
 #ifdef	_WIN32

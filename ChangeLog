@@ -1,3 +1,14 @@
+2003-11-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* airy_maker.cpp : Set range on slider to be larger.  Changed the
+		way things are drawn to pull everything into one display
+		routine for the pixel-vs-airy image.  Draws the pixel-vs-
+		airy for both X and Y.
+	* roper_server.cpp : Fixes the stride calculations.
+	* video_spot_tracker.cpp : Adds a parameter to control the
+		resolution to which the tracker tracks.
+	* test_spot_tracker.cpp : Removed un-needed include.
+
 2003-11-10  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* airey_maker.cpp : Code to build an airy disk and lay it out with

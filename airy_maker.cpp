@@ -41,7 +41,7 @@ int	g_whichDragAction;		  //< What action to take for mouse drag
 // Tcl controls and displays
 void  logfilename_changed(char *newvalue, void *);
 Tclvar_float_with_scale	g_Wavelength("wavelength_nm", ".kernel.wavelength", 300, 750, 550);
-Tclvar_float_with_scale	g_PixelSpacing("pixelSpacing_nm", ".kernel.pixel", 10, Window_Size_X/4, 10);
+Tclvar_float_with_scale	g_PixelSpacing("pixelSpacing_nm", ".kernel.pixel", 20, Window_Size_X/4, 50);
 Tclvar_float_with_scale	g_PixelHidden("pixelFracHidden", ".kernel.pixelhide", 0, 0.5, 0.1);
 Tclvar_float_with_scale	g_Radius("aperture_nm", "", 1000, 3000, 1000);
 Tclvar_int_with_button	g_quit("quit","");
@@ -56,14 +56,13 @@ static void  cleanup(void)
   printf("Exiting\n");
 }
 
-void myDisplayFunc(void)
+void drawSideViewVsPixels(
+  double width,		//< Width in pixels of the screen.  We draw from -1 to 1 in X, 0 to 1 in Y
+  double units,		//< Converts from Pixel units to screen-space units
+  double pixelSpacing,	//< How far in screen pixels between imager pixels
+  double pixelFrac)	//< What fraction of imager pixels are not active
 {
-  float	loop;	  // So we don't get integer math on coordinate
-
-  // Clear the window and prepare to draw in the back buffer
-  glDrawBuffer(GL_BACK);
-  glClearColor(0.5, 0.5, 0.5, 0.0);
-  glClear(GL_COLOR_BUFFER_BIT);
+  float	loop;	  // So we don't get integer math on coordinates
 
   // Draw a green area tracing out a side view of the diffraction
   // pattern as it goes radially away from the center.  This is a
@@ -73,7 +72,7 @@ void myDisplayFunc(void)
   glColor3f(0.5,0.7,0.5);
   glBegin(GL_LINES);
   double valAtZero = FraunhoferIntensity(g_Radius/1e9, 0, g_Wavelength/1e9);
-  for (loop = -1; loop <= 1.0; loop += 1/(Window_Size_X/2.0)) {
+  for (loop = -1; loop <= 1.0; loop += 1/(width/2.0)) {
     glVertex3f( loop,
 		FraunhoferIntensity(g_Radius/1e9, loop, g_Wavelength/1e9) / valAtZero,
 		0.0 );
@@ -84,23 +83,23 @@ void myDisplayFunc(void)
   glEnd();
 
   // Obscure that portion of the pattern that lies behind the hidden parts
-  // of the pixels.  It starts on half-pixel boundaries and draws quads to hide
+  // of the pixels.  It starts on pixel boundaries and draws quads to hide
   // the portion of the pixel that can't be seen.
   glColor3f(0.5,0.5,0.5);   // Set to the background color
-  double pixelStepInScreen = 1/(Window_Size_X/2.0) * (g_PixelSpacing/1e9) * Window_Units_X;
+  double pixelStepInScreen = 1/(width/2.0) * (pixelSpacing/1e9) * units;
   for (loop = pixelStepInScreen/2; loop <= 1.0; loop += pixelStepInScreen) {
     // Draw a quad to obscure the middle of this pixel.  Draw one for positive side of
     // zero and one for negative size of zero.
     glBegin(GL_QUADS);
-      glVertex3f( loop - 0.5*(pixelStepInScreen*g_PixelHidden) , -1, 0.0 );
-      glVertex3f( loop + 0.5*(pixelStepInScreen*g_PixelHidden) , -1, 0.0 );
-      glVertex3f( loop + 0.5*(pixelStepInScreen*g_PixelHidden) ,  1, 0.0 );
-      glVertex3f( loop - 0.5*(pixelStepInScreen*g_PixelHidden) ,  1, 0.0 );
+      glVertex3f( loop - 0.5*(pixelStepInScreen*pixelFrac) , 0, 0.0 );
+      glVertex3f( loop + 0.5*(pixelStepInScreen*pixelFrac) , 0, 0.0 );
+      glVertex3f( loop + 0.5*(pixelStepInScreen*pixelFrac) ,  1, 0.0 );
+      glVertex3f( loop - 0.5*(pixelStepInScreen*pixelFrac) ,  1, 0.0 );
 
-      glVertex3f( -loop - 0.5*(pixelStepInScreen*g_PixelHidden) , -1, 0.0 );
-      glVertex3f( -loop + 0.5*(pixelStepInScreen*g_PixelHidden) , -1, 0.0 );
-      glVertex3f( -loop + 0.5*(pixelStepInScreen*g_PixelHidden) ,  1, 0.0 );
-      glVertex3f( -loop - 0.5*(pixelStepInScreen*g_PixelHidden) ,  1, 0.0 );
+      glVertex3f( -loop - 0.5*(pixelStepInScreen*pixelFrac) , 0, 0.0 );
+      glVertex3f( -loop + 0.5*(pixelStepInScreen*pixelFrac) , 0, 0.0 );
+      glVertex3f( -loop + 0.5*(pixelStepInScreen*pixelFrac) ,  1, 0.0 );
+      glVertex3f( -loop - 0.5*(pixelStepInScreen*pixelFrac) ,  1, 0.0 );
     glEnd();
   }
 
@@ -111,7 +110,7 @@ void myDisplayFunc(void)
   glDisable(GL_LINE_SMOOTH);
   glColor3f(0.5,1,0.5);
   glBegin(GL_LINE_STRIP);
-  for (loop = -1; loop <= 1.0; loop += 1/(Window_Size_X/2.0)) {
+  for (loop = -1; loop <= 1.0; loop += 1/(width/2.0)) {
     glVertex3f( loop,
 		FraunhoferIntensity(g_Radius/1e9, loop, g_Wavelength/1e9) / valAtZero,
 		0.0 );
@@ -119,18 +118,71 @@ void myDisplayFunc(void)
   glEnd();
 
   // Draw tick marks showing the spacing of the pixels, and an axis.
+  // Note that the pixel boundaries are offset one half pixel from the center.
   glDisable(GL_LINE_SMOOTH);
   glColor3f(0.7,0.7,0.7);
   glBegin(GL_LINES);
   glVertex3f( -1, 0, 0);
   glVertex3f(  1, 0, 0);
-  for (loop = 0; loop <= 1.0; loop += 1/(Window_Size_X/2.0) * (g_PixelSpacing/1e9) * Window_Units_X) {
+  for (loop = pixelStepInScreen/2; loop <= 1.0; loop += pixelStepInScreen) {
     glVertex3f( loop, 0.05, 0.0 );
     glVertex3f( loop, -0.05, 0.0 );
     glVertex3f( -loop, 0.05, 0.0 );
     glVertex3f( -loop, -0.05, 0.0 );
   }
   glEnd();
+}
+
+void drawPixelGrid(
+  double width,		//< Width in pixels of the screen.  We draw from -1 to 1 in X and Y
+  double units,		//< Converts from Pixel units to screen-space units
+  double pixelSpacing)	//< How far in screen pixels between imager pixels
+{
+  double loop;
+  // Draw tick marks showing the spacing of the pixels.
+  // Note that the pixel boundaries are offset one half pixel from the center.
+  glDisable(GL_LINE_SMOOTH);
+  glColor3f(0.7,0.7,0.7);
+  glBegin(GL_LINES);
+  double pixelStepInScreen = 1/(width/2.0) * (pixelSpacing/1e9) * units;
+  for (loop = pixelStepInScreen/2; loop <= 1.0; loop += pixelStepInScreen) {
+    glVertex3f( loop, -1, 0.0 );    // +X line
+    glVertex3f( loop, 1, 0.0 );
+    glVertex3f( -loop, -1, 0.0 );   // -X line
+    glVertex3f( -loop, 1, 0.0 );
+    glVertex3f( -1, loop, 0.0 );    // +Y line
+    glVertex3f( 1, loop, 0.0 );
+    glVertex3f( -1, -loop, 0.0 );   // -Y line
+    glVertex3f( 1, -loop,0.0 );
+  }
+  glEnd();
+}
+
+void myDisplayFunc(void)
+{
+  // Clear the window and prepare to draw in the back buffer
+  glDrawBuffer(GL_BACK);
+  glClearColor(0.5, 0.5, 0.5, 0.0);
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  // Draw the curve vs. the X axis.
+  glLoadIdentity();
+  glScalef(0.5,1.0,1.0);
+  glTranslatef(-1.0, 0.0, 0.0);
+  drawSideViewVsPixels(Window_Size_X, Window_Units_X, g_PixelSpacing, g_PixelHidden);
+
+  // Draw the curve vs. the Y axis.
+  glLoadIdentity();
+  glScalef(1.0,0.5,1.0);
+  glTranslatef(0.0, -1.0, 0.0);
+  glRotatef(-90, 0,0,1);
+  drawSideViewVsPixels(Window_Size_X, Window_Units_X, g_PixelSpacing, g_PixelHidden);
+
+  // Draw the pixel grid.
+  glLoadIdentity();
+  glScalef(0.5,0.5,1.0);
+  glTranslatef(-1.0, -1.0, 0.0);
+  drawPixelGrid(Window_Size_X, Window_Units_X, g_PixelSpacing);
 
   // Swap buffers so we can see it.
   glutSwapBuffers();

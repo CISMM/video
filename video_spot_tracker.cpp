@@ -36,7 +36,7 @@ const int MAX_TRACKERS = 100; // How many trackers can exist (for VRPN's tracker
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.17";
+const char *Version_string = "01.18";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -61,6 +61,7 @@ vrpn_Connection	*g_client_connection = NULL;//< Connection on which to perform l
 // Tcl controls and displays
 void  logfilename_changed(char *newvalue, void *);
 void  rebuild_trackers(int newvalue, void *);
+void  rebuild_trackers(float newvalue, void *);
 //XXX X and Y range should match the image range, like the region size controls are.
 Tclvar_float_with_scale	g_X("x", "", 0, 1391, 0);
 Tclvar_float_with_scale	g_Y("y", "", 0, 1039, 0);
@@ -71,6 +72,7 @@ Tclvar_float_with_scale	*g_minY;
 Tclvar_float_with_scale	*g_maxY;
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
 Tclvar_float_with_scale	g_colorIndex("red_green_blue", "", 0, 2, 0);
+Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_trackers);
 Tclvar_int_with_button	g_invert("dark_spot",".kernel.invert",1, rebuild_trackers);
 Tclvar_int_with_button	g_interpolate("interpolate",".kernel.interp",1, rebuild_trackers);
 Tclvar_int_with_button	g_cone("cone",".kernel.cone",0, rebuild_trackers);
@@ -239,12 +241,12 @@ spot_tracker  *create_appropriate_tracker(void)
   if (g_symmetric) {
     g_interpolate = 1;
     g_cone = 0;
-    return new symmetric_spot_tracker_interp(g_Radius,(g_invert != 0), 0.05, 0.1);
+    return new symmetric_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1);
   } else if (g_cone) {
     g_interpolate = 1;
-    return new cone_spot_tracker_interp(g_Radius,(g_invert != 0), 0.05, 0.1);
+    return new cone_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1);
   } else if (g_interpolate) {
-    return new disk_spot_tracker_interp(g_Radius,(g_invert != 0), 0.05, 0.1);
+    return new disk_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1);
   } else {
     return new disk_spot_tracker(g_Radius,(g_invert != 0));
   }
@@ -787,6 +789,11 @@ void  rebuild_trackers(int newvalue, void *)
     (*loop)->set_location(x,y);
     (*loop)->set_radius(r);
   }
+}
+
+// This version is for float sliders
+void  rebuild_trackers(float newvalue, void *) {
+  rebuild_trackers((int)newvalue, NULL);
 }
 
 //--------------------------------------------------------------------------
