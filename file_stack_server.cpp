@@ -1,7 +1,6 @@
-// XXX To be able to read 16-bit images, we need to use a version of ImageMagick
+// To be able to read 16-bit images, we need to use a version of ImageMagick
 // that is compiled with -DQuantumDepth=16.  Then, we need to #define QuantumLeap
-// before includeing magick/api.h.  How to make this compatible with Nano and
-// other NSRG applications?
+// before includeing magick/api.h.
 
 #include "file_stack_server.h"
 #include "file_list.h"
@@ -42,6 +41,7 @@ d_yFileSize(0)
   // just opened.  If it is empty, then we've got a problem and should
   // bail.
   if (!file_list(filename, d_fileNames)) {
+    fprintf(stderr,"file_stack_server::file_stack_server(): Could not get file name list\n");
     return;
   }
 
@@ -155,13 +155,26 @@ bool  file_stack_server::read_image_from_file(const string filename)
 
   // Copy the pixels from the image into the buffer. Flip the image over in Y
   // to match the orientation we expect.
+  // If the image depth is only 8, then we need to treat the pixels as 8-bit
+  // values to undo the left-shift done by ImageMagick.
   unsigned x, y, flip_y;
-  for (y = 0; y < d_yFileSize; y++) {
-    flip_y = (d_yFileSize - 1) - y;
-    for (x = 0; x < d_xFileSize; x++) {
-      d_buffer[ (x + flip_y * d_xFileSize) * 3 + 0 ] = pixels[x + image->columns*y].red;
-      d_buffer[ (x + flip_y * d_xFileSize) * 3 + 1 ] = pixels[x + image->columns*y].green;
-      d_buffer[ (x + flip_y * d_xFileSize) * 3 + 2 ] = pixels[x + image->columns*y].blue;
+  if (image->depth == 16) {
+    for (y = 0; y < d_yFileSize; y++) {
+      flip_y = (d_yFileSize - 1) - y;
+      for (x = 0; x < d_xFileSize; x++) {
+	d_buffer[ (x + flip_y * d_xFileSize) * 3 + 0 ] = pixels[x + image->columns*y].red;
+	d_buffer[ (x + flip_y * d_xFileSize) * 3 + 1 ] = pixels[x + image->columns*y].green;
+	d_buffer[ (x + flip_y * d_xFileSize) * 3 + 2 ] = pixels[x + image->columns*y].blue;
+      }
+    }
+  } else {
+    for (y = 0; y < d_yFileSize; y++) {
+      flip_y = (d_yFileSize - 1) - y;
+      for (x = 0; x < d_xFileSize; x++) {
+	d_buffer[ (x + flip_y * d_xFileSize) * 3 + 0 ] = (unsigned char)(pixels[x + image->columns*y].red);
+	d_buffer[ (x + flip_y * d_xFileSize) * 3 + 1 ] = (unsigned char)(pixels[x + image->columns*y].green);
+	d_buffer[ (x + flip_y * d_xFileSize) * 3 + 2 ] = (unsigned char)(pixels[x + image->columns*y].blue);
+      }
     }
   }
 
@@ -205,7 +218,7 @@ bool  file_stack_server::read_image_to_memory(unsigned minX, unsigned maxX,
   return true;
 }
 
-/// Get pixels out of the memory buffer
+/// Get pixels out of the memory buffer.
 bool  file_stack_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint8 &val, int color) const
 {
   // Make sure we are within the range of allowed pixels
@@ -214,11 +227,14 @@ bool  file_stack_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint
   }
 
   // Fill in the pixel value, assuming pixels vary in X fastest in the file.
-  val = (vrpn_uint8)(d_buffer[ (X + Y * d_xFileSize) * 3 + color ] >> 8);
+  // We don't shift right here; that was already done if we read an 8-bit image.
+  // If we get a 16-bit image, we'll just send the lower-order bits.
+  val = (vrpn_uint8)(d_buffer[ (X + Y * d_xFileSize) * 3 + color ]);
 
   return true;
 }
 
+/// Get pixels out of the memory buffer.
 bool  file_stack_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &val, int color) const
 {
   // Make sure we are within the range of allowed pixels
@@ -235,7 +251,7 @@ bool  file_stack_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint
 bool  file_stack_server::write_memory_to_ppm_file(const char *filename, int gain, bool sixteen_bits) const
 {
   //XXX;
-  fprintf(stderr,"edt_pulnix_raw_file_server::write_memory_to_ppm_file(): Not yet implemented\n");
+  fprintf(stderr,"file_stack_server::write_memory_to_ppm_file(): Not yet implemented\n");
   return false;
 
   return true;
@@ -245,7 +261,7 @@ bool  file_stack_server::write_memory_to_ppm_file(const char *filename, int gain
 bool  file_stack_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
 {
   ///XXX;
-  fprintf(stderr,"edt_pulnix_raw_file_server::send_vrpn_image(): Not yet implemented\n");
+  fprintf(stderr,"file_stack_server::send_vrpn_image(): Not yet implemented\n");
   return false;
 
   return true;

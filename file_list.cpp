@@ -64,7 +64,7 @@ bool  file_list(const string file_name, list <string> &file_list)
   // numbers, then return with just the one sent in.
   string::size_type last_number = file_name.find_last_of("0123456789");
   if (last_number == string::npos) {
-    return false;
+    return true;
   }
   string::size_type first_number = file_name.find_last_not_of("0123456789",last_number);
   if (first_number == string::npos) {

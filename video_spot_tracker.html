@@ -1,5 +1,5 @@
-<title>Video Spot Tracker v02.03</title>
-<h1>Video Spot Tracker version 02.03b</h1>
+<title>Video Spot Tracker v03.00</title>
+<h1>Video Spot Tracker version 03.00</h1>
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
   DirectShow</a>-compatible video file, from a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -13,10 +13,10 @@
 <p>The program is run by dragging a video file onto the desktop icon that was 
   created when the program was installed. It can also be run by selecting one 
   of the camera-specific shortcuts from <i><b>Start Menu/All Programs/NSRG/Video 
-  Spot Tracker v02.03</b></i>. If you run the program directly by double-clicking 
+  Spot Tracker v03.00</b></i>. If you run the program directly by double-clicking 
   on the icon, it will ask for a video or image file (AVI, TIF, or BMP) that it 
   should open.</p>
-<h2><img src="GUI.jpg" width="161" height="751" align="right">Using the program</h2>
+<h2><img src="GUI.jpg" width="161" height="702" align="right">Using the program</h2>
 <p>When the program is run, four windows will appear. The image window that appears 
   to the lower right contains the first image within the video file or a continually-updating 
   image from a live camera feed. The control panel named <b><i>tk</i></b> that 
@@ -24,8 +24,8 @@
   a number of interaction widgets that control the operation of the program. The 
   <b><i>kernel</i></b> control panel that appears above the image window (described 
   later) controls the type of tracking kernel being used. The <b><i>log</i></b> 
-  control panel in the upper right is described later.</p>
-<h3>Selecting the color plane to use</h3>
+  control panel is described later.</p>
+<h3>Selecting the color channel to use</h3>
 <p><img src="red_green_blue.jpg" width="156" height="60" align="left">If the video 
   file (or video camera) contains different data sets in the red, green, and blue 
   channels then you will need to select the one you want to view. By default, 
@@ -59,24 +59,32 @@
   You can also adjust the radius by clicking on the number beneath the <i><b>radius</b></i> 
   slider within the <b><i>kernel</i></b> control panel and entering it into the 
   dialog box that appears or by moving the <b><i>radius</i></b> slider.</p>
-<p><img src="three_tracks.jpg" width="168" height="174" align="left">To select 
-  more spots to track, click on the center of each new spot with the <i>right</i> 
-  mouse button. The default radius of each new spot tracker will match the radius 
-  of the spot that was active when it is created. When a new tracker is created, 
-  all other trackers turn blue. Each tracked spot will be labeled with an index 
-  that matches its index in the stored tracking file.</p>
-<p>If you click with the left mouse button when there is more than one tracker, 
-  the closest tracker is moved to the location you picked and it becomes the <b><i>active 
-  tracker </i></b>(in red). The active tracker's position and radius are shown 
-  in the user interface, and they can be edited by clicking on the number beneath 
-  the relevant slider. By selecting different trackers using the left mouse button, 
-  you can adjust the position and radius of each tracker one at a time.</p>
+<p><img src="three_tracks.jpg" width="168" height="174" align="left">To create 
+  more trackers, click on the center of each new spot with the left mouse button. 
+  The default radius of each new spot tracker will match the radius of the spot 
+  that was active when it is created. When a new tracker is created it turns red 
+  to indicate that it is the active tracker; all other trackers turn blue. Each 
+  tracked spot will be labeled with an index that matches its index in the stored 
+  tracking file.</p>
+<p>If you click with the <i>right </i>mouse button, the closest tracker is moved 
+  to the location you picked and it becomes the <b><i>active tracker </i></b>(in 
+  red). The active tracker's position and radius are shown in the user interface, 
+  and they can be edited by clicking on the number beneath the relevant slider. 
+  By selecting different trackers using the left mouse button, you can adjust 
+  the position and radius of each tracker one at a time.</p>
+<p>You can drag a tracker to a new location by clicking the right mouse button 
+  on top of it and then holding the button down to drag the tracker to a new location. 
+  Note that when optimization is turned on, the tracker will always jump to the 
+  optimum location nearest the current location of the mouse cursor.</p>
+<p>You can delete an unwanted tracker by making it the active tracker (click on 
+  it with the right mouse button) and then pressing the <i>delete</i> or <i>backspace</i> 
+  key on the keyboard.</p>
 <p>If you prefer to not have the centers of the tracked objects obscured by the 
   tracking markers, select the <b><i>round_cursor</i></b> checkbox from the <b><i>tk</i></b> 
   control panel. This will replace the plus signs with a circle around the center 
   at twice the radius that the kernel is set to use.</p>
 <h3>Selecting the type of tracker</h3>
-<p><img src="kernel.jpg" width="569" height="99"></p>
+<p><img src="kernel.jpg" width="705" height="99"></p>
 <p>There are four types of tracking kernels available within the program. They 
   are controlled using interface widgets in the <b><i>kernel</i></b> control panel. 
   The overriding parameter for tracking is whether the spots are dark points in 
@@ -102,7 +110,8 @@
   3, ... up to the radius setting and divides each circle's radius by its circumference 
   to provide even weights for each ring. The radius should be set to be at least 
   slighly larger than the bead that is to be tracked; setting it larger will not 
-  harm tracking except to make the program run more slowly.</p>
+  harm tracking except to make the program run more slowly. The setting on the 
+  dark_spot check box has no effect when symmetric tracker is chosen.</p>
 <p><img src="rod3.jpg" width="152" height="164" align="right">The final type of 
   kernel is the rod3 kernel. This is actually a grouping of three subkernels, 
   each of which is one of the above types. These three kernels lie along the same 
@@ -112,9 +121,11 @@
   (in degrees) of the bar trackers. As with the radius and position controls described 
   above, these controls change to display and control the values of the active 
   tracker. The most successful bars may be made of cone kernels and be slightly 
-  less than the actual length of the bar on the screen. The least useful are probably 
-  the symmetric kernels. Note that if the bars flex, this tracker may not work 
-  very well.</p>
+  less than the actual length of the bar on the screen. The symmetric kernel is 
+  probably the least useful. Note that if the bars flex, this tracker may not 
+  work very well.</p>
+<h3>Activating the trackers</h3>
+<p></p>
 <p>Once you have selected the type of tracker to use, and have selected spots 
   to track, check the <b><i>optimize</i></b> checkbox. When you do this, the trackers 
   should all move themselves to the centers of the spots they were started on. 
@@ -133,27 +144,24 @@
   to continue to track spots that are moving away from the updated video area. 
   A green box shows up in the video window to indicate the area being updated.</p>
 <p>You can also manually adjust the area that is updated using the <b><i>minX</i></b>, 
-  <b><i>maxX</i></b>, <b><i>minY</i></b>, and <b><i>maxY</i></b> sliders located 
-  at the bottom of the control panel. If you do this, you will want to un-check 
-  the small_area setting.</p>
+  <b><i>maxX</i></b>, <b><i>minY</i></b>, and <b><i>maxY</i></b> sliders that 
+  appear when the <b><i>show_clipping</i></b> check box is on. If you do this, 
+  you will want to un-check the small_area setting.</p>
 <p>To turn off the small area tracking, and to undo the selection of a manual 
   region, click the <b><i>full_area</i></b> checkbox once. It will reset the update 
-  area to cover the whole image and will then turn itself back off.</p>
-<h3>Reading positions of trackers</h3>
-<p>You can check the position of each tracker in turn by clicking on them with 
-  the left mouse button, which makes each in turn the active tracker that shows 
-  its values in the <b><i>x</i></b>, <b><i>y</i></b>, <b><i>z</i></b>, and <b><i>radius</i></b> 
-  sliders. Note that these sliders may show subpixel positions and radii. Initial 
-  testing on simple slightly-noisy images indicated that the interpolating trackers 
-  have position errors of about .12 pixels on average, with a maximum of about 
-  0.33 pixels, when tracking a perfectly-round disk of radius 5.5 pixels. You 
-  can control the minimum step size that the optimizer will use by adjusting the 
-  <b><i>precision</i></b> slider within the <b><i>tk</i></b> control panel. Smaller 
-  values make the program run more slowly but will result in the program attempting 
-  to find the position with greater precision (this will not necessarily correspond 
-  to greater accuracy, due to noise and possibly aliasing).</p>
+  area to cover the whole image and turn small-area tracking off.</p>
+<h3>Reading the position of a tracker</h3>
+<p>You can check the position of each tracker in turn by clicking on each with 
+  the right mouse button, which makes each the active tracker that shows its values 
+  in the <b><i>x</i></b>, <b><i>y</i></b>, and <b><i>radius</i></b> sliders. Note 
+  that these sliders may show subpixel positions and radii. You can control the 
+  minimum step size that the optimizer will use by adjusting the <b><i>precision</i></b> 
+  slider within the <b><i>tk</i></b> control panel. Smaller values make the program 
+  run more slowly but will result in the program attempting to find the position 
+  with greater precision (this will not necessarily correspond to greater accuracy, 
+  due to noise and possibly aliasing).</p>
 <h3>Recording the tracker motion</h3>
-<p><img src="log.jpg" width="123" height="80" align="right">You can record the 
+<p><img src="log.jpg" width="348" height="80" align="right">You can record the 
   motion of the trackers by checking the <b><i>Logging</i></b> checkbox within 
   the <b><i>log</i></b> control panel (shown to the right). This will bring up 
   a dialog box that will let you select a filename. It will automatically add 
@@ -165,6 +173,12 @@
   section of tracking that you are interested in, uncheck the Logging checkbox 
   to stop the logging. You can then go forward to another section, turn on logging, 
   and save a different file if you like.</p>
+<p>At the time logging is started, the value of the <b><i>Relative to active tracker 
+  start</i></b> check box is used to determine the origin of the reported positions 
+  (orientation and radius are always absolute). If the box is unchecked, the positions 
+  are in pixels with respect to the center of the pixel in the upper-left corner 
+  of the screen as the origin. If the box is checked, the positions are in pixels 
+  with respect to the location of the active tracker when logging was turned on.</p>
 <p>Logging will not occur while the file is paused, or when the end of the video 
   has been reached (this also means that the positions of the trackers in the 
   last frame of video will not be stored). This is done so that you can place 
@@ -180,14 +194,18 @@
 <p>The motion of the trackers over time is stored into two log files. The first 
   is a <b><i>Comma-Separated Values</i></b> format with the extension .csv. This 
   text format can be viewed in a text editor or loaded by several spreadsheet 
-  and analysis programs. The second log file is in the <b><i>Virtual-Reality Peripheral 
-  Network</i></b> (<a href="http://www.vrpn.org">VRPN</a>) format. This format 
-  can be converted into a Matlab data file using the <b><i>vrpnLogToMatlab</i></b> 
-  program that should have been installed at the same time the <i><b>Video Spot 
-  Tracker</b></i> program was. You convert the &quot;.vrpn&quot; file into a Matlab 
-  file by dragging it onto a shortcut that points to the program (or by dragging 
-  it onto the program itself). The vrpnLogToMatlab program will have been installed 
-  in the directory: <b><i>C:\Program Files\NSRG\Video Spot Tracker v02.03\VrpnLogToMatlib</i></b> 
+  and analysis programs. The reports are stored in the file in in frame order, 
+  with multiple tracker entries interleaved for each frame. If you want to view 
+  the individual traces, you should use the <i>Excel</i> data sorting tool to 
+  sort the list by the <i>Spot ID</i> column.</p>
+<p>The second log file is in the <b><i>Virtual-Reality Peripheral Network</i></b> 
+  (<a href="http://www.vrpn.org">VRPN</a>) format. This format can be converted 
+  into a Matlab data file using the <b><i>vrpnLogToMatlab</i></b> program that 
+  should have been installed at the same time the <i><b>Video Spot Tracker</b></i> 
+  program was. You convert the &quot;.vrpn&quot; file into a Matlab file by dragging 
+  it onto a shortcut that points to the program (or by dragging it onto the program 
+  itself). The vrpnLogToMatlab program will have been installed in the directory: 
+  <b><i>C:\Program Files\NSRG\Video Spot Tracker v03.00\VrpnLogToMatlib</i></b> 
   and it will also be located on the desktop.</p>
 <h3>Controlling playback</h3>
 <p>Whether logging is turned on or not, the video can be played by checking the 
@@ -245,6 +263,27 @@
   16-bit version of ImageMagick version 5.5.7</a>. These packages can be installed 
   in any order.</p>
 <h2>Version Information</h2>
+<h3>Version 3.00:</h3>
+<ul>
+  <li>Major GUI changes: The behavior of the mouse buttons is completely different 
+    from their earlier behavior. The left mouse button now creates new trackers, 
+    and the right mouse button drags existing trackers around without changing 
+    their radius. There is not a tracker created at program startup. The &quot;delete&quot; 
+    and &quot;backspace&quot; keys can be used to delete the active tracker.</li>
+  <li>Major output changes: The Y values are now reported with respect to the 
+    center of the pixel at the upper-left corner of the screen. Previous versions 
+    reported with respect to the center of the pixel at the lower-left corner. 
+    The new convention is in keeping with the output from the <i>MetaMorph</i> 
+    program. Also, image from Pulnix cameras read through the EDT device are inverted 
+    to make them match that images shown by the preview program that comes with 
+    the camera. It is now possible to save positions relative to the initial location 
+    of the active tracker when logging is started.</li>
+  <li>Various bugs were fixed that caused the program to crash, use truncated 
+    filenames for logging, fail to open some types of files, or display incorrect 
+    intensities in the display window. The precision of position output has also 
+    been increased by decoupling it from the precision shown in the GUI.</li>
+</ul>
+<h3></h3>
 <h3>Version 2.03b:</h3>
 <ul>
   <li>Only the web page and installer have changed. They mention that you need 

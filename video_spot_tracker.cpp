@@ -1,15 +1,3 @@
-//XXX We want to display what time we are at in a file (so the imagers need to tell us).
-//XXX Want to store the time at which tracking was done based on the time in the file.
-//XXX Want to be able to jump to a time in a file, and maybe fast-forward.
-//XXX Add debug view showing where all points are being sampled
-//XXX Would like to have a .ini file or something to set the starting "save" directory.
-//XXX Would like to be able to specify the microns-per-pixel value
-//    and have it stored in the log file.
-//XXX Off-by-1 somewhere in Roper when binning (top line dark)
-//XXX When we don't find the camera (or file), in debug the code hangs on camera delete.
-//XXX All of the Y coordinates seem to be inverted in this code compared
-//    to the image-capture code.  Mouse, display, and video clipping.
-
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,7 +37,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "02.03";
+const char *Version_string = "03.00";
 
 //--------------------------------------------------------------------------
 // Some classes needed for use in the rest of the program.
@@ -160,9 +148,8 @@ void  rebuild_trackers(int newvalue, void *);
 void  rebuild_trackers(float newvalue, void *);
 void  set_debug_visibility(int newvalue, void *);
 void  set_kymograph_visibility(int newvalue, void *);
-//XXX X and Y range should match the image range, like the region size controls do.
-Tclvar_float_with_scale	g_X("x", "", 0, 1391, 0);
-Tclvar_float_with_scale	g_Y("y", "", 0, 1039, 0);
+Tclvar_float		g_X("x");
+Tclvar_float		g_Y("y");
 Tclvar_float_with_scale	g_Radius("radius", ".kernel.radius", 1, 30, 5);
 Tclvar_float_with_scale	*g_minX;
 Tclvar_float_with_scale	*g_maxX;
@@ -192,6 +179,8 @@ Tclvar_int_with_button	g_kymograph("kymograph","",0, set_kymograph_visibility);
 Tclvar_int_with_button	g_quit("quit","");
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
+Tclvar_int		g_log_relative("logging_relative");
+double			g_log_offset_x, g_log_offset_y;
 bool g_video_valid = false; // Do we have a valid video frame in memory?
 
 //--------------------------------------------------------------------------
@@ -215,7 +204,7 @@ public:
   }
   virtual bool	read_pixel(int x, int y, double &result) const {
     uns16 val;
-    if (get_pixel_from_memory(x, flip_y(y), val)) {
+    if (get_pixel_from_memory(x, y, val)) {
       result = val;
       return true;
     } else {
@@ -224,7 +213,7 @@ public:
   }
   virtual double read_pixel_nocheck(int x, int y) const {
     uns16 val;
-    get_pixel_from_memory(x, flip_y(y), val);
+    get_pixel_from_memory(x, y, val);
     return val;
   }
 };
@@ -240,7 +229,7 @@ public:
   }
   virtual bool	read_pixel(int x, int y, double &result) const {
     uns16 val;
-    if (get_pixel_from_memory(x, flip_y(y), val)) {
+    if (get_pixel_from_memory(x, y, val)) {
       result = val;
       return true;
     } else {
@@ -249,7 +238,7 @@ public:
   }
   virtual double read_pixel_nocheck(int x, int y) const {
     uns16 val;
-    get_pixel_from_memory(x, flip_y(y), val);
+    get_pixel_from_memory(x, y, val);
     return val;
   }
 };
@@ -263,7 +252,7 @@ public:
   }
   virtual bool	read_pixel(int x, int y, double &result) const {
     uns16 val;
-    if (get_pixel_from_memory(x, flip_y(y), val, g_colorIndex)) {
+    if (get_pixel_from_memory(x, y, val, g_colorIndex)) {
       result = val;
       return true;
     } else {
@@ -272,7 +261,7 @@ public:
   }
   virtual double read_pixel_nocheck(int x, int y) const {
     uns16 val;
-    get_pixel_from_memory(x, flip_y(y), val);
+    get_pixel_from_memory(x, y, val);
     return val;
   }
 };
@@ -286,7 +275,7 @@ public:
   }
   virtual bool	read_pixel(int x, int y, double &result) const {
     uns16 val;
-    if (get_pixel_from_memory(x, flip_y(y), val, g_colorIndex)) {
+    if (get_pixel_from_memory(x, y, val, g_colorIndex)) {
       result = val;
       return true;
     } else {
@@ -295,7 +284,7 @@ public:
   }
   virtual double read_pixel_nocheck(int x, int y) const {
     uns16 val;
-    get_pixel_from_memory(x, flip_y(y), val);
+    get_pixel_from_memory(x, y, val);
     return val;
   }
 };
@@ -309,7 +298,7 @@ public:
   }
   virtual bool	read_pixel(int x, int y, double &result) const {
     uns16 val;
-    if (get_pixel_from_memory(x, flip_y(y), val, g_colorIndex)) {
+    if (get_pixel_from_memory(x, y, val, g_colorIndex)) {
       result = val;
       return true;
     } else {
@@ -318,7 +307,7 @@ public:
   }
   virtual double read_pixel_nocheck(int x, int y) const {
     uns16 val;
-    get_pixel_from_memory(x, flip_y(y), val);
+    get_pixel_from_memory(x, y, val);
     return val;
   }
 };
@@ -332,7 +321,7 @@ public:
   }
   virtual bool	read_pixel(int x, int y, double &result) const {
     uns16 val;
-    if (get_pixel_from_memory(x, flip_y(y), val, g_colorIndex)) {
+    if (get_pixel_from_memory(x, y, val, g_colorIndex)) {
       result = val;
       return true;
     } else {
@@ -341,7 +330,7 @@ public:
   }
   virtual double read_pixel_nocheck(int x, int y) const {
     uns16 val;
-    get_pixel_from_memory(x, flip_y(y), val);
+    get_pixel_from_memory(x, y, val);
     return val;
   }
 };
@@ -355,7 +344,7 @@ public:
   }
   virtual bool	read_pixel(int x, int y, double &result) const {
     uns16 val;
-    if (get_pixel_from_memory(x, flip_y(y), val, g_colorIndex)) {
+    if (get_pixel_from_memory(x, y, val, g_colorIndex)) {
       result = val;
       return true;
     } else {
@@ -364,7 +353,7 @@ public:
   }
   virtual double read_pixel_nocheck(int x, int y) const {
     uns16 val;
-    get_pixel_from_memory(x, flip_y(y), val);
+    get_pixel_from_memory(x, y, val);
     return val;
   }
 };
@@ -646,7 +635,7 @@ void myDisplayFunc(void)
       // Normalize center and radius so that they match the coordinates
       // (-1..1) in X and Y.
       double  x = -1.0 + (*loop)->get_x() * (2.0/g_camera->get_num_columns());
-      double  y = -1.0 + flip_y((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
+      double  y = -1.0 + ((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
       double  dx = (*loop)->get_radius() * (2.0/g_camera->get_num_columns());
       double  dy = (*loop)->get_radius() * (2.0/g_camera->get_num_rows());
 
@@ -659,8 +648,8 @@ void myDisplayFunc(void)
 	// Horrible hack to make this work with rod type
 	double orient = static_cast<rod3_spot_tracker_interp*>(*loop)->get_orientation();
 	double length = static_cast<rod3_spot_tracker_interp*>(*loop)->get_length();
-	double dx =   (length/2 * cos(orient * M_PI/180)) * (2.0/g_camera->get_num_columns());
-	double dy = - (length/2 * sin(orient * M_PI/180)) * (2.0/g_camera->get_num_rows());
+	double dx = (length/2 * cos(orient * M_PI/180)) * (2.0/g_camera->get_num_columns());
+	double dy = (length/2 * sin(orient * M_PI/180)) * (2.0/g_camera->get_num_rows());
 	glBegin(GL_LINES);
 	  glVertex2f(x-dx,y-dy);
 	  glVertex2f(x+dx,y+dy);
@@ -720,10 +709,10 @@ void myDisplayFunc(void)
   if (g_kymograph && (g_trackers.size() >= 2)) {
     list<spot_tracker *>::iterator  loop = g_trackers.begin();
     double x0 = -1.0 + (*loop)->get_x() * (2.0/g_camera->get_num_columns());
-    double y0 = -1.0 + flip_y((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
+    double y0 = -1.0 + ((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
     loop++;
     double x1 = -1.0 + (*loop)->get_x() * (2.0/g_camera->get_num_columns());
-    double y1 = -1.0 + flip_y((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
+    double y1 = -1.0 + ((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
 
     // Draw the line between them
     glColor3f(0.5,0.9,0.5);
@@ -758,10 +747,10 @@ void myDisplayFunc(void)
       // Find the two tracked points to use.
       loop++; // Skip to the third point.
       double cx0 = -1.0 + (*loop)->get_x() * (2.0/g_camera->get_num_columns());
-      double cy0 = -1.0 + flip_y((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
+      double cy0 = -1.0 + ((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
       loop++;
       double cx1 = -1.0 + (*loop)->get_x() * (2.0/g_camera->get_num_columns());
-      double cy1 = -1.0 + flip_y((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
+      double cy1 = -1.0 + ((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
 
       // Find the center of the two (origin of cell coordinates) and the unit vector (dx,dy)
       // going towards the second from the first.
@@ -826,9 +815,8 @@ void myBeadDisplayFunc(void)
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT);
 
-  if (g_show_video) {
-    // Copy pixels into the image buffer.  Flip the image over in
-    // Y so that the image coordinates display correctly in OpenGL.
+  if (g_show_video && g_active_tracker) {
+    // Copy pixels into the image buffer.
     int x,y;
     float xImageOffset = g_active_tracker->get_x() - (g_beadseye_size+1)/2.0;
     float yImageOffset = g_active_tracker->get_y() - (g_beadseye_size+1)/2.0;
@@ -837,12 +825,12 @@ void myBeadDisplayFunc(void)
     // If we are outside 2 radii, then leave it blank to avoid having a
     // moving border that will make us think the spot is moving when it
     // is not.
-    for (x = 0; x < g_beadseye_size; x++) {
+    for (x = 0; x < x; x++) {
       for (y = 0; y < g_beadseye_size; y++) {
-	g_beadseye_image[0 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 0;
-	g_beadseye_image[1 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 0;
-	g_beadseye_image[2 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 0;
-	g_beadseye_image[3 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 255;
+	g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = 0;
+	g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = 0;
+	g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = 0;
+	g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
       }
     }
     double radius = g_active_tracker->get_radius();
@@ -855,24 +843,25 @@ void myBeadDisplayFunc(void)
     int min_y = (g_beadseye_size+1)/2 - 2 * radius;
     int max_y = (g_beadseye_size+1)/2 + 2 * radius;
 
+    // Make sure we don't try to draw outside the allocated buffer
+    if (min_x < 0) { min_x = 0; }
+    if (min_y < 0) { min_y = 0; }
+    if (max_x > g_beadseye_size-1) { max_x = g_beadseye_size-1; }
+    if (max_y > g_beadseye_size-1) { max_y = g_beadseye_size-1; }
+
     int shift = g_bitdepth - 8;
     for (x = min_x; x < max_x; x++) {
       for (y = min_y; y < max_y; y++) {
 	if (!g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix)) {
-	  g_beadseye_image[0 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 0;
-	  g_beadseye_image[1 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 0;
-	  g_beadseye_image[2 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 0;
-	  g_beadseye_image[3 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 255;
+	  g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = 0;
+	  g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = 0;
+	  g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = 0;
+	  g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
 	} else {
-	  // This assumes that the pixels are actually 8-bit values
-	  // and will clip if they go above this.  It also writes pixels
-	  // from the first channel into all colors of the image.  It uses
-	  // RGBA so that we don't have to worry about byte-alignment problems
-	  // that plagued us when using RGB pixels.
-	  g_beadseye_image[0 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = (int)(double_pix) >> shift;
-	  g_beadseye_image[1 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = (int)(double_pix) >> shift;
-	  g_beadseye_image[2 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = (int)(double_pix) >> shift;
-	  g_beadseye_image[3 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 255;
+	  g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = ((uns16)(double_pix)) >> shift;
+	  g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = ((uns16)(double_pix)) >> shift;
+	  g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = ((uns16)(double_pix)) >> shift;
+	  g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
 	}
       }
     }
@@ -899,7 +888,7 @@ void myLandscapeDisplayFunc(void)
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT);
 
-  if (g_show_video) {
+  if (g_show_video && g_active_tracker) {
     int x,y;
 
     // Find the raw fitness function values for a range of locations
@@ -925,8 +914,7 @@ void myLandscapeDisplayFunc(void)
     }
     g_active_tracker->set_location(start_x, start_y);
 
-    // Copy pixels into the image buffer.  Flip the image over in
-    // Y so that the image coordinates display correctly in OpenGL.
+    // Copy pixels into the image buffer.
     // XXX Scale and offset them to fit in the range 0-255.
     double scale = 255 / (max_val - min_val);
     double offset = min_val * scale;
@@ -934,10 +922,10 @@ void myLandscapeDisplayFunc(void)
     for (x = 0; x < g_landscape_size; x++) {
       for (y = 0; y < g_landscape_size; y++) {
 	int_val = (int)( g_landscape_floats[x + g_landscape_size * y] * scale - offset );
-	g_landscape_image[0 + 4 * (x + g_landscape_size * (g_landscape_size - 1 - y))] = int_val;
-	g_landscape_image[1 + 4 * (x + g_landscape_size * (g_landscape_size - 1 - y))] = int_val;
-	g_landscape_image[2 + 4 * (x + g_landscape_size * (g_landscape_size - 1 - y))] = int_val;
-	g_landscape_image[3 + 4 * (x + g_landscape_size * (g_landscape_size - 1 - y))] = 255;
+	g_landscape_image[0 + 4 * (x + g_landscape_size * (y))] = int_val;
+	g_landscape_image[1 + 4 * (x + g_landscape_size * (y))] = int_val;
+	g_landscape_image[2 + 4 * (x + g_landscape_size * (y))] = int_val;
+	g_landscape_image[3 + 4 * (x + g_landscape_size * (y))] = 255;
       }
     }
 
@@ -1110,13 +1098,13 @@ void myIdleFunc(void)
   // set the borders to be around the set of trackers.
   // This will be a min/max over all of the
   // bounding boxes.
-  if (g_opt && g_small_area) {
+  if (g_opt && g_small_area && g_active_tracker) {
     // Initialize it with values from the active tracker, which are stored
     // in the global variables.
     (*g_minX) = g_X - 4*g_Radius;
-    (*g_minY) = g_Y - 4*g_Radius;
+    (*g_minY) = flip_y(g_Y) - 4*g_Radius;
     (*g_maxX) = g_X + 4*g_Radius;
-    (*g_maxY) = g_Y + 4*g_Radius;
+    (*g_maxY) = flip_y(g_Y) + 4*g_Radius;
 
     // Check them against all of the open trackers and push them to bound all
     // of them.
@@ -1124,7 +1112,7 @@ void myIdleFunc(void)
     list<spot_tracker *>::iterator  loop;
     for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
       double x = (*loop)->get_x();
-      double y = flip_y((*loop)->get_y());
+      double y = ((*loop)->get_y());
       double fourRad = 4 * (*loop)->get_radius();
       if (g_rod) {
 	// Horrible hack to make this work with rod type
@@ -1164,15 +1152,16 @@ void myIdleFunc(void)
   }
   g_ready_to_display = true;
 
-  g_active_tracker->set_location(g_X, flip_y(g_Y));
-  g_active_tracker->set_radius(g_Radius);
-  if (g_rod) {
-    // Horrible hack to enable adjustment of a parameter that only exists on
-    // the rod tracker
-    static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->set_length(g_length);
-    static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->set_orientation(g_orientation);
+  if (g_active_tracker) { 
+    g_active_tracker->set_radius(g_Radius);
+    if (g_rod) {
+      // Horrible hack to enable adjustment of a parameter that only exists on
+      // the rod tracker
+      static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->set_length(g_length);
+      static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->set_orientation(g_orientation);
+    }
   }
-  if (g_opt) {
+  if (g_opt && g_active_tracker) {
     double  x, y;
 
     // Update the VRPN tracker position for each tracker and report it
@@ -1186,13 +1175,15 @@ void myIdleFunc(void)
     // frame.  The way it is now, the user can single-step through a
     // file and move the trackers around to line up on each frame before
     // their values are saved.
+    // Remember to invert the Y value so that it logs based on the
+    // upper-left corner of the image.
     if (g_vrpn_tracker && g_video_valid) {
       static struct timeval start;
       static bool first_time = true;
       int i = 0;
       struct timeval now; gettimeofday(&now, NULL);
       for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++, i++) {
-	vrpn_float64  pos[3] = {(*loop)->get_x(), flip_y((*loop)->get_y()), 0};
+	vrpn_float64  pos[3] = {(*loop)->get_x() - g_log_offset_x, flip_y((*loop)->get_y()) - g_log_offset_y, 0};
 	vrpn_float64  quat[4] = { 0, 0, 0, 1};
 	double orient = 0.0;
 	double length = 0.0;
@@ -1235,16 +1226,6 @@ void myIdleFunc(void)
 	  break;
 	}
       }
-    }
-
-    // Make the GUI track the result for the active tracker
-    g_X = (float)g_active_tracker->get_x();
-    g_Y = (float)flip_y(g_active_tracker->get_y());
-    g_Radius = (float)g_active_tracker->get_radius();
-    if (g_rod) {
-      // Horrible hack to make this work with rod type
-      g_orientation = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_orientation();
-      g_length = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_length();
     }
 
     // Update the kymograph if it is active and if we have a new video frame.
@@ -1300,9 +1281,9 @@ void myIdleFunc(void)
 	    // from the first channel into all colors of the image.  It uses
 	    // RGBA so that we don't have to worry about byte-alignment problems
 	    // that plagued us when using RGB pixels.
-	    g_kymograph_image[0 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (int)(double_pix) >> shift;
-	    g_kymograph_image[1 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (int)(double_pix) >> shift;
-	    g_kymograph_image[2 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (int)(double_pix) >> shift;
+	    g_kymograph_image[0 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (uns16)(double_pix) >> shift;
+	    g_kymograph_image[1 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (uns16)(double_pix) >> shift;
+	    g_kymograph_image[2 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (uns16)(double_pix) >> shift;
 	    g_kymograph_image[3 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 255;
 	  }
 	}
@@ -1338,6 +1319,19 @@ void myIdleFunc(void)
 	g_kymograph_filled++;
       }
     } 
+  }
+
+  //------------------------------------------------------------
+  // Make the GUI track the result for the active tracker
+  if (g_active_tracker) {
+    g_X = (float)g_active_tracker->get_x();
+    g_Y = (float)flip_y(g_active_tracker->get_y());
+    g_Radius = (float)g_active_tracker->get_radius();
+    if (g_rod) {
+      // Horrible hack to make this work with rod type
+      g_orientation = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_orientation();
+      g_length = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_length();
+    }
   }
 
   //------------------------------------------------------------
@@ -1419,6 +1413,40 @@ void myIdleFunc(void)
   vrpn_SleepMsecs(1);
 }
 
+bool  delete_active_tracker(void)
+{
+  if (!g_active_tracker) {
+    return false;
+  } else {
+    // Delete the entry in the list that corresponds to the active tracker.
+    list <spot_tracker *>::iterator loop;
+    list <spot_tracker *>::iterator next;
+    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+      if (*loop == g_active_tracker) {
+	next = loop; next++;
+	delete g_active_tracker;
+	g_trackers.erase(loop);
+	break;
+      }
+    }
+
+    // Set the active tracker to the next one in the list if there is
+    // a next one.  Otherwise, try to set it to the first one on the list,
+    // if there is one.  Otherwise, set it to NULL.
+    if (next != g_trackers.end()) {
+      g_active_tracker = *next;
+    } else {
+      if (g_trackers.size() > 0) {
+	g_active_tracker = *g_trackers.begin();
+      } else {
+	g_active_tracker = NULL;
+      }
+    }
+
+    return true;
+  }
+}
+
 // This routine finds the tracker whose coordinates are
 // the nearest to those specified, makes it the active
 // tracker, and moved it to the specified location.
@@ -1456,24 +1484,39 @@ void  activate_and_drag_nearest_tracker_to(double x, double y)
 }
 
 
-void mouseCallbackForGLUT(int button, int state, int x, int y) {
+void keyboardCallbackForGLUT(unsigned char key, int x, int y)
+{
+  switch (key) {
+  case 'q':
+  case 'Q':
+    g_quit = 1;
+    break;
 
+  case 8:   // Backspace
+  case 127: // Delete on Windows
+    delete_active_tracker();
+  }
+}
+
+void mouseCallbackForGLUT(int button, int state, int x, int y)
+{
     // Record where the button was pressed for use in the motion
-    // callback.
+    // callback, flipping the Y axis to make the coordinates match
+    // image coordinates.
     g_mousePressX = x;
-    g_mousePressY = y;
+    g_mousePressY = y = flip_y(y);
 
     switch(button) {
-      // The right button will create a new tracker and let the
+      // The left button will create a new tracker and let the
       // user specify its radius if they move far enough away
       // from the pick point (it starts with a default of the same
       // as the current active tracker).
       // The new tracker becomes the active tracker.
-      case GLUT_RIGHT_BUTTON:
+      case GLUT_LEFT_BUTTON:
 	if (state == GLUT_DOWN) {
 	  g_whichDragAction = 1;
 	  g_trackers.push_back(g_active_tracker = create_appropriate_tracker());
-	  g_active_tracker->set_location(x, flip_y(y));
+	  g_active_tracker->set_location(x, (y));
 
 	  // Move the pointer to where the user clicked.
 	  // Invert Y to match the coordinate systems.
@@ -1490,12 +1533,12 @@ void mouseCallbackForGLUT(int button, int state, int x, int y) {
 	}
 	break;
 
-      // The left button will pull the closest existing tracker
+      // The right button will pull the closest existing tracker
       // to the location where the mouse button was pressed, and
-      // then let the user specify the radius
-      case GLUT_LEFT_BUTTON:
+      // then let the user pull it around the screen
+      case GLUT_RIGHT_BUTTON:
 	if (state == GLUT_DOWN) {
-	  g_whichDragAction = 1;
+	  g_whichDragAction = 2;
 	  activate_and_drag_nearest_tracker_to(x,y);
 	}
 	break;
@@ -1503,6 +1546,9 @@ void mouseCallbackForGLUT(int button, int state, int x, int y) {
 }
 
 void motionCallbackForGLUT(int x, int y) {
+
+  // Make mouse coordinates match image coordinates.
+  y = flip_y(y);
 
   switch (g_whichDragAction) {
 
@@ -1552,6 +1598,8 @@ void motionCallbackForGLUT(int x, int y) {
 // connection so that it will store the logged data.  If the name
 // changes, and was not empty before, then close the existing
 // connection and start a new one.
+// We use the "newvalue" here rather than the file name because the
+// file name gets truncated to the maximum TCLVAR string length.
 // Also do the same for a comma-separated values file, replacing the
 // .vrpn extension with .csv
 
@@ -1580,11 +1628,11 @@ void  logfilename_changed(char *newvalue, void *)
     // The Tcl code had a dialog box that asked the user if they wanted
     // to overwrite, so this is "safe."
     FILE *in_the_way;
-    if ( (in_the_way = fopen(g_logfilename, "r")) != NULL) {
+    if ( (in_the_way = fopen(newvalue, "r")) != NULL) {
       fclose(in_the_way);
       int err;
-      if ( (err=remove(g_logfilename)) != 0) {
-	fprintf(stderr,"Error: could not delete existing logfile %s\n", (char*)(g_logfilename));
+      if ( (err=remove(newvalue)) != 0) {
+	fprintf(stderr,"Error: could not delete existing logfile %s\n", newvalue);
 	perror("   Reason");
 	cleanup();
 	exit(-1);
@@ -1597,13 +1645,13 @@ void  logfilename_changed(char *newvalue, void *)
     // Make sure that the file does not exist by deleting it if it does.
     // The Tcl code had a dialog box that asked the user if they wanted
     // to overwrite, so this is "safe."
-    char *csvname = new char[strlen(g_logfilename)+1];	// Remember the closing '\0'
+    char *csvname = new char[strlen(newvalue)+1];	// Remember the closing '\0'
     if (csvname == NULL) {
       fprintf(stderr, "Out of memory when allocating CSV file name\n");
       cleanup();
       exit(-1);
     }
-    strcpy(csvname, g_logfilename.mystring);
+    strcpy(csvname, newvalue);
     strcpy(&csvname[strlen(csvname)-5], ".csv");
     if ( (in_the_way = fopen(csvname, "r")) != NULL) {
       fclose(in_the_way);
@@ -1621,6 +1669,15 @@ void  logfilename_changed(char *newvalue, void *)
       fprintf(g_csv_file, "Time,Spot ID,X,Y,Z,Radius,Orientation (if meaningful),Length (if meaningful)\n");
     }
     delete [] csvname;
+  }
+
+  // Set the offsets to use when logging.  If we are not doing relative logging,
+  // then these offsets are 0,0.  If we are, then they are the current position of
+  // the active tracker (if it exists).
+  g_log_offset_x = g_log_offset_y = 0;
+  if (g_log_relative && g_active_tracker) {
+    g_log_offset_x = g_active_tracker->get_x();
+    g_log_offset_y = flip_y(g_active_tracker->get_y());
   }
 }
 
@@ -1803,7 +1860,7 @@ int main(int argc, char *argv[])
 
   //------------------------------------------------------------------
   // Put the version number into the main window.
-  sprintf(command, "label .versionlabel -text Video_spot_tracker_v:_%s", Version_string);
+  sprintf(command, "label .versionlabel -text Video_spot_tracker_v:%s", Version_string);
   if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
           fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
                   tk_control_interp->result);
@@ -1915,19 +1972,12 @@ int main(int argc, char *argv[])
   g_vrpn_tracker = new vrpn_Tracker_Server("Spot", g_vrpn_connection, MAX_TRACKERS);
 
   //------------------------------------------------------------------
-  // Set up an initial spot tracker based on the current settings.
-  g_trackers.push_front(create_appropriate_tracker());
-  g_active_tracker = g_trackers.front();
-  g_active_tracker->set_location(0,0);
-  g_active_tracker->set_radius(g_Radius);
-
-  //------------------------------------------------------------------
   // Initialize GLUT and create the window that will display the
   // video -- name the window after the device that has been
   // opened in VRPN.  Also set mouse callbacks.
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(175, 140);
+  glutInitWindowPosition(175, 220);
   glutInitWindowSize(g_camera->get_num_columns(), g_camera->get_num_rows());
 #ifdef DEBUG
   printf("XXX initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());
@@ -1935,6 +1985,7 @@ int main(int argc, char *argv[])
   g_tracking_window = glutCreateWindow(g_device_name);
   glutMotionFunc(motionCallbackForGLUT);
   glutMouseFunc(mouseCallbackForGLUT);
+  glutKeyboardFunc(keyboardCallbackForGLUT);
 
   // Create the buffer that Glut will use to send to the tracking window.  This is allocating an
   // RGBA buffer.  It needs to be 4-byte aligned, so we allocated it as a group of
@@ -1953,7 +2004,7 @@ int main(int argc, char *argv[])
   //------------------------------------------------------------------
   // Create the window that will be used for the "Bead's-eye view"
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(175, 140);
+  glutInitWindowPosition(375, 140);
   glutInitWindowSize(g_beadseye_size, g_beadseye_size);
   g_beadseye_window = glutCreateWindow("Tracked");
 
@@ -1974,7 +2025,7 @@ int main(int argc, char *argv[])
   //------------------------------------------------------------------
   // Create the window that will be used for the "Landscape view"
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(175 + 10 + g_beadseye_size, 140);
+  glutInitWindowPosition(375 + 10 + g_beadseye_size, 140);
   glutInitWindowSize(g_landscape_size + g_landscape_strip_width, g_landscape_size);
   g_landscape_window = glutCreateWindow("Landscape");
 

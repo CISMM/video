@@ -23,6 +23,18 @@ frame .kernel.rod3
 pack .kernel.rod3 -side left
 frame .kernel.radius
 pack .kernel.radius -side left
+frame .kernel.x -relief raised -borderwidth 1
+pack .kernel.x -side left
+label .kernel.x.label -text X
+label .kernel.x.value -width 10 -textvariable x
+pack .kernel.x.label
+pack .kernel.x.value
+frame .kernel.y -relief raised -borderwidth 1
+pack .kernel.y -side left
+label .kernel.y.label -text Y
+label .kernel.y.value -width 10 -textvariable y
+pack .kernel.y.label
+pack .kernel.y.value
 frame .kernel.optimize
 pack .kernel.optimize -side left
 
@@ -78,12 +90,14 @@ proc update_clipping_window_visibility {nm el op} {
 set logging 0
 set logfilename ""
 toplevel .log
-wm geometry .log +750+10
-checkbutton .log.button -text Logging -variable logging -anchor w
-pack .log.button -side top -fill x
+wm geometry .log +170+110
 label .log.label -textvariable logfilename
-pack .log.label -side top -fill x
+pack .log.label -side bottom -fill x
 trace variable logging w logging_changed
+checkbutton .log.button -text "Logging to file named below" -variable logging -anchor w
+pack .log.button -side left -fill x
+checkbutton .log.relative -text "Relative to active tracker start" -variable logging_relative -anchor w
+pack .log.relative -side left -fill x
 
 # Quit the program if this window is destroyed
 bind .log <Destroy> {global quit ; set quit 1} 
@@ -92,7 +106,7 @@ proc logging_changed { varName index op } {
     global logging logfilename fileinfo
 
     if {$logging == 1} {
-	set types { {"VRPN tracker log files" "*.vrpn"} }
+	set types { {"Spot tracker log files" "*.vrpn"} }
 	set filename [tk_getSaveFile -filetypes $types \
 		-defaultextension ".vrpn" \
 		-initialdir $fileinfo(open_dir) \
@@ -103,7 +117,7 @@ proc logging_changed { varName index op } {
 	    # dialog check whether file exists.
 	    set logfilename $filename
 	    set fileinfo(open_dir) [file dirname $filename]
-	} 	
+	}
     } else {
 	set logfilename ""
     }

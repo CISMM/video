@@ -186,8 +186,8 @@ class	Tclvar_selector {
 
 	void	Set(const char *value);
 
-	char	mystring [TCLVAR_STRING_LENGTH + 1];
-	char	mylaststring [TCLVAR_STRING_LENGTH + 1];
+	char	mystring [TCLVAR_STRING_LENGTH + 1];	  // Enable appending the 0-terminating character
+	char	mylaststring [TCLVAR_STRING_LENGTH + 1];  // Enable appending the 0-terminating character
 	char	*my_tcl_varname;
 	char	*tcl_widget_name;
 	char	*tcl_label_name;

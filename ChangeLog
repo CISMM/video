@@ -1,3 +1,35 @@
+2004-03-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* Tcl_Linkvar.C : Making sure that strings don't get written past
+		the allocated space.
+	* Tcl_Linkvar.h : Comments added.
+	* edt_server.cpp : Inverting the image to match what is seen on the
+		preview program that comes with the board.
+	* file_list.cpp : Changed to work when given a file that has no
+		numbers in it.
+	* file_stack_server.cpp : Modified to work properly with either 8
+		or 16-bit input files.
+	* kernel.jpg : New image for web manual.
+	* log.jpg : Same.
+	* video_spot_tracker.cpp : Inverted the handling of Y throughout
+		the program to avoid flipping everything over twice.
+		Changed the output values for Y so that they are indexed from
+		the upper-left corner rather than the lower-left corner.
+		Made the program work when it has no trackers, and not have
+		one when it starts.  Changing the Tcl X and Y variables to
+		be output-only, to avoid truncating the position stored in
+		the log file.  Made it possible to delete the active tracker
+		using Delete and Backspace keys.  Made it possible to quit
+		by pressing Q or q.  Changed the way the mouse buttons and
+		drags work: left now creates new ones and sets radius;
+		right now drags the nearest one around on the screen.  Moved
+		the windows around to fit on the screen better with all the
+		new controls.
+	* video_spot_tracker.html : Updated to describe all of the above
+		changes.
+	* video_spot_Tracker.tcl : Moved windows around, changed where
+		controls are located.
+
 2004-03-04  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* file_stack_server.cpp : Updated to use the 16-bit build of

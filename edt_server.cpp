@@ -124,7 +124,9 @@ bool  edt_pulnix_raw_file_server::get_pixel_from_memory(unsigned X, unsigned Y, 
   }
 
   // Fill in the pixel value, assuming pixels vary in X fastest in the file.
-  val = d_buffer[ X + Y * PULNIX_X_SIZE ];
+  // Invert Y so that the image shown in the spot tracker program matches the
+  // images shown in the capture program.
+  val = d_buffer[ X + (_maxY - Y) * PULNIX_X_SIZE ];
   return true;
 }
 
@@ -136,7 +138,7 @@ bool  edt_pulnix_raw_file_server::get_pixel_from_memory(unsigned X, unsigned Y, 
   }
 
   // Fill in the pixel value, assuming pixels vary in X fastest in the file.
-  val = d_buffer[ X + Y * PULNIX_X_SIZE ];
+  val = d_buffer[ X + (_maxY - Y) * PULNIX_X_SIZE ];
   return true;
 }
 

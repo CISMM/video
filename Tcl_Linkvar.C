@@ -112,7 +112,9 @@ static	char	*handle_string_value_change(ClientData clientData,
 			selvar->my_tcl_varname);
 	}
 	strncpy(selvar->mystring, cvalue, TCLVAR_STRING_LENGTH);
+	selvar->mystring[TCLVAR_STRING_LENGTH-1] = 0;
 	strncpy(selvar->mylaststring, cvalue, TCLVAR_STRING_LENGTH);
+	selvar->mylaststring[TCLVAR_STRING_LENGTH-1] = 0;
 
 	// Yank the callback if it has been set
 	if (selvar->callback) {
@@ -246,7 +248,8 @@ int	Tclvar_mainloop(void)
 	// when they occur.
 	for (i = 0; i < num_sels; i++) {
 		if (strcmp(sel_list[i]->mystring,sel_list[i]->mylaststring)) {
-			strcpy(sel_list[i]->mylaststring,sel_list[i]->mystring);
+			strncpy(sel_list[i]->mylaststring,sel_list[i]->mystring, TCLVAR_STRING_LENGTH);
+			sel_list[i]->mylaststring[TCLVAR_STRING_LENGTH-1] = 0;
 			Tcl_SetVar(interpreter, sel_list[i]->my_tcl_varname,
 				sel_list[i]->mystring, TCL_GLOBAL_ONLY);
 		}
@@ -705,6 +708,7 @@ int	Tclvar_list_of_strings::Add_entry(const char entry[])
 
 	// Add the entry on the end of the list
 	strncpy(entries[num_entries], entry, TCLVAR_STRING_LENGTH);
+	entries[num_entries][TCLVAR_STRING_LENGTH-1] = 0;
 	num_entries++;
 
 //fprintf(stderr, "Added \"%s\".\n", entry);
@@ -773,6 +777,7 @@ int	Tclvar_list_of_strings::Delete_entry(const char entry[])
 	// Remove the entry from the list by moving the last entry to its
 	// location and reducing the number of entries by one
 	strncpy(entries[i], entries[num_entries-1], TCLVAR_STRING_LENGTH);
+	entries[i][TCLVAR_STRING_LENGTH-1] = 0;
 	num_entries--;
 
 	return retval;
@@ -903,7 +908,9 @@ Tclvar_selector::Tclvar_selector (char * tcl_varname, char * parent_name,
 void	Tclvar_selector::Set (const char *value)
 {
 	strncpy(mystring, value, TCLVAR_STRING_LENGTH);
+	mystring[TCLVAR_STRING_LENGTH-1] = 0;
 	strncpy(mylaststring, value, TCLVAR_STRING_LENGTH);
+	mylaststring[TCLVAR_STRING_LENGTH-1] = 0;
 }
 
 Tclvar_selector::~Tclvar_selector (void)
@@ -1136,6 +1143,7 @@ char	*Tclvar_selector::operator =(char *v)
 		mystring[0] = '\0';
 	} else {
 		strncpy(mystring, v, TCLVAR_STRING_LENGTH);
+		mystring[TCLVAR_STRING_LENGTH-1] = 0;
 	}
 	return mystring;
 }
@@ -1254,6 +1262,7 @@ int	Tclvar_checklist::Add_entry (const char * entry_name, int value)
 
 	if (tcl_parent_name) {
 		strncpy(button_name, tcl_parent_name, sizeof(button_name));
+		button_name[TCLVAR_STRING_LENGTH-1] = 0;
 	} else {
 		button_name[0] = '\0';
 	}
