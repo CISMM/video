@@ -7,10 +7,10 @@ ComposerVersion=4.0.0.4
 ProjectName=EDT_directx_dll
 ProjectDirectory=F:\taylorr\STM\src\video\EDT_directx_dll
 NonSFXDirectory=F:\taylorr\STM\src\video\EDT_directx_dll\NonSFX
-MediaFileName=EDT_DirectShow_Camera_Driver_v01_02
+MediaFileName=EDT_DirectShow_Camera_Driver_v01_03
 CopyMediaToFName=
 ProgramDescriptiveName=EDT DirectShow Camera Driver
-ProgramVersion=01.02
+ProgramVersion=01.03
 CompanyName=UNC Nanoscale Science Research Group
 ProgVerLiveUpdate=0
 RegisterAsApp=0
@@ -58,8 +58,8 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|
 CompanyUrl=www.cs.unc.edu/nano
 
 [TargetExe]
-TargetDirectory=<AbsoluteDir>C:\NSRG\bin\EDT_DirectShow_Camera_Driver_v01.02
-CommonDirectory=<CommonFilesDir>NSRG\EDT_DirectShow_Camera_Driver_v01.02
+TargetDirectory=<AbsoluteDir>C:\NSRG\bin\EDT_DirectShow_Camera_Driver_v01.03
+CommonDirectory=<CommonFilesDir>NSRG\EDT_DirectShow_Camera_Driver_v01.03
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\EDT camera viewer.GRF
 RunTimeDir_1=|||||||1||||1||1|<ProgramFilesDir>|||||
@@ -99,7 +99,7 @@ ShowCopyrightWarning=1
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=NSRG\EDT DirectShow Camera Driver v01.02
+ProgramLinkFolder=NSRG\EDT DirectShow Camera Driver v01.03
 ProgramLinkName=EDT camera viewer
 ProgramLinkParam=
 ProgramLinkWorkDir=
@@ -123,8 +123,9 @@ StartUpChecked=1
 QuickLaunchChecked=1
 SetAllUsers=1
 AddUninstallShortcut=1
-Item-000=*|EDT capture to D_jcribb_data|<Application Folder>\EDT capture to D_jcribb_data.GRF|NSRG\EDT DirectShow Camera Driver v01.02||C:\|Normal Window||0|
-Item-001=*|Raw video capture for Jeremy at 40fps|<Application Folder>\edt_raw_video_store.exe|NSRG\EDT DirectShow Camera Driver v01.02|-s 3 -N 300 -l 7200 -b D:\jcribb\data\pulnix_40fps_60sec.raw||Normal Window||0|
+Item-000=*|EDT capture to D_jcribb_data|<Application Folder>\EDT capture to D_jcribb_data.GRF|NSRG\EDT DirectShow Camera Driver v01.03||C:\|Normal Window||0|
+Item-001=*|Raw video capture for Jeremy at 40fps|<Application Folder>\edt_raw_video_store.exe|NSRG\EDT DirectShow Camera Driver v01.03|-s 3 -N 300 -l 7200 -b D:\jcribb\data\pulnix_40fps_60sec.raw||Normal Window||0|
+Item-002=*|Raw video capture for Jeremy at 120Hz swapped|<Application Folder>\edt_raw_video_store.exe|NSRG\EDT DirectShow Camera Driver v01.03|-N 300 -l 7200 -~ -b D:\jcribb\data\pulnix_120fps_swap_60sec.raw||Normal Window||0|
 
 [Billboard]
 AddBillboard=1
