@@ -1,4 +1,3 @@
-//XXX Make a vrpn_Tracker that reports the tracked position.
 //XXX Off-by-1 somewhere in Roper when binning (top line dark)
 //XXX PerfectOrbit video doesn't seem to play once it has been loaded!
 //    Pausing does make it jump to the end, like other videos
@@ -16,6 +15,7 @@
 #include "roper_server.h"
 #include "directx_camera_server.h"
 #include "directx_videofile_server.h"
+#include "diaginc_server.h"
 #include "image_wrapper.h"
 #include "spot_tracker.h"
 #include <tcl.h>
@@ -31,7 +31,7 @@
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.01";
+const char *Version_string = "01.03";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -90,6 +90,24 @@ public:
   }
 };
 
+class diaginc_imager: public diaginc_server, public image_wrapper
+{
+public:
+  diaginc_imager::diaginc_imager() : diaginc_server(1), image_wrapper() {} ;
+  virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
+    minx = _minX; miny = _minY; maxx = _maxX; maxy = _maxY;
+  }
+  virtual bool	read_pixel(int x, int y, double &result) const {
+    uns16 val;
+    if (get_pixel_from_memory(x, get_num_rows() - 1 - y, val)) {
+      result = val;
+      return true;
+    } else {
+      return false;
+    }
+  }
+};
+
 class directx_imager: public directx_camera_server, public image_wrapper
 {
 public:
@@ -126,12 +144,17 @@ public:
   }
 };
 
-/// Open the wrapped camera we want to use (Roper or DirectX)
+/// Open the wrapped camera we want to use (Roper, DiagInc or DirectX)
 bool  get_camera_and_imager(const char *type, base_camera_server **camera, image_wrapper **imager,
 			    directx_videofile_server **video)
 {
   if (!strcmp(type, "roper")) {
     roper_imager *r = new roper_imager();
+    *camera = r;
+    *imager = r;
+    g_shift = 4;
+  } else if (!strcmp(type, "diaginc")) {
+    diaginc_imager *r = new diaginc_imager();
     *camera = r;
     *imager = r;
     g_shift = 4;
@@ -523,7 +546,7 @@ int main(int argc, char *argv[])
 
   //------------------------------------------------------------------
   // Put the version number into the main window.
-  sprintf(command, "label .versionlabel -text Roper_spot_tracker_v:_%s", Version_string);
+  sprintf(command, "label .versionlabel -text Video_spot_tracker_v:_%s", Version_string);
   if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
           fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
                   tk_control_interp->result);

@@ -1,0 +1,547 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include "diaginc_server.h"
+#include <vrpn_BaseClass.h>
+
+// Include files for Diagnostic Instruments, Inc.
+#include  "spotCam.h"
+
+static	unsigned long	duration(struct timeval t1, struct timeval t2)
+{
+	return (t1.tv_usec - t2.tv_usec) +
+	       1000000L * (t1.tv_sec - t2.tv_sec);
+}
+
+//-----------------------------------------------------------------------
+// These definitions provide standard error checking and printing for
+// the routines from the PVCAM library.  The first parameter (x) is the
+// entire function call.  The second is the string to be printed in case
+// of an error.  The _EXIT routine exits with an error code after printing
+// the message, while the _WARN function just prints the warning and
+// returns.  The _RETURN version returns from the function passing FALSE
+// if there is an error.
+
+#define	SP_CHECK_EXIT(x, y) { int retval; \
+  if ( (retval = x) != SPOT_SUCCESS ) { \
+    fprintf(stderr, "%s failed with code %d\n", y, retval); \
+    exit(-1); \
+  } \
+}
+
+#define	SP_CHECK_RETURN(x, y) { int retval; \
+  if ( (retval = x) != SPOT_SUCCESS ) { \
+    fprintf(stderr, "%s failed with code %d\n", y, retval); \
+    return false; \
+  } \
+}
+
+#define	SP_CHECK_WARN(x, y) { int retval; \
+  if ( (retval = x) != SPOT_SUCCESS ) { \
+    fprintf(stderr, "%s failed with code %d\n", y, retval); \
+  } \
+}
+
+//-----------------------------------------------------------------------
+/*XXX
+bool  roper_server::read_continuous(const int16 camera_handle,
+		       const rgn_type &region_description,
+		       const uns32 exposure_time_millisecs)
+{
+  int16	progress;	//< Progress made in getting the current frame
+  uns32	buffer_size;	//< Size required to hold the data
+
+  //--------------------------------------------------------------------
+  // See if the parameters have changed or if the circular buffer has not
+  // yet been set up to run..  If so, then we need to stop any previous
+  // acquisition and then restart a new set of acquisitions.
+  if ( !_circbuffer_run || (exposure_time_millisecs != _last_exposure) ||
+       (region_description.s1 != _last_region.s1) ||
+       (region_description.s2 != _last_region.s2) ||
+       (region_description.p1 != _last_region.p1) ||
+       (region_description.p2 != _last_region.p2) ||
+       (region_description.sbin != _last_region.sbin) ||
+       (region_description.pbin != _last_region.pbin) ) {
+
+    // Stop any currently-running acquisition and free the memory used
+    // by the circular buffer.
+    if (_circbuffer_run) {
+      boolean retval1;
+      _circbuffer_run = false;
+      if (!(retval1 = pl_exp_stop_cont(_camera_handle, CCS_HALT))) {
+	fprintf(stderr,"roper_server::read_continuous(): Cannot stop acquisition\n");
+      }
+      if (_circbuffer) {
+	delete [] _circbuffer;
+	_circbuffer_len = 0;
+      }
+      if (retval1) { return false; }
+    }
+
+    // Allocate a new circular buffer that is large enough to hold the number
+    // of buffers we want.
+    _circbuffer_len = (uns32)(_circbuffer_num * 
+      (_maxX - _minX + 1) * (_maxY - _minY + 1) / (_binning * _binning) );
+    if ( (_circbuffer = new uns16[_circbuffer_len]) == NULL) {
+      fprintf(stderr,"roper_server::read_continuous(): Out of memory\n");
+      _circbuffer_len = 0;
+      return false;
+    }
+
+    // Setup and start a continuous acquisition.
+    PL_CHECK_RETURN(pl_exp_setup_cont(camera_handle, 1, &region_description,
+      TIMED_MODE, exposure_time_millisecs, &buffer_size, CIRC_OVERWRITE),
+      "pl_exp_setup_cont");
+    // The factor of 2 here is converting bytes to pixels (16 bits)
+    if (buffer_size / 2 != _circbuffer_len / _circbuffer_num) {
+      fprintf(stderr,"roper_server::read_continuous(): Unexpected buffer size (got %u, expected %u)\n",
+	buffer_size, _circbuffer_len / _circbuffer_num * 2);
+      return false;
+    }
+    PL_CHECK_RETURN(pl_exp_start_cont(camera_handle, _circbuffer, _circbuffer_len),
+      "pl_exp_start_cont");
+  }
+  _last_exposure = exposure_time_millisecs;
+  _last_region = region_description;
+  _circbuffer_run = true;
+
+  // Wait for it to be done reading; timeout in 1 second longer than exposure should be
+  const double READ_TIMEOUT = exposure_time_millisecs/1000 + 1;
+  struct  timeval start, now;
+  gettimeofday(&start, NULL);
+  do {
+     uns32 trash;
+     PL_CHECK_RETURN(pl_exp_check_cont_status(camera_handle, &progress, &trash,&trash),
+       "pl_exp_check_cont_status");
+     if (progress == READOUT_FAILED) {
+       fprintf(stderr,"read_continuous(): Readout failed\n");
+       return FALSE;
+     }
+     // XXX Status gets set to 100 here for several milliseconds, then to
+     // 103.  These are invalid values for status.  The example code from
+     // Roper also gets nonsense returns (or at least the read code hangs
+     // in this same place).
+
+     // Check for a timeout; if we haven't heard anything for a second longer than exposure,
+     // abort the read and restart it.
+     gettimeofday(&now, NULL);
+     if (duration(now, start) / 1.0e6 > READ_TIMEOUT) {
+//XXX       send_text_message("Timeout when reading, retrying", vrpn_TEXT_WARNING, 0);
+       // XXX Should return an error and let the above code decide to retry
+       fprintf(stderr,"roper_server::read_continuous(): Timeout, retrying\n");
+       switch (progress) {
+       case READOUT_NOT_ACTIVE:
+	 fprintf(stderr, "  Status: Readout Not Active\n");
+	 break;
+       case EXPOSURE_IN_PROGRESS:
+	 fprintf(stderr, "  Status: Exposure In Progress\n");
+	 break;
+       case READOUT_IN_PROGRESS:
+	 fprintf(stderr, "  Status: Readout In Progress\n");
+	 break;
+       case ACQUISITION_IN_PROGRESS:
+	 fprintf(stderr, "  Status: Acquisition In Progress\n");
+	 break;
+       case READOUT_COMPLETE:
+	 fprintf(stderr, "  Status: Readout Complete\n");
+	 break;
+       case READOUT_FAILED:
+	 fprintf(stderr, "  Status: Readout Failed\n");
+	 break;
+       default:
+	 fprintf(stderr, "  Unrecognized status (%d) at timeout (valid ones %d through %d)\n",
+	   progress, READOUT_NOT_ACTIVE, ACQUISITION_IN_PROGRESS);
+       }
+       gettimeofday(&start, NULL);
+     }
+     // Check at 1ms intervals to avoid eating the whole CPU
+     vrpn_SleepMsecs(1);
+  } while (progress != READOUT_COMPLETE);
+
+  // Get a pointer to the valid frame data
+  PL_CHECK_RETURN(pl_exp_get_latest_frame(camera_handle, &_memory),
+    "pl_exp_get_latest_frame");
+
+  return TRUE;
+}
+*/
+
+//-----------------------------------------------------------------------
+
+bool  diaginc_server::read_one_frame(unsigned short minX, unsigned short maxX,
+				     unsigned short minY, unsigned short maxY,
+				     unsigned exposure_time_millisecs) {
+
+  // If the image size or exposure time have changed since the
+  // last time, set new ones.  Also, set it to not do auto-exposure.
+  if (exposure_time_millisecs != _last_exposure) {
+    BOOL  autoexpose = false;
+    SPOT_EXPOSURE_STRUCT2 exposure;
+    SP_CHECK_RETURN(SpotSetValue(SPOT_AUTOEXPOSE, &autoexpose), "SpotSetValue(Autoexpose)");
+    exposure.dwExpDur = exposure_time_millisecs * 2;
+    SP_CHECK_RETURN(SpotSetValue(SPOT_EXPOSURE2, &exposure), "SpotSetValue(Exposure2)");
+  }
+  if ( (_last_minX != minX) || (_last_maxX != maxX) ||
+       (_last_minY != minY) || (_last_maxY != _minY) ) {
+    RECT  image_region;
+    image_region.left = minX;
+    image_region.right = maxX;
+    image_region.bottom = minY;
+    image_region.top = maxY;
+    SP_CHECK_RETURN(SpotSetValue(SPOT_IMAGERECT, &image_region), "SpotSetValue(Region)");
+  }
+  _last_exposure = exposure_time_millisecs;
+  _last_minX = minX; _last_maxX = maxX; _last_minY = minY; _last_maxY = maxY;
+
+  // Get the picture into the memory buffer
+  SP_CHECK_RETURN(SpotGetImage(_bitDepth, false, 0, _buffer, NULL, NULL, NULL),"SpotGetImage()");
+
+  return true;
+}
+
+//---------------------------------------------------------------------
+// Open the camera and determine its available features and parameters.
+
+bool diaginc_server::open_and_find_parameters(void)
+{
+  // Find out how many cameras are on the system, then get the
+  // name of the first camera, open it, and make sure that it has
+  // no critical failures.
+  int	  num_cameras;
+  SPOT_INTF_CARD_STRUCT	cameras[SPOT_MAX_INTF_CARDS];
+  short	  camera_to_use = 0;
+  short	  bitdepth = 0;
+  short	  binRange[2];
+  RECT	  image_region;
+
+  // Find the list of cameras available, select the
+  // first one, and then initialize the library.
+  SpotFindInterfaceCards(cameras, &num_cameras);
+  if (num_cameras <= 0) {
+    fprintf(stderr,"SPOT driver: Cannot find any connected cameras\n");
+    return false;
+  }
+  SP_CHECK_RETURN(SpotSetValue(SPOT_DRIVERDEVICENUMBER, &camera_to_use), "SpotSetValue(Device)");
+  SP_CHECK_WARN(SpotInit(), "SpotInit");
+
+  // Find out the parameters available on this camera
+  SP_CHECK_RETURN(SpotGetValue(SPOT_BITDEPTH, &bitdepth), "SpotGetvalue(Bitdepth)");
+  if (bitdepth != 12) {
+    fprintf(stderr,"diagnc_server::open_and_find_parameters(): Got depth %d, wanted 12\n", bitdepth);
+    return false;
+  }
+  _bitDepth = (unsigned short) bitdepth;
+  SP_CHECK_RETURN(SpotGetValue(SPOT_IMAGERECT, &image_region), "SpotGetValue(Region)");
+  _minX = image_region.left;
+  _maxX = image_region.right;
+  _minY = image_region.bottom;
+  _maxY = image_region.top;
+  _num_rows = _maxY - _minY + 1;
+  _num_columns = _maxX - _minX + 1;
+  _circbuffer_on = false;
+  SP_CHECK_RETURN(SpotGetValue(SPOT_BINSIZELIMITS, &binRange), "SpotGetValue(BinLimits)");
+  _binMin = binRange[0];
+  _binMax = binRange[1];
+
+  // XXX Find the list of available exposure settings..
+
+  return true;
+}
+
+diaginc_server::diaginc_server(unsigned binning) :
+  base_camera_server(binning),
+  _last_exposure(0),
+  _binMin(0),
+  _binMax(0),
+  _bitDepth(0),
+  _last_minX(0),
+  _last_maxX(0),
+  _last_minY(0),
+  _last_maxY(0),
+  _circbuffer_run(false),
+  _circbuffer(NULL),
+  _circbuffer_len(0),
+  _circbuffer_num(3)	  //< Use this many buffers in the circular buffer
+{
+  //---------------------------------------------------------------------
+  // Initialize the SPOT software, open the camera, and find out what its
+  // capabilities are.
+  if (!open_and_find_parameters()) {
+    fprintf(stderr, "diaginc_server::diaginc_server(): Cannot open camera\n");
+    _status = false;
+    return;
+  }
+
+  //---------------------------------------------------------------------
+  // Make sure the binning value requested is within range
+  if ( (binning < _binMin) || (binning > _binMax) ) {
+    fprintf(stderr,"diaginc_server::diaginc_server(): Binning (%d) out of range (%d - %d)\n",
+      binning, _binMin, _binMax);
+    _status = false;
+    return;
+  }
+
+  //---------------------------------------------------------------------
+  // Allocate a buffer that is large enough to read the maximum-sized
+  // image with no binning.
+  _buflen = (vrpn_uint32)(_num_rows * _num_columns * 2);	// Two bytes per pixel
+  if ( (_buffer = GlobalAlloc( GMEM_ZEROINIT, _buflen)) == NULL) {
+    fprintf(stderr,"diaginc_server::diaginc_server(): Cannot allocate enough locked memory for buffer\n");
+    _status = false;
+    return;
+  }
+  if ( (_memory = GlobalLock(_buffer)) == NULL) {
+    fprintf(stderr, "diaginc_server::diaginc_server(): Cannot lock memory buffer\n");
+    _status = false;
+    return;
+  }
+
+  //---------------------------------------------------------------------
+  // Set the binning to the value requested.
+  short binVal = (short)binning;
+  if (SPOT_SUCCESS != SpotSetValue(SPOT_BINSIZE, &binVal)) {
+    fprintf(stderr, "diaginc_server::diaginc_server(): Can't set binning\n");
+    _status = false;
+    return;
+  }
+
+  //---------------------------------------------------------------------
+  // No image in memory yet.
+  _minX = _minY = _maxX = _maxY = 0;
+
+  _vrpn_buffer=NULL;
+  _vrpn_buffer_size=0;
+
+  _status = true;
+}
+
+//---------------------------------------------------------------------
+// Close the camera and the system.  Free up memory.
+
+diaginc_server::~diaginc_server(void)
+{
+  //---------------------------------------------------------------------
+  // If the circular-buffer mode is supported, shut that down here.
+  if (_circbuffer_run) {
+    //XXX;
+    if (_circbuffer) {
+      delete [] _circbuffer;
+      _circbuffer_len = 0;
+    }
+  }
+
+  //---------------------------------------------------------------------
+  // Shut down the SPOT software and free the global memory buffer.
+  SP_CHECK_WARN(SpotExit(), "SpotExit");
+  GlobalUnlock(_buffer );
+  GlobalFree(_buffer );
+  if (_vrpn_buffer!=NULL){
+	  free(_vrpn_buffer);
+	  _vrpn_buffer_size=0;
+  }
+}
+
+bool  diaginc_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned minY, unsigned maxY,
+					 double exposure_time_millisecs)
+{
+  //---------------------------------------------------------------------
+  // In case we fail, clear these
+  //XXX This will miss the last pixel(s) when binning since they are past the max.
+  _minX = minX * _binning;
+  _maxX = maxX * _binning;
+  _minY = minY * _binning;
+  _maxY = maxY * _binning;
+
+  //---------------------------------------------------------------------
+  // If the maxes are greater than the mins, set them to the size of
+  // the image.
+  if (_maxX <= _minX) {
+    _minX = 0; _maxX = _num_columns - 1;
+  }
+  if (_maxY <= _minY) {
+    _minY = 0; _maxY = _num_rows - 1;
+  }
+
+  //---------------------------------------------------------------------
+  // Clip collection range to the size of the sensor on the camera.
+  if (_minX < 0) { _minX = 0; };
+  if (_minY < 0) { _minY = 0; };
+  if (_maxX >= _num_columns) { _maxX = _num_columns - 1; };
+  if (_maxY >= _num_rows) { _maxY = _num_rows - 1; };
+
+  //---------------------------------------------------------------------
+  // Set up and read one frame at a time if the circular-buffer code is
+  // not available.  Otherwise, the opening code will have set up
+  // the system to run continuously, so we get the next frame from the
+  // buffers.
+  if (_circbuffer_on) {
+    fprintf(stderr,"diaginc_server::read_image_to_memory(): Circular buffer not implemented\n");
+    return false;
+  } else {
+    SP_CHECK_RETURN(read_one_frame(minX, maxX, minY, maxY, (unsigned long)exposure_time_millisecs),
+      "read_one_frame");
+  }
+
+  return true;
+}
+
+static	vrpn_uint16 clamp_gain(vrpn_uint16 val, double gain, double clamp = 65535.0)
+{
+  double result = val * gain;
+  if (result > clamp) { result = clamp; }
+  return (vrpn_uint16)result;
+}
+
+bool  diaginc_server::write_memory_to_ppm_file(const char *filename, int gain, bool sixteen_bits) const
+{
+  //---------------------------------------------------------------------
+  // Make sure the region is non-zero (so we've read an image)
+  if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
+    fprintf(stderr,"diaginc_server::write_memory_to_ppm_file(): No image in memory\n");
+    return false;
+  }
+
+  //---------------------------------------------------------------------
+  // If we are not doing 16 bits, map the 12 bits to the range 0-255, and then write out an
+  // uncompressed 8-bit grayscale PPM file with the values scaled to this range.
+  if (!sixteen_bits) {
+    vrpn_uint16	  *vals = (vrpn_uint16 *)_memory;
+    unsigned char *pixels;
+    // This buffer will be oversized if min and max don't span the whole window.
+    if ( (pixels = new unsigned char[_buflen/2]) == NULL) {
+      fprintf(stderr, "diaginc_server::write_memory_to_ppm_file(): Can't allocate memory for stored image\n");
+      return false;
+    }
+    unsigned r,c;
+    vrpn_uint16 minimum = clamp_gain(vals[0],gain);
+    vrpn_uint16 maximum = clamp_gain(vals[0],gain);
+    vrpn_uint16 cols = (_maxX - _minX)/_binning + 1;
+    vrpn_uint16 rows = (_maxY - _minY)/_binning + 1;
+    for (r = 0; r < rows; r++) {
+      for (c = 0; c < cols; c++) {
+	if (clamp_gain(vals[r*cols + c],gain) < minimum) { minimum = clamp_gain(vals[r*cols+c],gain, 4095); }
+	if (clamp_gain(vals[r*cols + c],gain) > maximum) { maximum= clamp_gain(vals[r*cols+c],gain, 4095); }
+      }
+    }
+    printf("Minimum = %d, maximum = %d\n", minimum, maximum);
+    vrpn_uint16 offset = 0;
+    double scale = gain;
+    for (r = 0; r < rows; r++) {
+      for (c = 0; c < cols; c++) {
+	pixels[r*cols + c] = clamp_gain(vals[r*cols+c] - offset, scale, 4095) >> 4;
+      }
+    }
+    FILE *of = fopen(filename, "wb");
+    fprintf(of, "P5\n%d %d\n%d\n", cols, rows, 255);
+    fwrite(pixels, 1, cols*rows, of);
+    fclose(of);
+    delete [] pixels;
+
+  // If we are doing 16 bits, write out a 16-bit file.
+  } else {
+    vrpn_uint16 *vals = (vrpn_uint16 *)_memory;
+    unsigned r,c;
+    vrpn_uint16 *pixels;
+    // This buffer will be oversized if min and max don't span the whole window.
+    if ( (pixels = new vrpn_uint16[_buflen]) == NULL) {
+      fprintf(stderr, "diaginc_server::write_memory_to_ppm_file(): Can't allocate memory for stored image\n");
+      return false;
+    }
+    vrpn_uint16 minimum = clamp_gain(vals[0],gain);
+    vrpn_uint16 maximum = clamp_gain(vals[0],gain);
+    vrpn_uint16 cols = (_maxX - _minX)/_binning + 1;
+    vrpn_uint16 rows = (_maxY - _minY)/_binning + 1;
+    for (r = 0; r < rows; r++) {
+      for (c = 0; c < cols; c++) {
+	if (clamp_gain(vals[r*cols + c],gain) < minimum) { minimum = clamp_gain(vals[r*cols+c],gain); }
+	if (clamp_gain(vals[r*cols + c],gain) > maximum) { maximum = clamp_gain(vals[r*cols+c],gain); }
+      }
+    }
+    printf("Minimum = %d, maximum = %d\n", minimum, maximum);
+    vrpn_uint16 offset = 0;
+    double scale = gain;
+    for (r = 0; r < rows; r++) {
+      for (c = 0; c < cols; c++) {
+	pixels[r*cols + c] = clamp_gain(vals[r*cols+c] - offset, scale);
+      }
+    }
+    FILE *of = fopen(filename, "wb");
+    fprintf(of, "P5\n%d %d\n%d\n", cols, rows, 4095);
+    fwrite(pixels, sizeof(vrpn_uint16), cols*rows, of);
+    fclose(of);
+    delete [] pixels;
+  }
+  return true;
+}
+
+//---------------------------------------------------------------------
+// Map the 12 bits to the range 0-255, and return the result
+bool	diaginc_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint8 &val, int RGB) const
+{
+  if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
+    fprintf(stderr,"diaginc_server::get_pixel_from_memory(): No image in memory\n");
+    return false;
+  }
+  if (RGB != 0) {
+    fprintf(stderr,"diaginc_server::get_pixel_from_memory(): Can't select other than 0th color\n");
+    return false;
+  }
+  if ( (X < _minX/_binning) || (X > _maxX/_binning) || (Y < _minY/_binning) || (Y > _maxY/_binning) ) {
+    return false;
+  }
+  vrpn_uint16	*vals = (vrpn_uint16 *)_memory;
+  vrpn_uint16	cols = (_maxX - _minX + 1)/_binning;
+  val = (vrpn_uint8)(vals[(Y-_minY/_binning)*cols + (X-_minX/_binning)] >> 4);
+  return true;
+}
+
+bool	diaginc_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &val, int RGB) const
+{
+  if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
+    fprintf(stderr,"diaginc_server::get_pixel_from_memory(): No image in memory\n");
+    return false;
+  }
+  if (RGB != 0) {
+    fprintf(stderr,"diaginc_server::get_pixel_from_memory(): Can't select other than 0th color\n");
+    return false;
+  }
+  if ( (X < _minX/_binning) || (X > _maxX/_binning) || (Y < _minY/_binning) || (Y > _maxY/_binning) ) {
+    return false;
+  }
+  vrpn_uint16	*vals = (vrpn_uint16 *)_memory;
+  vrpn_uint16	cols = (_maxX - _minX + 1)/_binning;
+  val = vals[(Y-_minY/_binning)*cols + (X-_minX/_binning)];
+  return true;
+}
+
+// XXX This routine needs to be tested.
+bool diaginc_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan)
+{
+    _minX=_minY=0;
+    _maxX=_num_columns - 1;
+    _maxY=_num_rows - 1;
+    read_image_to_memory(_minX, _maxX, _minY, _maxY, (int)g_exposure);
+
+    if (!_status) {
+      return false;
+    }
+    if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
+      fprintf(stderr,"directx_camera_server::get_pixel_from_memory(): No image in memory\n");
+      return false;
+    }
+
+    // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION)
+    unsigned  num_x = get_num_columns();
+    unsigned  num_y = get_num_rows();
+    int nRowsPerRegion=vrpn_IMAGER_MAX_REGIONu16/num_x;
+    unsigned y;
+    for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
+      svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1,
+	(vrpn_uint16 *)_memory, 1, _num_columns);
+      svr->mainloop();
+    }
+
+    // Mainloop the server connection (once per server mainloop, not once per object).
+    svrcon->mainloop();
+    return true;
+}
+

@@ -6,6 +6,7 @@
 #include  <vrpn_Connection.h>
 #include  <vrpn_TempImager.h>
 #include  "roper_server.h"
+#include  "diaginc_server.h"
 #include  "directx_camera_server.h"
 
 const int MAJOR_VERSION = 1;
@@ -21,7 +22,7 @@ int		    g_bincount = 1; //< How many pixels to average into one bin in X and Y
 double		    g_exposure = 250.0;	//< How long to expose in milliseconds
 unsigned	    g_width = 320, g_height = 240;  //< Resolution for DirectX cameras
 
-/// Open the camera we want to use (Roper or DirectX)
+/// Open the camera we want to use (Roper, DiagInc, or DirectX)
 bool  init_camera_code(const char *type, int which = 1)
 {
   if (!strcmp(type, "roper")) {
@@ -29,6 +30,13 @@ bool  init_camera_code(const char *type, int which = 1)
     g_camera = new roper_server(g_bincount);
     if (!g_camera->working()) {
       fprintf(stderr,"init_camera_code(): Can't open roper camera server\n");
+      return false;
+    }
+  } else if (!strcmp(type, "diaginc")) {
+    printf("Opening Diagnostics Inc Camera with binning at %d\n", g_bincount);
+    g_camera = new diaginc_server(g_bincount);
+    if (!g_camera->working()) {
+      fprintf(stderr,"init_camera_code(): Can't open diaginc camera server\n");
       return false;
     }
   } else if (!strcmp(type, "directx")) {
@@ -115,7 +123,7 @@ void  Usage(const char *s)
   fprintf(stderr,"       -expose: Exposure time in milliseconds (default 250)\n");
   fprintf(stderr,"       -bin: How many pixels to average in x and y (default 1)\n");
   fprintf(stderr,"       -res: Resolution in x and y (default 320 200)\n");
-  fprintf(stderr,"       devicename: roper or directx (default is directx)\n");
+  fprintf(stderr,"       devicename: roper, diaginc, or directx (default is directx)\n");
   fprintf(stderr,"       devicenum: Which (starting with 1) if there are multiple (default 1)\n");
   exit(-1);
 }

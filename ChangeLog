@@ -1,3 +1,12 @@
+2003-03-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Adding Diagnostics Inc. SPOT camera
+		interface as a choice for the camera to use.
+	* video_tempimager_server.cpp : Adding Diagnostics Inc. SPOT camera
+		interface as a choice for the camera to use.
+	* diaginc_server.h : Server for Diagnostics Incorporated SPOT cameras.
+	* diaginc_server.cpp : Server for Diagnostics Incorporated SPOT cameras.
+
 2003-03-06  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Added VRPN tracker to report position.

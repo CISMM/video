@@ -27,6 +27,18 @@ Package=<4>
 
 ###############################################################################
 
+Project: "diaginc_library"=.\diaginc_library.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
 Project: "directx_library"=.\directx_library.dsp - Package Owner=<4>
 
 Package=<5>
@@ -170,6 +182,9 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name spot_tracker_library
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name diaginc_library
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -187,6 +202,9 @@ Package=<4>
     End Project Dependency
     Begin Project Dependency
     Project_Dep_Name roper_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name diaginc_library
     End Project Dependency
 }}}
 
