@@ -1,6 +1,6 @@
-<title>CISMM Video Optimizer v01.04</title>
+<title>CISMM Video Optimizer v01.05</title>
 
-<h1>CISMM Video Optimizer v01.04</h1>
+<h1>CISMM Video Optimizer v01.05</h1>
 
 <p>The <dfn>CISMM Video Optimizer</dfn> program is used to optimize video frames from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible video file, from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible camera, from a <a href="http://roperscientific.com">Roper Scientific</a> camera, from a <a href="http://diaginc.com">DiagInc</a> SPOT camera, or from a set of TIFF or BMP files (it can read other, compressed file formats but these are not included in the default set because these file formats distort images in ways that affect tracking accuracy). The program currently runs only on Windows, but it uses the portable openGL library for rendering, the portable Tcl/Tk for user interface control, and the portable ImageMagick package for reading images.</p>
 
@@ -10,9 +10,9 @@
 
 <h2>Running the program</h2>
 
-<p>The program is run by dragging a video file or image file onto the desktop icon that was created when the program was installed. To select a stack of image files that are numbered consecutively, drag any one of the files onto the icon.  It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start Menu/All Programs/NSRG/CISMM Video Optimizer v01.04</b></i>. If you run the program directly by double-clicking on the icon, it will ask for a video or image file (AVI, TIF, or BMP) that it should open.</p> 
+<p>The program is run by dragging a video file or image file onto the desktop icon that was created when the program was installed. To select a stack of image files that are numbered consecutively, drag any one of the files onto the icon.  It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start Menu/All Programs/NSRG/CISMM Video Optimizer v01.05</b></i>. If you run the program directly by double-clicking on the icon, it will ask for a video or image file (AVI, TIF, or BMP) that it should open.</p> 
 
-<h2><img src="GUI.jpg" width="173" height="714" align="right">Using the program</h2>
+<h2><img src="GUI.jpg" width="173" height="595" align="right">Using the program</h2>
 
 <p>When the program is run and a file is selected, four windows will appear. The image window that appears on the lower right contains the first image within the video file or a continually-updating image from a live camera feed. The control panel named <b><i>tk</i></b> that appears on the left when the program is run (shown here to the right) contains a number of interaction widgets that control the operation of the program. The <b><i>kernel</i></b> control panel that appears above the image window (described later) controls the type of tracking kernel being used. The <b><i>log</i></b> control panel is described later.</p> 
 
@@ -90,7 +90,7 @@
 
 <p><img src="kernel.jpg" width="528" height="117"></p>
 
-<p>There are three types of tracking kernels available in version 1.04, disc, cone, and symmetric. Their properties are controlled using interface widgets in the <cite>kernel</cite> control panel.</p> 
+<p>There are three types of tracking kernels available in version 1.05, disc, cone, and symmetric. Their properties are controlled using interface widgets in the <cite>kernel</cite> control panel.</p> 
 
 <p>For tracking spots that are even in intensity, or which have uneven intensities within them but a defined circular edge, the <cite><strong>disc</strong></cite> kernel should be used. The radius should be set to match the radius of the spots you wish to track. The <cite><strong>interpolate</strong></cite> checkbox should be set for more accuracy and cleared for more speed.</p> 
 
@@ -114,9 +114,36 @@
 
 <h3>Saving the optimized video</h3>
 
-<p><img src="log.jpg" width="286" height="61" align="right">You can record the motion of the trackers by checking the <b><i>Logging</i></b> checkbox within the <b><i>log</i></b> control panel (shown to the right). This will bring up a dialog box that will let you select a filename. Once you have selected a file name, you check the <b><i>play_video</i></b> checkbox to begin going through the video file, or you can use the <b><i>single_step_video</i></b> repeatedly to step through a frame at a time. When you are finished with the section of tracking that you are interested in, uncheck the Logging checkbox to stop the logging. You can then go forward to another section, turn on logging, and save a different file sequence if you like. The files that are stored will have the format: <dfn>filename</dfn>.opt.<dfn>nnnn</dfn>.tif, where filename is the name selected above, and nnnn is replaced by the frame number from the video (starts at frame 0 and goes up by one for each single_step).</p> 
+<p><img src="log.jpg" width="399" height="61" align="right">You can record the 
+  motion of the trackers by checking the <b><i>Logging</i></b> checkbox within 
+  the <b><i>log</i></b> control panel (shown to the right). This will bring up 
+  a dialog box that will let you select a filename. Once you have selected a file 
+  name, you check the <b><i>play_video</i></b> checkbox to begin going through 
+  the video file, or you can use the <b><i>single_step_video</i></b> repeatedly 
+  to step through a frame at a time. When you are finished with the section of 
+  tracking that you are interested in, uncheck the Logging checkbox to stop the 
+  logging. You can then go forward to another section, turn on logging, and save 
+  a different file sequence if you like. The files that are stored will have the 
+  format: <dfn>filename</dfn>.opt.<dfn>nnnn</dfn>.tif, where filename is the name 
+  selected above, and nnnn is replaced by the frame number from the video (starts 
+  at frame 0 and goes up by one for each single_step).</p> 
 
-<p>Logging will not occur while the file is paused, or when the end of the video has been reached (the last frame is stored either when you quit the program or when you stop logging). This is done so that you can place the trackers back onto spots that have jumped too far between frames when single-stepping through the video and still get an accurate record of where the spots went. There will be one file per frame of video stepped through or played through. <b><i>Note</i></b>: Some video files have a 30 frame/second playback but have three copies of the same video frame to produce an overall update of 10 frames/second; this will produce repeated location reports for each of the identical frames.</p> <p>CISMM Video Optimizer saves 16-bit files by default. You can switch this to 8-bit files (which have less information but can be read by a wider variety of programs) by un-checking hte <cite>Log 16 bits</cite> checkbox.</p> 
+<p>Logging will not occur while the file is paused, or when the end of the video has been reached (the last frame is stored either when you quit the program or when you stop logging). This is done so that you can place the trackers back onto spots that have jumped too far between frames when single-stepping through the video and still get an accurate record of where the spots went. There will be one file per frame of video stepped through or played through. <b><i>Note</i></b>: Some video files have a 30 frame/second playback but have three copies of the same video frame to produce an overall update of 10 frames/second; this will produce repeated location reports for each of the identical frames.</p> 
+<p>CISMM Video Optimizer saves 16-bit files by default. You can switch this to 
+  8-bit files (which have less information but can be read by a wider variety 
+  of programs) by un-checking hte <cite>Log 16 bits</cite> checkbox.</p>
+<p><b>Logging a spread function:</b> It is possible to log the &quot;spread function&quot; 
+  of points, beads, or other objects in the video. This is done by checking the 
+  <b><i>Log Point-spread</i></b> box before turning on logging. If selected, the 
+  program will acquire data centered on the first tracker (number zero), whose 
+  radius is the same as the tracker radius. The spread function file is a radial 
+  average around the center (providing one line of the image for each video frame). 
+  The file will have the same name base name as the standard TIFF files, but the 
+  suffix &quot;.psf.tif&quot; and it will contain one line for each frame of the 
+  video that is optimized, with the first line at bottom of the image and the 
+  last line at the top. It can be used by the <i>Video Spot Tracker</i> program 
+  to estimate the Z location of beads or other radially-symmetric features in 
+  images.</p> 
 
 <h3>Controlling playback</h3> 
 
@@ -132,6 +159,11 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 01.05</h3>
+<ul>
+  <li>Adds spread-function saving option.</li>
+</ul>
+<h3></h3>
 <h3>Version 01.04</h3>
 <ul>
   <li>Adds controls to adjust gain and offset by clipping away onwanted parts 

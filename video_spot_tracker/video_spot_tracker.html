@@ -1,12 +1,12 @@
-<title>Video Spot Tracker v03.04</title>
+<title>Video Spot Tracker v03.05</title>
 
-<h1>Video Spot Tracker version 03.04</h1>
+<h1>Video Spot Tracker version 03.05</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible video file, from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible camera, from a <a href="http://roperscientific.com">Roper Scientific</a> camera, from a <a href="http://diaginc.com">DiagInc</a> SPOT camera, or from a set of TIFF or BMP files (it can read other, compressed file formats but these are not included in the default set because these file formats distort images in ways that affect tracking accuracy). The program currently runs only on Windows, but it uses the portable openGL library for rendering, the portable Tcl/Tk for user interface control, and the portable ImageMagick package for reading images.</p>
 
 <h2>Running the program</h2>
 
-<p>The program is run by dragging a video file or image file onto the desktop icon that was created when the program was installed. To select a stack of image files that are numbered consecutively, drag any one of the files onto the icon.  It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start Menu/All Programs/NSRG/Video Spot Tracker v03.04</b></i>. If you run the program directly by double-clicking on the icon, it will ask for a video or image file (AVI, TIF, or BMP) that it should open.</p>
+<p>The program is run by dragging a video file or image file onto the desktop icon that was created when the program was installed. To select a stack of image files that are numbered consecutively, drag any one of the files onto the icon.  It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start Menu/All Programs/NSRG/Video Spot Tracker v03.05</b></i>. If you run the program directly by double-clicking on the icon, it will ask for a video or image file (AVI, TIF, or BMP) that it should open.</p>
 
 <p><b><i>NOTE:</i></b> With Windows XP service pack 2 and with other firewall software, running the program causes a dialog box to appear asking whether to block the program; the program needs to be unblocked only if the program is to be connected to a local or remote feedback system that relies on the tracking data. This happens when the program opens the Internet port assigned to it (3883) by the Internet Domain Naming Authority to export the data through the standard VRPN protocol (<a href="http://www.vrpn.org">www.vrpn.org</a>).</p> 
 
@@ -38,9 +38,9 @@
 
 <h3>Selecting the type of tracker</h3>
 
-<p><img src="kernel.jpg" width="609" height="117"></p>
+<p><img src="kernel.jpg" width="688" height="117"></p>
 
-<p>There are three types of tracking kernels available in version 3.04: disc, 
+<p>There are three types of tracking kernels available in version 3.05: disc, 
   cone, and symmetric. Their properties are controlled using interface widgets 
   in the <cite>kernel</cite> control panel.</p>
 
@@ -52,8 +52,18 @@
 
 <p>If the bead profile is changing over time, or if it does not fit well into one of the above categories, then the <cite><strong>symmetric</strong></cite> tracker should be chosen. This tracker operates by locating the minimum variance in concentric rings around the bead center. It sums the variance in circles of radius 1, 2, 3, ... up to the radius setting and divides each circle's radius by its circumference to provide even weights for each ring. The radius should be set to be at least slighly larger than the bead that is to be tracked; setting it larger will not harm tracking except to make the program run more slowly.  The setting on the <cite>dark_spot</cite> check box has no effect when symmetric tracker is chosen.</p> 
 
-<p><img src="rod3.jpg" width="152" height="164" align="right">A fourth, composite kernel is the <cite><strong>rod3</strong></cite> kernel. This is actually a grouping of three subkernels, each of which is one of the above types. These three kernels lie along the same line and move as a unit; they seek to track bars in the image. When this kernel box is selected, a new control panel will appear. This control panel is shown to the right, and it enables control over the length (in pixels) and orientation (in degrees) of the bar trackers. As with the radius and position controls described above, these controls change to display and control the values of the active tracker. The most successful bars may be made of cone kernels and be slightly less than the actual length of the bar on the screen. The symmetric kernel is probably the least useful.  Note that if the bars flex, this tracker may not work very well.</p>
-
+<p><img src="rod3.jpg" width="152" height="164" align="right">A fourth, composite 
+  kernel is the <cite><strong>rod3</strong></cite> kernel. This is actually a 
+  grouping of three subkernels, each of which is one of the above types. These 
+  three kernels lie along the same line and move as a unit; they seek to track 
+  bars in the image. When this kernel box is selected, a new control panel will 
+  appear. This control panel is shown to the right, and it enables control over 
+  the length (in pixels) and orientation (in degrees) of the bar trackers. As 
+  with the radius and position controls described above, these controls change 
+  to display and control the values of the active tracker. The most successful 
+  bars may be made of cone kernels and be slightly less than the actual length 
+  of the bar on the screen. The symmetric kernel is probably the least useful. 
+  Note that if the bars flex, this tracker may not work very well.</p>
 <h3>Enabling the trackers to follow jumps in bead position</h3>
 
 
@@ -63,7 +73,17 @@
 
 <h3>Activating the trackers</h3>
 
-<p>Once you have selected the type of tracker to use, and have selected spots to track, check the <cite>optimize</cite> checkbox. When you do this, the trackers should all move themselves to the centers of the spots they were started on.  You can continue to add trackers using the right mouse button after you have checked the optimize button; they will try to follow the center of the spot even as you adjust their radius.</p>
+<p>Once you have selected the type of tracker to use, and have selected spots 
+  to track, check the <cite>optimize</cite> checkbox. When you do this, the trackers 
+  should all move themselves to the centers of the spots they were started on. 
+  You can continue to add trackers using the right mouse button after you have 
+  checked the optimize button; they will try to follow the center of the spot 
+  even as you adjust their radius.</p>
+<p>If you have saved a radially-averaged spread function for the spots you are 
+  tracking (using the <b><i>CISMM Video Optimizer</i></b> program), you can use 
+  it to estimate Z values for the spots by clicking the <i>optimize_z</i> button 
+  and then selecting the spread function's TIF file in the dialog box that appears. 
+  The Z location will now be updated based on the spread-function stack.</p>
 
 <h3>Faster display update</h3>
 
@@ -88,7 +108,7 @@
 
 <p>The motion of the trackers over time is stored into two log files. The first is a <b><i>Comma-Separated Values</i></b> format with the extension .csv. This text format can be viewed in a text editor or loaded by several spreadsheet and analysis programs. The reports are stored in the file in in frame order, with multiple tracker entries interleaved for each frame. If you want to view the individual traces, you should use the <i>Excel</i> data sorting tool to sort the list by the <i>Spot ID</i> column.</p>
 
-<p>The second log file is in the <b><i>Virtual-Reality Peripheral Network</i></b> (<a href="http://www.vrpn.org">VRPN</a>) format. This format can be converted into a Matlab data file using the <b><i>vrpnLogToMatlab</i></b> program that should have been installed at the same time the <i><b>Video Spot Tracker</b></i> program was. You convert the &quot;.vrpn&quot; file into a Matlab file by dragging it onto a shortcut that points to the program (or by dragging it onto the program itself). The vrpnLogToMatlab program will have been installed in the directory: <b><i>C:\Program Files\NSRG\Video Spot Tracker v03.04\VrpnLogToMatlib</i></b> and it will also be located on the desktop.</p>
+<p>The second log file is in the <b><i>Virtual-Reality Peripheral Network</i></b> (<a href="http://www.vrpn.org">VRPN</a>) format. This format can be converted into a Matlab data file using the <b><i>vrpnLogToMatlab</i></b> program that should have been installed at the same time the <i><b>Video Spot Tracker</b></i> program was. You convert the &quot;.vrpn&quot; file into a Matlab file by dragging it onto a shortcut that points to the program (or by dragging it onto the program itself). The vrpnLogToMatlab program will have been installed in the directory: <b><i>C:\Program Files\NSRG\Video Spot Tracker v03.05\VrpnLogToMatlib</i></b> and it will also be located on the desktop.</p>
 
 <p><strong>Data description:</strong> Positions and radii are reported in units of pixels, with the origin at the upper-right corner of the screen. +X is towards the right on the displayed window and +Y is towards the bottom.</p>
 
@@ -120,6 +140,12 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 3.05:</h3>
+<ul>
+  <li>3D bead tracking based on averaged spread functions created using the <b><i>CISMM 
+    Video Optimizer</i></b> tool. This lets the depth of each bead be estimated 
+    each frame.</li>
+</ul>
 <h3>Version 3.04:</h3>
 <ul>
   <li>The &quot;follow jumps&quot; code in this version is much faster than in 
