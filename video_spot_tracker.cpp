@@ -42,6 +42,7 @@
 #include <GL/glut.h>
 #include <quat.h>
 #include <vrpn_Connection.h>
+#include <vrpn_Analog.h>
 #include <vrpn_Tracker.h>
 // This pragma tells the compiler not to tell us about truncated debugging info
 // due to name expansion within the string, list, and vector classes.
@@ -61,7 +62,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "03.08";
+const char *Version_string = "04.00";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -206,6 +207,7 @@ int		    g_whichDragAction;		  //< What action to take for mouse drag
 
 vrpn_Connection	    *g_vrpn_connection = NULL;    //< Connection to send position over
 vrpn_Tracker_Server *g_vrpn_tracker = NULL;	  //< Tracker server to send positions
+vrpn_Analog_Server  *g_vrpn_analog = NULL;        //< Analog server to report frame number
 vrpn_Connection	    *g_client_connection = NULL;  //< Connection on which to perform logging
 vrpn_Tracker_Remote *g_client_tracker = NULL;	  //< Client tracker object to case ping/pong server messages
 FILE		    *g_csv_file = NULL;		  //< File to save data in with .csv extension
@@ -276,7 +278,7 @@ Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_change
 Tclvar_int		g_log_relative("logging_relative");
 double			g_log_offset_x, g_log_offset_y, g_log_offset_z;
 bool g_video_valid = false; // Do we have a valid video frame in memory?
-unsigned		g_log_frame_number_last_logged = -1;
+int		        g_log_frame_number_last_logged = -1;
 
 //--------------------------------------------------------------------------
 // Helper routine to get the Y coordinate right when going between camera
@@ -519,6 +521,7 @@ static void  cleanup(void)
   dirtyexit();
 
   if (g_vrpn_tracker) { delete g_vrpn_tracker; g_vrpn_tracker = NULL; };
+  if (g_vrpn_analog) { delete g_vrpn_analog; g_vrpn_analog = NULL; };
   if (g_vrpn_connection) { delete g_vrpn_connection; g_vrpn_connection = NULL; };
   if (g_client_tracker) { delete g_client_tracker; g_client_tracker = NULL; };
   if (g_client_connection) { delete g_client_connection; g_client_connection = NULL; };
@@ -540,6 +543,10 @@ static	bool  save_log_frame(unsigned frame_number)
 
   g_log_frame_number_last_logged = frame_number;
 
+  // Record the frame number into the log file
+  g_vrpn_analog->channels()[0] = frame_number;
+  g_vrpn_analog->report(vrpn_CONNECTION_RELIABLE);
+
   list<Spot_Information *>::iterator loop;
   for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
     vrpn_float64  pos[3] = {(*loop)->xytracker()->get_x() - g_log_offset_x,
@@ -559,7 +566,7 @@ static	bool  save_log_frame(unsigned frame_number)
 
     // Rotation about the Z axis, reported in radians.
     q_from_euler(quat, orient * (M_PI/180),0,0);
-    if (g_vrpn_tracker->report_pose((*loop)->index(), now, pos, quat) != 0) {
+    if (g_vrpn_tracker->report_pose((*loop)->index(), now, pos, quat, vrpn_CONNECTION_RELIABLE) != 0) {
       fprintf(stderr,"Error: Could not log tracker number %d\n", (*loop)->index());
       return false;
     }
@@ -571,7 +578,7 @@ static	bool  save_log_frame(unsigned frame_number)
 	first_time = false;
       }
       double interval = timediff(now, start);
-      fprintf(g_csv_file, "%lf, %d, %lf,%lf,%lf, %lf, %lf,%lf\n", interval, (*loop)->index(), pos[0], pos[1], pos[2], (*loop)->xytracker()->get_radius(), orient, length);
+      fprintf(g_csv_file, "%d, %d, %lf,%lf,%lf, %lf, %lf,%lf\n", frame_number, (*loop)->index(), pos[0], pos[1], pos[2], (*loop)->xytracker()->get_radius(), orient, length);
     }
   }
   return true;
@@ -1533,7 +1540,10 @@ void myIdleFunc(void)
   }
 
   //------------------------------------------------------------
-  // Let the VRPN objects send their reports.
+  // Let the VRPN objects send their reports.  Log the analog first
+  // because it stores the frame numbers for the following tracker
+  // reports.
+  if (g_vrpn_analog) { g_vrpn_analog->mainloop(); }
   if (g_vrpn_tracker) { g_vrpn_tracker->mainloop(); }
   if (g_vrpn_connection) { g_vrpn_connection->mainloop(); }
 
@@ -1860,7 +1870,7 @@ void  logfilename_changed(char *newvalue, void *)
     if ( NULL == (g_csv_file = fopen(csvname, "w")) ) {
       fprintf(stderr,"Cannot open CSV file for writing: %s\n", csvname);
     } else {
-      fprintf(g_csv_file, "Time,Spot ID,X,Y,Z,Radius,Orientation (if meaningful),Length (if meaningful)\n");
+      fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius,Orientation (if meaningful),Length (if meaningful)\n");
     }
     delete [] csvname;
   }
@@ -2267,6 +2277,7 @@ int main(int argc, char *argv[])
   // report the position when tracking is turned on.
   g_vrpn_connection = new vrpn_Synchronized_Connection();
   g_vrpn_tracker = new vrpn_Tracker_Server("Spot", g_vrpn_connection, MAX_TRACKERS);
+  g_vrpn_analog = new vrpn_Analog_Server("FrameNumber", g_vrpn_connection, 1);
 
   //------------------------------------------------------------------
   // Initialize GLUT and create the window that will display the

@@ -1,3 +1,12 @@
+2005-01-24  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Version 4.00.  Changes the output
+		format for CSV files to include frame number from video
+		rather than time at which the info was saved: time was
+		not with respect to video frame time before, so this is
+		an improvement.  Adds an Analog to the VRPN file to tell
+		the frame number.
+
 2005-01-20  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* stack_collector.cpp : Version 2.01. Watches for focus change

@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v03.07c</title>
+<title>Video Spot Tracker v04.00</title>
 
-<h1>Video Spot Tracker version 03.07c</h1>
+<h1>Video Spot Tracker version 04.00</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -17,7 +17,13 @@
 
 <h2>Running the program</h2>
 
-<p>The program is run by dragging a video file or image file onto the desktop icon that was created when the program was installed. To select a stack of image files that are numbered consecutively, drag any one of the files onto the icon.  It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start Menu/All Programs/NSRG/Video Spot Tracker v03.07</b></i>. If you run the program directly by double-clicking on the icon, it will ask for a video or image file (AVI, TIF, or BMP) that it should open.</p>
+<p>The program is run by dragging a video file or image file onto the desktop 
+  icon that was created when the program was installed. To select a stack of image 
+  files that are numbered consecutively, drag any one of the files onto the icon. 
+  It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
+  Menu/All Programs/NSRG/Video Spot Tracker v04.00</b></i>. If you run the program 
+  directly by double-clicking on the icon, it will ask for a video or image file 
+  (AVI, TIF, or BMP) that it should open.</p>
 
 <p><b><i>NOTE:</i></b> With Windows XP service pack 2 and with other firewall software, running the program causes a dialog box to appear asking whether to block the program; the program needs to be unblocked only if the program is to be connected to a local or remote feedback system that relies on the tracking data. This happens when the program opens the Internet port assigned to it (3883) by the Internet Domain Naming Authority to export the data through the standard VRPN protocol (<a href="http://www.vrpn.org">www.vrpn.org</a>).</p> 
 
@@ -51,7 +57,7 @@
 
 <p><img src="kernel.jpg" width="688" height="117"></p>
 
-<p>There are three types of tracking kernels available in version 3.07: disc, 
+<p>There are three types of tracking kernels available in version 4.00: disc, 
   cone, and symmetric. Their properties are controlled using interface widgets 
   in the <cite>kernel</cite> control panel.</p>
 
@@ -119,7 +125,15 @@
 
 <p>The motion of the trackers over time is stored into two log files. The first is a <b><i>Comma-Separated Values</i></b> format with the extension .csv. This text format can be viewed in a text editor or loaded by several spreadsheet and analysis programs. The reports are stored in the file in in frame order, with multiple tracker entries interleaved for each frame. If you want to view the individual traces, you should use the <i>Excel</i> data sorting tool to sort the list by the <i>Spot ID</i> column.</p>
 
-<p>The second log file is in the <b><i>Virtual-Reality Peripheral Network</i></b> (<a href="http://www.vrpn.org">VRPN</a>) format. This format can be converted into a Matlab data file using the <b><i>vrpnLogToMatlab</i></b> program that should have been installed at the same time the <i><b>Video Spot Tracker</b></i> program was. You convert the &quot;.vrpn&quot; file into a Matlab file by dragging it onto a shortcut that points to the program (or by dragging it onto the program itself). The vrpnLogToMatlab program will have been installed in the directory: <b><i>C:\Program Files\NSRG\Video Spot Tracker v03.07\VrpnLogToMatlib</i></b> and it will also be located on the desktop.</p>
+<p>The second log file is in the <b><i>Virtual-Reality Peripheral Network</i></b> 
+  (<a href="http://www.vrpn.org">VRPN</a>) format. This format can be converted 
+  into a Matlab data file using the <b><i>vrpnLogToMatlab</i></b> program that 
+  should have been installed at the same time the <i><b>Video Spot Tracker</b></i> 
+  program was. You convert the &quot;.vrpn&quot; file into a Matlab file by dragging 
+  it onto a shortcut that points to the program (or by dragging it onto the program 
+  itself). The vrpnLogToMatlab program will have been installed in the directory: 
+  <b><i>C:\Program Files\NSRG\Video Spot Tracker v04.00\VrpnLogToMatlib</i></b> 
+  and it will also be located on the desktop.</p>
 
 <p><strong>Data description:</strong> Positions and radii are reported in units of pixels, with the origin at the upper-right corner of the screen. +X is towards the right on the displayed window and +Y is towards the bottom.</p>
 
@@ -151,6 +165,18 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 4.00:</h3>
+<ul>
+  <li>Modified the output format for both the CSV and VRPN files to include the 
+    frame number. In the CSV file, the frame number replaces the (bogus) time 
+    value. In the VRPN file, it is provided as an additional vrpn_Analog report. 
+    This report is properly converted by version 2.0 and later of the VRPNLogToMatlab 
+    program (ships with Video Spot Tracker); earlier versions will silently ignore 
+    the extra data.</li>
+  <li>Note that the output format of the VRPNLogToMatlab program included here 
+    is not compatible with the output of the earlier versions. It changes the 
+    name of the matrix and includes different data.</li>
+</ul>
 <h3>Version 3.07c:</h3>
 <ul>
   <li>Adds test of control for EDT board (which we use to control the Pulnix camera).</li>
