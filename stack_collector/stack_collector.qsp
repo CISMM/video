@@ -1,40 +1,57 @@
 [General]
 FileVersion=1.1
 FileType=QSetupIniFile
-ComposerVersion=3.5.0.3
+ComposerVersion=5.0.0.0
+OperatingSystem=WinXP  5.1  2600 (Service Pack 2)
 
 [Project]
 ProjectName=stack_collector
 ProjectDirectory=F:\taylorr\STM\src\video\stack_collector
-MediaFileName=stack_collector_01_06
+NonSFXDirectory=F:\taylorr\STM\src\video\stack_collector\NonSFX
+MediaFileName=CISMM_stack_collector_02_00
 CopyMediaToFName=
-ProgramDescriptiveName=Stack Collector v1.06
-ProgramVersion=01.06
+ProgramDescriptiveName=CISMM Stack Collector v2.00
+ProgramVersion=02.00
 CompanyName=www.cs.unc.edu/nano
 ProgVerLiveUpdate=0
 RegisterAsApp=1
 LanguageFlag=1
 LanguageNames=|
+UseNonSFXDir=0
+ClrNonSFXDir=0
+CompressNonSFXFiles=0
+ForceCopyNonSFXFiles=0
+CompressionLevel=9
 
 [Display]
 AddSetupBackground=1
+SetupBackground3D=1
 TopLabel=1
 TopLabelVer=1
 TopLabel2=0
 BottomLabel=0
-TopLabelText="Stack Collector"
+TopLabelText="CISMM Stack Collector"
 TopLabel2Text=""
 BottomLabelText="Copyright © 2003"
+BackgroundDesign=Gradient
 TopBackgroundColor=16711680
 BottomBackgroundColor=0
 AddBottomColor=1
 DlgBmp3DFrame=1
-AddDialogBitmap=0
-DialogBitmapFileName=
-AddBackgroundBitmap=0
-BackgroundBitmapFileName=
+DialogStyle=Modern
+AddDialogBitmap=1
+DialogBitmapFileName=F:\taylorr\STM\src\video\stack_collector\icon64.bmp
+AddBackgroundBitmap=1
+BackgroundBitmapFileName=F:\taylorr\STM\src\video\stack_collector\icon64.bmp
 BackgroundBitmapLocation=|Top/Left|0|0|
+AddBackgroundWave=0
 BgBmpTransparent=0
+BackgroundWaveFileName=
+BackgroundWaveLocation=|Center|300|0|
+BackgroundWaveLoop=1
+BackgroundWaveDelay=0
+AddBackgroundWaveSlider=0
+BackgroundWaveSliderType=Fixed
 TopLabelSide=Left
 TopLabel2Side=Left
 BottomLabelSide=Left
@@ -45,7 +62,7 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|
 CompanyUrl=www.cs.unc.edu/nano
 
 [TargetExe]
-TargetDirectory=<AbsoluteDir>C:\NSRG\bin\stack_collector v1.06
+TargetDirectory=<AbsoluteDir>C:\NSRG\bin\CISMM_stack_collector v2.00
 CommonDirectory=<CommonFilesDir>
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\stack_collector.bat
@@ -56,17 +73,27 @@ RunTimeDir_3=|||||||1||||1||1|<ProgramFilesDir>|||||
 [Dialogs]
 SelectedDialogs=*Welcome,License,*Readme,User Information,*Destination,Setup Type,Custom,Associate,*Shortcuts,*Confirm Setup,*Copy Files,*Complete
 LicenseTextFile=
-ReadmeTextFile=F:\taylorr\STM\src\video\Intallation_README.txt
+ReadmeTextFile=F:\taylorr\STM\src\video\stack_collector\Installation_README.txt
 ReadmeTextFile2=
+UseNotepad=0
+SpaceReqOnDriveCheckBox=0
+SpaceReqOnDrive=
 RequestUserName=1
 RequestCompanyName=1
 RequestSerialNumberAlso=0
+MandatoryUserName=1
+MandatoryCompanyName=1
+MandatorySerialNumber=1
 RequestSerialCheckDLL=0
 SerialCheckDll=
 RequestPredefinedSerial=0
 CaseSensitiveSerial=0
-PredefinedSerialText=
+RequestTokenizedSerial=0
+CDSetup=0
 ShowCompactSetupAlso=1
+ForcePartialSetup=0
+ShowProgBar2=0
+SilentSetup=0
 ProposeReadme=0
 ProposeLaunch=0
 ProposeRestart=0
@@ -74,28 +101,38 @@ ProposeReadmeChecked=0
 ProposeLaunchChecked=0
 ShowCloseRecommendation=1
 ShowAdwareDisclaimer=0
+ShowCopyrightWarning=1
 
 [Shortcuts]
-ProgramLinkFolder=NSRG\Stack Collector v1.06
-ProgramLinkName=Stack_collector
+AddMainShortCut=1
+ForceRemoveShortcutFolder=0
+ProgramLinkFolder=NSRG\CISMM Stack Collector v2.00
+ProgramLinkName=DirectX_Stack_collector
 ProgramLinkParam=
 ProgramLinkWorkDir=<Application Folder>
-ProgramLinkIconFile=
+ProgramLinkRun=Minimized
+ProgramLinkIconFile=<Application Folder>\stack_collector.ico
 ProgramLinkIconNum=0
 StartMenuLinkName=Stack Collector v1.06
 DesktopLinkName=Stack Collector v1.06
 SendToLinkName=Stack Collector v1.06
 StartUpLinkName=Stack Collector v1.06
+QuickLaunchLinkName=CISMM Stack Collector v2.00
 StartMenuCheckBox=0
 DesktopCheckBox=0
 SendToCheckBox=0
 StartUpCheckBox=0
+QuickLaunchCheckBox=0
 StartMenuChecked=1
 DesktopChecked=1
 SendToChecked=1
 StartUpChecked=1
+QuickLaunchChecked=0
 SetAllUsers=1
 AddUninstallShortcut=1
+Item-000=*|Roper_Stack_Collector|<Application Folder>\stack_collector.bat|NSRG\CISMM Stack Collector v2.00|roper|<Application Folder>|Minimized|<Application Folder>\stack_collector.ico|0|1||0|
+Item-001=*|Pulnix_Stack_Collector_Hercules|<Application Folder>\stack_collector.bat|NSRG\CISMM Stack Collector v2.00|edt Focus@cuprum-cs.cs.unc.edu|<Application Folder>|Minimized|<Application Folder>\stack_collector.ico|0|1||0|
+Item-002=*|Pulnix_Stack_Collector_Artemis|<Application Folder>\stack_collector.bat|NSRG\CISMM Stack Collector v2.00|edt Focus@carbon-cs.cs.unc.edu|<Application Folder>|Minimized|<Application Folder>\stack_collector.ico|0|1||0|
 
 [Billboard]
 AddBillboard=1
@@ -118,7 +155,7 @@ BackgroundUpdate=0
 RestartProcess=0
 InformFinish=0
 UpdateProjectFName=
-DownloadURL_UPDATE=http://
+DownloadURL_UPDATE=http:
 NameOfUpdateFile=
 RunningProcess=
 VersionOriginal=1
@@ -126,16 +163,30 @@ ValidVersions=
 VersionNew=1
 ReAskDays=0
 AutoUpdateProbeSpin=1
-AutoUpdateProbeText=Only at Startup
+AutoUpdateProbeText=Only at Agent Start
 
 [Switches]
 OperatingSystems=All,95,98,ME,NT,2000,XP
 OverwriteFlag=1
 CreateUnInstall=1
-SilentSetup=0
+ScrambleUnInstallData=0
+HideErrMsgUnInstall=0
+HideLogBtnUnInstall=0
+AddRemoveProgramsUnInstall=1
+AddRemoveButtonButtonInstall=1
+UnInstallExeStampSwitch=0
+UnInstallExeStamp=
 CreateLogFile=0
 ConfirmExtract=0
-TestAdminRights=1
+TestAdminRights=0
+TestAdminRightsUnInstall=0
+SetAllowFullAccess=0
+TestDotNetFramework=0
+TestExeBeforeInstall=0
+TestExeBeforeUnInstall=0
+AutorunCreateInfFile=1
+AutorunTest=0
+AutorunStartApp=0
 
 [Registry]
 
@@ -146,7 +197,7 @@ TestAdminRights=1
 [Association]
 OpenWith=0
 OpenWithName=
-OpenWithMenuText=Open with 
+OpenWithMenuText=Open with
 OpenWithExtensions=
 
 [VerInfo]
@@ -163,8 +214,8 @@ Item-008=|OriginalFilename||
 Item-009=|ProductName||
 Item-010=|ProductVersion||
 CopyIconFromTargetExe=0
-CopyIconFromOtherApp=0
-OtherIconAppFileName=
+CopyIconFromOtherApp=1
+OtherIconAppFileName=F:\taylorr\STM\src\video\stack_collector\stack_collector.ico
 Spin1=0
 Spin2=0
 
@@ -182,3 +233,4 @@ Item-000=Fol*<Application Folder>[0]
 Item-001=Fil*F:\taylorr\STM\src\video\Release\stack_collector.exe
 Item-002=Fil*F:\taylorr\STM\src\video\russ_widgets.tcl
 Item-003=Fil*F:\taylorr\STM\src\video\stack_collector.bat
+Item-004=Fil*F:\taylorr\STM\src\video\stack_collector\stack_collector.ico

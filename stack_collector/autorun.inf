@@ -1,3 +1,4 @@
 [autorun]
-open=stack_collector_01_06.exe
-label=Stack Collector v1.06
+open=CISMM_stack_collector_02_00.exe
+icon=CISMM_stack_collector_02_00.exe
+label=CISMM Stack Collector v2.00
