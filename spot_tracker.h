@@ -60,6 +60,7 @@ public:
   bool	set_pixel_accuracy(const double a) { if (a <= 0) { return false; } else {_pixelacc = a; return true; } };
 
 protected:
+  double  _samplesep; //< Spacing between samples in pixels
   double  _rad;	      //< Current radius of the disk
   double  _radacc;    //< Minimum radius step size to try
   double  _radstep;   //< Current radius step
@@ -69,7 +70,7 @@ protected:
   double  _fitness;   //< Current value of match for the disk
   bool	  _invert;    //< Do we look for a dark spot on a black background?
 
-  spot_tracker(double radius, bool inverted = false, double pixelacurracy = 0.25, double radiusaccuracy = 0.25);
+  spot_tracker(double radius, bool inverted = false, double pixelacurracy = 0.25, double radiusaccuracy = 0.25, double sample_separation_in_pixels = 1.0);
 };
 
 //----------------------------------------------------------------------------
@@ -82,7 +83,8 @@ public:
   // Set initial parameters of the disk search routine
   disk_spot_tracker(double radius, bool inverted = false,
 		    double pixelaccuracy = 0.25,
-		    double radiusaccuracy = 0.25);
+		    double radiusaccuracy = 0.25,
+		    double sample_separation_in_pixels = 1.0);
 
   /// Check the fitness of the disk against an image, at the current parameter settings.
   // Return the fitness value there.
@@ -108,7 +110,8 @@ public:
   // Set initial parameters of the disk search routine
   disk_spot_tracker_interp(double radius, bool inverted = false,
 		    double pixelaccuracy = 0.25,
-		    double radiusaccuracy = 0.25);
+		    double radiusaccuracy = 0.25,
+		    double sample_separation_in_pixels = 1.0);
 
   /// Check the fitness of the disk against an image, at the current parameter settings.
   // Return the fitness value there.
@@ -133,7 +136,8 @@ public:
   // Set initial parameters of the disk search routine
   cone_spot_tracker_interp(double radius, bool inverted = false,
 		    double pixelaccuracy = 0.25,
-		    double radiusaccuracy = 0.25);
+		    double radiusaccuracy = 0.25,
+		    double sample_separation_in_pixels = 1.0);
 
   /// Check the fitness of the disk against an image, at the current parameter settings.
   // Return the fitness value there.
@@ -161,7 +165,8 @@ public:
   // Set initial parameters of the disk search routine
   symmetric_spot_tracker_interp(double radius, bool inverted = false,
 		    double pixelaccuracy = 0.25,
-		    double radiusaccuracy = 0.25);
+		    double radiusaccuracy = 0.25,
+		    double sample_separation_in_pixels = 1.0);
   symmetric_spot_tracker_interp::~symmetric_spot_tracker_interp();
 
   /// Check the fitness of the disk against an image, at the current parameter settings.

@@ -7,14 +7,16 @@
 const double M_PI = 2*asin(1);
 #endif
 
-spot_tracker::spot_tracker(double radius, bool inverted, double pixelaccuracy, double radiusaccuracy) :
+spot_tracker::spot_tracker(double radius, bool inverted, double pixelaccuracy, double radiusaccuracy,
+			   double sample_separation_in_pixels) :
     _rad(radius),	      // Initial radius of the disk
     _invert(inverted),	      // Look for black disk on white surround?
     _pixelacc(pixelaccuracy), // Minimum step size in pixels to try
     _radacc(radiusaccuracy),  // Minimum step size in radius to try
     _fitness(-1e10),	      // No good position found yet!
     _pixelstep(2),	      // Starting pixel step size
-    _radstep(2)		      // Starting radius step size
+    _radstep(2),	      // Starting radius step size
+    _samplesep(sample_separation_in_pixels) // Spacing between samples taken by the kernel
 {
 }
 
@@ -173,8 +175,8 @@ void  spot_tracker::optimize_xy(const image_wrapper &image, double &x, double &y
 }
 
 disk_spot_tracker::disk_spot_tracker(double radius, bool inverted, double pixelaccuracy,
-				     double radiusaccuracy) :
-    spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy)
+				     double radiusaccuracy, double sample_separation_in_pixels) :
+    spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)
 {
   // Make sure the parameters make sense
   if (_rad <= 0) {
@@ -188,6 +190,10 @@ disk_spot_tracker::disk_spot_tracker(double radius, bool inverted, double pixela
   if (_radacc <= 0) {
     fprintf(stderr, "disk_spot_tracker::disk_spot_tracker(): Invalid radius accuracy, using 0.25\n");
     _radacc = 0.25;
+  }
+  if (_samplesep <= 0) {
+    fprintf(stderr, "disk_spot_tracker::disk_spot_tracker(): Invalid sample spacing, using 1.00\n");
+    _samplesep = 1.0;
   }
 
   // Set the initial step sizes for radius and pixels
@@ -210,7 +216,7 @@ disk_spot_tracker::disk_spot_tracker(double radius, bool inverted, double pixela
 
 double	disk_spot_tracker::check_fitness(const image_wrapper &image)
 {
-  int	  i,j;
+  double  i,j;
   int	  pixels = 0;			//< How many pixels we ended up using
   double  fitness = 0.0;		//< Accumulates the fitness values
   double  val;				//< Pixel value read from the image
@@ -227,13 +233,13 @@ double	disk_spot_tracker::check_fitness(const image_wrapper &image)
   int ihigh = (int)ceil(_x + surroundfac*_rad);
   int jlow = (int)floor(_y - surroundfac*_rad);
   int jhigh = (int)ceil(_y + surroundfac*_rad);
-  for (i = ilow; i <= ihigh; i++) {
-    for (j = jlow; j <= jhigh; j++) {
+  for (i = ilow; i <= ihigh; i += _samplesep) {
+    for (j = jlow; j <= jhigh; j += _samplesep) {
       dist2 = (i-_x)*(i-_x) + (j-_y)*(j-_y);
 
       // See if we are within the inner disk
       if ( dist2 <= centerr2 ) {
-	if (image.read_pixel(i,j,val)) {
+	if (image.read_pixel((int)i,(int)j,val)) {
 	  pixels++;
 	  fitness += val;
 #ifdef	DEBUG
@@ -244,7 +250,7 @@ double	disk_spot_tracker::check_fitness(const image_wrapper &image)
 
       // See if we are within the outer disk (surroundfac * radius)
       else if ( dist2 <= surroundr2 ) {
-	if (image.read_pixel(i,j,val)) {
+	if (image.read_pixel((int)i,(int)j,val)) {
 	  pixels++;
 #ifdef	DEBUG
 	  neg += val;
@@ -267,8 +273,8 @@ double	disk_spot_tracker::check_fitness(const image_wrapper &image)
 }
 
 disk_spot_tracker_interp::disk_spot_tracker_interp(double radius, bool inverted, double pixelaccuracy,
-				     double radiusaccuracy) :
-  spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy)
+				     double radiusaccuracy, double sample_separation_in_pixels) :
+  spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)
 {
 }
 
@@ -310,11 +316,11 @@ double	disk_spot_tracker_interp::check_fitness(const image_wrapper &image)
   }
 
   // Pixels within the radius have positive weights
-  // Shift the start location by 1/2 pixel on each outgoing ring, to
+  // Shift the start location by 1/2 step on each outgoing ring, to
   // keep them from lining up with each other.
-  for (r = 1; r <= _rad; r++) {
-    double rads_per_pixel = 1 / r;
-    for (theta = r*rads_per_pixel*0.5; theta <= 2*M_PI + r*rads_per_pixel*0.5; theta += rads_per_pixel) {
+  for (r = _samplesep; r <= _rad; r += _samplesep) {
+    double rads_per_step = 1 / r * _samplesep;
+    for (theta = r*rads_per_step*0.5; theta <= 2*M_PI + r*rads_per_step*0.5; theta += rads_per_step) {
       if (image.read_pixel_bilerp(_x+r*cos(theta),_y+r*sin(theta),val)) {
 	pixels++;
 	fitness += val;
@@ -323,11 +329,11 @@ double	disk_spot_tracker_interp::check_fitness(const image_wrapper &image)
   }
 
   // Pixels outside the radius have negative weights
-  // Shift the start location by 1/2 pixel on each outgoing ring, to
+  // Shift the start location by 1/2 step on each outgoing ring, to
   // keep them from lining up with each other.
-  for (r = r /* Keep going */; r <= surroundr; r++) {
-    double rads_per_pixel = 1 / r;
-    for (theta = r*rads_per_pixel*0.5; theta <= 2*M_PI + r*rads_per_pixel*0.5; theta += rads_per_pixel) {
+  for (r = r /* Keep going */; r <= surroundr; r += _samplesep) {
+    double rads_per_step = 1 / r * _samplesep;
+    for (theta = r*rads_per_step*0.5; theta <= 2*M_PI + r*rads_per_step*0.5; theta += rads_per_step) {
       if (image.read_pixel_bilerp(_x+r*cos(theta),_y+r*sin(theta),val)) {
 	pixels++;
 	fitness -= val;
@@ -346,8 +352,8 @@ double	disk_spot_tracker_interp::check_fitness(const image_wrapper &image)
 }
 
 cone_spot_tracker_interp::cone_spot_tracker_interp(double radius, bool inverted, double pixelaccuracy,
-				     double radiusaccuracy) :
-  spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy)
+				     double radiusaccuracy, double sample_separation_in_pixels) :
+  spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)
 {
 }
 
@@ -385,10 +391,10 @@ double	cone_spot_tracker_interp::check_fitness(const image_wrapper &image)
   // in the center to 0 at the radius.
   // Shift the start location by 1/2 pixel on each outgoing ring, to
   // keep them from lining up with each other.
-  for (r = 1; r <= _rad; r++) {
-    double rads_per_pixel = 1 / r;
+  for (r = 1; r <= _rad; r += _samplesep) {
+    double rads_per_step  = 1 / r * _samplesep;
     double weight = 1 - (r / _rad);
-    for (theta = r*rads_per_pixel*0.5; theta <= 2*M_PI + r*rads_per_pixel*0.5; theta += rads_per_pixel) {
+    for (theta = r*rads_per_step*0.5; theta <= 2*M_PI + r*rads_per_step*0.5; theta += rads_per_step) {
       if (image.read_pixel_bilerp(_x+r*cos(theta),_y+r*sin(theta),val)) {
 	pixels++;
 	fitness += val * weight;
@@ -407,16 +413,18 @@ double	cone_spot_tracker_interp::check_fitness(const image_wrapper &image)
 }
 
 symmetric_spot_tracker_interp::symmetric_spot_tracker_interp(double radius, bool inverted, double pixelaccuracy,
-				     double radiusaccuracy) :
-  spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy),
+				     double radiusaccuracy, double sample_separation_in_pixels) :
+  spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels),
   _MAX_RADIUS(100)
 {
   // Check the radius here so we don't need to check it in the fitness routine.
   if (_rad < 1) { _rad = 1; }
   if (_rad > _MAX_RADIUS) { _rad = _MAX_RADIUS; }
+  if (_samplesep < 0.1) { _samplesep = 0.1; }
 
   // Allocate the space for the counts of pixel in each radius
-  if ( (_radius_counts = new int[_MAX_RADIUS+1]) == NULL) {
+  if ( (_radius_counts = new int[(int)(_MAX_RADIUS/_samplesep+1)]) == NULL) {
+    fprintf(stderr,"symmetric_spot_tracker_interp::symmetric_spot_tracker_interp(): Out of memory!\n");
     _MAX_RADIUS = 0;
     return;
   }
@@ -428,7 +436,8 @@ symmetric_spot_tracker_interp::symmetric_spot_tracker_interp(double radius, bool
   int pixel;				//< Loop variable
 
   // Allocate the list that holds the lists of pixels
-  if ( (_radius_lists = new offset*[_MAX_RADIUS+1]) == NULL) {
+  if ( (_radius_lists = new offset*[(int)(_MAX_RADIUS/_samplesep+1)]) == NULL) {
+    fprintf(stderr,"symmetric_spot_tracker_interp::symmetric_spot_tracker_interp(): Out of memory!\n");
     _MAX_RADIUS = 0;
     return;
   }
@@ -438,18 +447,20 @@ symmetric_spot_tracker_interp::symmetric_spot_tracker_interp(double radius, bool
   // Shift the start location by 1/2 pixel on each outgoing ring, to
   // keep them from lining up with each other.
   _radius_lists[0] = NULL;
-  for (r = 1; r <= _MAX_RADIUS; r++) {
-    double rads_per_pixel = 1.0 / r;
+  for (r = 1; r <= _MAX_RADIUS / _samplesep; r++) {
+    double scaled_r = r * _samplesep;
+    double rads_per_step = 1.0 / scaled_r;
 
-    pixels = (int)(1 + 2*M_PI / rads_per_pixel);
+    pixels = (int)(1 + 2*M_PI / rads_per_step);
     if ( (_radius_lists[r] = new offset[pixels]) == NULL) {
+      fprintf(stderr,"symmetric_spot_tracker_interp::symmetric_spot_tracker_interp(): Out of memory!\n");
       _MAX_RADIUS = 0;
       return;
     }
     pixel = 0;
-    for (theta = r*rads_per_pixel*0.5; theta <= 2*M_PI + r*rads_per_pixel*0.5; theta += rads_per_pixel) {
-      _radius_lists[r][pixel].x = r*cos(theta);
-      _radius_lists[r][pixel].y = r*sin(theta);
+    for (theta = r*rads_per_step*0.5; theta <= 2*M_PI + r*rads_per_step*0.5; theta += rads_per_step) {
+      _radius_lists[r][pixel].x = scaled_r*cos(theta);
+      _radius_lists[r][pixel].y = scaled_r*sin(theta);
       pixel++;
     }
     _radius_counts[r] = pixel;
@@ -460,7 +471,7 @@ symmetric_spot_tracker_interp::~symmetric_spot_tracker_interp()
 {
   int i;
   if (_radius_lists != NULL) {
-    for (i = 0; i <= _MAX_RADIUS; i++) {
+    for (i = 0; i <= _MAX_RADIUS / _samplesep; i++) {
       if (_radius_lists[i] != NULL) { delete [] _radius_lists[i]; _radius_lists[i] = NULL; }
     }
     delete [] _radius_lists;
@@ -490,7 +501,7 @@ double	symmetric_spot_tracker_interp::check_fitness(const image_wrapper &image)
 
   // Don't check the pixel in the middle; it makes no difference to circular
   // symmetry.
-  for (r = 1; r <= _rad; r++) {
+  for (r = 1; r <= _rad / _samplesep; r++) {
     double squareValSum = 0.0;
     double valSum = 0.0;
     int	pix;

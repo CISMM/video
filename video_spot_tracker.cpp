@@ -39,7 +39,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.21";
+const char *Version_string = "01.22";
 
 //--------------------------------------------------------------------------
 // Some classes needed for use in the rest of the program.
@@ -114,6 +114,7 @@ Tclvar_float_with_scale	*g_maxY;
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
 Tclvar_float_with_scale	g_colorIndex("red_green_blue", "", 0, 2, 0);
 Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_trackers);
+Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
 Tclvar_int_with_button	g_invert("dark_spot",".kernel.invert",1, rebuild_trackers);
 Tclvar_int_with_button	g_interpolate("interpolate",".kernel.interp",1, rebuild_trackers);
 Tclvar_int_with_button	g_cone("cone",".kernel.cone",0, rebuild_trackers);
@@ -317,14 +318,14 @@ spot_tracker  *create_appropriate_tracker(void)
   if (g_symmetric) {
     g_interpolate = 1;
     g_cone = 0;
-    return new symmetric_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1);
+    return new symmetric_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
   } else if (g_cone) {
     g_interpolate = 1;
-    return new cone_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1);
+    return new cone_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
   } else if (g_interpolate) {
-    return new disk_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1);
+    return new disk_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
   } else {
-    return new disk_spot_tracker(g_Radius,(g_invert != 0));
+    return new disk_spot_tracker(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
   }
 }
 
