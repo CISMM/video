@@ -1,5 +1,5 @@
-<title>Video Spot Tracker v01.13</title>
-<h1>Video Spot Tracker version 01.21</h1>
+<title>Video Spot Tracker v01.25</title>
+<h1>Video Spot Tracker version 01.25</h1>
 <p><img src="GUI.jpg" width="161" height="908" align="right">The <i><b>Video Spot 
   Tracker</b></i> program is used to track the motion of one or more spots in 
   a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible 
@@ -12,7 +12,7 @@
 <p>The program is run by dragging a video file onto the desktop icon that was 
   created when the program was installed. It can also be run by selecting one 
   of the camera-specific shortcuts from <i><b>Start Menu/All Programs/NSRG/Video 
-  Spot Tracker v01.21</b></i>.</p>
+  Spot Tracker v01.25</b></i>.</p>
 <h2>Using the program</h2>
 <p>When the program is run, four windows will appear. The image window that appears 
   to the lower right contains the first image within the video file or a continually-updating 
@@ -133,14 +133,17 @@
   to stop the logging. You can then go forward to another section, turn on logging, 
   and save a different file if you like.</p>
 <p>Logging will not occur while the file is paused, or when the end of the video 
-  has been reached (this also means that the starting frame of video will not 
-  be stored). There will be one entry in the file per tracker for each frame of 
-  video stepped through or played through. The time values associated with each 
-  record are the wall-clock time at which the playback occured; this is probably 
-  not useful and so should be ignored. <b><i>Note</i></b>: Some video files have 
-  a 30 frame/second playback but have three copies of the same video frame to 
-  produce an overall update of 10 frames/second; this will produce repeated location 
-  reports for each of the identical frames.</p>
+  has been reached (this also means that the positions of the trackers in the 
+  last frame of video will not be stored). This is done so that you can place 
+  the trackers back onto spots that have jumped too far between frames when single-stepping 
+  through the video and still get an accurate record of where the spots went. 
+  There will be one entry in the file per tracker for each frame of video stepped 
+  through or played through. The time values associated with each record are the 
+  wall-clock time at which the particular frame left the screen (when the next 
+  frame appeared); this is probably not useful and so should be ignored. <b><i>Note</i></b>: 
+  Some video files have a 30 frame/second playback but have three copies of the 
+  same video frame to produce an overall update of 10 frames/second; this will 
+  produce repeated location reports for each of the identical frames.</p>
 <p>The motion of the trackers over time is stored into a log file in the <b><i>Virtual-Reality 
   Peripheral Network</i></b> (<a href="http://www.vrpn.org">VRPN</a>) format. 
   This format can be converted into a Matlab data file using the <b><i>vrpnLogToMatlab</i></b> 
@@ -148,7 +151,7 @@
   Tracker</b></i> program was. You convert the &quot;.vrpn&quot; file into a Matlab 
   file by dragging it onto a shortcut that points to the program (or by dragging 
   it onto the program itself). The vrpnLogToMatlab program will have been installed 
-  in the directory: <b><i>C:\Program Files\NSRG\Video Spot Tracker v01.13\VrpnLogToMatlib</i></b> 
+  in the directory: <b><i>C:\Program Files\NSRG\Video Spot Tracker v01.25\VrpnLogToMatlib</i></b> 
   and it will also be located on the desktop.</p>
 <h3>Controlling playback</h3>
 <p>Whether logging is turned on or not, the video can be played by checking the 

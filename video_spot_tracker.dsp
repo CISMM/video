@@ -42,7 +42,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
-# ADD CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "..\external\pc_win32\include" /I "C:\Program Files\Roper Scientific\PVCAM" /I "..\vrpn" /I "C:\DXSDK\include" /I "C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses" /I "../glut" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /Fr /YX /FD /c /Tp
+# ADD CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "..\external\pc_win32\include" /I "C:\Program Files\Roper Scientific\PVCAM" /I "..\vrpn" /I "C:\DXSDK\include" /I "C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses" /I "../glut" /I "..\nano\src\app\nano\lib\nmSEM" /I "..\nano\src\lib\nmBase" /I "..\nano\src\lib\nmMP" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /Fr /YX /FD /c /Tp
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -66,8 +66,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c
-# ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "..\external\pc_win32\include" /I "C:\Program Files\Roper Scientific\PVCAM" /I "..\vrpn" /I "C:\DXSDK\include" /I "C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses" /I "../glut" /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c /Tp
-# SUBTRACT CPP /Fr
+# ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "..\external\pc_win32\include" /I "C:\Program Files\Roper Scientific\PVCAM" /I "..\vrpn" /I "C:\DXSDK\include" /I "C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses" /I "../glut" /I "..\nano\src\app\nano\lib\nmSEM" /I "..\nano\src\lib\nmBase" /I "..\nano\src\lib\nmMP" /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /Fr /YX /FD /GZ /c /Tp
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe
@@ -106,6 +105,34 @@ SOURCE=.\Tcl_Linkvar.h
 # Begin Group "Resource Files"
 
 # PROP Default_Filter "ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
+# End Group
+# Begin Group "Libraries External"
+
+# PROP Default_Filter ""
+# Begin Group "ImageMagick"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=..\external\pc_win32\lib\CORE_RL_lcms_.lib
+# End Source File
+# Begin Source File
+
+SOURCE=..\external\pc_win32\lib\CORE_RL_libxml_.lib
+# End Source File
+# Begin Source File
+
+SOURCE=..\external\pc_win32\lib\CORE_RL_magick_.lib
+# End Source File
+# Begin Source File
+
+SOURCE=..\external\pc_win32\lib\CORE_RL_ttf_.lib
+# End Source File
+# Begin Source File
+
+SOURCE=..\external\pc_win32\lib\CORE_RL_xlib_.lib
+# End Source File
+# End Group
 # End Group
 # End Target
 # End Project

@@ -1,3 +1,29 @@
+2004-01-07  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* SEM_camera_server.cpp : Code needed to parse the VRPN-format
+		files that contain information from an SEM interface.
+		This is to let us read the optical images taken during
+		manipulations with the nanoManipulator + optical
+		system, which uses an SEM interface to talk to the nM.
+	* SEM_camera_server.h : Same.
+	* SEM_library.dsp : Same.
+	* video_spot_tracker.cpp : Added code to handle SEM VRPN data
+		produced by the optical image server.  Modified the code
+		that logs so that it stores the value for a frame just as
+		the user leaves the frame, enabling single-stepping through
+		the frames and fixing the positions of any trackers that get
+		lost due to rapid motion.  Added a client_tracker so that
+		log files will have acknowledgements of the tracker server
+		in them.
+	* video_spot_tracker.dsp : Added parameters needed to compile with
+		the SEM library.
+	* video_spot_tracker.html : Updated to version 25, described the
+		logging differences.
+	* video_tempimager_server.dsp : Added parameters needed to compile
+		with teh SEM library.
+	* video.dsw : Added SEM projects and other projects needed to
+		read from SEM VRPN files.
+
 2003-12-15  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Adds debug windows to show a

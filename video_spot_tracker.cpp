@@ -1,3 +1,6 @@
+//XXX We want to display what time we are at in a file (so they need to tell us).
+//XXX Want to store the time at which tracking was done based on the time in the file.
+//XXX Want to be able to jump to a time in a file, and maybe fast-forward.
 //XXX Add debug view showing where all points are being sampled
 //XXX Put in times based on video timestamps for samples rather than real time when we have them.
 //XXX Would like to have a .ini file or something to set the starting "save" directory.
@@ -12,16 +15,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tcl.h>
+#include <tk.h>
+#include "Tcl_Linkvar.h"
 #include "roper_server.h"
 #include "directx_camera_server.h"
 #include "directx_videofile_server.h"
 #include "diaginc_server.h"
 #include "edt_server.h"
+#include "SEM_camera_server.h"
 #include "image_wrapper.h"
 #include "spot_tracker.h"
-#include <tcl.h>
-#include <tk.h>
-#include "Tcl_Linkvar.h"
 #ifdef	_WIN32
 #include <windows.h>
 #endif
@@ -41,7 +45,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.24";
+const char *Version_string = "01.25";
 
 //--------------------------------------------------------------------------
 // Some classes needed for use in the rest of the program.
@@ -81,6 +85,16 @@ public:
   void single_step(void) { edt_pulnix_raw_file_server::single_step(); }
 };
 
+class SEM_Controllable_Video : public Controllable_Video, public SEM_camera_server {
+public:
+  SEM_Controllable_Video(const char *filename) : SEM_camera_server(filename) {};
+  virtual ~SEM_Controllable_Video() {};
+  void play(void) { SEM_camera_server::play(); }
+  void pause(void) { SEM_camera_server::pause(); }
+  void rewind(void) { SEM_camera_server::rewind(); }
+  void single_step(void) { SEM_camera_server::single_step(); }
+};
+
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
 // global access to the objects we will be using.
@@ -102,6 +116,7 @@ int		    g_shift = 0;	  //< How many bits to shift right to get to 8
 vrpn_Connection	*g_vrpn_connection = NULL;  //< Connection to send position over
 vrpn_Tracker_Server *g_vrpn_tracker = NULL; //< Tracker server to send positions
 vrpn_Connection	*g_client_connection = NULL;//< Connection on which to perform logging
+vrpn_Tracker_Remote *g_client_tracker = NULL; //< Client tracker object to case ping/pong server messages
 int	g_tracking_window;		//< Glut window displaying tracking
 int	g_beadseye_window;		//< Glut window showing view from active bead
 int	g_beadseye_size = 121;		//< Size of beads-eye-view window XXX should be dynamic
@@ -272,7 +287,31 @@ public:
   }
 };
 
-/// Open the wrapped camera we want to use (Roper, DiagInc or DirectX)
+class SEM_imager: public SEM_Controllable_Video, public image_wrapper
+{
+public:
+  SEM_imager(const char *name) : SEM_Controllable_Video(name), image_wrapper() {};
+  virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
+    minx = _minX; miny = _minY; maxx = _maxX; maxy = _maxY;
+  }
+  virtual bool	read_pixel(int x, int y, double &result) const {
+    uns16 val;
+    if (get_pixel_from_memory(x, flip_y(y), val, g_colorIndex)) {
+      result = val;
+      return true;
+    } else {
+      return false;
+    }
+  }
+  virtual double read_pixel_nocheck(int x, int y) const {
+    uns16 val;
+    get_pixel_from_memory(x, flip_y(y), val);
+    return val;
+  }
+};
+
+/// Open the wrapped camera we want to use depending on the name of the
+//  camera we're trying to open.
 bool  get_camera_and_imager(const char *type, base_camera_server **camera, image_wrapper **imager,
 			    Controllable_Video **video)
 {
@@ -298,10 +337,23 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
     *camera = d;
     *imager = d;
     g_shift = 0;
+
+  // If this is a VRPN URL for an SEM device, then open the file and set up
+  // to read from that device.
+  } else if (!strncmp(type, "SEM@", 4)) {
+    SEM_imager *s = new SEM_imager(type);
+    *camera = s;
+    *video = s;
+    *imager = s;
+    g_shift = 8;
+
+  // Unknown type, so we presume that it is a file.  Now we figure out what
+  // kind of file based on the extension and open the appropriate type of
+  // imager.
   } else {
     fprintf(stderr,"get_camera_and_imager(): Assuming filename (%s)\n", type);
 
-    // If the extension is ".raw", then we assume it is a Pulnix file and open
+    // If the extension is ".raw" then we assume it is a Pulnix file and open
     // it that way.  Otherwise, we assume it is something that DirectX can open.
     if (strcmp(".raw", &type[strlen(type)-4]) == 0) {
       pulnix_file_imager *f = new pulnix_file_imager(type);
@@ -309,6 +361,26 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
       *video = f;
       *imager = f;
       g_shift = 0;
+
+    // If the extension is ".sem" then we assume it is a VRPN-format file
+    // with an SEM device in it, so we form the name of the device and open
+    // a VRPN Remote object to handle it.
+    } else if (strcmp(".sem", &type[strlen(type)-4]) == 0) {
+      char *name;
+      if ( NULL == (name = new char[strlen(type) + 20]) ) {
+	fprintf(stderr,"Out of memory when allocating file name\n");
+	exit(-1);
+      }
+      sprintf(name, "SEM@file:%s", type);
+      SEM_imager *s = new SEM_imager(name);
+      *camera = s;
+      *video = s;
+      *imager = s;
+      g_shift = 8;
+      delete [] name;
+
+    // File of unknown type.  We assume that it is something that DirectX knows
+    // how to open.
     } else {
       directx_file_imager *f = new directx_file_imager(type);
       *camera = f;
@@ -377,6 +449,7 @@ static void  cleanup(void)
   if (g_step) { delete g_step; };
   if (g_vrpn_tracker) { delete g_vrpn_tracker; };
   if (g_vrpn_connection) { delete g_vrpn_connection; };
+  if (g_client_tracker) { delete g_client_tracker; };
   if (g_client_connection) { delete g_client_connection; };
 }
 
@@ -774,6 +847,28 @@ void myIdleFunc(void)
   if (g_opt) {
     double  x, y;
 
+    // Update the VRPN tracker position for each tracker and report it
+    // using the same time value for each.  Don't do the update if we
+    // don't currently have a valid video frame.  Sensors are indexed
+    // by their position in the list.  XXX Putting this here before the
+    // optimize loop means that we're reporting the PREVIOUS values of
+    // the optimizer (the ones for the frame just ending) rather than
+    // the CURRENT values.  This means we'll not write a value for the
+    // last frame.  Before, we weren't writing a value for the first
+    // frame.  The way it is now, the user can single-step through a
+    // file and move the trackers around to line up on each frame before
+    // their values are saved.
+    if (g_vrpn_tracker && g_video_valid) {
+      int i = 0;
+      struct timeval now; gettimeofday(&now, NULL);
+      for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++, i++) {
+	vrpn_float64  pos[3] = {(*loop)->get_x(), flip_y((*loop)->get_y()), 0};
+	vrpn_float64  quat[4] = { 0, 0, 0, 1};
+
+	g_vrpn_tracker->report_pose(i, now, pos, quat);
+      }
+    }
+
     // Optimize to find the best fit starting from last position for each tracker.
     // Invert the Y values on the way in and out.
     // Don't let it adjust the radius here (otherwise it gets too
@@ -786,21 +881,6 @@ void myIdleFunc(void)
     g_X = (float)g_active_tracker->get_x();
     g_Y = (float)flip_y(g_active_tracker->get_y());
     g_Radius = (float)g_active_tracker->get_radius();
-
-    // Update the VRPN tracker position for each tracker and report it
-    // using the same time value for each.  Don't do the update if we
-    // don't currently have a valid video frame.  Sensors are indexed
-    // by their position in the list.
-    if (g_vrpn_tracker && g_video_valid) {
-      int i = 0;
-      struct timeval now; gettimeofday(&now, NULL);
-      for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++, i++) {
-	vrpn_float64  pos[3] = {(*loop)->get_x(), flip_y((*loop)->get_y()), 0};
-	vrpn_float64  quat[4] = { 0, 0, 0, 1};
-
-	g_vrpn_tracker->report_pose(i, now, pos, quat);
-      }
-    }
   }
 
   //------------------------------------------------------------
@@ -859,6 +939,9 @@ void myIdleFunc(void)
 
   //------------------------------------------------------------
   // Let the logging connection do its thing if it is open.
+  if (g_client_tracker != NULL) {
+    g_client_tracker->mainloop();
+  }
   if (g_client_connection != NULL) {
     g_client_connection->mainloop();
     g_client_connection->save_log_so_far();
@@ -1007,6 +1090,10 @@ void motionCallbackForGLUT(int x, int y) {
 void  logfilename_changed(char *newvalue, void *)
 {
   // Close the old connection, if there was one.
+  if (g_client_tracker != NULL) {
+    delete g_client_tracker;
+    g_client_tracker = NULL;
+  }
   if (g_client_connection != NULL) {
     delete g_client_connection;
     g_client_connection = NULL;
@@ -1029,6 +1116,7 @@ void  logfilename_changed(char *newvalue, void *)
     }
 
     g_client_connection = vrpn_get_connection_by_name("Spot@localhost", newvalue);
+    g_client_tracker = new vrpn_Tracker_Remote("Spot@localhost");
   }
 
 }
