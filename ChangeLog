@@ -1,3 +1,10 @@
+2004-01-31  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Fixed a bug that made it complain
+		about not having a CSV file open when it wasn't supposed
+		to.  Added a Kinograph function that displays the
+		line of the image through two tracked points.
+
 2004-01-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* GUI.jpg : Updated picture to newer version.

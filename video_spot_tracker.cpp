@@ -2,7 +2,6 @@
 //XXX Want to store the time at which tracking was done based on the time in the file.
 //XXX Want to be able to jump to a time in a file, and maybe fast-forward.
 //XXX Add debug view showing where all points are being sampled
-//XXX Put in times based on video timestamps for samples rather than real time when we have them.
 //XXX Would like to have a .ini file or something to set the starting "save" directory.
 //XXX Would like to be able to specify the microns-per-pixel value
 //    and have it stored in the log file.
@@ -46,7 +45,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.26";
+const char *Version_string = "01.27";
 
 //--------------------------------------------------------------------------
 // Some classes needed for use in the rest of the program.
@@ -100,31 +99,43 @@ public:
 // Glut wants to take over the world when it starts, so we need to make
 // global access to the objects we will be using.
 
-base_camera_server  *g_camera;	    //< Camera used to get an image
-image_wrapper	    *g_image;	    //< Image wrapper for the camera
-Controllable_Video  *g_video = NULL;  //< Video controls, if we have them
-unsigned char	    *g_glut_image = NULL; //< Pointer to the storage for the image
-unsigned char	    *g_beadseye_image = NULL; //< Pointer to the storage for the beads-eye image
-unsigned char	    *g_landscape_image = NULL; //< Pointer to the storage for the fitness landscape image
-float *g_landscape_floats = NULL; //< Pointer to the storage for the fitness landscape raw values
-list <spot_tracker *>g_trackers;    //< List of active trackers
-spot_tracker  *g_active_tracker = NULL;	//< The tracker that the controls refer to
-bool		    g_ready_to_display = false;	//< Don't unless we get an image
-bool	g_already_posted = false;	  //< Posted redisplay since the last display?
-int	g_mousePressX, g_mousePressY;	  //< Where the mouse was when the button was pressed
-int	g_whichDragAction;		  //< What action to take for mouse drag
+base_camera_server  *g_camera;			  //< Camera used to get an image
+image_wrapper	    *g_image;			  //< Image wrapper for the camera
+Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
+
+int		    g_tracking_window;		  //< Glut window displaying tracking
+unsigned char	    *g_glut_image = NULL;	  //< Pointer to the storage for the image
+
+list <spot_tracker *>g_trackers;		  //< List of active trackers
+spot_tracker  *g_active_tracker = NULL;		  //< The tracker that the controls refer to
+bool		    g_ready_to_display = false;	  //< Don't unless we get an image
+bool		    g_already_posted = false;	  //< Posted redisplay since the last display?
+int		    g_mousePressX, g_mousePressY; //< Where the mouse was when the button was pressed
+int		    g_whichDragAction;		  //< What action to take for mouse drag
+
 int		    g_shift = 0;	  //< How many bits to shift right to get to 8
-vrpn_Connection	*g_vrpn_connection = NULL;  //< Connection to send position over
-vrpn_Tracker_Server *g_vrpn_tracker = NULL; //< Tracker server to send positions
-vrpn_Connection	*g_client_connection = NULL;//< Connection on which to perform logging
+
+vrpn_Connection	*g_vrpn_connection = NULL;    //< Connection to send position over
+vrpn_Tracker_Server *g_vrpn_tracker = NULL;   //< Tracker server to send positions
+vrpn_Connection	*g_client_connection = NULL;  //< Connection on which to perform logging
 vrpn_Tracker_Remote *g_client_tracker = NULL; //< Client tracker object to case ping/pong server messages
-FILE	*g_csv_file = NULL;		//< File to save data in with .csv extension
-int	g_tracking_window;		//< Glut window displaying tracking
+FILE	*g_csv_file = NULL;		      //< File to save data in with .csv extension
+
+
+unsigned char	    *g_beadseye_image = NULL;	  //< Pointer to the storage for the beads-eye image
+unsigned char	    *g_landscape_image = NULL;	  //< Pointer to the storage for the fitness landscape image
+float		    *g_landscape_floats = NULL;	  //< Pointer to the storage for the fitness landscape raw values
 int	g_beadseye_window;		//< Glut window showing view from active bead
 int	g_beadseye_size = 121;		//< Size of beads-eye-view window XXX should be dynamic
 int	g_landscape_window;		//< Glut window showing local landscape of fitness func
 int	g_landscape_size = 25;		//< Size of optimization landscape window
 int	g_landscape_strip_width = 101;	//< Additional size of the graph showing X cross section
+
+unsigned char	    *g_kinograph_image = NULL;	  //< Pointer to the storage for the kinograph image
+int		    g_kinograph_window;		  //< Glut window showing kinograph data
+int		    g_kinograph_width;		  //< Width of the kinograph window (computed at creation time)
+const int	    g_kinograph_height = 512;	  //< Height of the kinograph window
+int		    g_kinograph_filled = 0;	  //< How many lines of data are in there now.
 
 //--------------------------------------------------------------------------
 // Tcl controls and displays
@@ -132,6 +143,7 @@ void  logfilename_changed(char *newvalue, void *);
 void  rebuild_trackers(int newvalue, void *);
 void  rebuild_trackers(float newvalue, void *);
 void  set_debug_visibility(int newvalue, void *);
+void  set_kinograph_visibility(int newvalue, void *);
 //XXX X and Y range should match the image range, like the region size controls do.
 Tclvar_float_with_scale	g_X("x", "", 0, 1391, 0);
 Tclvar_float_with_scale	g_Y("y", "", 0, 1039, 0);
@@ -158,6 +170,8 @@ Tclvar_int_with_button	g_full_area("full_area","");
 Tclvar_int_with_button	g_mark("show_tracker","",1);
 Tclvar_int_with_button	g_show_video("show_video","",1);
 Tclvar_int_with_button	g_show_debug("show_debug","",0, set_debug_visibility);
+Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
+Tclvar_int_with_button	g_kinograph("kinograph","",0, set_kinograph_visibility);
 Tclvar_int_with_button	g_quit("quit","");
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
@@ -615,6 +629,23 @@ void myDisplayFunc(void)
 	      -1 + 2*((*g_minY-1) / (g_camera->get_num_rows()-1)) , 0.0 );
   glEnd();
 
+  // If we are running a kinograph, draw a green line through the first two
+  // trackers to show where we're collecting it from.
+  if (g_kinograph && (g_trackers.size() >= 2)) {
+    list<spot_tracker *>::iterator  loop = g_trackers.begin();
+    double x0 = -1.0 + (*loop)->get_x() * (2.0/g_camera->get_num_columns());
+    double y0 = -1.0 + flip_y((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
+    loop++;
+    double x1 = -1.0 + (*loop)->get_x() * (2.0/g_camera->get_num_columns());
+    double y1 = -1.0 + flip_y((*loop)->get_y()) * (2.0/g_camera->get_num_rows());
+
+    glColor3f(0.5,0.9,0.5);
+    glBegin(GL_LINES);
+      glVertex2f(x0,y0);
+      glVertex2f(x1,y1);
+    glEnd();
+  }
+
   // Swap buffers so we can see it.
   glutSwapBuffers();
 
@@ -671,9 +702,9 @@ void myBeadDisplayFunc(void)
     for (x = 0; x < g_beadseye_size; x++) {
       for (y = 0; y < g_beadseye_size; y++) {
 	g_beadseye_image[0 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 0;
-	  g_beadseye_image[1 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 0;
-	  g_beadseye_image[2 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 0;
-	  g_beadseye_image[3 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 255;
+	g_beadseye_image[1 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 0;
+	g_beadseye_image[2 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 0;
+	g_beadseye_image[3 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 255;
       }
     }
     double radius = g_active_tracker->get_radius();
@@ -807,6 +838,31 @@ void myLandscapeDisplayFunc(void)
 
     // Put the tracker back where it started.
     g_active_tracker->set_location(start_x, start_y);
+  }
+
+  // Swap buffers so we can see it.
+  glutSwapBuffers();
+}
+
+// Draw the kinograph image.
+// This uses the interpolating read function on the
+// image objects to provide as accurate a representation of what the
+// line between the first two tracked spots looks like.
+void myKinographDisplayFunc(void)
+{
+  // Clear the window and prepare to draw in the back buffer
+  glDrawBuffer(GL_BACK);
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  if (g_show_video) {
+
+    // Store the pixels from the image into the frame buffer
+    // so that they cover the entire image (starting from lower-left
+    // corner, which is at (-1,-1)).
+    glRasterPos2f(-1, -1);
+    glDrawPixels(g_kinograph_width, g_kinograph_height,
+      GL_RGBA, GL_UNSIGNED_BYTE, g_kinograph_image);
   }
 
   // Swap buffers so we can see it.
@@ -952,10 +1008,8 @@ void myIdleFunc(void)
 	q_from_euler(quat, orient * (M_PI/180),0,0);
 	g_vrpn_tracker->report_pose(i, now, pos, quat);
 
-	// Also, write the data to the .csv file
-	if (!g_csv_file) {
-	  fprintf(stderr,"Internal Error: Expected CSV file to be open\n");
-	} else {
+	// Also, write the data to the .csv file if one is open.
+	if (g_csv_file) {
 	  if (first_time) {
 	    start.tv_sec = now.tv_sec; start.tv_usec = now.tv_usec;
 	    first_time = false;
@@ -983,6 +1037,70 @@ void myIdleFunc(void)
       g_orientation = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_orientation();
       g_length = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_length();
     }
+
+    // Update the Kinograph if it is active and if we have a new video frame.
+    // This must be done AFTER the optimization because we need to find the right
+    // trace through the NEW image.  If we lost tracking, too bad...
+    if (g_kinograph && g_video_valid) {
+      // Make sure we have at least two trackers, which will define the
+      // frame of reference for the kinograph.  Also make sure that we are
+      // not out of display room in the kinograph.
+      if ( (g_trackers.size() >= 2) && (g_kinograph_filled+1 < g_kinograph_height) ) {
+
+	// Find the two tracked points to use.
+	list<spot_tracker *>::iterator  loop = g_trackers.begin();
+	double x0 = (*loop)->get_x();
+	double y0 = (*loop)->get_y();
+	loop++;
+	double x1 = (*loop)->get_x();
+	double y1 = (*loop)->get_y();
+
+	// Find the center of the two (origin of kinograph coordinates) and the unit vector (dx,dy)
+	// going towards the second from the first.
+	double xcenter = (x0 + x1) / 2;
+	double ycenter = (y0 + y1) / 2;
+	double dist = sqrt( (x1-x0)*(x1-x0) + (y1-y0)*(y1-y0) );
+	if (dist == 0) { dist = 1; }  //< Avoid divide-by-zero below.
+	double dx = (x1 - x0) / dist;
+	double dy = (y1 - y0) / dist;
+
+	// March along in the image from negative half-width to half-width
+	// and fill in the samples image values at these locations.
+	double step;
+	double double_pix;
+	for (step = -g_kinograph_width/2.0; step <= g_kinograph_width / 2.0; step++) {
+
+	  // Figure out where to look in the image
+	  double x = xcenter + step * dx;
+	  double y = ycenter + step * dy;
+
+	  // Figure out where to put this in the kinograph
+	  int kx = (int)(step + g_kinograph_width/2.0);
+	  int ky = g_kinograph_filled;
+
+	  // Look up the pixel in the image and put it into the kinograph if we get a reading.
+	  if (!g_image->read_pixel_bilerp(x, y, double_pix)) {
+	    g_kinograph_image[0 + 4 * (kx + g_kinograph_width * (g_kinograph_height - 1 - ky))] = 0;
+	    g_kinograph_image[1 + 4 * (kx + g_kinograph_width * (g_kinograph_height - 1 - ky))] = 0;
+	    g_kinograph_image[2 + 4 * (kx + g_kinograph_width * (g_kinograph_height - 1 - ky))] = 0;
+	    g_kinograph_image[3 + 4 * (kx + g_kinograph_width * (g_kinograph_height - 1 - ky))] = 255;
+	  } else {
+	    // This assumes that the pixels are actually 8-bit values
+	    // and will clip if they go above this.  It also writes pixels
+	    // from the first channel into all colors of the image.  It uses
+	    // RGBA so that we don't have to worry about byte-alignment problems
+	    // that plagued us when using RGB pixels.
+	    g_kinograph_image[0 + 4 * (kx + g_kinograph_width * (g_kinograph_height - 1 - ky))] = (int)(double_pix) >> g_shift;
+	    g_kinograph_image[1 + 4 * (kx + g_kinograph_width * (g_kinograph_height - 1 - ky))] = (int)(double_pix) >> g_shift;
+	    g_kinograph_image[2 + 4 * (kx + g_kinograph_width * (g_kinograph_height - 1 - ky))] = (int)(double_pix) >> g_shift;
+	    g_kinograph_image[3 + 4 * (kx + g_kinograph_width * (g_kinograph_height - 1 - ky))] = 255;
+	  }
+	}
+
+	// We've added another line to the kinograph!
+	g_kinograph_filled++;
+      }
+    } 
   }
 
   //------------------------------------------------------------
@@ -1030,6 +1148,8 @@ void myIdleFunc(void)
     glutSetWindow(g_beadseye_window);
     glutPostRedisplay();
     glutSetWindow(g_landscape_window);
+    glutPostRedisplay();
+    glutSetWindow(g_kinograph_window);
     glutPostRedisplay();
     g_already_posted = true;
   }
@@ -1312,6 +1432,38 @@ void  set_debug_visibility(int newvalue, void *)
   }
 }
 
+void  initializeKinograph(void) {
+  // Mark the kinograph as not filled.
+  g_kinograph_filled = 0;
+
+  // Fill the image buffer with black
+  int x,y;
+  for (x = 0; x < g_kinograph_width; x++) {
+    for (y = 0; y < g_kinograph_height; y++) {
+      g_kinograph_image[0 + 4 * (x + g_kinograph_width * (g_kinograph_height - 1 - y))] = 0;
+      g_kinograph_image[1 + 4 * (x + g_kinograph_width * (g_kinograph_height - 1 - y))] = 0;
+      g_kinograph_image[2 + 4 * (x + g_kinograph_width * (g_kinograph_height - 1 - y))] = 0;
+      g_kinograph_image[3 + 4 * (x + g_kinograph_width * (g_kinograph_height - 1 - y))] = 255;
+    }
+  }
+}
+
+
+// Hide or show the kinograph windows
+void  set_kinograph_visibility(int newvalue, void *)
+{
+  if (g_ready_to_display) {
+    if (newvalue) {
+      initializeKinograph();
+      glutSetWindow(g_kinograph_window);
+      glutShowWindow();
+    } else {
+      glutSetWindow(g_kinograph_window);
+      glutHideWindow();
+    }
+  }
+}
+
 // This version is for float sliders
 void  rebuild_trackers(float newvalue, void *) {
   rebuild_trackers((int)newvalue, NULL);
@@ -1451,10 +1603,10 @@ int main(int argc, char *argv[])
   //------------------------------------------------------------------
   // Initialize the controls for the clipping based on the size of
   // the image we got.
-  g_minX = new Tclvar_float_with_scale("minX", "", 0, g_camera->get_num_columns()-1, 0);
-  g_maxX = new Tclvar_float_with_scale("maxX", "", 0, g_camera->get_num_columns()-1, g_camera->get_num_columns()-1);
-  g_minY = new Tclvar_float_with_scale("minY", "", 0, g_camera->get_num_rows()-1, 0);
-  g_maxY = new Tclvar_float_with_scale("maxY", "", 0, g_camera->get_num_rows()-1, g_camera->get_num_rows()-1);
+  g_minX = new Tclvar_float_with_scale("minX", ".clipping", 0, g_camera->get_num_columns()-1, 0);
+  g_maxX = new Tclvar_float_with_scale("maxX", ".clipping", 0, g_camera->get_num_columns()-1, g_camera->get_num_columns()-1);
+  g_minY = new Tclvar_float_with_scale("minY", ".clipping", 0, g_camera->get_num_rows()-1, 0);
+  g_maxY = new Tclvar_float_with_scale("maxY", ".clipping", 0, g_camera->get_num_rows()-1, g_camera->get_num_rows()-1);
 
   //------------------------------------------------------------------
   // Set up the VRPN server connection and the tracker object that will
@@ -1547,6 +1699,30 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
+  //------------------------------------------------------------------
+  // Create the window that will be used for the kinograph
+  glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
+  glutInitWindowPosition(200, 200);
+  initializeKinograph();
+
+  // Figure out how wide the kinograph needs to be based on the window size.
+  g_kinograph_width = g_camera->get_num_columns();
+
+  // Create the buffer that Glut will use to send to the kinograph window.  This is allocating an
+  // RGBA buffer.  It needs to be 4-byte aligned, so we allocated it as a group of
+  // words and then cast it to the right type.  We're using RGBA rather than just RGB
+  // because it also solves the 4-byte alignment problem caused by funky sizes of image
+  // that are RGB images.
+  if ( (g_kinograph_image = (unsigned char *)(void*)new vrpn_uint32
+      [g_kinograph_width * g_kinograph_height]) == NULL) {
+    fprintf(stderr,"Out of memory when allocating kinograph image!\n");
+    fprintf(stderr,"  (Image is %u by %u)\n", g_kinograph_width, g_kinograph_height);
+    cleanup();
+    exit(-1);
+  }
+  glutInitWindowSize(g_kinograph_width, g_kinograph_height);
+  g_kinograph_window = glutCreateWindow("Kinograph");
+
   // Set the display functions for each window and idle function for GLUT (they
   // will do all the work) and then give control over to GLUT.
   glutSetWindow(g_tracking_window);
@@ -1556,6 +1732,9 @@ int main(int argc, char *argv[])
   glutHideWindow();
   glutSetWindow(g_landscape_window);
   glutDisplayFunc(myLandscapeDisplayFunc);
+  glutHideWindow();
+  glutSetWindow(g_kinograph_window);
+  glutDisplayFunc(myKinographDisplayFunc);
   glutHideWindow();
   glutIdleFunc(myIdleFunc);
   glutMainLoop();

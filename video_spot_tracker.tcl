@@ -46,6 +46,25 @@ proc update_rod_window_visibility {nm el op} {
 }
 
 ###########################################################
+# Put the place for the controls for the clipping.
+# This window should only be visible when clipping is turned on.
+
+toplevel .clipping
+wm geometry .clipping +800+10
+wm withdraw .clipping
+set show_clipping 0
+trace variable show_clipping w update_clipping_window_visibility
+
+proc update_clipping_window_visibility {nm el op} {
+	global show_clipping
+	if { $show_clipping } {
+		wm deiconify .clipping
+	} else {
+		wm withdraw .clipping
+	}
+}
+
+###########################################################
 # Put the controls that will let the user store a log file.
 # It puts a checkbox down at the bottom of the main menu
 # that causes a dialog box to come up when it is turned on.
