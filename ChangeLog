@@ -1,5 +1,10 @@
 2003-06-16  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* video_spot_tracker.cpp : File-saving dialog box to let the
+		user save a log file.  Made the default spot a dark one.
+
+2003-06-16  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* stack_collector.dsp : Changed to compile with files in new
 		locations.
 

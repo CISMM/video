@@ -1,10 +1,12 @@
-//XXX Needs to set up to enable logging.
 //XXX The camera code seems to stop updating the video after about
 //    five minutes of tracking.  The video in the window stops being
 //    updated, the tracking optimization doesn't change, but the rest
 //    of the UI keeps running (and the VRPN connect/disconnect).
 //    After a while using the camera, it make DirectX think that there
 //    was not a camera anymore.
+//    This does not happen with the USB-connected Logitech camera,
+//    it runs fine for many minutes, both with video showing and small
+//    range (40 fps) and with video off (60fps).
 //    It does not use up more GDI objects when it is locked up.  It
 //    does seem to drop the camera offline.  Video doesn't have to be
 //    off for this to happen.  This is using DirectX 9 on the laptop
@@ -14,7 +16,7 @@
 //    the device -- it stays on after the program exits.  Maybe it is
 //    timing out somehow?
 //XXX Throttle to a requested frame rate (60fps, 30fps), or even better,
-//    make it not re-use existing video frames!
+//    make directx driver not re-use existing video frames!
 //XXX Would like to do multiple spots at the same time.
 //XXX Would like to be able to specify the microns-per-pixel value
 //    and have it stored in the log file.
@@ -51,7 +53,7 @@
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.04";
+const char *Version_string = "01.05";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -61,16 +63,18 @@ base_camera_server  *g_camera;	    //< Camera used to get an image
 image_wrapper	    *g_image;	    //< Image wrapper for the camera
 directx_videofile_server  *g_video = NULL;  //< Video controls, if we have them
 unsigned char	    *g_glut_image = NULL; //< Pointer to the storage for the image
-disk_spot_tracker   *g_tracker = new disk_spot_tracker(5,false);   //< Tracker to follow the bead, white-on-dark when false.
+disk_spot_tracker   *g_tracker = new disk_spot_tracker(5,true);   //< Tracker to follow the bead, white-on-dark when false.
 bool		    g_ready_to_display = false;	//< Don't unless we get an image
 bool	g_already_posted = false;	//< Posted redisplay since the last display?
 int	g_mousePressX, g_mousePressY;	//< Where the mouse was when the button was pressed
 int		    g_shift = 0;	//< How many bits to shift right to get to 8
 vrpn_Connection	*g_vrpn_connection = NULL;  //< Connection to send position over
 vrpn_Tracker_Server *g_vrpn_tracker = NULL; //< Tracker server to send positions
+vrpn_Connection	*g_client_connection = NULL;//< Connection on which to perform logging
 
 //--------------------------------------------------------------------------
 // Tcl controls and displays
+void  logfilename_changed(char *newvalue, void *);
 Tclvar_float_with_scale	g_X("x", "", 0, 1391, 0);
 Tclvar_float_with_scale	g_Y("y", "", 0, 1039, 0);
 Tclvar_float_with_scale	g_Radius("radius", "", 1, 30, 5);
@@ -79,7 +83,7 @@ Tclvar_float_with_scale	*g_maxX;
 Tclvar_float_with_scale	*g_minY;
 Tclvar_float_with_scale	*g_maxY;
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
-Tclvar_int_with_button	g_invert("dark_spot","");
+Tclvar_int_with_button	g_invert("dark_spot","",1);
 Tclvar_int_with_button	g_opt("optimize","");
 Tclvar_int_with_button	g_globalopt("global_optimize_now","",1);
 Tclvar_int_with_button	g_small_area("small_area","");
@@ -88,6 +92,7 @@ Tclvar_int_with_button	g_mark("show_tracker","",1);
 Tclvar_int_with_button	g_show_video("show_video","",1);
 Tclvar_int_with_button	g_quit("quit","");
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL;
+Tclvar_selector		g_logfilenname("logfilename", NULL, NULL, "", logfilename_changed, NULL);
 
 //--------------------------------------------------------------------------
 // Cameras wrapped by image wrapper and function to return wrapped cameras.
@@ -217,6 +222,7 @@ static void  cleanup(void)
   if (g_rewind) { delete g_rewind; };
   if (g_vrpn_tracker) { delete g_vrpn_tracker; };
   if (g_vrpn_connection) { delete g_vrpn_connection; };
+  if (g_client_connection) { delete g_client_connection; };
 }
 
 void myDisplayFunc(void)
@@ -452,6 +458,13 @@ void myIdleFunc(void)
   if (g_vrpn_connection) { g_vrpn_connection->mainloop(); }
 
   //------------------------------------------------------------
+  // Let the logging connection do its thing if it is open.
+  if (g_client_connection != NULL) {
+    g_client_connection->mainloop();
+    g_client_connection->save_log_so_far();
+  }
+
+  //------------------------------------------------------------
   // Time to quit?
   if (g_quit) {
     cleanup();
@@ -520,6 +533,34 @@ void	handle_invert_change(int newvalue, void *userdata)
   delete g_tracker;
   g_tracker = new disk_spot_tracker(g_Radius, (newvalue != 0));
 }
+
+
+//--------------------------------------------------------------------------
+// Tcl callback routines.
+
+// If the logfilename becomes non-empty, then open a logging VRPN
+// connection to the server, so that we can track where the spot is
+// going.  If the file name becomes empty again, then delete the
+// connection so that it will store the logged data.  If the name
+// changes, and was not empty before, then close the existing
+// connection and start a new one.
+
+void  logfilename_changed(char *newvalue, void *)
+{
+  // Close the old connection, if there was one.
+  if (g_client_connection != NULL) {
+    delete g_client_connection;
+    g_client_connection = NULL;
+  }
+
+  // Open a new connection, if we have a non-empty name.
+  if (strlen(newvalue) > 0) {
+    g_client_connection = vrpn_get_connection_by_name("Spot@localhost", newvalue);
+  }
+
+}
+
+//--------------------------------------------------------------------------
 
 int main(int argc, char *argv[])
 {
@@ -609,6 +650,15 @@ int main(int argc, char *argv[])
   if (Tclvar_init(tk_control_interp)) {
 	  fprintf(stderr,"Can't do init!\n");
 	  return -1;
+  }
+
+  //------------------------------------------------------------------
+  // Load the specialized Tcl code needed by this program.
+  sprintf(command, "source video_spot_tracker.tcl");
+  if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
+          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+                  tk_control_interp->result);
+          return(-1);
   }
 
   //------------------------------------------------------------------
