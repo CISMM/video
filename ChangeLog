@@ -1,5 +1,11 @@
 2003-02-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* stack_collector.cpp : Fixed where the right and top lines are to
+		be outside the viewed area rather than on its edge.
+		Renamed the clipping controls "left, right, bottom, top."
+
+2003-02-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* roper_server.h : Makes it possible to access the buffer holding the
 		image directly for faster access.
 	* stack_collector.cpp : Provides an image preview window.  Debugged,

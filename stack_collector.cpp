@@ -42,10 +42,10 @@ vrpn_Analog_Output_Remote	*anaout;
 // Tcl controls and displays
 
 void  handle_preview_change(int newvalue, void *);
-Tclvar_float_with_scale	g_minX("minX", "", 0, 1391, 0);
-Tclvar_float_with_scale	g_maxX("maxX", "", 0, 1391, 1391);
-Tclvar_float_with_scale	g_minY("minY", "", 0, 1039, 0);
-Tclvar_float_with_scale	g_maxY("maxY", "", 0, 1039, 1039);
+Tclvar_float_with_scale	g_minX("left", "", 0, 1391, 0);
+Tclvar_float_with_scale	g_maxX("right", "", 0, 1391, 1391);
+Tclvar_float_with_scale	g_minY("bottom", "", 0, 1039, 0);
+Tclvar_float_with_scale	g_maxY("top", "", 0, 1039, 1039);
 Tclvar_float_with_scale	g_focusDown("focus_lower_microns", "", -20, 0, -5);
 Tclvar_float_with_scale	g_focusUp("focus_raise_microns", "", 0, 20, 5);
 Tclvar_float_with_scale	g_focusStep("focus_step_microns", "", (float)0.05, 5, 1);
@@ -76,16 +76,16 @@ void myDisplayFunc(void)
   // region being selected if it is inside the window.
   glColor3f(1,0,0);
   glBegin(GL_LINE_STRIP);
-  glVertex3f( -1 + 2*((g_minX-1) / g_max_image_width),
-	      -1 + 2*((g_minY-1) / g_max_image_height) , 0.0 );
-  glVertex3f( -1 + 2*((g_maxX+1) / g_max_image_width),
-	      -1 + 2*((g_minY-1) / g_max_image_height) , 0.0 );
-  glVertex3f( -1 + 2*((g_maxX+1) / g_max_image_width),
-	      -1 + 2*((g_maxY+1) / g_max_image_height) , 0.0 );
-  glVertex3f( -1 + 2*((g_minX-1) / g_max_image_width),
-	      -1 + 2*((g_maxY+1) / g_max_image_height) , 0.0 );
-  glVertex3f( -1 + 2*((g_minX-1) / g_max_image_width),
-	      -1 + 2*((g_minY-1) / g_max_image_height) , 0.0 );
+  glVertex3f( -1 + 2*((g_minX-1) / (g_max_image_width-1)),
+	      -1 + 2*((g_minY-1) / (g_max_image_height-1)) , 0.0 );
+  glVertex3f( -1 + 2*((g_maxX+1) / (g_max_image_width-1)),
+	      -1 + 2*((g_minY-1) / (g_max_image_height-1)) , 0.0 );
+  glVertex3f( -1 + 2*((g_maxX+1) / (g_max_image_width-1)),
+	      -1 + 2*((g_maxY+1) / (g_max_image_height-1)) , 0.0 );
+  glVertex3f( -1 + 2*((g_minX-1) / (g_max_image_width-1)),
+	      -1 + 2*((g_maxY+1) / (g_max_image_height-1)) , 0.0 );
+  glVertex3f( -1 + 2*((g_minX-1) / (g_max_image_width-1)),
+	      -1 + 2*((g_minY-1) / (g_max_image_height-1)) , 0.0 );
   glEnd();
 
   // Swap buffers so we can see it.
