@@ -34,34 +34,36 @@ bool  spot_tracker::take_single_optimization_step(const image_wrapper &image, do
 
   // Try going in +/- X and see if we find a better location.
   if (do_x) {
-    _x += _pixelstep;	// Try going a step in +X
+    double starting_x = get_x();
+    set_location(starting_x + _pixelstep, get_y());	// Try going a step in +X
     if ( _fitness < (new_fitness = check_fitness(image)) ) {
       _fitness = new_fitness;
       betterxy = true;
     } else {
-      _x -= 2*_pixelstep;	// Try going a step in -X
+      set_location(starting_x - _pixelstep, get_y());	// Try going a step in -X
       if ( _fitness < (new_fitness = check_fitness(image)) ) {
 	_fitness = new_fitness;
 	betterxy = true;
       } else {
-	_x += _pixelstep;	// Back where we started in X
+	set_location(starting_x, get_y());	// Back where we started in X
       }
     }
   }
 
   // Try going in +/- Y and see if we find a better location.
   if (do_y) {
-    _y += _pixelstep;	// Try going a step in +Y
+    double starting_y = get_y();
+    set_location(get_x(), starting_y + _pixelstep);	// Try going a step in +Y
     if ( _fitness < (new_fitness = check_fitness(image)) ) {
       _fitness = new_fitness;
       betterxy = true;
     } else {
-      _y -= 2*_pixelstep;	// Try going a step in -Y
+      set_location(get_x(), starting_y - _pixelstep);	// Try going a step in -Y
       if ( _fitness < (new_fitness = check_fitness(image)) ) {
 	_fitness = new_fitness;
 	betterxy = true;
       } else {
-	_y += _pixelstep;	// Back where we started in Y
+	set_location(get_x(), starting_y);	// Back where we started in Y
       }
     }
   }
@@ -69,23 +71,24 @@ bool  spot_tracker::take_single_optimization_step(const image_wrapper &image, do
   // Try going in +/- radius and see if we find a better value.
   // Don't let the radius get below 1 pixel.
   if (do_r) {
-    _rad += _radstep;	// Try going a step in +radius
+    double starting_rad = get_radius();
+    set_radius(starting_rad + _radstep);	// Try going a step in +radius
     if ( _fitness < (new_fitness = check_fitness(image)) ) {
       _fitness = new_fitness;
       betterrad = true;
     } else {
-      _rad -= 2*_radstep;	// Try going a step in -radius
+      set_radius(starting_rad - _radstep);	// Try going a step in -radius
       if ( (_rad >= 1) && (_fitness < (new_fitness = check_fitness(image))) ) {
 	_fitness = new_fitness;
 	betterrad = true;
       } else {
-	_rad += _radstep;	// Back where we started in radius
+	set_radius(starting_rad - _radstep);	// Back where we started in radius
       }
     }
   }
 
   // Return the new location and whether we found a better one.
-  x = _x; y = _y;
+  x = get_x(); y = get_y();
   return betterxy || betterrad;
 }
 
@@ -108,17 +111,18 @@ void  spot_tracker::locate_good_fit_in_image(const image_wrapper &image, double 
   int jhigh = (int)(maxy-2*_rad-1);
   for (i = ilow; i <= ihigh; i += step) {
     for (j = jlow; j <= jhigh; j += step) {
-      _x = i; _y = j;
+      set_location(i,j);
       if ( bestfit < (newfit = check_fitness(image)) ) {
 	bestfit = newfit;
-	bestx = _x;
-	besty = _y;
+	bestx = get_x();
+	besty = get_y();
       }
     }
   }
 
-  x = _x = bestx;
-  y = _y = besty;
+  set_location(bestx, besty);
+  x = get_x();
+  y = get_y();
   _fitness = newfit;
 }
 
@@ -229,13 +233,13 @@ double	disk_spot_tracker::check_fitness(const image_wrapper &image)
   double  pos = 0.0, neg = 0.0;
 #endif
 
-  int ilow = (int)floor(_x - surroundfac*_rad);
-  int ihigh = (int)ceil(_x + surroundfac*_rad);
-  int jlow = (int)floor(_y - surroundfac*_rad);
-  int jhigh = (int)ceil(_y + surroundfac*_rad);
+  int ilow = (int)floor(get_x() - surroundfac*_rad);
+  int ihigh = (int)ceil(get_x() + surroundfac*_rad);
+  int jlow = (int)floor(get_y() - surroundfac*_rad);
+  int jhigh = (int)ceil(get_y() + surroundfac*_rad);
   for (i = ilow; i <= ihigh; i += _samplesep) {
     for (j = jlow; j <= jhigh; j += _samplesep) {
-      dist2 = (i-_x)*(i-_x) + (j-_y)*(j-_y);
+      dist2 = (i-get_x())*(i-get_x()) + (j-get_y())*(j-get_y());
 
       // See if we are within the inner disk
       if ( dist2 <= centerr2 ) {
@@ -310,7 +314,7 @@ double	disk_spot_tracker_interp::check_fitness(const image_wrapper &image)
   double  surroundr = _rad*surroundfac;  //< The surround "off" disk radius
 
   // Start with the pixel in the middle.
-  if (image.read_pixel_bilerp(_x,_y,val)) {
+  if (image.read_pixel_bilerp(get_x(),get_y(),val)) {
     pixels++;
     fitness += val;
   }
@@ -321,7 +325,7 @@ double	disk_spot_tracker_interp::check_fitness(const image_wrapper &image)
   for (r = _samplesep; r <= _rad; r += _samplesep) {
     double rads_per_step = 1 / r * _samplesep;
     for (theta = r*rads_per_step*0.5; theta <= 2*M_PI + r*rads_per_step*0.5; theta += rads_per_step) {
-      if (image.read_pixel_bilerp(_x+r*cos(theta),_y+r*sin(theta),val)) {
+      if (image.read_pixel_bilerp(get_x()+r*cos(theta),get_y()+r*sin(theta),val)) {
 	pixels++;
 	fitness += val;
       }
@@ -334,7 +338,7 @@ double	disk_spot_tracker_interp::check_fitness(const image_wrapper &image)
   for (r = r /* Keep going */; r <= surroundr; r += _samplesep) {
     double rads_per_step = 1 / r * _samplesep;
     for (theta = r*rads_per_step*0.5; theta <= 2*M_PI + r*rads_per_step*0.5; theta += rads_per_step) {
-      if (image.read_pixel_bilerp(_x+r*cos(theta),_y+r*sin(theta),val)) {
+      if (image.read_pixel_bilerp(get_x()+r*cos(theta),get_y()+r*sin(theta),val)) {
 	pixels++;
 	fitness -= val;
       }
@@ -382,7 +386,7 @@ double	cone_spot_tracker_interp::check_fitness(const image_wrapper &image)
   double  val;				//< Pixel value read from the image
 
   // Start with the pixel in the middle.
-  if (image.read_pixel_bilerp(_x,_y,val)) {
+  if (image.read_pixel_bilerp(get_x(),get_y(),val)) {
     pixels++;
     fitness += val;
   }
@@ -395,7 +399,7 @@ double	cone_spot_tracker_interp::check_fitness(const image_wrapper &image)
     double rads_per_step  = 1 / r * _samplesep;
     double weight = 1 - (r / _rad);
     for (theta = r*rads_per_step*0.5; theta <= 2*M_PI + r*rads_per_step*0.5; theta += rads_per_step) {
-      if (image.read_pixel_bilerp(_x+r*cos(theta),_y+r*sin(theta),val)) {
+      if (image.read_pixel_bilerp(get_x()+r*cos(theta),get_y()+r*sin(theta),val)) {
 	pixels++;
 	fitness += val * weight;
       }
@@ -514,14 +518,14 @@ double	symmetric_spot_tracker_interp::check_fitness(const image_wrapper &image)
 // Using it would mean somehow clipping the boundaries before calling these functions, which would
 // surely slow things down.
 #if 1
-      if (image.read_pixel_bilerp(_x+list->x,_y+list->y,val)) {
+      if (image.read_pixel_bilerp(get_x()+list->x,get_y()+list->y,val)) {
 	valSum += val;
 	squareValSum += val*val;
 	pixels++;
 	list++;	  //< Makes big speed difference to do this with increment vs. index
       }
 #else
-      val = image.read_pixel_bilerp_nocheck(_x+list->x, _y+list->y);
+      val = image.read_pixel_bilerp_nocheck(get_x()+list->x, get_y()+list->y);
       valSum += val;
       squareValSum += val*val;
       pixels++;
@@ -534,4 +538,191 @@ double	symmetric_spot_tracker_interp::check_fitness(const image_wrapper &image)
   // We never invert the fitness: we don't care whether it is a dark
   // or bright spot.
   return fitness;
+}
+
+rod3_spot_tracker_interp::rod3_spot_tracker_interp(const disk_spot_tracker *,
+			    double radius, bool inverted,
+			    double pixelaccuracy, double radiusaccuracy,
+			    double sample_separation_in_pixels,
+			    double length, double orientation) :
+    spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels),
+    d_length(length),
+    d_orientation(orientation),
+    d_center(NULL),
+    d_beginning(NULL),
+    d_end(NULL)
+{
+  // Create three subordinate trackers of type cone_spot_tracker_interp
+  if ( NULL == (d_center = new disk_spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)) ) {
+    fprintf(stderr,"rod3_spot_tracker_interp::rod3_spot_tracker_interp(): Cannot create center subortinate tracker\n");
+    return;
+  }
+  if ( NULL == (d_beginning = new disk_spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)) ) {
+    fprintf(stderr,"rod3_spot_tracker_interp::rod3_spot_tracker_interp(): Cannot create beginning subortinate tracker\n");
+    return;
+  }
+  if ( NULL == (d_end = new disk_spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)) ) {
+    fprintf(stderr,"rod3_spot_tracker_interp::rod3_spot_tracker_interp(): Cannot create end subortinate tracker\n");
+    return;
+  }
+
+  // Move them to the proper locations based on the length and orientation.
+  // This means offsetting the beginning and end from the center based on the orientation and length.
+  update_beginning_and_end_locations();
+}
+
+rod3_spot_tracker_interp::rod3_spot_tracker_interp(const disk_spot_tracker_interp *,
+			    double radius, bool inverted,
+			    double pixelaccuracy, double radiusaccuracy,
+			    double sample_separation_in_pixels,
+			    double length, double orientation) :
+    spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels),
+    d_length(length),
+    d_orientation(orientation),
+    d_center(NULL),
+    d_beginning(NULL),
+    d_end(NULL)
+{
+  // Create three subordinate trackers of type cone_spot_tracker_interp
+  if ( NULL == (d_center = new disk_spot_tracker_interp(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)) ) {
+    fprintf(stderr,"rod3_spot_tracker_interp::rod3_spot_tracker_interp(): Cannot create center subortinate tracker\n");
+    return;
+  }
+  if ( NULL == (d_beginning = new disk_spot_tracker_interp(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)) ) {
+    fprintf(stderr,"rod3_spot_tracker_interp::rod3_spot_tracker_interp(): Cannot create beginning subortinate tracker\n");
+    return;
+  }
+  if ( NULL == (d_end = new disk_spot_tracker_interp(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)) ) {
+    fprintf(stderr,"rod3_spot_tracker_interp::rod3_spot_tracker_interp(): Cannot create end subortinate tracker\n");
+    return;
+  }
+
+  // Move them to the proper locations based on the length and orientation.
+  // This means offsetting the beginning and end from the center based on the orientation and length.
+  update_beginning_and_end_locations();
+}
+
+rod3_spot_tracker_interp::rod3_spot_tracker_interp(const cone_spot_tracker_interp *,
+			    double radius, bool inverted,
+			    double pixelaccuracy, double radiusaccuracy,
+			    double sample_separation_in_pixels,
+			    double length, double orientation) :
+    spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels),
+    d_length(length),
+    d_orientation(orientation),
+    d_center(NULL),
+    d_beginning(NULL),
+    d_end(NULL)
+{
+  // Create three subordinate trackers of type cone_spot_tracker_interp
+  if ( NULL == (d_center = new cone_spot_tracker_interp(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)) ) {
+    fprintf(stderr,"rod3_spot_tracker_interp::rod3_spot_tracker_interp(): Cannot create center subortinate tracker\n");
+    return;
+  }
+  if ( NULL == (d_beginning = new cone_spot_tracker_interp(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)) ) {
+    fprintf(stderr,"rod3_spot_tracker_interp::rod3_spot_tracker_interp(): Cannot create beginning subortinate tracker\n");
+    return;
+  }
+  if ( NULL == (d_end = new cone_spot_tracker_interp(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)) ) {
+    fprintf(stderr,"rod3_spot_tracker_interp::rod3_spot_tracker_interp(): Cannot create end subortinate tracker\n");
+    return;
+  }
+
+  // Move them to the proper locations based on the length and orientation.
+  // This means offsetting the beginning and end from the center based on the orientation and length.
+  update_beginning_and_end_locations();
+}
+
+rod3_spot_tracker_interp::rod3_spot_tracker_interp(const symmetric_spot_tracker_interp *,
+			    double radius, bool inverted,
+			    double pixelaccuracy, double radiusaccuracy,
+			    double sample_separation_in_pixels,
+			    double length, double orientation) :
+    spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels),
+    d_length(length),
+    d_orientation(orientation),
+    d_center(NULL),
+    d_beginning(NULL),
+    d_end(NULL)
+{
+  // Create three subordinate trackers of type cone_spot_tracker_interp
+  if ( NULL == (d_center = new symmetric_spot_tracker_interp(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)) ) {
+    fprintf(stderr,"rod3_spot_tracker_interp::rod3_spot_tracker_interp(): Cannot create center subortinate tracker\n");
+    return;
+  }
+  if ( NULL == (d_beginning = new symmetric_spot_tracker_interp(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)) ) {
+    fprintf(stderr,"rod3_spot_tracker_interp::rod3_spot_tracker_interp(): Cannot create beginning subortinate tracker\n");
+    return;
+  }
+  if ( NULL == (d_end = new symmetric_spot_tracker_interp(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)) ) {
+    fprintf(stderr,"rod3_spot_tracker_interp::rod3_spot_tracker_interp(): Cannot create end subortinate tracker\n");
+    return;
+  }
+
+  // Move them to the proper locations based on the length and orientation.
+  // This means offsetting the beginning and end from the center based on the orientation and length.
+  update_beginning_and_end_locations();
+}
+
+double rod3_spot_tracker_interp::check_fitness(const image_wrapper &image)
+{
+  if (d_center && d_beginning && d_end) {
+    return d_center->check_fitness(image) + d_beginning->check_fitness(image) + d_end->check_fitness(image);
+  } else {
+    fprintf(stderr, "rod3_spot_tracker_interp::check_fitness(): Missing subordinate tracker!\n");
+    return 0;
+  }
+}
+
+// Sets the locations of the beginning and end subtrackers based on the
+// position of the center subtracker and the length and orientation.
+void rod3_spot_tracker_interp::update_beginning_and_end_locations(void)
+{
+  if (d_center) {
+    if (d_beginning) {
+      d_beginning->set_location(d_center->get_x() - (d_length/2) * cos(d_orientation * (M_PI / 180)),
+				d_center->get_y() - (d_length/2) * sin(d_orientation * (M_PI / 180)) );
+    }
+    if (d_end) {
+      d_end->set_location(d_center->get_x() + (d_length/2) * cos(d_orientation * (M_PI / 180)),
+			  d_center->get_y() + (d_length/2) * sin(d_orientation * (M_PI / 180)) );
+    }
+  }
+}
+
+bool  rod3_spot_tracker_interp::take_single_optimization_step(const image_wrapper &image, double &x, double &y,
+						       bool do_x, bool do_y, bool do_r)
+{
+  double  new_fitness;	    //< Checked fitness value to see if it is better than current one
+  bool	  betterbase = false; //< Did the base class find a better fit?
+  bool	  betterorient = false;//< Do we find a better orientation?
+
+  // See if the base class fitting steps can do better
+  betterbase = spot_tracker::take_single_optimization_step(image, x, y, do_x, do_y, do_r);
+
+  // Try going in +/- orient and see if we find a better orientation.
+  // XXX HACK: Orientation step is set based on the pixelstep and scaled so
+  // that each endpoint will move one pixelstep unit as the orientation changes.
+
+  double orient_step = _pixelstep * (180 / M_PI) / (d_length / 2);
+  {
+    double starting_o = get_orientation();
+    set_orientation(starting_o + orient_step);	// Try going a step in +orient
+    if ( _fitness < (new_fitness = check_fitness(image)) ) {
+      _fitness = new_fitness;
+      betterorient = true;
+    } else {
+    set_orientation(starting_o - orient_step);	// Try going a step in -orient
+      if ( _fitness < (new_fitness = check_fitness(image)) ) {
+	_fitness = new_fitness;
+	betterorient = true;
+      } else {
+	set_orientation(starting_o);	// Back where we started in orientation
+      }
+    }
+  }
+
+  // Return the new location and whether we found a better one.
+  x = get_x(); y = get_y();
+  return betterbase || betterorient;
 }

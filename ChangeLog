@@ -1,3 +1,23 @@
+2004-01-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* GUI.jpg : Updated picture to newer version.
+	* kernel.jpg : Same.
+	* spot_tracker.cpp : Added a new rod3 kernel that includes three
+		kernels in a line that move as one rigid unit.  This is
+		intended to let the user track rods in the image.  It
+		can use any of the other kernels as subkernels.  Refactored
+		some of the code to use accessor methods rather than
+		direct reads so that the proper side effects occur.
+	* spot_tracker.h : Same.
+	* video_spot_tracker.cpp : Added support for control and reading
+		of the rod parameters.  Modified rewind so that it first
+		pauses, which is hoped to cure a problem with the program
+		hanging on rewind for DirectX files.  Added code to save
+		.csv files as well as .vrpn files when logging.
+	* video_spot_tracker.dsp : Same.
+	* video_spot_tracker.html : Updated to new version.
+	* video_spot_tracker.tcl : Updates to GUI to support above changes.
+
 2004-01-07  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* SEM_camera_server.cpp : Code needed to parse the VRPN-format

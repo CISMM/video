@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v01.25</title>
-<h1>Video Spot Tracker version 01.25</h1>
-<p><img src="GUI.jpg" width="161" height="908" align="right">The <i><b>Video Spot 
+<title>Video Spot Tracker v01.26</title>
+<h1>Video Spot Tracker version 01.26</h1>
+<p><img src="GUI.jpg" width="161" height="973" align="right">The <i><b>Video Spot 
   Tracker</b></i> program is used to track the motion of one or more spots in 
   a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible 
   video file, from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible 
@@ -56,8 +56,8 @@
   control panel. This will replace the plus signs with a circle around the center 
   at twice the radius that the kernel is set to use.</p>
 <h3>Selecting the type of tracker</h3>
-<p><img src="kernel.jpg" width="515" height="99"></p>
-<p>There are three types of tracking kernels available within the program. They 
+<p><img src="kernel.jpg" width="569" height="99"></p>
+<p>There are four types of tracking kernels available within the program. They 
   are controlled using interface widgets in the <b><i>kernel</i></b> control panel. 
   The overriding parameter for tracking is whether the spots are dark points in 
   a lighter background (the default) or lighter points in a dark background). 
@@ -83,6 +83,18 @@
   to provide even weights for each ring. The radius should be set to be at least 
   slighly larger than the bead that is to be tracked; setting it larger will not 
   harm tracking except to make the program run more slowly.</p>
+<p><img src="rod3.jpg" width="152" height="164" align="right">The final type of 
+  kernel is the rod3 kernel. This is actually a grouping of three subkernels, 
+  each of which is one of the above types. These three kernels lie along the same 
+  line and move as a unit; they seek to track bars in the image. When this kernel 
+  box is selected, a new control panel will appear. This control panel is shown 
+  to the right, and it enables control over the length (in pixels) and orientation 
+  (in degrees) of the bar trackers. As with the radius and position controls described 
+  above, these controls change to display and control the values of the active 
+  tracker. The most successful bars may be made of cone kernels and be slightly 
+  less than the actual length of the bar on the screen. The least useful are probably 
+  the symmetric kernels. Note that if the bars flex, this tracker may not work 
+  very well.</p>
 <p>Once you have selected the type of tracker to use, and have selected spots 
   to track, check the <b><i>optimize</i></b> checkbox. When you do this, the trackers 
   should all move themselves to the centers of the spots they were started on. 
@@ -125,9 +137,10 @@
   motion of the trackers by checking the <b><i>Logging</i></b> checkbox within 
   the <b><i>log</i></b> control panel (shown to the right). This will bring up 
   a dialog box that will let you select a filename. It will automatically add 
-  the default extension &quot;.vrpn&quot; to the filename you create. Once you 
-  have selected a file name, you check the <b><i>play_video</i></b> checkbox to 
-  begin going through the video file, or you can use the <b><i>single_step_video</i></b> 
+  the default extension &quot;.vrpn&quot; to the filename you create. (A second 
+  file, with the extension &quot;.csv&quot; will also be created, though the program 
+  does not mention it.) Once you have selected a file name, you check the <b><i>play_video</i></b> 
+  checkbox to begin going through the video file, or you can use the <b><i>single_step_video</i></b> 
   repeatedly to step through a frame at a time. When you are finished with the 
   section of tracking that you are interested in, uncheck the Logging checkbox 
   to stop the logging. You can then go forward to another section, turn on logging, 
@@ -144,14 +157,17 @@
   Some video files have a 30 frame/second playback but have three copies of the 
   same video frame to produce an overall update of 10 frames/second; this will 
   produce repeated location reports for each of the identical frames.</p>
-<p>The motion of the trackers over time is stored into a log file in the <b><i>Virtual-Reality 
-  Peripheral Network</i></b> (<a href="http://www.vrpn.org">VRPN</a>) format. 
-  This format can be converted into a Matlab data file using the <b><i>vrpnLogToMatlab</i></b> 
+<p>The motion of the trackers over time is stored into two log files. The first 
+  is a <b><i>Comma-Separated Values</i></b> format with the extension .csv. This 
+  text format can be viewed in a text editor or loaded by several spreadsheet 
+  and analysis programs. The second log file is in the <b><i>Virtual-Reality Peripheral 
+  Network</i></b> (<a href="http://www.vrpn.org">VRPN</a>) format. This format 
+  can be converted into a Matlab data file using the <b><i>vrpnLogToMatlab</i></b> 
   program that should have been installed at the same time the <i><b>Video Spot 
   Tracker</b></i> program was. You convert the &quot;.vrpn&quot; file into a Matlab 
   file by dragging it onto a shortcut that points to the program (or by dragging 
   it onto the program itself). The vrpnLogToMatlab program will have been installed 
-  in the directory: <b><i>C:\Program Files\NSRG\Video Spot Tracker v01.25\VrpnLogToMatlib</i></b> 
+  in the directory: <b><i>C:\Program Files\NSRG\Video Spot Tracker v01.26\VrpnLogToMatlib</i></b> 
   and it will also be located on the desktop.</p>
 <h3>Controlling playback</h3>
 <p>Whether logging is turned on or not, the video can be played by checking the 
@@ -169,3 +185,12 @@
 <p>An installer for the program and manual can be downloaded from the <a href="http://www.cs.unc.edu/Research/nano/cismm/download/index.html">software 
   download page</a>. To run it, you must also download and install the <b><i>NSRG 
   Runtime</i></b> package, which is also available on that page.</p>
+<h2>Version Information</h2>
+<h3>Version 01.26:</h3>
+<ul>
+  <li> Added the output of .csv log files in addition to the .vrpn log files. 
+    These are in a text format that can be read by several spreadsheet and analysis 
+    programs.</li>
+  <li>Added support for a group of three kernels in a line that will track bars 
+    in the image.</li>
+</ul>

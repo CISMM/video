@@ -19,10 +19,31 @@ frame .kernel.cone
 pack .kernel.cone -side left
 frame .kernel.symmetric
 pack .kernel.symmetric -side left
+frame .kernel.rod3
+pack .kernel.rod3 -side left
 frame .kernel.radius
 pack .kernel.radius -side left
 frame .kernel.optimize
 pack .kernel.optimize -side left
+
+###########################################################
+# Put the places for the controls for the rod kernels.
+# This window should only be visible when rod3 is turned on.
+
+toplevel .rod3
+wm geometry .rod3 +800+10
+wm withdraw .rod3
+set rod3 0
+trace variable rod3 w update_rod_window_visibility
+
+proc update_rod_window_visibility {nm el op} {
+	global rod3
+	if { $rod3 } {
+		wm deiconify .rod3
+	} else {
+		wm withdraw .rod3
+	}
+}
 
 ###########################################################
 # Put the controls that will let the user store a log file.
@@ -35,7 +56,7 @@ pack .kernel.optimize -side left
 set logging 0
 set logfilename ""
 toplevel .log
-wm geometry .log +690+10
+wm geometry .log +750+10
 checkbutton .log.button -text Logging -variable logging -anchor w
 pack .log.button -side top -fill x
 label .log.label -textvariable logfilename

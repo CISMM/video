@@ -1,4 +1,4 @@
-//XXX We want to display what time we are at in a file (so they need to tell us).
+//XXX We want to display what time we are at in a file (so the imagers need to tell us).
 //XXX Want to store the time at which tracking was done based on the time in the file.
 //XXX Want to be able to jump to a time in a file, and maybe fast-forward.
 //XXX Add debug view showing where all points are being sampled
@@ -31,6 +31,7 @@
 #endif
 #include <GL/gl.h>
 #include <GL/glut.h>
+#include <quat.h>
 #include <vrpn_Connection.h>
 #include <vrpn_Tracker.h>
 #include <list>
@@ -45,7 +46,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.25";
+const char *Version_string = "01.26";
 
 //--------------------------------------------------------------------------
 // Some classes needed for use in the rest of the program.
@@ -71,7 +72,7 @@ public:
   virtual ~Directx_Controllable_Video() {};
   void play(void) { directx_videofile_server::play(); }
   void pause(void) { directx_videofile_server::pause(); }
-  void rewind(void) { directx_videofile_server::rewind(); }
+  void rewind(void) { pause(); directx_videofile_server::rewind(); }
   void single_step(void) { directx_videofile_server::single_step(); }
 };
 
@@ -81,7 +82,7 @@ public:
   virtual ~Pulnix_Controllable_Video() {};
   void play(void) { edt_pulnix_raw_file_server::play(); }
   void pause(void) { edt_pulnix_raw_file_server::pause(); }
-  void rewind(void) { edt_pulnix_raw_file_server::rewind(); }
+  void rewind(void) { pause(); edt_pulnix_raw_file_server::rewind(); }
   void single_step(void) { edt_pulnix_raw_file_server::single_step(); }
 };
 
@@ -91,7 +92,7 @@ public:
   virtual ~SEM_Controllable_Video() {};
   void play(void) { SEM_camera_server::play(); }
   void pause(void) { SEM_camera_server::pause(); }
-  void rewind(void) { SEM_camera_server::rewind(); }
+  void rewind(void) { pause(); SEM_camera_server::rewind(); }
   void single_step(void) { SEM_camera_server::single_step(); }
 };
 
@@ -117,6 +118,7 @@ vrpn_Connection	*g_vrpn_connection = NULL;  //< Connection to send position over
 vrpn_Tracker_Server *g_vrpn_tracker = NULL; //< Tracker server to send positions
 vrpn_Connection	*g_client_connection = NULL;//< Connection on which to perform logging
 vrpn_Tracker_Remote *g_client_tracker = NULL; //< Client tracker object to case ping/pong server messages
+FILE	*g_csv_file = NULL;		//< File to save data in with .csv extension
 int	g_tracking_window;		//< Glut window displaying tracking
 int	g_beadseye_window;		//< Glut window showing view from active bead
 int	g_beadseye_size = 121;		//< Size of beads-eye-view window XXX should be dynamic
@@ -130,7 +132,7 @@ void  logfilename_changed(char *newvalue, void *);
 void  rebuild_trackers(int newvalue, void *);
 void  rebuild_trackers(float newvalue, void *);
 void  set_debug_visibility(int newvalue, void *);
-//XXX X and Y range should match the image range, like the region size controls are.
+//XXX X and Y range should match the image range, like the region size controls do.
 Tclvar_float_with_scale	g_X("x", "", 0, 1391, 0);
 Tclvar_float_with_scale	g_Y("y", "", 0, 1039, 0);
 Tclvar_float_with_scale	g_Radius("radius", ".kernel.radius", 1, 30, 5);
@@ -146,6 +148,9 @@ Tclvar_int_with_button	g_invert("dark_spot",".kernel.invert",1, rebuild_trackers
 Tclvar_int_with_button	g_interpolate("interpolate",".kernel.interp",1, rebuild_trackers);
 Tclvar_int_with_button	g_cone("cone",".kernel.cone",0, rebuild_trackers);
 Tclvar_int_with_button	g_symmetric("symmetric",".kernel.symmetric",0, rebuild_trackers);
+Tclvar_int_with_button	g_rod("rod3",".kernel.rod3",0, rebuild_trackers);
+Tclvar_float_with_scale	g_length("length", ".rod3", 10, 50, 20);
+Tclvar_float_with_scale	g_orientation("orient", ".rod3", 0, 359, 0);
 Tclvar_int_with_button	g_opt("optimize",".kernel.optimize");
 Tclvar_int_with_button	g_round_cursor("round_cursor","");
 Tclvar_int_with_button	g_small_area("small_area","");
@@ -399,17 +404,40 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
 
 spot_tracker  *create_appropriate_tracker(void)
 {
-  if (g_symmetric) {
-    g_interpolate = 1;
-    g_cone = 0;
-    return new symmetric_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
-  } else if (g_cone) {
-    g_interpolate = 1;
-    return new cone_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
-  } else if (g_interpolate) {
-    return new disk_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
+  // If we are using the oriented-rod kernel, we create a new one depending on the type
+  // of subordinate spot tracker that is being used.
+  if (g_rod) {
+    if (g_symmetric) {
+      symmetric_spot_tracker_interp *notused = NULL;
+      g_interpolate = 1;
+      g_cone = 0;
+      return new rod3_spot_tracker_interp(notused, g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing, g_length, 0.0);
+    } else if (g_cone) {
+      cone_spot_tracker_interp *notused = NULL;
+      g_interpolate = 1;
+      return new rod3_spot_tracker_interp(notused, g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing, g_length, 0.0);
+    } else if (g_interpolate) {
+      disk_spot_tracker_interp *notused = NULL;
+      return new rod3_spot_tracker_interp(notused, g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing, g_length, 0.0);
+    } else {
+      disk_spot_tracker *notused = NULL;
+      return new rod3_spot_tracker_interp(notused, g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing, g_length, 0.0);
+    }
+
+  // Not building a compound kernel, so just make a simple kernel of the appropriate type.
   } else {
-    return new disk_spot_tracker(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
+    if (g_symmetric) {
+      g_interpolate = 1;
+      g_cone = 0;
+      return new symmetric_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
+    } else if (g_cone) {
+      g_interpolate = 1;
+      return new cone_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
+    } else if (g_interpolate) {
+      return new disk_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
+    } else {
+      return new disk_spot_tracker(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
+    }
   }
 }
 
@@ -451,6 +479,7 @@ static void  cleanup(void)
   if (g_vrpn_connection) { delete g_vrpn_connection; };
   if (g_client_tracker) { delete g_client_tracker; };
   if (g_client_connection) { delete g_client_connection; };
+  if (g_csv_file) { fclose(g_csv_file); g_csv_file = NULL; };
 }
 
 void myDisplayFunc(void)
@@ -534,7 +563,17 @@ void myDisplayFunc(void)
       } else {
 	glColor3f(0,0,1);
       }
-      if (g_round_cursor) {
+      if (g_rod) {
+	// Horrible hack to make this work with rod type
+	double orient = static_cast<rod3_spot_tracker_interp*>(*loop)->get_orientation();
+	double length = static_cast<rod3_spot_tracker_interp*>(*loop)->get_length();
+	double dx =   (length/2 * cos(orient * M_PI/180)) * (2.0/g_camera->get_num_columns());
+	double dy = - (length/2 * sin(orient * M_PI/180)) * (2.0/g_camera->get_num_rows());
+	glBegin(GL_LINES);
+	  glVertex2f(x-dx,y-dy);
+	  glVertex2f(x+dx,y+dy);
+	glEnd();
+      } else if (g_round_cursor) {
 	double stepsize = M_PI / (*loop)->get_radius();
 	double runaround;
 	glBegin(GL_LINE_STRIP);
@@ -637,10 +676,15 @@ void myBeadDisplayFunc(void)
 	  g_beadseye_image[3 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 255;
       }
     }
-    int min_x = (g_beadseye_size+1)/2 - 2 * g_active_tracker->get_radius();
-    int max_x = (g_beadseye_size+1)/2 + 2 * g_active_tracker->get_radius();
-    int min_y = (g_beadseye_size+1)/2 - 2 * g_active_tracker->get_radius();
-    int max_y = (g_beadseye_size+1)/2 + 2 * g_active_tracker->get_radius();
+    double radius = g_active_tracker->get_radius();
+    if (g_rod) {
+      // Horrible hack to make this work with rod type
+      radius = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_length() / 2;
+    }
+    int min_x = (g_beadseye_size+1)/2 - 2 * radius;
+    int max_x = (g_beadseye_size+1)/2 + 2 * radius;
+    int min_y = (g_beadseye_size+1)/2 - 2 * radius;
+    int max_y = (g_beadseye_size+1)/2 + 2 * radius;
 
     for (x = min_x; x < max_x; x++) {
       for (y = min_y; y < max_y; y++) {
@@ -743,7 +787,19 @@ void myLandscapeDisplayFunc(void)
     glColor3f(1,1,1);
     glBegin(GL_LINE_STRIP);
     for (x = 0; x < g_landscape_strip_width; x++) {
-      g_active_tracker->set_location(x + xImageOffset, start_y);
+      // If we are using the rod tracker, we translate the kernel along its orientation
+      // axis.  Otherwise, we translate in X.
+      if (g_rod) {
+	// Horrible hack to make this work with rod type
+	double orient = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_orientation();
+	double length = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_length();
+	double dx =   cos(orient * M_PI/180);
+	double dy = - sin(orient * M_PI/180);
+	double delta = x - (g_landscape_strip_width+1)/2.0;
+	g_active_tracker->set_location(start_x + dx*delta, start_y + dy*delta);
+      } else {
+	g_active_tracker->set_location(x + xImageOffset, start_y);
+      }
       this_val = g_active_tracker->check_fitness(*g_image);
       glVertex3f( strip_start_x + x * strip_step_x, this_val * scale - offset,0);
     }
@@ -755,6 +811,12 @@ void myLandscapeDisplayFunc(void)
 
   // Swap buffers so we can see it.
   glutSwapBuffers();
+}
+
+static	double	timediff(struct timeval t1, struct timeval t2)
+{
+	return (t1.tv_usec - t2.tv_usec) / 1e6 +
+	       (t1.tv_sec - t2.tv_sec);
 }
 
 void myIdleFunc(void)
@@ -808,6 +870,10 @@ void myIdleFunc(void)
       double x = (*loop)->get_x();
       double y = flip_y((*loop)->get_y());
       double fourRad = 4 * (*loop)->get_radius();
+      if (g_rod) {
+	// Horrible hack to make this work with rod type
+	fourRad = 2 * static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_length();
+      }
       if (*g_minX > x - fourRad) { *g_minX = x - fourRad; }
       if (*g_maxX < x + fourRad) { *g_maxX = x + fourRad; }
       if (*g_minY > y - fourRad) { *g_minY = y - fourRad; }
@@ -844,6 +910,12 @@ void myIdleFunc(void)
 
   g_active_tracker->set_location(g_X, flip_y(g_Y));
   g_active_tracker->set_radius(g_Radius);
+  if (g_rod) {
+    // Horrible hack to enable adjustment of a parameter that only exists on
+    // the rod tracker
+    static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->set_length(g_length);
+    static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->set_orientation(g_orientation);
+  }
   if (g_opt) {
     double  x, y;
 
@@ -859,13 +931,38 @@ void myIdleFunc(void)
     // file and move the trackers around to line up on each frame before
     // their values are saved.
     if (g_vrpn_tracker && g_video_valid) {
+      static struct timeval start;
+      static bool first_time = true;
       int i = 0;
       struct timeval now; gettimeofday(&now, NULL);
       for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++, i++) {
 	vrpn_float64  pos[3] = {(*loop)->get_x(), flip_y((*loop)->get_y()), 0};
 	vrpn_float64  quat[4] = { 0, 0, 0, 1};
+	double orient = 0.0;
+	double length = 0.0;
 
+	// If we are tracking rods, then we adjust the orientation to match.
+	if (g_rod) {
+	  // Horrible hack to make this work with rod type
+	  orient = static_cast<rod3_spot_tracker_interp*>(*loop)->get_orientation();
+	  length = static_cast<rod3_spot_tracker_interp*>(*loop)->get_length();
+	}
+
+	// Rotation about the Z axis, reported in radians.
+	q_from_euler(quat, orient * (M_PI/180),0,0);
 	g_vrpn_tracker->report_pose(i, now, pos, quat);
+
+	// Also, write the data to the .csv file
+	if (!g_csv_file) {
+	  fprintf(stderr,"Internal Error: Expected CSV file to be open\n");
+	} else {
+	  if (first_time) {
+	    start.tv_sec = now.tv_sec; start.tv_usec = now.tv_usec;
+	    first_time = false;
+	  }
+	  double interval = timediff(now, start);
+	  fprintf(g_csv_file, "%lf, %d, %lf,%lf,%lf, %lf, %lf,%lf\n", interval, i, pos[0], pos[1], pos[2], (*loop)->get_radius(), orient, length);
+	}
       }
     }
 
@@ -881,6 +978,11 @@ void myIdleFunc(void)
     g_X = (float)g_active_tracker->get_x();
     g_Y = (float)flip_y(g_active_tracker->get_y());
     g_Radius = (float)g_active_tracker->get_radius();
+    if (g_rod) {
+      // Horrible hack to make this work with rod type
+      g_orientation = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_orientation();
+      g_length = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_length();
+    }
   }
 
   //------------------------------------------------------------
@@ -986,6 +1088,11 @@ void  activate_and_drag_nearest_tracker_to(double x, double y)
     g_X = g_active_tracker->get_x();
     g_Y = flip_y(g_active_tracker->get_y());
     g_Radius = g_active_tracker->get_radius();
+    if (g_rod) {
+      // Horrible hack to make this work with rod type
+      g_orientation = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_orientation();
+      g_length = static_cast<rod3_spot_tracker_interp*>(g_active_tracker)->get_length();
+    }
   }
 }
 
@@ -1086,6 +1193,8 @@ void motionCallbackForGLUT(int x, int y) {
 // connection so that it will store the logged data.  If the name
 // changes, and was not empty before, then close the existing
 // connection and start a new one.
+// Also do the same for a comma-separated values file, replacing the
+// .vrpn extension with .csv
 
 void  logfilename_changed(char *newvalue, void *)
 {
@@ -1099,8 +1208,15 @@ void  logfilename_changed(char *newvalue, void *)
     g_client_connection = NULL;
   }
 
-  // Open a new connection, if we have a non-empty name.
+  // Close the old CSV log file, if there was one.
+  if (g_csv_file != NULL) {
+    fclose(g_csv_file);
+    g_csv_file = NULL;
+  }
+
+  // Open a new connection and .csv file, if we have a non-empty name.
   if (strlen(newvalue) > 0) {
+
     // Make sure that the file does not exist by deleting it if it does.
     // The Tcl code had a dialog box that asked the user if they wanted
     // to overwrite, so this is "safe."
@@ -1114,9 +1230,36 @@ void  logfilename_changed(char *newvalue, void *)
 	exit(-1);
       }
     }
-
     g_client_connection = vrpn_get_connection_by_name("Spot@localhost", newvalue);
     g_client_tracker = new vrpn_Tracker_Remote("Spot@localhost");
+
+    // Open the CSV file and put the titles on.
+    // Make sure that the file does not exist by deleting it if it does.
+    // The Tcl code had a dialog box that asked the user if they wanted
+    // to overwrite, so this is "safe."
+    char *csvname = new char[strlen(g_logfilename)];
+    if (csvname == NULL) {
+      fprintf(stderr, "Out of memory when allocating CSV file name\n");
+      cleanup();
+      exit(-1);
+    }
+    strcpy(csvname, g_logfilename);
+    strcpy(&csvname[strlen(csvname)-5], ".csv");
+    if ( (in_the_way = fopen(csvname, "r")) != NULL) {
+      fclose(in_the_way);
+      int err;
+      if ( (err=remove(csvname)) != 0) {
+	fprintf(stderr,"Error: could not delete existing logfile %s\n", (char*)(csvname));
+	perror("   Reason");
+	exit(-1);
+      }
+    }
+    if ( NULL == (g_csv_file = fopen(csvname, "w")) ) {
+      fprintf(stderr,"Cannot open CSV file for writing: %s\n", csvname);
+    } else {
+      fprintf(g_csv_file, "Time,Spot ID,X,Y,Z,Radius,Orientation (if meaningful),Length (if meaningful)\n");
+    }
+    delete [] csvname;
   }
 
 }
@@ -1137,6 +1280,7 @@ void  rebuild_trackers(int newvalue, void *)
     double x = (*loop)->get_x();
     double y = (*loop)->get_y();
     double r = (*loop)->get_radius();
+
     if (g_active_tracker == *loop) {
       delete *loop;
       *loop = create_appropriate_tracker();
