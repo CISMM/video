@@ -51,7 +51,7 @@ public:
   double  get_y(void) const { return _y; };
 
   /// Set the radius for the bead.  Return false on failure
-  bool	set_radius(const double r) { if (r <= 0) { return false; } else {_rad = r; return true; } };
+  bool	set_radius(const double r) { if (r <= 1) { _rad = 1; return false; } else {_rad = r; return true; } };
 
   /// Set the location for the bead.
   void	set_location(const double x, const double y) { _x = x; _y = y; };
@@ -162,37 +162,26 @@ public:
   symmetric_spot_tracker_interp(double radius, bool inverted = false,
 		    double pixelaccuracy = 0.25,
 		    double radiusaccuracy = 0.25);
+  symmetric_spot_tracker_interp::~symmetric_spot_tracker_interp();
 
   /// Check the fitness of the disk against an image, at the current parameter settings.
   // Return the fitness value there.
   virtual double  check_fitness(const image_wrapper &image);
 
 protected:
-};
-
-//----------------------------------------------------------------------------
-// This class will optimize the response of a disk-shaped kernel on an image.
-// It does bilinear interpolation on the four neighboring pixels when computing
-// the fit, to try and improve sub-pixel accuracy.  The samples take place at
-// the center of the disk and at square even-pixel spacings on a grid within
-// the disk.
-// The class is given an image to search in, and whether to search for a bright
-// spot on a dark background (the default) or a dark spot on a bright background.
-// THIS VERSION OF THE DISK TRACKER SHOULD NOT BE USED.  Because it samples on
-// the same grid as the image, it never produces an answer that is at a subpixel.
-
-class disk_spot_tracker_interp2 : public spot_tracker {
-public:
-  // Set initial parameters of the disk search routine
-  disk_spot_tracker_interp2(double radius, bool inverted = false,
-		    double pixelaccuracy = 0.25,
-		    double radiusaccuracy = 0.25);
-
-  /// Check the fitness of the disk against an image, at the current parameter settings.
-  // Return the fitness value there.
-  virtual double  check_fitness(const image_wrapper &image);
-
-protected:
+  // These structures and functions support pre-filling the coordinate offsets
+  // for the circles.  This avoids having to call all of the sin() and cos()
+  // functions, as well as a lot of other math, each time through the routine
+  // that determines fitness.  Because the pixels are always even integer
+  // distances from the center, we can precompute them for all radii in the
+  // constructor and then just loop through each list that is within the
+  // current radius value at run-time.
+  int _MAX_RADIUS;	//< Can't have larger radius than this
+  int *_radius_counts;	//< How many values in each radius, stored in an array
+  typedef struct {
+    double x, y;
+  } offset;
+  offset  **_radius_lists; //< List of offset values, stored in an array
 };
 
 #endif

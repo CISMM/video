@@ -21,7 +21,37 @@ public:
 
   // Do bilinear interpolation to read from the image, in order to
   // smoothly interpolate between pixel values.
-  virtual bool	read_pixel_bilerp(double x, double y, double &result) const;
+  // All sorts of speed tweaks in here because it is in the inner loop for
+  // the spot tracker and other codes.
+  inline bool	read_pixel_bilerp(double x, double y, double &result) const
+  {
+    // The order of the following statements is optimized for speed.
+    // The double version is used below for xlowfrac comp, ixlow also used later.
+    // Slightly faster to explicitly compute both here to keep the answer around.
+    double xlow = floor(x); int ixlow = (int)xlow;
+    // The double version is used below for ylowfrac comp, ixlow also used later
+    // Slightly faster to explicitly compute both here to keep the answer around.
+    double ylow = floor(y); int iylow = (int)ylow;
+    int ixhigh = ++ixlow;
+    int iyhigh = ++iylow;
+    double xhighfrac = x - xlow;
+    double yhighfrac = y - ylow;
+    double xlowfrac = 1.0 - xhighfrac;
+    double ylowfrac = 1.0 - yhighfrac;
+    double ll, lh, hl, hh;
+
+    // Combining the if statements into one using || makes it slightly slower.
+    // Interleaving the result calculation with the returns makes it slower.
+    if (!read_pixel(ixlow, iylow, ll)) { return false; }
+    if (!read_pixel(ixlow, iyhigh, lh)) { return false; }
+    if (!read_pixel(ixhigh, iylow, hl)) { return false; }
+    if (!read_pixel(ixhigh, iyhigh, hh)) { return false; }
+    result = ll * xlowfrac * ylowfrac + 
+	     lh * xlowfrac * yhighfrac +
+	     hl * xhighfrac * ylowfrac +
+	     hh * xhighfrac * yhighfrac;
+    return true;
+  };
 };
 
 class test_image: public image_wrapper {

@@ -164,12 +164,11 @@ void  spot_tracker::optimize_xy(const image_wrapper &image, double &x, double &y
     // Repeat the optimization steps until we can't do any better.
     while (take_single_optimization_step(image, x, y, true, true, false)) {};
 
-    // Try to see if we reducing the step sizes helps.
-    if ( _pixelstep > _pixelacc ) {
-      _pixelstep /= 2;
-    } else {
+    // Try to see if we reducing the step sizes helps, until it gets too small.
+    if ( _pixelstep <= _pixelacc ) {
       break;
     }
+    _pixelstep /= 2;
   } while (true);
 }
 
@@ -409,8 +408,65 @@ double	cone_spot_tracker_interp::check_fitness(const image_wrapper &image)
 
 symmetric_spot_tracker_interp::symmetric_spot_tracker_interp(double radius, bool inverted, double pixelaccuracy,
 				     double radiusaccuracy) :
-  spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy)
+  spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy),
+  _MAX_RADIUS(100)
 {
+  // Check the radius here so we don't need to check it in the fitness routine.
+  if (_rad < 1) { _rad = 1; }
+  if (_rad > _MAX_RADIUS) { _rad = _MAX_RADIUS; }
+
+  // Allocate the space for the counts of pixel in each radius
+  if ( (_radius_counts = new int[_MAX_RADIUS+1]) == NULL) {
+    _MAX_RADIUS = 0;
+    return;
+  }
+
+  // Allocate the space for each list and fill it in.
+  int	  r;				//< Coordinates in disk space
+  double  theta;			//< Coordinates in disk space
+  int	  pixels = 0;			//< How many pixels we ended up using
+  int pixel;				//< Loop variable
+
+  // Allocate the list that holds the lists of pixels
+  if ( (_radius_lists = new offset*[_MAX_RADIUS+1]) == NULL) {
+    _MAX_RADIUS = 0;
+    return;
+  }
+
+  // Don't make one for the pixel in the middle; it makes no difference to circular
+  // symmetry.
+  // Shift the start location by 1/2 pixel on each outgoing ring, to
+  // keep them from lining up with each other.
+  _radius_lists[0] = NULL;
+  for (r = 1; r <= _MAX_RADIUS; r++) {
+    double rads_per_pixel = 1.0 / r;
+
+    pixels = (int)(1 + 2*M_PI / rads_per_pixel);
+    if ( (_radius_lists[r] = new offset[pixels]) == NULL) {
+      _MAX_RADIUS = 0;
+      return;
+    }
+    pixel = 0;
+    for (theta = r*rads_per_pixel*0.5; theta <= 2*M_PI + r*rads_per_pixel*0.5; theta += rads_per_pixel) {
+      _radius_lists[r][pixel].x = r*cos(theta);
+      _radius_lists[r][pixel].y = r*sin(theta);
+      pixel++;
+    }
+    _radius_counts[r] = pixel;
+  }
+}
+
+symmetric_spot_tracker_interp::~symmetric_spot_tracker_interp()
+{
+  int i;
+  if (_radius_lists != NULL) {
+    for (i = 0; i <= _MAX_RADIUS; i++) {
+      if (_radius_lists[i] != NULL) { delete [] _radius_lists[i]; _radius_lists[i] = NULL; }
+    }
+    delete [] _radius_lists;
+    _radius_lists = NULL;
+  }
+  if (_radius_counts) { delete [] _radius_counts; _radius_counts = NULL; }
 }
 
 // Check the fitness of the disk against an image, at the current parameter settings.
@@ -419,115 +475,41 @@ symmetric_spot_tracker_interp::symmetric_spot_tracker_interp(double radius, bool
 // Compute the variance of all the points using the shortcut
 // formula: var = (sum of squares of measures) - (sum of measurements)^2 / n
 
-  // We assume that we are looking at a smooth function, so we do linear
+// We assume that we are looking at a smooth function, so we do linear
 // interpolation and sample within the space of the kernel, rather than
 // point-sampling the nearest pixel.
 
-// XXX This function should keep track of the last radius it computed the list
-// of points for and rebuild a membership list for each circle when it changes.
-// Then the list can be re-used and the math avoided if the radius does not
-// change, making this run a lot faster.
-
 double	symmetric_spot_tracker_interp::check_fitness(const image_wrapper &image)
 {
-  double  r,theta;			//< Coordinates in disk space
-  int	  pixels = 0;			//< How many pixels we ended up using
-  double  fitness = 0.0;		//< Accumulates the fitness values
   double  val;				//< Pixel value read from the image
-
-  // Avoid divide-by-zero and other degeneracies later.
-  if (_rad < 1) {
-    return 0;
-  }
+  double  pixels;			//< How many pixels we ended up using (used in floating-point calculations only)
+  double  fitness = 0.0;		//< Accumulates the fitness values
+  offset  **which_list = &_radius_lists[1];  //< Point at the first list, use increment later to advance
+  int	  r;				//< Loops over radii from 1 up
+  int	  count;			//< How many entries in a particular list
 
   // Don't check the pixel in the middle; it makes no difference to circular
   // symmetry.
-  // Shift the start location by 1/2 pixel on each outgoing ring, to
-  // keep them from lining up with each other.
   for (r = 1; r <= _rad; r++) {
-    double rads_per_pixel = 1 / r;
     double squareValSum = 0.0;
     double valSum = 0.0;
+    int	pix;
+    offset *list = *(which_list++);	//< Makes a speed difference to do this with increment vs. index
 
-    pixels = 0;	// No pixels in this circle yet.
-    for (theta = r*rads_per_pixel*0.5; theta <= 2*M_PI + r*rads_per_pixel*0.5; theta += rads_per_pixel) {
-      if (image.read_pixel_bilerp(_x+r*cos(theta),_y+r*sin(theta),val)) {
-	pixels++;
+    pixels = 0.0;	// No pixels in this circle yet.
+    count = _radius_counts[r];
+    for (pix = 0; pix < count; pix++) {
+      if (image.read_pixel_bilerp(_x+list->x,_y+list->y,val)) {
 	valSum += val;
 	squareValSum += val*val;
+	pixels++;
+	list++;	  //< Makes big speed difference to do this with increment vs. index
       }
     }
     fitness -= squareValSum - valSum*valSum / pixels;
   }
-  // Divide by the number of circles so that the optimization over
-  // radius doesn't simply get better by reducing the radius.
-  fitness /= (r-1);
 
   // We never invert the fitness: we don't care whether it is a dark
   // or bright spot.
-  return fitness;
-}
-
-disk_spot_tracker_interp2::disk_spot_tracker_interp2(double radius, bool inverted, double pixelaccuracy,
-				     double radiusaccuracy) :
-  spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy)
-{
-}
-
-// Check the fitness of the disk against an image, at the current parameter settings.
-// Return the fitness value there.  This is done by multiplying the image values within
-// one radius of the center by 1 and the image values beyond that but within surroundfac
-// by -1 (on-center, off-surround).  If the test is inverted, then the fitness value
-// is inverted before returning it.  The fitness is normalized by the number of pixels
-// tested (pixels both within the radii and within the image).
-
-// Be careful when selecting the surround fraction below.  If the area in the off-
-// surround is larger than the on-area, the code seeks for dark surround more than
-// for bright center, effectively causing it to seek an inverted patch that is
-// that many times as large as the radius (switches dark-on-light vs. light-on-dark
-// behavior).
-
-// We assume that we are looking at a smooth function, so we do linear
-// interpolation and sample within the space of the disk kernel, rather than
-// point-sampling the nearest pixel.
-
-double	disk_spot_tracker_interp2::check_fitness(const image_wrapper &image)
-{
-  int	  i,j;
-  int	  pixels = 0;			//< How many pixels we ended up using
-  double  fitness = 0.0;		//< Accumulates the fitness values
-  double  val;				//< Pixel value read from the image
-  double  surroundfac = 1.3;		//< How much larger the surround is
-  double  centerr2 = _rad * _rad;	//< Square of the center "on" disk radius
-  double  surroundr2 = centerr2*surroundfac*surroundfac;  //< Square of the surround "off" disk radius
-  double  dist2;			//< Square of the distance from the center
-
-  int range = (int)ceil(surroundfac*_rad);
-  if (range < 0) { return 0; }	//< Avoid divide-by-zero pixel errors
-  for (i = -range; i <= range; i++) {
-    for (j = -range; j <= range; j++) {
-      dist2 = (i)*(i) + (j)*(j);
-
-      // See if we are within the inner disk
-      if ( dist2 <= centerr2 ) {
-	if (image.read_pixel_bilerp(_x+i,_y+j,val)) {
-	  pixels++;
-	  fitness += val;
-	}
-      }
-
-      // See if we are within the outer disk (surroundfac * radius)
-      else if ( dist2 <= surroundr2 ) {
-	if (image.read_pixel_bilerp(_x+i,_y+j,val)) {
-	  pixels++;
-	  fitness -= val;
-	}
-      }
-    }
-  }
-
-  if (_invert) { fitness *= -1; }
-  fitness /= pixels;
-
   return fitness;
 }

@@ -1,6 +1,5 @@
 //XXX Nice to tag each tracker with its sensor number.
 //XXX Put in times based on video timestamps for samples rather than real time.
-//XXX Put in times based on video timestamps for samples rather than real time.
 //XXX Would like to be able to specify the microns-per-pixel value
 //    and have it stored in the log file.
 //XXX Off-by-1 somewhere in Roper when binning (top line dark)
@@ -36,7 +35,7 @@ const int MAX_TRACKERS = 100; // How many trackers can exist (for VRPN's tracker
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.15";
+const char *Version_string = "01.16";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make

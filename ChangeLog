@@ -1,3 +1,20 @@
+2003-08-26  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* image_wrapper.cpp : Moving virtual function inline to speed up
+		inner loops.
+	* image_wrapper.h : Same, plus tweaking the function for speed.
+	* spot_tracker.cpp : Speed tweaks.  Major rework of the symmetric
+		spot tracker to use pre-computed lists of positions rather
+		than recomputing coordinates each frame.  This slowed it
+		down until I turned the index operations into pointer++.
+		Removed the broken version of the interpolating disk
+		tracker.
+	* spot_tracker.h : Same.
+	* spot_tracker_library.dsp : Lets it inline more for speed.
+	* video_spot_tracker.bat : Removes quotes that break things.
+	* video_spot_tracker.cpp : Bumped version number.
+	* video_spot_tracker.dsp : Lets it inline more for speed.
+
 2003-08-21  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* spot_tracker.cpp : Added circularly-symmetric-locator kernel.
