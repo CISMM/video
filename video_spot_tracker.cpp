@@ -39,7 +39,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.20";
+const char *Version_string = "01.21";
 
 //--------------------------------------------------------------------------
 // Some classes needed for use in the rest of the program.

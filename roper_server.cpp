@@ -50,13 +50,16 @@ bool  roper_server::read_continuous(const int16 camera_handle,
 		       const rgn_type &region_description,
 		       const uns32 exposure_time_millisecs)
 {
+  static uns32 last_buffer_cnt = 0; //< How many buffers have been read?
   int16	progress;	//< Progress made in getting the current frame
   uns32	buffer_size;	//< Size required to hold the data
 
   //--------------------------------------------------------------------
   // See if the parameters have changed or if the circular buffer has not
   // yet been set up to run..  If so, then we need to stop any previous
-  // acquisition and then restart a new set of acquisitions.
+  // acquisition and then restart a new set of acquisitions.  Otherwise,
+  // we must have already acquired a buffer so we want to free it up
+  // to be re-filled next time.
   if ( !_circbuffer_run || (exposure_time_millisecs != _last_exposure) ||
        (region_description.s1 != _last_region.s1) ||
        (region_description.s2 != _last_region.s2) ||
@@ -92,7 +95,7 @@ bool  roper_server::read_continuous(const int16 camera_handle,
 
     // Setup and start a continuous acquisition.
     PL_CHECK_RETURN(pl_exp_setup_cont(camera_handle, 1, &region_description,
-      TIMED_MODE, exposure_time_millisecs, &buffer_size, CIRC_OVERWRITE),
+      TIMED_MODE, exposure_time_millisecs, &buffer_size, CIRC_NO_OVERWRITE),
       "pl_exp_setup_cont");
     // The factor of 2 here is converting bytes to pixels (16 bits)
     if (buffer_size / 2 != _circbuffer_len / _circbuffer_num) {
@@ -102,6 +105,12 @@ bool  roper_server::read_continuous(const int16 camera_handle,
     }
     PL_CHECK_RETURN(pl_exp_start_cont(camera_handle, _circbuffer, _circbuffer_len),
       "pl_exp_start_cont");
+
+    // No buffers have been read yet.
+    last_buffer_cnt = 0;
+  } else {
+    // Free up the buffer used last time
+    pl_exp_unlock_oldest_frame(camera_handle);
   }
   _last_exposure = exposure_time_millisecs;
   _last_region = region_description;
@@ -112,17 +121,20 @@ bool  roper_server::read_continuous(const int16 camera_handle,
   struct  timeval start, now;
   gettimeofday(&start, NULL);
   do {
-     uns32 trash;
-     PL_CHECK_RETURN(pl_exp_check_cont_status(camera_handle, &progress, &trash,&trash),
+     uns32 byte_cnt, buffer_cnt;
+     PL_CHECK_RETURN(pl_exp_check_cont_status(camera_handle, &progress, &byte_cnt,&buffer_cnt),
        "pl_exp_check_cont_status");
      if (progress == READOUT_FAILED) {
        fprintf(stderr,"read_continuous(): Readout failed\n");
        return FALSE;
      }
-     // XXX Status gets set to 100 here for several milliseconds, then to
-     // 103.  These are invalid values for status.  The example code from
-     // Roper also gets nonsense returns (or at least the read code hangs
-     // in this same place).
+
+     // See how many buffers have been filled (XXX times the buffer has been filled?).
+     // Each time we get another one, we go ahead and read it (set progress to READOUT_COMPLETE)
+     if (buffer_cnt > last_buffer_cnt) {
+       progress = READOUT_COMPLETE;
+       last_buffer_cnt ++;
+     }
 
      // Check for a timeout; if we haven't heard anything for a second longer than exposure,
      // abort the read and restart it.
@@ -160,8 +172,8 @@ bool  roper_server::read_continuous(const int16 camera_handle,
      vrpn_SleepMsecs(1);
   } while (progress != READOUT_COMPLETE);
 
-  // Get a pointer to the valid frame data
-  PL_CHECK_RETURN(pl_exp_get_latest_frame(camera_handle, &_memory),
+  // Get a pointer to the oldest valid frame data
+  PL_CHECK_RETURN(pl_exp_get_oldest_frame(camera_handle, &_memory),
     "pl_exp_get_latest_frame");
 
   return TRUE;
@@ -238,7 +250,7 @@ bool  roper_server::read_one_frame(const int16 camera_handle,
 bool roper_server::open_and_find_parameters(void)
 {
   // Find out how many cameras are on the system, then get the
-  // name of the first camera, open it, and make sure that it has
+  // name of the first cam`era, open it, and make sure that it has
   // no critical failures.
   int16	  num_cameras;
   int16	  num_rows, num_columns;
@@ -264,7 +276,8 @@ bool roper_server::open_and_find_parameters(void)
   _num_rows = num_rows;
   _num_columns = num_columns;
   _circbuffer_on = avail_flag;
-  // XXX This code may or may not work, so turning it off until tested
+  //XXX Circular-buffer code times out in acquisition mode, also in sample code from
+  // Roper. Have asked them how to fix this.
   _circbuffer_on = false;
   if (!_circbuffer_on) {
     fprintf(stderr,"roper_server::open_and_find_parameters(): Does not support circular buffers (using single-capture mode)\n");
@@ -330,6 +343,9 @@ roper_server::~roper_server(void)
   if (_circbuffer_run) {
     if (!pl_exp_stop_cont(_camera_handle, CCS_HALT)) {
       fprintf(stderr,"roper_server::~roper_server(): Cannot stop acquisition\n");
+    }
+    if (!pl_exp_finish_seq(_camera_handle, _buffer, 0)) {
+      fprintf(stderr,"roper_server::~roper_server(): Cannot finish sequence\n");
     }
     if (_circbuffer) {
       delete [] _circbuffer;

@@ -1,3 +1,13 @@
+2003-11-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.html : Updated to reflect recent changes.
+	* GUI.jpg : Needed for the updated web page manual.
+	* small_area.jpg : Same.
+	* video_spot_tracker.cpp : Updated version number.
+	* roper_example.cpp : Trying to make it work to no avail.
+	* roper_server.cpp : Trying to make it work in circular-buffer
+		mode, to no avail.
+
 2003-11-22  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* roper_example.cpp : Hiding the printf so we could see first

@@ -37,9 +37,9 @@ void FocusContinuous( int16 hCam )
     uns32 size;
     uns16 *buffer;
     int16 status;
-    uns32 not_needed;
     void_ptr address;
     uns16 numberframes = 5;
+    static uns32 last_buffer_cnt = 0; //< How many buffers have been read?
 
     /* Init a sequence set the region, exposure mode and exposure time */
     pl_exp_init_seq();
@@ -57,8 +57,16 @@ void FocusContinuous( int16 hCam )
     while( numberframes ) {
       /* wait for data or error */
       printf("  Checking status\n");
-      while( pl_exp_check_cont_status( hCam, &status, &not_needed,
-	&not_needed ) && (status != READOUT_COMPLETE) && (status != READOUT_FAILED) ) {/*printf("%d.",status);*/};
+      uns32 byte_cnt, buffer_cnt;
+      while( pl_exp_check_cont_status( hCam, &status, &byte_cnt, &buffer_cnt) &&
+	(status != READOUT_COMPLETE) && (status != READOUT_FAILED) ) {
+
+	//XXX I was hoping that when we had enough bytes for the frame, we could
+	// go on and get it.  This does not seem to work.  It doesn't work even if
+	// we wait for the number of bytes to match
+//	printf("%d.%d ",buffer_cnt, byte_cnt);
+	if (byte_cnt == 512*512*2 * (6-numberframes)) { printf("%d.%d ",buffer_cnt, byte_cnt); break; }
+      };
 
       /* Check Error Codes */
       if( status == READOUT_FAILED ) {
@@ -75,6 +83,9 @@ void FocusContinuous( int16 hCam )
 	*((uns16*)address + size/sizeof(uns16)/2 + 1) );
 	numberframes--;
 	printf( "Remaining Frames %i\n", numberframes );
+      } else {
+	fprintf(stderr, "Error getting latest frame\n");
+	return;
       }
     } /* End while */
 

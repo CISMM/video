@@ -1,64 +1,88 @@
 <title>Video Spot Tracker v01.13</title>
-<h1>Video Spot Tracker version 01.13</h1>
-<p><img src="GUI.jpg" width="158" height="1037" align="right">The <i><b>Video 
-  Spot Tracker</b></i> program is used to track the motion of one or more spots 
-  in a video file, from a DirectShow camera, from a Roper Scientific camera, or 
-  from a SPOT camera. The program currently runs only on Windows.</p>
+<h1>Video Spot Tracker version 01.21</h1>
+<p><img src="GUI.jpg" width="161" height="908" align="right">The <i><b>Video Spot 
+  Tracker</b></i> program is used to track the motion of one or more spots in 
+  a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible 
+  video file, from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible 
+  camera, from a <a href="http://roperscientific.com">Roper Scientific</a> camera, 
+  or from a <a href="http://diaginc.com">DiagInc</a> SPOT camera. The program 
+  currently runs only on Windows, but it uses the portable openGL library for 
+  rendering and the portable Tcl/Tk for user interface control.</p>
 <h2>Running the program</h2>
 <p>The program is run by dragging a video file onto the desktop icon that was 
-  created when the program was installed. To learn how to run the program using 
-  a live DirectShow video camera, or with a Roper or SPOT camera, contact Russ 
-  Taylor at <a href="mailto:taylorr@cs.unc.edu">taylorr@cs.unc.edu</a>.</p>
+  created when the program was installed. It can also be run by selecting one 
+  of the camera-specific shortcuts from <i><b>Start Menu/All Programs/NSRG/Video 
+  Spot Tracker v01.21</b></i>.</p>
 <h2>Using the program</h2>
-<p>When the program is run, two windows will appear. The window that appears to 
-  the right contains the first image within the video file. The window that appears 
-  on the left when the program is run is shown in this web page to the right. 
-  It contains a number of interaction widgets that are used to control the program. 
-  They are described below:</p>
-<h3>Selecting the image plane to use</h3>
+<p>When the program is run, four windows will appear. The image window that appears 
+  to the lower right contains the first image within the video file or a continually-updating 
+  image from a live camera feed. The control panel named <b><i>tk</i></b> that 
+  appears on the left when the program is run (shown here to the right) contains 
+  a number of interaction widgets that control the operation of the program. The 
+  <b><i>kernel</i></b> control panel that appears above the image window (described 
+  later) controls the type of tracking kernel being used. The <b><i>log</i></b> 
+  control panel in the upper right is described later.</p>
+<h3>Selecting the color plane to use</h3>
 <p><img src="red_green_blue.jpg" width="156" height="60" align="left">If the video 
-  file contains different data sets in the red, green, and blue channels then 
-  you will need to select the one you want to view. By default, the red channel 
-  (channel 0) is selected. To select a different channel, click on the &quot;0&quot; 
-  beneath the <i><b>red_green_blue </b></i>slider and type its number into the 
-  dialog box that appears. Enter 1 for green and 2 for blue. The video window 
-  should change to display the selected channel.</p>
+  file (or video camera) contains different data sets in the red, green, and blue 
+  channels then you will need to select the one you want to view. By default, 
+  the red channel (channel 0) is selected. To select a different channel, click 
+  on the &quot;0&quot; beneath the <i><b>red_green_blue </b></i>slider and type 
+  its number into the dialog box that appears. Enter 1 for green and 2 for blue. 
+  The video window should change to display the selected channel.</p>
 <h3>Selecting spots to track</h3>
 <p>To select the first spot to track, click on its center with the left mouse 
   button. A red plus sign will appear at the location you have selected. If you 
   want to adjust its radius, you can hold the mouse button down after you have 
   clicked and pull the mouse away from the center; pretty soon, the radius of 
   the disk will track the distance you have pulled the mouse from the center. 
-  You can also adjust the radius by clicking on the number beneat the <i><b>radius</b></i> 
-  slider and entering it into the dialog box that appears.</p>
-<p><img src="small_area.jpg" width="177" height="170" align="left">To select more 
-  spots to track, click on the center of each new spot with the <i>right</i> mouse 
-  button. The default radius of each new spot tracker will match the radius of 
-  the spot that was active when it is created. When a new tracker is created, 
-  all other trackers turn blue.</p>
+  You can also adjust the radius by clicking on the number beneath the <i><b>radius</b></i> 
+  slider within the <b><i>kernel</i></b> control panel and entering it into the 
+  dialog box that appears or by moving the <b><i>radius</i></b> slider.</p>
+<p><img src="three_tracks.jpg" width="168" height="174" align="left">To select 
+  more spots to track, click on the center of each new spot with the <i>right</i> 
+  mouse button. The default radius of each new spot tracker will match the radius 
+  of the spot that was active when it is created. When a new tracker is created, 
+  all other trackers turn blue. Each tracked spot will be labeled with an index 
+  that matches its index in the stored tracking file.</p>
 <p>If you click with the left mouse button when there is more than one tracker, 
   the closest tracker is moved to the location you picked and it becomes the <b><i>active 
   tracker </i></b>(in red). The active tracker's position and radius are shown 
   in the user interface, and they can be edited by clicking on the number beneath 
   the relevant slider. By selecting different trackers using the left mouse button, 
   you can adjust the position and radius of each tracker one at a time.</p>
+<p>If you prefer to not have the centers of the tracked objects obscured by the 
+  tracking markers, select the <b><i>round_cursor</i></b> checkbox from the <b><i>tk</i></b> 
+  control panel. This will replace the plus signs with a circle around the center 
+  at twice the radius that the kernel is set to use.</p>
 <h3>Selecting the type of tracker</h3>
-<p><img src="tracker_type.jpg" width="158" height="110" align="left">There are 
-  three types of tracking kernels available within the program. The overriding 
-  parameter for tracking is whether the spots are dark points in a lighter background 
-  (the default) or lighter points in a dark background). This is controlled using 
-  the <i><b>dark_spot</b></i> check box located at the top of the user interface. 
-  You should set this for the type of spot you are seeking.</p>
+<p><img src="kernel.jpg" width="515" height="99"></p>
+<p>There are three types of tracking kernels available within the program. They 
+  are controlled using interface widgets in the <b><i>kernel</i></b> control panel. 
+  The overriding parameter for tracking is whether the spots are dark points in 
+  a lighter background (the default) or lighter points in a dark background). 
+  This is controlled using the <i><b>dark_spot</b></i> check box located at the 
+  top of the user interface. You should set this for the type of spot you are 
+  seeking.</p>
 <p>For tracking spots that are even in intensity, or which have uneven intensities 
-  within them but a defined edge, the interpolating disk tracker should be used. 
-  This kernel is enabled when the <b><i>interpolate</i></b> checkbox is checked 
-  and the <b><i>cone</i></b> check box is cleared (the default).</p>
+  within them but a defined circular edge, the interpolating disk tracker should 
+  be used. This kernel is enabled when the <b><i>interpolate</i></b> checkbox 
+  is checked and the <b><i>cone</i></b> check box is cleared (the default).</p>
 <p>For tracking spots that are brighter in the center and drop off to dim (or 
   darkest in the center and ramp up to bright), the <b><i>cone</i></b> checkbox 
   should be checked. For cone tracking, the radius should be set about 1/3 larger 
   than the spots you want to track (giving the kernel a good sampling of the background 
   as well as the spot). The setting of the <b><i>interpolate</i></b> check box 
-  does not matter if the <b><i>cone</i></b> box is checked.</p>
+  does not matter if the <b><i>cone</i></b> box is checked (this tracker always 
+  interpolates).</p>
+<p>If the bead profile is changing over time, or if it does not fit well into 
+  one of the above categories, then the <b><i>symmetric</i></b> tracker should 
+  be chosen. This tracker operates by locating the minimum variance in concentric 
+  rings around the bead center. It sums the variance in circles of radius 1, 2, 
+  3, ... up to the radius setting and divides each circle's radius by its circumference 
+  to provide even weights for each ring. The radius should be set to be at least 
+  slighly larger than the bead that is to be tracked; setting it larger will not 
+  harm tracking except to make the program run more slowly.</p>
 <p>Once you have selected the type of tracker to use, and have selected spots 
   to track, check the <b><i>optimize</i></b> checkbox. When you do this, the trackers 
   should all move themselves to the centers of the spots they were started on. 
@@ -66,7 +90,7 @@
   checked the optimize button; they will try to follow the center of the spot 
   even as you adjust their radius.</p>
 <h3>Faster display update</h3>
-<p><img src="small_area.jpg" width="177" height="170" align="right">Once you have 
+<p><img src="small_area.jpg" width="162" height="175" align="right">Once you have 
   created all of the trackers you want, you may check the <b><i>small_area</i></b> 
   checkbox. This will cause the program to limit its update to a small area of 
   pixels that surrounds the active trackers. This requires less processing and 
@@ -78,7 +102,8 @@
   A green box shows up in the video window to indicate the area being updated.</p>
 <p>You can also manually adjust the area that is updated using the <b><i>minX</i></b>, 
   <b><i>maxX</i></b>, <b><i>minY</i></b>, and <b><i>maxY</i></b> sliders located 
-  at the bottom of the control panel.</p>
+  at the bottom of the control panel. If you do this, you will want to un-check 
+  the small_area setting.</p>
 <p>To turn off the small area tracking, and to undo the selection of a manual 
   region, click the <b><i>full_area</i></b> checkbox once. It will reset the update 
   area to cover the whole image and will then turn itself back off.</p>
@@ -89,37 +114,55 @@
   sliders. Note that these sliders may show subpixel positions and radii. Initial 
   testing on simple slightly-noisy images indicated that the interpolating trackers 
   have position errors of about .12 pixels on average, with a maximum of about 
-  0.33 pixels, when tracking a perfectly-round disk of radius 5.5 pixels.</p>
+  0.33 pixels, when tracking a perfectly-round disk of radius 5.5 pixels. You 
+  can control the minimum step size that the optimizer will use by adjusting the 
+  <b><i>precision</i></b> slider within the <b><i>tk</i></b> control panel. Smaller 
+  values make the program run more slowly but will result in the program attempting 
+  to find the position with greater precision (this will not necessarily correspond 
+  to greater accuracy, due to noise and possibly aliasing).</p>
 <h3>Recording the tracker motion</h3>
-<p>You can record the motion of the trackers by checking the <b><i>Logging</i></b> 
-  checkbox. This will bring up a dialog box that will let you select a filename. 
-  It will automatically add the default extension &quot;.vrpn&quot; to the filename 
-  you create. Once you have selected a file name, you check the <b><i>play_video</i></b> 
-  checkbox to begin going through the video file, or you can use the <b><i>single_step_video</i></b> 
+<p><img src="log.jpg" width="123" height="80" align="right">You can record the 
+  motion of the trackers by checking the <b><i>Logging</i></b> checkbox within 
+  the <b><i>log</i></b> control panel (shown to the right). This will bring up 
+  a dialog box that will let you select a filename. It will automatically add 
+  the default extension &quot;.vrpn&quot; to the filename you create. Once you 
+  have selected a file name, you check the <b><i>play_video</i></b> checkbox to 
+  begin going through the video file, or you can use the <b><i>single_step_video</i></b> 
   repeatedly to step through a frame at a time. When you are finished with the 
-  section of tracking that you are interested in, uncheck the <i>Logging</i> checkbox 
+  section of tracking that you are interested in, uncheck the Logging checkbox 
   to stop the logging. You can then go forward to another section, turn on logging, 
   and save a different file if you like.</p>
 <p>Logging will not occur while the file is paused, or when the end of the video 
   has been reached (this also means that the starting frame of video will not 
   be stored). There will be one entry in the file per tracker for each frame of 
   video stepped through or played through. The time values associated with each 
-  record are the real time at which the playback occured; this is probably not 
-  useful and so should be ignored. <b><i>Note</i></b>: Some video files have a 
-  30 frame/second playback but have three copies of the same video frame to produce 
-  an overall update of 10 frames/second; this will produce repeated location reports 
-  for each of the identical frames.</p>
+  record are the wall-clock time at which the playback occured; this is probably 
+  not useful and so should be ignored. <b><i>Note</i></b>: Some video files have 
+  a 30 frame/second playback but have three copies of the same video frame to 
+  produce an overall update of 10 frames/second; this will produce repeated location 
+  reports for each of the identical frames.</p>
 <p>The motion of the trackers over time is stored into a log file in the <b><i>Virtual-Reality 
   Peripheral Network</i></b> (<a href="http://www.vrpn.org">VRPN</a>) format. 
   This format can be converted into a Matlab data file using the <b><i>vrpnLogToMatlab</i></b> 
-  program that should have been installed at the same time the <i>Video Spot Tracker</i> 
-  program was. You convert the &quot;.vrpn&quot; file into a Matlab file by dragging 
-  it onto a shortcut that points to the program (or by dragging it onto the program 
-  itself). The vrpnLogToMatlab program will have been installed in the directory: 
-  C:\Program Files\NSRG\Video Spot Tracker v01.13\VrpnLogToMatlib.</p>
+  program that should have been installed at the same time the <i><b>Video Spot 
+  Tracker</b></i> program was. You convert the &quot;.vrpn&quot; file into a Matlab 
+  file by dragging it onto a shortcut that points to the program (or by dragging 
+  it onto the program itself). The vrpnLogToMatlab program will have been installed 
+  in the directory: <b><i>C:\Program Files\NSRG\Video Spot Tracker v01.13\VrpnLogToMatlib</i></b> 
+  and it will also be located on the desktop.</p>
 <h3>Controlling playback</h3>
 <p>Whether logging is turned on or not, the video can be played by checking the 
   <b><i>play_video</i></b> checkbox, and paused by unchecking it. The <b><i>single_step_video</i></b> 
   checkbox will step forwards one video frame each time it is pressed. The <b><i>rewind</i></b> 
   checkbox causes the video to rewind to the beginning, play the first frame of 
   the video, and then pause.</p>
+<h2>Downloading and installing the program</h2>
+<p>This program is brought to you courtesy of the National Institutes of Health 
+  <a href="http://www.nibib.nih.gov/">National Institute for Biomedical Imaging 
+  and Bioengineering</a> through its National Research Resource in <a href="http://www.cs.unc.edu/nano/cismm">Computer-Integrated 
+  Systems for Microscopy and Manipulation</a> at the University of North Carolina 
+  at Chapel Hill.</p>
+<h2></h2>
+<p>An installer for the program and manual can be downloaded from the <a href="http://www.cs.unc.edu/Research/nano/cismm/download/index.html">software 
+  download page</a>. To run it, you must also download and install the <b><i>NSRG 
+  Runtime</i></b> package, which is also available on that page.</p>
