@@ -27,10 +27,11 @@
 #include <GL/gl.h>
 #include <glut.h>
 #include <vrpn_Connection.h>
+#include <vrpn_Tracker.h>
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.00";
+const char *Version_string = "01.01";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -45,6 +46,8 @@ bool		    g_ready_to_display = false;	//< Don't unless we get an image
 bool	g_already_posted = false;	//< Posted redisplay since the last display?
 int	g_mousePressX, g_mousePressY;	//< Where the mouse was when the button was pressed
 int		    g_shift = 0;	//< How many bits to shift right to get to 8
+vrpn_Connection	*g_vrpn_connection = NULL;  //< Connection to send position over
+vrpn_Tracker_Server *g_vrpn_tracker = NULL; //< Tracker server to send positions
 
 //--------------------------------------------------------------------------
 // Tcl controls and displays
@@ -160,6 +163,8 @@ static void  cleanup(void)
   if (g_glut_image) { delete [] g_glut_image; };
   if (g_play) { delete g_play; };
   if (g_rewind) { delete g_rewind; };
+  if (g_vrpn_tracker) { delete g_vrpn_tracker; };
+  if (g_vrpn_connection) { delete g_vrpn_connection; };
 }
 
 void myDisplayFunc(void)
@@ -333,6 +338,15 @@ void myIdleFunc(void)
     g_X = (float)x;
     g_Y = (float)g_camera->get_num_rows() - 1 - y;
     g_Radius = (float)g_tracker->get_radius();
+
+    // Update the VRPN tracker position and report it
+    if (g_vrpn_tracker) {
+      struct timeval now; gettimeofday(&now, NULL);
+      vrpn_float64  pos[3] = {g_X, g_Y, 0};
+      vrpn_float64  quat[4] = { 0, 0, 0, 1};
+
+      g_vrpn_tracker->report_pose(0, now, pos, quat);
+    }
   }
 
   //------------------------------------------------------------
@@ -368,6 +382,11 @@ void myIdleFunc(void)
     glutPostRedisplay();
     g_already_posted = true;
   }
+
+  //------------------------------------------------------------
+  // Let the VRPN objects send their reports
+  if (g_vrpn_tracker) { g_vrpn_tracker->mainloop(); }
+  if (g_vrpn_connection) { g_vrpn_connection->mainloop(); }
 
   //------------------------------------------------------------
   // Time to quit?
@@ -563,6 +582,13 @@ int main(int argc, char *argv[])
 
   g_invert.set_tcl_change_callback(handle_invert_change, NULL);
 
+  //------------------------------------------------------------------
+  // Set up the VRPN server connection and the tracker object that will
+  // report the position when tracking is turned on.
+  g_vrpn_connection = new vrpn_Synchronized_Connection();
+  g_vrpn_tracker = new vrpn_Tracker_Server("Spot", g_vrpn_connection);
+
+  //------------------------------------------------------------------
   // Initialize GLUT and create the window that will display the
   // video -- name the window after the device that has been
   // opened in VRPN.

@@ -1,5 +1,9 @@
 2003-03-06  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* video_spot_tracker.cpp : Added VRPN tracker to report position.
+
+2003-03-06  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* base_camera_server.h : Declaring functions const.
 	* directx_camera_server.cpp : Fixing pixel-lookup for subsetted images.
 	* roper_server.cpp : Making pixel-reading work when binning.
