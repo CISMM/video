@@ -1,6 +1,6 @@
+//XXX Put in times based on video timestamps for samples rather than real time when we have them.
 //XXX Would like to have a .ini file or something to set the starting "save" directory.
 //XXX Nice to tag each tracker with its sensor number.
-//XXX Put in times based on video timestamps for samples rather than real time.
 //XXX Would like to be able to specify the microns-per-pixel value
 //    and have it stored in the log file.
 //XXX Off-by-1 somewhere in Roper when binning (top line dark)

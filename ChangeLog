@@ -1,5 +1,12 @@
 2003-09-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* EDT_directx_dll.cpp : Added timing information so we can store
+		video files.
+	* EDT_dierctx_dll.dsp : Nothing really.
+	* video_spot_tracker.cpp : Comments change.
+
+2003-09-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* video.dsw : Adding projects for building EDT video capture
 		card DirectShow source filters.
 	* edt_library.dsp : Includes files from the EDT SDK.

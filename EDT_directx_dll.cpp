@@ -67,6 +67,8 @@ public:
   STDMETHODIMP Notify(IBaseFilter *, Quality) { return E_FAIL; };
 
 protected:
+  REFERENCE_TIME  m_rtStartTime;    //< When the first sample was grabbed.
+
   BOOL	m_bDiscontinuity;   //< If true, set discontinuity flag
 
   // These are CSourceStream methods that we have to override.
@@ -102,6 +104,7 @@ protected:
 
 CEDTPushPin::CEDTPushPin(HRESULT *phr, CSource *pFilter)
 : CSourceStream(NAME("CEDTPushPin"), phr, pFilter, L"Out")
+, m_rtStartTime(0)
 , m_pdv_p(NULL)
 , m_unit(0)
 , m_channel(0)
@@ -158,8 +161,10 @@ CEDTPushPin::CEDTPushPin(HRESULT *phr, CSource *pFilter)
   pdv_start_image(m_pdv_p);
 
   // Make sure that we can read a frame from the device, or else timeout and
-  // close it again.
-  u_char *image_p = pdv_wait_image(m_pdv_p);
+  // close it again.  Record the time at which we took this first frame, converted
+  // into Microsoft DirectShow units.
+  u_int timevec[2]; //< Seconds and nanoseconds
+  u_char *image_p = pdv_wait_image_timed(m_pdv_p, timevec);
   int timeouts = pdv_timeouts(m_pdv_p);
   if (timeouts != 0) {
 #ifdef	DEBUG_ON
@@ -169,6 +174,9 @@ CEDTPushPin::CEDTPushPin(HRESULT *phr, CSource *pFilter)
     m_pdv_p = NULL;
     return;
   }
+
+  // Convert nanoseconds and seconds to 100-nanosecond steps and store as start time
+  m_rtStartTime = ((LONGLONG)(timevec[1])) / 100 + ((LONGLONG)(timevec[0])) * 10000000L;
 
   // Start images coming our way.
   pdv_start_images(m_pdv_p, m_numbufs);
@@ -396,8 +404,23 @@ HRESULT CEDTPushPin::FillBuffer(IMediaSample *pSample)
       }
       outbuf += outstep;
     }
+
+    // Have the media play out at one sample per second.  This increments the
+    // m_rtStartTime value by a second's worth of 100-nm ticks and sets the
+    // new time each frame.
+    m_rtStartTime += 10000000L;
+    pSample->SetTime(&m_rtStartTime, &m_rtStartTime);
   } else {
-    u_char *image_p = pdv_wait_image(m_pdv_p);
+    u_int timevec[2]; //< Seconds and nanoseconds
+    u_char *image_p = pdv_wait_image_timed(m_pdv_p, timevec);
+
+    // Convert nanoseconds and seconds to 100-nanosecond steps and store as start time.
+    // Then subtract the time when the first sample was taken to put us into units of
+    // time since the stream began.  Set the sample's time to this value.  No idea how
+    // far into the future the stop time is, so set the start time for both.
+    REFERENCE_TIME rtNowTime = ((LONGLONG)(timevec[1])) / 100 + ((LONGLONG)(timevec[0])) * 10000000L;
+    REFERENCE_TIME rtStreamTime = rtNowTime - m_rtStartTime;
+    pSample->SetTime(&rtStreamTime, &rtStreamTime);
 
     // Start a new video sample coming our way for next time, keeping the hopper full
     pdv_start_image(m_pdv_p);
