@@ -9,7 +9,7 @@
 #include  "directx_camera_server.h"
 
 const int MAJOR_VERSION = 1;
-const int MINOR_VERSION = 4;
+const int MINOR_VERSION = 5;
 
 //-----------------------------------------------------------------
 // This section contains code to initialize the camera and read its
@@ -105,9 +105,6 @@ void  mainloop_server_code(void)
   }
 
   // Loop through each line, fill them in, and send them to the client.
-  // XXX This nested for loop takes about 200ms to complete for the
-  // firewire cameras.  This is when the client is not consuming the
-  // data fast enough.  The memory copy only accounts for a tiny amount.
   for (y = 0; y < num_y; y++) {
     for (x = 0; x < num_x; x++) {
       g_camera->get_pixel_from_memory(x, y, data[x + y*num_x]);
@@ -120,8 +117,6 @@ void  mainloop_server_code(void)
    }
 
   // Mainloop the server connection (once per server mainloop, not once per object).
-  // This call takes about 200ms to complete (when the client is not accepting
-  // data fast enough).
   svrcon->mainloop();
 
   delete [] data;
@@ -163,7 +158,7 @@ void  Usage(const char *s)
 int main(int argc, char *argv[])
 {
   int	i, realparams;		  // How many non-flag command-line arguments
-  char	*devicename = "roper";  // Name of the device to open
+  char	*devicename = "directx";  // Name of the device to open
   int	devicenum = 1;		  // Which, if there are more than one, to open
 
   realparams = 0;
