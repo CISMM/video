@@ -1,3 +1,7 @@
+//XXX Add "Bead's-eye view" of the data to see how well it is tracking
+//    Basically, define the constant and then add a GUI for turning it on and off
+//XXX Add "optimization-space" view showing how good fit is in local area
+//XXX Add debug view showing where all points are being sampled
 //XXX Put in times based on video timestamps for samples rather than real time when we have them.
 //XXX Would like to have a .ini file or something to set the starting "save" directory.
 //XXX Would like to be able to specify the microns-per-pixel value
@@ -32,6 +36,8 @@
 using namespace std;
 
 //#define	DEBUG
+//#define	BEADSEYEVIEW
+
 const int MAX_TRACKERS = 100; // How many trackers can exist (for VRPN's tracker object)
 #ifndef	M_PI
 const double M_PI = 2*asin(1.0);
@@ -39,7 +45,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.23";
+const char *Version_string = "01.24";
 
 //--------------------------------------------------------------------------
 // Some classes needed for use in the rest of the program.
@@ -87,6 +93,7 @@ base_camera_server  *g_camera;	    //< Camera used to get an image
 image_wrapper	    *g_image;	    //< Image wrapper for the camera
 Controllable_Video  *g_video = NULL;  //< Video controls, if we have them
 unsigned char	    *g_glut_image = NULL; //< Pointer to the storage for the image
+unsigned char	    *g_beadseye_image = NULL; //< Pointer to the storage for the beads-eye image
 list <spot_tracker *>g_trackers;    //< List of active trackers
 spot_tracker  *g_active_tracker = NULL;	//< The tracker that the controls refer to
 bool		    g_ready_to_display = false;	//< Don't unless we get an image
@@ -97,6 +104,9 @@ int		    g_shift = 0;	  //< How many bits to shift right to get to 8
 vrpn_Connection	*g_vrpn_connection = NULL;  //< Connection to send position over
 vrpn_Tracker_Server *g_vrpn_tracker = NULL; //< Tracker server to send positions
 vrpn_Connection	*g_client_connection = NULL;//< Connection on which to perform logging
+int	g_tracking_window;	     //< Glut window displaying tracking
+int	g_beadseye_window;	     //< Glut window showing view from active bead
+int	g_beadseye_size = 151;	     //< Size of beads-eye-view window XXX should be dynamic
 
 //--------------------------------------------------------------------------
 // Tcl controls and displays
@@ -357,6 +367,7 @@ static void  cleanup(void)
   }
   delete g_camera;
   if (g_glut_image) { delete [] g_glut_image; };
+  if (g_beadseye_image) { delete [] g_beadseye_image; };
   if (g_play) { delete g_play; };
   if (g_rewind) { delete g_rewind; };
   if (g_step) { delete g_step; };
@@ -517,6 +528,57 @@ void myDisplayFunc(void)
 
   // Have no longer posted redisplay since the last display.
   g_already_posted = false;
+}
+
+// Draw the image from the point of view of the currently-active
+// tracked bead.  This uses the interpolating read function on the
+// image objects to provide as accurate a representation of what the
+// area surrounding the tracker center looks like.
+void myBeadDisplayFunc(void)
+{
+  // Clear the window and prepare to draw in the back buffer
+  glDrawBuffer(GL_BACK);
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  if (g_show_video) {
+    // Copy pixels into the image buffer.  Flip the image over in
+    // Y so that the image coordinates display correctly in OpenGL.
+    int x,y;
+    float xImageOffset = g_active_tracker->get_x() - (g_beadseye_size+1)/2.0;
+    float yImageOffset = g_active_tracker->get_y() - (g_beadseye_size+1)/2.0;
+    double  double_pix;
+    for (x = 0; x < g_beadseye_size; x++) {
+      for (y = 0; y < g_beadseye_size; y++) {
+	if (!g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix)) {
+	  g_beadseye_image[0 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 255;
+	  g_beadseye_image[1 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 128;
+	  g_beadseye_image[2 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 128;
+	  g_beadseye_image[3 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 255;
+	} else {
+	  // This assumes that the pixels are actually 8-bit values
+	  // and will clip if they go above this.  It also writes pixels
+	  // from the first channel into all colors of the image.  It uses
+	  // RGBA so that we don't have to worry about byte-alignment problems
+	  // that plagued us when using RGB pixels.
+	  g_beadseye_image[0 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = (int)(double_pix) >> g_shift;
+	  g_beadseye_image[1 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = (int)(double_pix) >> g_shift;
+	  g_beadseye_image[2 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = (int)(double_pix) >> g_shift;
+	  g_beadseye_image[3 + 4 * (x + g_beadseye_size * (g_beadseye_size - 1 - y))] = 255;
+	}
+      }
+    }
+
+    // Store the pixels from the image into the frame buffer
+    // so that they cover the entire image (starting from lower-left
+    // corner, which is at (-1,-1)).
+    glRasterPos2f(-1, -1);
+    glDrawPixels(g_beadseye_size, g_beadseye_size,
+      GL_RGBA, GL_UNSIGNED_BYTE, g_beadseye_image);
+  }
+
+  // Swap buffers so we can see it.
+  glutSwapBuffers();
 }
 
 void myIdleFunc(void)
@@ -686,7 +748,12 @@ void myIdleFunc(void)
   //------------------------------------------------------------
   // Post a redisplay so that Glut will draw the new image
   if (!g_already_posted) {
+    glutSetWindow(g_tracking_window);
     glutPostRedisplay();
+#ifdef BEADSEYEVIEW
+    glutSetWindow(g_beadseye_window);
+    glutPostRedisplay();
+#endif
     g_already_posted = true;
   }
 
@@ -1061,7 +1128,7 @@ int main(int argc, char *argv[])
   //------------------------------------------------------------------
   // Initialize GLUT and create the window that will display the
   // video -- name the window after the device that has been
-  // opened in VRPN.
+  // opened in VRPN.  Also set mouse callbacks.
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
   glutInitWindowPosition(175, 140);
@@ -1069,11 +1136,11 @@ int main(int argc, char *argv[])
 #ifdef DEBUG
   printf("XXX initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());
 #endif
-  glutCreateWindow(device_name);
+  g_tracking_window = glutCreateWindow(device_name);
   glutMotionFunc(motionCallbackForGLUT);
   glutMouseFunc(mouseCallbackForGLUT);
 
-  // Create the buffer that Glut will use to send to the screen.  This is allocating an
+  // Create the buffer that Glut will use to send to the tracking window.  This is allocating an
   // RGBA buffer.  It needs to be 4-byte aligned, so we allocated it as a group of
   // words and then cast it to the right type.  We're using RGBA rather than just RGB
   // because it also solves the 4-byte alignment problem caused by funky sizes of image
@@ -1086,9 +1153,36 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-  // Set the display function and idle function for GLUT (they
+  //------------------------------------------------------------------
+  // Create the window that will be used for the "Bead's-eye view"
+#ifdef BEADSEYEVIEW
+  glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
+  glutInitWindowPosition(175, 140);
+  glutInitWindowSize(g_beadseye_size, g_beadseye_size);
+  g_beadseye_window = glutCreateWindow("Tracked");
+
+  // Create the buffer that Glut will use to send to the beads-eye window.  This is allocating an
+  // RGBA buffer.  It needs to be 4-byte aligned, so we allocated it as a group of
+  // words and then cast it to the right type.  We're using RGBA rather than just RGB
+  // because it also solves the 4-byte alignment problem caused by funky sizes of image
+  // that are RGB images.
+  if ( (g_beadseye_image = (unsigned char *)(void*)new vrpn_uint32
+      [g_beadseye_size * g_beadseye_size]) == NULL) {
+    fprintf(stderr,"Out of memory when allocating beads-eye image!\n");
+    fprintf(stderr,"  (Image is %u by %u)\n", g_beadseye_size, g_beadseye_size);
+    delete g_camera;
+    exit(-1);
+  }
+#endif
+
+  // Set the display functions for each window and idle function for GLUT (they
   // will do all the work) and then give control over to GLUT.
+  glutSetWindow(g_tracking_window);
   glutDisplayFunc(myDisplayFunc);
+#ifdef BEADSEYEVIEW
+  glutSetWindow(g_beadseye_window);
+  glutDisplayFunc(myBeadDisplayFunc);
+#endif
   glutIdleFunc(myIdleFunc);
   glutMainLoop();
 

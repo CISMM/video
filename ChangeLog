@@ -1,5 +1,12 @@
 2003-12-13  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* image_wrapper.h : Fixed interpolation code.
+	* video_spot_tracker.cpp : Added window to watch the spot from
+		the tracker point of view (#ifdef'ed out).  Bumped the
+		version number.
+
+2003-12-13  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* video_spot_tracker.cpp : Bumped version number.
 
 2003-12-03  Russell M. Taylor II  <taylorr@cs.unc.edu>

@@ -36,8 +36,8 @@ public:
     // The double version is used below for ylowfrac comp, ixlow also used later
     // Slightly faster to explicitly compute both here to keep the answer around.
     double ylow = floor(y); int iylow = (int)ylow;
-    int ixhigh = ++ixlow;
-    int iyhigh = ++iylow;
+    int ixhigh = ixlow+1;
+    int iyhigh = iylow+1;
     double xhighfrac = x - xlow;
     double yhighfrac = y - ylow;
     double xlowfrac = 1.0 - xhighfrac;
@@ -71,8 +71,8 @@ public:
     // The double version is used below for ylowfrac comp, ixlow also used later
     // Slightly faster to explicitly compute both here to keep the answer around.
     double ylow = floor(y); int iylow = (int)ylow;
-    int ixhigh = ++ixlow;
-    int iyhigh = ++iylow;
+    int ixhigh = ixlow+1;
+    int iyhigh = iylow+1;
     double xhighfrac = x - xlow;
     double yhighfrac = y - ylow;
     double xlowfrac = 1.0 - xhighfrac;
