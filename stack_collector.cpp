@@ -42,6 +42,7 @@ int main(unsigned argc, char *argv[])
   vrpn_Synchronized_Connection	*con = new vrpn_Synchronized_Connection();
   vrpn_Nikon_Controls		*nikon = new vrpn_Nikon_Controls("Focus", con);
   vrpn_Analog_Remote		*ana = new vrpn_Analog_Remote("Focus", con);
+  vrpn_Analog_Output_Remote	*anaout = new vrpn_Analog_Output_Remote("Focus", con);
 
   //------------------------------------------------------------------
   // Generic Tcl startup.  Getting and interpreter and mainwindow.
@@ -133,6 +134,7 @@ int main(unsigned argc, char *argv[])
       printf("Waiting for response from Nikon\n");
       while (g_focus == 0) {
 	nikon->mainloop();
+	anaout->mainloop();
 	ana->mainloop();
 	vrpn_SleepMsecs(1);
       }
@@ -143,9 +145,10 @@ int main(unsigned argc, char *argv[])
       for (focusloop = startfocus + focusdown; focusloop <= startfocus + focusup; focusloop += focusstep) {
 
 	printf("Going to %ld\n", (long)focusloop);
-	ana->request_change_channel_value(0, focusloop);
+	anaout->request_change_channel_value(0, focusloop);
 	while (g_focus != focusloop) {
 	  nikon->mainloop();
+	  anaout->mainloop();
 	  ana->mainloop();
 	  vrpn_SleepMsecs(1);
 	}
@@ -158,9 +161,10 @@ int main(unsigned argc, char *argv[])
 
       // Put the focus back where it started.
       printf("Setting focus back to %ld\n", (long)startfocus);
-      ana->request_change_channel_value(0, startfocus);
+      anaout->request_change_channel_value(0, startfocus);
       while (g_focus != startfocus) {
 	  nikon->mainloop();
+	  anaout->mainloop();
 	  ana->mainloop();
 	  vrpn_SleepMsecs(1);
       }
@@ -186,5 +190,9 @@ int main(unsigned argc, char *argv[])
     }
   }
 
+  if (ana) { delete ana; };
+  if (anaout) { delete anaout; };
+  if (nikon) { delete nikon; };
+  if (con) { delete con; };
   return 0;
 }
