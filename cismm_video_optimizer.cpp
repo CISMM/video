@@ -1385,76 +1385,52 @@ void  subtract_changed(int newvalue, void *)
   }
 
   switch (newvalue) {
-    case SUBTRACT_MIN : g_accumulate_min = 1; break;
-    case SUBTRACT_MAX : g_accumulate_max = 1; break;
-    case SUBTRACT_MEAN : g_accumulate_mean = 1; break;
+    case SUBTRACT_MIN : if (!g_min_image) {g_accumulate_min = 1;}; break;
+    case SUBTRACT_MAX : if (!g_max_image) {g_accumulate_max = 1;}; break;
+    case SUBTRACT_MEAN : if (!g_mean_image) {g_accumulate_mean = 1;}; break;
   }
 }
 
-// Routine that start accumulating min image.
+// Routine that starts accumulating min image.
+// Never delete the min image, so that it can be used
+// after accumulation has stopped.
 
 void  accumulate_min_changed(int newvalue, void *)
 {
-  if (g_min_image) {
-    delete g_min_image;
-    g_min_image = NULL;
-  }
   if (newvalue == 1) {
-    g_min_image = new minimum_image(*g_camera);
-  } else {
-    // Make sure we're not trying to display or subtract the minimum
-    if (g_display_which_image == DISPLAY_MIN) {
-      g_display_which_image = DISPLAY_COMPUTED;
-    }
-    if (g_subtract == SUBTRACT_MIN) {
-      g_subtract = SUBTRACT_NONE;
+    if (!g_min_image) {
+      g_min_image = new minimum_image(*g_camera);
     }
   }
 }
 
 // Routine that start accumulating min image.
+// Never delete the max image, so that it can be used
+// after accumulation has stopped.
 
 void  accumulate_max_changed(int newvalue, void *)
 {
-  if (g_max_image) {
-    delete g_max_image;
-    g_max_image = NULL;
-  }
   if (newvalue == 1) {
-    g_max_image = new maximum_image(*g_camera);
-  } else {
-    // Make sure we're not trying to display or subtract the maximum
-    if (g_display_which_image == DISPLAY_MAX) {
-      g_display_which_image = DISPLAY_COMPUTED;
-    }
-    if (g_subtract == SUBTRACT_MAX) {
-      g_subtract = SUBTRACT_NONE;
+    if (!g_max_image) {
+      g_max_image = new maximum_image(*g_camera);
     }
   }
 }
 
 // Routine that start accumulating min image.
+// Never delete the mean image, so that it can be used
+// after accumulation has stopped.
 
 void  accumulate_mean_changed(int newvalue, void *)
 {
-  if (g_mean_image) {
-    delete g_mean_image;
-    g_mean_image = NULL;
-  }
   if (newvalue == 1) {
-    g_mean_image = new mean_image(*g_camera);
-  } else {
-    // Make sure we're not trying to display or subtract the mean
-    if (g_display_which_image == DISPLAY_MEAN) {
-      g_display_which_image = DISPLAY_COMPUTED;
-    }
-    if (g_subtract == SUBTRACT_MEAN) {
-      g_subtract = SUBTRACT_NONE;
+    if (!g_mean_image) {
+      g_mean_image = new mean_image(*g_camera);
     }
   }
 }
 
-// Ensure that we are accumulating the image that we want to show.
+// Ensure that we either already have or are accumulating the image that we want to show.
 // The idle function contains code to do the actual display switching
 // for the correct one.
 void  display_which_image_changed(int newvalue, void *)
@@ -1463,13 +1439,13 @@ void  display_which_image_changed(int newvalue, void *)
   case DISPLAY_COMPUTED:
     break;
   case DISPLAY_MIN:
-    g_accumulate_min = 1;
+    if (!g_min_image) {g_accumulate_min = 1;}
     break;
   case DISPLAY_MAX:
-    g_accumulate_max = 1;
+    if (!g_max_image) {g_accumulate_max = 1;}
     break;
   case DISPLAY_MEAN:
-    g_accumulate_mean = 1;
+    if (!g_mean_image) {g_accumulate_mean = 1;}
     break;
   default:
     fprintf(stderr, "display_which_image_changed(): Internal error: unknown mode (%d)\n", newvalue);

@@ -1,5 +1,11 @@
 2004-11-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* cismm_video_optimizer.cpp : Making the code to turn on and
+		off collection of min/max/mean a bit more clever so that
+		it can be left off as desired.
+
+2004-11-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* cismm_video_optimizer.cpp : Added code for auto gain control.
 		Handled the case where the user turns off the gathering
 		of statistics that are being used by turning off their
