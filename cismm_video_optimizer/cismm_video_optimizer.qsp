@@ -8,10 +8,10 @@ OperatingSystem=WinXP  5.1  2600 (Service Pack 2)
 ProjectName=cismm_video_optimizer
 ProjectDirectory=F:\taylorr\STM\src\video\cismm_video_optimizer
 NonSFXDirectory=F:\taylorr\STM\src\video\cismm_video_optimizer\NonSFX
-MediaFileName=cismm_video_optimizer_01_06
+MediaFileName=cismm_video_optimizer_01_07
 CopyMediaToFName=
 ProgramDescriptiveName=CISMM Video Optimizer
-ProgramVersion=01.06
+ProgramVersion=01.07
 CompanyName=UNC Nanoscale Science Research Group
 ProgVerLiveUpdate=0
 RegisterAsApp=1
@@ -62,7 +62,7 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|1|0|
 CompanyUrl=www.cs.unc.edu/nano
 
 [TargetExe]
-TargetDirectory=<AbsoluteDir>C:\NSRG\bin\cismm_video_optimizer_v01.06
+TargetDirectory=<AbsoluteDir>C:\NSRG\bin\cismm_video_optimizer_v01.07
 CommonDirectory=<AbsoluteDir>C:\NSRG\external
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\cismm_video_optimizer.bat
@@ -106,7 +106,7 @@ ShowCopyrightWarning=0
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=NSRG\CISMM Video Optimizer v01.06
+ProgramLinkFolder=NSRG\CISMM Video Optimizer v01.07
 ProgramLinkName=Cismm_video_optimizer
 ProgramLinkParam=
 ProgramLinkWorkDir=<Application Folder>
@@ -114,7 +114,7 @@ ProgramLinkRun=Minimized
 ProgramLinkIconFile=<Application Folder>\cismm_video_optimizer.ico
 ProgramLinkIconNum=0
 StartMenuLinkName=CISMM Video Optimizer
-DesktopLinkName=CISMM Video Optimizer v01.06
+DesktopLinkName=CISMM Video Optimizer v01.07
 SendToLinkName=CISMM Video Optimizer
 StartUpLinkName=CISMM Video Optimizer
 QuickLaunchLinkName=CISMM Video Optimizer
@@ -130,7 +130,7 @@ StartUpChecked=1
 QuickLaunchChecked=1
 SetAllUsers=1
 AddUninstallShortcut=1
-Item-000=*|CISMM Video Optimizer Documentation|<Application Folder>\cismm_video_optimizer.html|NSRG\CISMM Video Optimizer v01.05|||Normal Window||0|1||0|
+Item-000=*|CISMM Video Optimizer Documentation|<Application Folder>\cismm_video_optimizer.html||||Normal Window||0|1||0|
 
 [Billboard]
 AddBillboard=1
