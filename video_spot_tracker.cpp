@@ -1,3 +1,4 @@
+//XXX Would like to have a .ini file or something to set the starting "save" directory.
 //XXX Nice to tag each tracker with its sensor number.
 //XXX Put in times based on video timestamps for samples rather than real time.
 //XXX Would like to be able to specify the microns-per-pixel value
@@ -35,7 +36,7 @@ const int MAX_TRACKERS = 100; // How many trackers can exist (for VRPN's tracker
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.16";
+const char *Version_string = "01.17";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -113,6 +114,11 @@ public:
       return false;
     }
   }
+  virtual double read_pixel_nocheck(int x, int y) const {
+    uns16 val;
+    get_pixel_from_memory(x, flip_y(y), val);
+    return val;
+  }
 };
 
 class diaginc_imager: public diaginc_server, public image_wrapper
@@ -133,6 +139,11 @@ public:
       return false;
     }
   }
+  virtual double read_pixel_nocheck(int x, int y) const {
+    uns16 val;
+    get_pixel_from_memory(x, flip_y(y), val);
+    return val;
+  }
 };
 
 class directx_imager: public directx_camera_server, public image_wrapper
@@ -151,6 +162,11 @@ public:
       return false;
     }
   }
+  virtual double read_pixel_nocheck(int x, int y) const {
+    uns16 val;
+    get_pixel_from_memory(x, flip_y(y), val);
+    return val;
+  }
 };
 
 class directx_file_imager: public directx_videofile_server, public image_wrapper
@@ -168,6 +184,11 @@ public:
     } else {
       return false;
     }
+  }
+  virtual double read_pixel_nocheck(int x, int y) const {
+    uns16 val;
+    get_pixel_from_memory(x, flip_y(y), val);
+    return val;
   }
 };
 

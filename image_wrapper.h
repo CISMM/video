@@ -15,9 +15,12 @@ public:
   // Tell what the range is for the image.
   virtual void	read_range(int &minx, int &maxx, int &miny, int &maxy) const = 0;
 
-  // Read a pixel from the image into a double; return true if the pixel
+  /// Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.
   virtual bool	read_pixel(int x, int y, double	&result) const = 0;
+
+  /// Read a pixel from the image into a double; Don't check boundaries.
+  virtual double read_pixel_nocheck(int x, int y) const = 0;
 
   // Do bilinear interpolation to read from the image, in order to
   // smoothly interpolate between pixel values.
@@ -51,6 +54,35 @@ public:
 	     hl * xhighfrac * ylowfrac +
 	     hh * xhighfrac * yhighfrac;
     return true;
+  };
+
+  // Do bilinear interpolation to read from the image, in order to
+  // smoothly interpolate between pixel values.
+  // All sorts of speed tweaks in here because it is in the inner loop for
+  // the spot tracker and other codes.
+  // Does not check boundaries to make sure they are inside the image.
+  inline double read_pixel_bilerp_nocheck(double x, double y) const
+  {
+    // The order of the following statements is optimized for speed.
+    // The double version is used below for xlowfrac comp, ixlow also used later.
+    // Slightly faster to explicitly compute both here to keep the answer around.
+    double xlow = floor(x); int ixlow = (int)xlow;
+    // The double version is used below for ylowfrac comp, ixlow also used later
+    // Slightly faster to explicitly compute both here to keep the answer around.
+    double ylow = floor(y); int iylow = (int)ylow;
+    int ixhigh = ++ixlow;
+    int iyhigh = ++iylow;
+    double xhighfrac = x - xlow;
+    double yhighfrac = y - ylow;
+    double xlowfrac = 1.0 - xhighfrac;
+    double ylowfrac = 1.0 - yhighfrac;
+
+    // Combining the if statements into one using || makes it slightly slower.
+    // Interleaving the result calculation with the returns makes it slower.
+    return read_pixel_nocheck(ixlow, iylow) * xlowfrac * ylowfrac +
+	   read_pixel_nocheck(ixlow, iyhigh) * xlowfrac * yhighfrac +
+	   read_pixel_nocheck(ixhigh, iylow) * xhighfrac * ylowfrac +
+	   read_pixel_nocheck(ixhigh, iyhigh) * xhighfrac * yhighfrac;
   };
 };
 

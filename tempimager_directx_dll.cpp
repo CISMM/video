@@ -1,4 +1,11 @@
 //XXX How to know what device to connect to when it is run?
+//XXX How to let the client be run before the server, so that it
+// doesn't have to connect right away?  Who will call mainloop()?
+// How do we know what video resolution (or how to change it)?
+//XXX This will block up the server when the DirectShow graph
+// is stopped because the images won't be read.  We'd like the
+// client to be mainloop()ing the server even when the graph
+// is stopped, though not spitting out any images.
 
 //----------------------------------------------------------------------------
 //   This program reads from a TempImager server and implements a Microsoft
@@ -9,7 +16,7 @@
 // XXX It assumes that the size of the imager does not change during the run.
 // XXX Its settings and ranges assume that the pixels are actually 8-bit values.
 
-#define	DEBUG_ON
+//#define	DEBUG_ON
 
 #include <vrpn_Connection.h>
 #include <vrpn_TempImager.h>
@@ -80,6 +87,7 @@ protected:
 
   vrpn_TempImager_Remote  *m_ti;    //< TempImager client object
   bool	  m_ready_for_region;	    //< Everything set up to handle a region?
+  bool	  m_ready_to_send_region;   //< Are we trying to fill a buffer?
   unsigned char *m_image;	    //< Pointer to the storage for the image
 
   static  void  handle_region_change(void *userdata, const vrpn_IMAGERREGIONCB info);
@@ -103,6 +111,7 @@ CVRPNPushPin::CVRPNPushPin(HRESULT *phr, CSource *pFilter)
 : CSourceStream(NAME("CVRPNPushPin"), phr, pFilter, L"Out")
 , m_ti(NULL)
 , m_ready_for_region(false)
+, m_ready_to_send_region(false)
 , m_image(NULL)
 {
   char	*device_name = "TestImage@localhost:4511";
@@ -123,6 +132,20 @@ CVRPNPushPin::CVRPNPushPin(HRESULT *phr, CSource *pFilter)
   m_ti = new vrpn_TempImager_Remote(device_name);
   m_ti->register_description_handler(this, handle_description_message);
   m_ti->register_region_handler(this, handle_region_change);
+
+  // Run the connection object for up to half a second, waiting to
+  // be ready for images.  If we're not ready, then our setup will
+  // fail.
+  struct timeval start;
+  struct timeval now;
+  double interval;
+  gettimeofday(&start, NULL);
+  do {
+    m_ti->mainloop();
+    vrpn_SleepMsecs(1);	//< Avoid eating the entire processor
+    gettimeofday(&now, NULL);
+    interval = vrpn_TimevalMsecs(vrpn_TimevalDiff(now, start));
+  } while ( (!m_ready_for_region) && (interval < 500) );
 }
 
 CVRPNPushPin::~CVRPNPushPin()
@@ -187,19 +210,31 @@ void  CVRPNPushPin::handle_region_change(void *userdata, const vrpn_IMAGERREGION
       return;
     }
 
-#ifdef	DEBUG_ON
+#if 0
       dialog("CVRPNPushPin::handle_region_change", "Got a region");
 #endif
+    //XXX Code crashed right after getting a region, before we had tried to
+    // connect to the filter graph or run it or anything.  Still during addition to
+    // the filter graph.
+
+    //--------------------------------------------------------------------------------
+    // If we're not yet ready to send an image (mainloop() was called on our
+    // object somewhere besides the routine that fills and sends a buffer), then
+    // we're done.
+    if (!me->m_ready_to_send_region) {
+      return;
+    }
 
     //--------------------------------------------------------------------------------
     // Copy pixels into the image buffer.
-    // XXX Do not Flip the image over in
-    // Y so that the image coordinates display correctly in OpenGL.
+    // Flip the image over in
+    // Y so that the image coordinates match DirectX's expectations.
     //XXX Do this with memcpy() rather than a pixel at a time, since
     // we are not scaling?  Nope... need to fill into RGBA structure.
     // Maybe rethink and go just a single-valued grayscale type.
     for (r = info.region->d_rMin,RegionOffset=(r-region->d_rMin)*infoLineSize; r <= region->d_rMax; r++,RegionOffset+=infoLineSize) {
-      int row_offset = r*nCols;
+      int ir = nRows - 1 - r;
+      int row_offset = ir*nCols;
       for (c = info.region->d_cMin; c <= region->d_cMax; c++) {
 	vrpn_uint8 val;
 	info.region->read_unscaled_pixel(c,r,val);
@@ -375,6 +410,29 @@ HRESULT CVRPNPushPin::GetMediaType(CMediaType *pMediaType)
   mt.subtype = MEDIASUBTYPE_RGB24;	  // Ask for 8 bit RGB
   *pMediaType = mt;
 
+  ZeroMemory(&mt, sizeof(AM_MEDIA_TYPE));
+  mt.majortype = MEDIATYPE_Video;	  // Ask for video media producers
+  mt.subtype = MEDIASUBTYPE_RGB24;	  // Ask for 8 bit RGB
+  mt.pbFormat = (BYTE*)CoTaskMemAlloc(sizeof(VIDEOINFOHEADER));
+  VIDEOINFOHEADER *pVideoHeader = (VIDEOINFOHEADER*)mt.pbFormat;
+  ZeroMemory(pVideoHeader, sizeof(VIDEOINFOHEADER));
+  pVideoHeader->bmiHeader.biBitCount = 24;
+  pVideoHeader->bmiHeader.biWidth = m_ti->nCols();
+  pVideoHeader->bmiHeader.biHeight = m_ti->nRows();
+  pVideoHeader->bmiHeader.biPlanes = 1;
+  pVideoHeader->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+  pVideoHeader->bmiHeader.biSizeImage = DIBSIZE(pVideoHeader->bmiHeader);
+
+  // Set the format type and size.
+  mt.formattype = FORMAT_VideoInfo;
+  mt.cbFormat = sizeof(VIDEOINFOHEADER);
+
+  // Set the sample size.
+  mt.bFixedSizeSamples = TRUE;
+  mt.lSampleSize = DIBSIZE(pVideoHeader->bmiHeader);
+
+  // Point the parameter at the media type and then return.
+  *pMediaType = mt;
   return S_OK;
 }
 
@@ -447,6 +505,7 @@ HRESULT CVRPNPushPin::FillBuffer(IMediaSample *pSample)
   dialog("CVRPNPushPin::FillBuffer", "Entered");
 #endif
   m_bGotRegion = false;
+  m_ready_to_send_region = true;
   do {
     m_ti->mainloop();
     vrpn_SleepMsecs(1);
@@ -455,6 +514,7 @@ HRESULT CVRPNPushPin::FillBuffer(IMediaSample *pSample)
 #endif
   } while (!m_bGotRegion);
 
+  m_ready_to_send_region = false;
   return S_OK;
 };
 

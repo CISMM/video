@@ -499,12 +499,23 @@ double	symmetric_spot_tracker_interp::check_fitness(const image_wrapper &image)
     pixels = 0.0;	// No pixels in this circle yet.
     count = _radius_counts[r];
     for (pix = 0; pix < count; pix++) {
+// Switching to the version that does not check boundaries didn't make it faster by much at all...
+// Using it would mean somehow clipping the boundaries before calling these functions, which would
+// surely slow things down.
+#if 1
       if (image.read_pixel_bilerp(_x+list->x,_y+list->y,val)) {
 	valSum += val;
 	squareValSum += val*val;
 	pixels++;
 	list++;	  //< Makes big speed difference to do this with increment vs. index
       }
+#else
+      val = image.read_pixel_bilerp_nocheck(_x+list->x, _y+list->y);
+      valSum += val;
+      squareValSum += val*val;
+      pixels++;
+      list++;
+#endif
     }
     fitness -= squareValSum - valSum*valSum / pixels;
   }

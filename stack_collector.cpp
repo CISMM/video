@@ -1,7 +1,8 @@
 //XXX There are some off-by-1 errors in the way the red lines are drawn
 //XXX It is not possible to select all the way to the top or right
 //    because the window is only half the number of pixels in the
-//    image, so it always wants to skip the last column.
+//    image, so it always wants to skip the last column.  This is only
+//    true when binning is greater than 1.
 
 #include <math.h>
 #include <stdio.h>
@@ -18,12 +19,12 @@
 #include <GL/gl.h>
 #include <GL/glut.h>
 
-//#define	FAKE_ROPER
-//#define	FAKE_NIKON
+#define	FAKE_ROPER
+#define	FAKE_NIKON
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.06";
+const char *Version_string = "01.08";
 double  g_focus = 0;    // Current setting for the microscope focus
 bool	g_focus_changed = false;
 roper_server  *g_roper = NULL;
@@ -68,6 +69,7 @@ Tclvar_int_with_button	g_quit("quit","");
 // continues until the end, then the program turns this back off.
 Tclvar_int_with_button	g_take_stack("take_stack","");
 Tclvar_int_with_button	g_sixteenbits("sixteen_bits","");
+Tclvar_int_with_button	g_step_past_bottom("step_past_bottom","",1);
 Tclvar_int_with_button	g_preview("preview","", 0, handle_preview_change);
 
 //----------------------------------------------------------------------------
@@ -315,6 +317,16 @@ void myIdleFunc(void)
 
       // Loop through the number of repeats we have been asked to do
       for (repeat = 0; repeat < g_repeat; repeat++) {
+
+	// Go one past the lower focus request in order to make sure we
+	// always come past each plane going the same direction (avoids
+	// trouble with hysteresis), if the flag is set asking for this.
+	if (g_step_past_bottom) {
+	  double beyond = startfocus + focusdown - focusstep;
+	  printf("Stepping past bottom to %ld\n", (long)beyond);
+	  move_nikon_focus_and_wait_until_it_gets_there(beyond);
+	}
+
 	// Loop through the requested focus levels and read images.
 	for (focusloop = startfocus + focusdown; focusloop <= startfocus + focusup; focusloop += focusstep) {
 

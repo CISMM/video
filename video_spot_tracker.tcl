@@ -4,7 +4,7 @@
 
 
 # Global variable to remember where they are saving files.
-set fileinfo(open_dir) ""
+set fileinfo(open_dir) "C:\\"
 
 ###########################################################
 # Put the places for the controls to let the user pick a kernel.

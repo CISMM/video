@@ -1,3 +1,18 @@
+2003-08-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* image_wrapper.h : Speeding up bilerp function a bit.
+	* spot_tracker.cpp : Speeding up tracker a bit.
+	* stack_collector.cpp : Changed version number.  Adds a button
+		to let the code step one past the bottom of the stack
+		to make sure we collect images coming the same direction
+		all the time.
+	* tempimager_directx_dll.cpp : First working version.  Only works
+		if the VRPN server is running when the DLL is loaded.
+		Hard-wired to localhost server for now.
+	* video_spot_tracker.cpp : Added non-checking versions of pixel
+		reads to see if things went faster with them.  They didn't.
+	* video_spot_tracker.tcl : Sets default save location to C:\.
+
 2003-08-26  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* image_wrapper.cpp : Moving virtual function inline to speed up
