@@ -289,7 +289,7 @@ directx_videofile_server::directx_videofile_server(const char *filename) :
   // Allocate a buffer that is large enough to read the maximum-sized
   // image with no binning.
   _buflen = (unsigned)(_num_rows * _num_columns * 3);	// Expect B,G,R; 8-bits each.
-  if ( (_buffer = new char[_buflen]) == NULL) {
+  if ( (_buffer = new unsigned char[_buflen]) == NULL) {
     fprintf(stderr,"directx_videofile_server::directx_videofile_server(): Out of memory for buffer\n");
     _status = false;
     return;

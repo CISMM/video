@@ -1,4 +1,18 @@
+2002-10-27  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* directx_camera_server.cpp : Changing buffers from signed to
+		unsigned characters to avoid sign-extension before
+		sending as 16-bit values.
+	* directx_camera_server.h : Same.
+	* directx_videofile_server.cpp : Same.
+	* video.dsw : Adding argonot program to the file.
+	* argonot.cpp : Program to enable gain and contrast adjustments to
+		received video images and enable background subtraction of
+		the initial image (or subtraction such that the initial image
+		becomes 128 everywhere).
+
 2002-10-27  Charalampos Fretzagias <fretzagi@cs.unc.edu>
+
 	* base_camera_server.h : Added send_vrpn_image. This makes
 		base_camera_server depend on vrpn, but does wonders for
 		the speed of the server. Also removed allocation of
@@ -12,6 +26,7 @@
 	* video_tempimager_server.cpp : replaced the calls to the two
 		mainloop functions with a call to send_vrpn_image in the
 		mainloop of the server.
+
 2002-10-27  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* base_camera_server.h : White space adjust.

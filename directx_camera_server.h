@@ -48,11 +48,11 @@ protected:
   ISampleGrabber *_pGrabber;	    // Interface for the sample grabber filter
 
   // Memory pointers used to get non-virtual memory
-  char	    *_buffer;	  //< Buffer for what comes from camera
-  size_t    _buflen;	  //< Length of that buffer
-  bool	    _invert_y;	  //< Do we need to invert the Y axis?
+  unsigned char	*_buffer;   //< Buffer for what comes from camera
+  size_t    _buflen;	    //< Length of that buffer
+  bool	    _invert_y;	    //< Do we need to invert the Y axis?
   bool	    _started_graph; //< Did we start the filter graph running?
-  unsigned  _mode;	  //< Mode 0 = running, Mode 1 = paused.
+  unsigned  _mode;	    //< Mode 0 = running, Mode 1 = paused.
 
   virtual bool	open_and_find_parameters(const int which);\
   virtual bool	read_one_frame(unsigned minX, unsigned maxX,

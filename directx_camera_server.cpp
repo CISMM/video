@@ -430,7 +430,7 @@ directx_camera_server::directx_camera_server(int which) :
   // Allocate a buffer that is large enough to read the maximum-sized
   // image with no binning.
   _buflen = (unsigned)(_num_rows * _num_columns * 3);	// Expect B,G,R; 8-bits each.
-  if ( (_buffer = new char[_buflen]) == NULL) {
+  if ( (_buffer = new unsigned char[_buflen]) == NULL) {
     fprintf(stderr,"directx_camera_server::directx_camera_server(): Out of memory for buffer\n");
     _status = false;
     return;
@@ -625,10 +625,10 @@ bool  directx_camera_server::invert_memory_image_in_y(void)
 {
   // XXX This will depend on what kind of pixels we have!
 
-  char	*newbuf;    //< Holds the inverted image
+  unsigned char	*newbuf;    //< Holds the inverted image
   unsigned y;
 
-  if ( (newbuf = new char[_buflen]) == NULL) {
+  if ( (newbuf = new unsigned char[_buflen]) == NULL) {
     fprintf(stderr,"directx_camera_server::invert_memory_image_in_y(): Out of memory\n");
     return false;
   }
@@ -673,10 +673,10 @@ bool directx_camera_server::send_vrpn_image(vrpn_TempImager_Server* svr,vrpn_Syn
     unsigned i,j;
     // Loop through each line, fill them in, and send them to the client.
     for (y = __max(0,_minX),i=num_x*(__min(num_y,_maxY)-1),j=0; y < __min(num_y,_maxY); y++,i-=num_x,j+=cols) {
-		for (x = __max(0,_minX); x < __min(num_x,_maxX); x++){
-			data[i + x] = _buffer[ (j + x) * 3 + RGB ];
-		}
-	}
+      for (x = __max(0,_minX); x < __min(num_x,_maxX); x++){
+	data[i + x] = _buffer[ (j + x) * 3 + RGB ];
+      }
+    }
     // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION)
     int nRowsPerRegion=vrpn_IMAGER_MAX_REGION/num_x;
     for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
