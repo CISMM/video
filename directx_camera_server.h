@@ -12,7 +12,7 @@
 class directx_camera_server : public base_camera_server {
 public:
   /// Open the nth available camera
-  directx_camera_server(int which);
+  directx_camera_server(int which, unsigned width = 320, unsigned height = 240);
   virtual ~directx_camera_server(void);
   virtual void close_device(void);
 
@@ -40,12 +40,13 @@ protected:
 
   // Objects needed for DirectShow video input.  Described in the help
   // menus for the DirectX API
-  IGraphBuilder *_pGraph;	    // Constructs a DirectShow filter graph
-  ICaptureGraphBuilder2 *_pBuilder; // Filter graph builder
-  IMediaControl *_pMediaControl;    // Handles media streaming in the filter graph
-  IMediaEvent   *_pEvent;	    // Handles filter graph events
+  IGraphBuilder *_pGraph;	      // Constructs a DirectShow filter graph
+  ICaptureGraphBuilder2 *_pBuilder;   // Filter graph builder
+  IMediaControl *_pMediaControl;      // Handles media streaming in the filter graph
+  IMediaEvent   *_pEvent;	      // Handles filter graph events
   IBaseFilter *_pSampleGrabberFilter; // Grabs samples from the media stream
-  ISampleGrabber *_pGrabber;	    // Interface for the sample grabber filter
+  ISampleGrabber *_pGrabber;	      // Interface for the sample grabber filter
+  IAMStreamConfig *_pStreamConfig;    // Interface to set the video dimensions
 
   // Memory pointers used to get non-virtual memory
   unsigned char	*_buffer;   //< Buffer for what comes from camera
@@ -54,7 +55,7 @@ protected:
   bool	    _started_graph; //< Did we start the filter graph running?
   unsigned  _mode;	    //< Mode 0 = running, Mode 1 = paused.
 
-  virtual bool	open_and_find_parameters(const int which);\
+  virtual bool	open_and_find_parameters(const int which, unsigned width, unsigned height);
   virtual bool	read_one_frame(unsigned minX, unsigned maxX,
 			unsigned minY, unsigned maxY,
 			unsigned exposure_millisecs);

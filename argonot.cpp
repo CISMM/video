@@ -47,6 +47,7 @@ Tclvar_float_with_scale	g_clip_high("clip_high", "", 0, 255, 255);
 Tclvar_float_with_scale	g_clip_low("clip_low", "", 0, 255, 0);
 Tclvar_int_with_button	g_subtract_background("subtract_background", "");
 Tclvar_int_with_button	g_average_background("average_background", "");
+Tclvar_int_with_button	g_clear_background("clear_background", "");
 Tclvar_int_with_button	g_quit("quit","");
 
 //----------------------------------------------------------------------------
@@ -78,7 +79,7 @@ DWORD ReportInterval=5000;
 void  handle_region_change(void *, const vrpn_IMAGERREGIONCB info)
 {
     int r,c;	//< Row, Column
-    int ir;		//< Inverted Row
+    int ir;	//< Inverted Row
     int offset,RegionOffset;
     const vrpn_TempImager_Region* region=info.region;
     double  intensity_gain;
@@ -95,9 +96,11 @@ void  handle_region_change(void *, const vrpn_IMAGERREGIONCB info)
 
     int infoLineSize=region->cMax-region->cMin+1;
     vrpn_int32 nCols=g_ti->nCols();
+    vrpn_int32 nRows=g_ti->nRows();
     unsigned char uns_pix;
     static  bool  subtracting_background = false;
     static  bool  averaging_background = false;
+    static  bool  clearing_background = false;
 
     if (!g_ready_for_region) { return; }
 
@@ -118,7 +121,7 @@ void  handle_region_change(void *, const vrpn_IMAGERREGIONCB info)
     }
     if (subtracting_background) {
       for (r = info.region->rMin,RegionOffset=(r-region->rMin)*infoLineSize; r <= region->rMax; r++,RegionOffset+=infoLineSize) {
-	ir = g_ti->nRows() - r - 1;
+	ir = nRows - r - 1;
 	int row_offset = ir*nCols;
 	for (c = info.region->cMin; c <= info.region->cMax; c++) {
 	  g_background[c + row_offset] = -region->vals[(c-region->cMin) + RegionOffset];
@@ -143,10 +146,23 @@ void  handle_region_change(void *, const vrpn_IMAGERREGIONCB info)
     }
     if (averaging_background) {
       for (r = info.region->rMin,RegionOffset=(r-region->rMin)*infoLineSize; r <= region->rMax; r++,RegionOffset+=infoLineSize) {
-	ir = g_ti->nRows() - r - 1;
+	ir = nRows - r - 1;
 	int row_offset = ir*nCols;
 	for (c = info.region->cMin; c <= info.region->cMax; c++) {
 	  g_background[c + row_offset] = 128 - region->vals[(c-region->cMin) + RegionOffset];
+	}
+      }
+    }
+
+    // If we have been asked to clear the background, then start do it.
+    if (g_clear_background) {
+      printf("Clearing background\n");
+      g_clear_background = 0;
+      for (r = 0,RegionOffset=r*nCols; r < nRows; r++,RegionOffset+=nCols) {
+	ir = nRows - r - 1;
+	int row_offset = ir*nCols;
+	for (c = 0; c < nCols; c++) {
+	  g_background[c + row_offset] = 0;
 	}
       }
     }

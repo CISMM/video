@@ -19,6 +19,7 @@ const int MINOR_VERSION = 5;
 base_camera_server  *g_camera;	    //< The camera we're going to read from
 int		    g_bincount = 1; //< How many pixels to average into one bin in X and Y
 double		    g_exposure = 250.0;	//< How long to expose in milliseconds
+unsigned	    g_width = 320, g_height = 240;  //< Resolution for DirectX cameras
 
 /// Open the camera we want to use (Roper or DirectX)
 bool  init_camera_code(const char *type, int which = 1)
@@ -32,7 +33,7 @@ bool  init_camera_code(const char *type, int which = 1)
     }
   } else if (!strcmp(type, "directx")) {
     printf("Opening DirectX Camera %d\n", which);
-    g_camera = new directx_camera_server(which);
+    g_camera = new directx_camera_server(which, g_width, g_height);
     printf("Making sure camera is working\n");
     if (!g_camera->working()) {
       fprintf(stderr,"init_camera_code(): Can't open DirectX camera server\n");
@@ -140,9 +141,10 @@ void handle_cntl_c(int) {
 
 void  Usage(const char *s)
 {
-  fprintf(stderr,"Usage: %s [-expose msecs] [-bin count] [devicename [devicenum]]\n",s);
+  fprintf(stderr,"Usage: %s [-expose msecs] [-bin count] [-res x y] [devicename [devicenum]]\n",s);
   fprintf(stderr,"       -expose: Exposure time in milliseconds (default 250)\n");
   fprintf(stderr,"       -bin: How many pixels to average in x and y (default 1)\n");
+  fprintf(stderr,"       -res: Resolution in x and y (default 320 200)\n");
   fprintf(stderr,"       devicename: roper or directx (default is directx)\n");
   fprintf(stderr,"       devicenum: Which (starting with 1) if there are multiple (default 1)\n");
   exit(-1);
@@ -175,6 +177,19 @@ int main(int argc, char *argv[])
       g_exposure = atof(argv[i]);
       if ( (g_exposure < 1) || (g_exposure > 4000) ) {
 	fprintf(stderr,"Invalid exposure (1-4000 allowed, %f entered)\n", g_exposure);
+	exit(-1);
+      }
+    } else if (!strncmp(argv[i], "-res", strlen("-res"))) {
+      if (++i > argc) { Usage(argv[0]); }
+      g_width = atoi(argv[i]);
+      if ( (g_width < 1) || (g_width > 1600) ) {
+	fprintf(stderr,"Invalid width (1-1600 allowed, %f entered)\n", g_width);
+	exit(-1);
+      }
+      if (++i > argc) { Usage(argv[0]); }
+      g_height = atoi(argv[i]);
+      if ( (g_height < 1) || (g_height > 1200) ) {
+	fprintf(stderr,"Invalid height (1-1200 allowed, %f entered)\n", g_height);
 	exit(-1);
       }
     } else {

@@ -79,7 +79,7 @@ public:
 class directx_imager: public directx_camera_server, public image_wrapper
 {
 public:
-  directx_imager(const int which) : directx_camera_server(which) {};
+  directx_imager(const int which, const unsigned w = 320, const unsigned h = 240) : directx_camera_server(which,w,h) {};
   virtual void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
     minx = _minX; miny = _minY; maxx = _maxX; maxy = _maxY;
   }
@@ -121,7 +121,7 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
     *camera = r;
     *imager = r;
   } else if (!strcmp(type, "directx")) {
-    directx_imager *d = new directx_imager(1);	// Use camera #1 (first one found)
+    directx_imager *d = new directx_imager(1,320,240);	// Use camera #1 (first one found)
     *camera = d;
     *imager = d;
   } else {

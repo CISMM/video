@@ -4,6 +4,8 @@
 #include "directx_camera_server.h"
 #include <vrpn_BaseClass.h>
 
+// XXX See info on source and target rectangles for how to subset, if wanted.
+
 //#define HACK_TO_REOPEN
 //#define	DEBUG
 
@@ -173,13 +175,38 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
   close_device();
 #endif
 
+  // Capture timing information and print out how many frames per second
+  // are being received.
+
+  { static struct timeval last_print_time;
+    struct timeval now;
+    static bool first_time = true;
+    static int frame_count = 0;
+
+    if (first_time) {
+      gettimeofday(&last_print_time, NULL);
+      first_time = false;
+    } else {
+      static	unsigned  last_r = 10000;
+      frame_count++;
+      gettimeofday(&now, NULL);
+      double timesecs = 0.001 * vrpn_TimevalMsecs(vrpn_TimevalDiff(now, last_print_time));
+      if (timesecs >= 5) {
+	double frames_per_sec = frame_count / timesecs;
+	frame_count = 0;
+	printf("Received frames per second = %lg\n", frames_per_sec);
+	last_print_time = now;
+      }
+    }
+  }
+
   return true;
 }
 
 //---------------------------------------------------------------------
 // Open the camera specified and determine its available features and parameters.
 
-bool directx_camera_server::open_and_find_parameters(const int which)
+bool directx_camera_server::open_and_find_parameters(const int which, unsigned width, unsigned height)
 {
   //-------------------------------------------------------------------
   // Create COM and DirectX objects needed to access a video stream.
@@ -303,10 +330,51 @@ bool directx_camera_server::open_and_find_parameters(const int which)
   printf("directx_camera_server::open_and_find_parameters(): Before SetMediaType\n");
 #endif
   AM_MEDIA_TYPE mt;
+  // Ask for video media producers that produce 8-bit RGB
   ZeroMemory(&mt, sizeof(AM_MEDIA_TYPE));
   mt.majortype = MEDIATYPE_Video;	  // Ask for video media producers
   mt.subtype = MEDIASUBTYPE_RGB24;	  // Ask for 8 bit RGB
   _pGrabber->SetMediaType(&mt);
+
+  //-------------------------------------------------------------------
+  // Ask for the video resolution that has been passed in.
+  // This code is based on the AMCap sample application, and
+  // intuiting that we need to use the SetFormat call on the IAMStreamConfig
+  // interface; this interface is described in the help pages.
+  _pBuilder->FindInterface(&PIN_CATEGORY_CAPTURE, &MEDIATYPE_Video, pSrc,
+                            IID_IAMStreamConfig, (void **)&_pStreamConfig);
+  if (_pStreamConfig == NULL) {
+    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't get StreamConfig interface\n");
+    return false;
+  }
+
+  mt.pbFormat = (BYTE*)CoTaskMemAlloc(sizeof(VIDEOINFOHEADER));
+  VIDEOINFOHEADER *pVideoHeader = (VIDEOINFOHEADER*)mt.pbFormat;
+  ZeroMemory(pVideoHeader, sizeof(VIDEOINFOHEADER));
+  pVideoHeader->bmiHeader.biBitCount = 24;
+  pVideoHeader->bmiHeader.biWidth = width;
+  pVideoHeader->bmiHeader.biHeight = height;
+  pVideoHeader->bmiHeader.biPlanes = 1;
+  pVideoHeader->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+  pVideoHeader->bmiHeader.biSizeImage = DIBSIZE(pVideoHeader->bmiHeader);
+
+  // Set the format type and size.
+  mt.formattype = FORMAT_VideoInfo;
+  mt.cbFormat = sizeof(VIDEOINFOHEADER);
+
+  // Set the sample size.
+  mt.bFixedSizeSamples = TRUE;
+  mt.lSampleSize = DIBSIZE(pVideoHeader->bmiHeader);
+
+  // Make the call to actually set the video type to what we want.
+  if (_pStreamConfig->SetFormat(&mt) != S_OK) {
+    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't set resolution to %dx%d\n",
+      pVideoHeader->bmiHeader.biWidth, pVideoHeader->bmiHeader.biHeight);
+    return false;
+  }
+
+  // Clean up the pbFormat header memory we allocated above.
+  CoTaskMemFree(mt.pbFormat);
 
   //-------------------------------------------------------------------
   // Create a NULL renderer that will be used to discard the video frames
@@ -360,6 +428,7 @@ bool directx_camera_server::open_and_find_parameters(const int which)
   } else {
     _invert_y = true;
   }
+  printf("Got %dx%d video\n", _num_columns, _num_rows);
 
   // Make sure that the image is not compressed and that we have 8 bits
   // per pixel.
@@ -400,6 +469,7 @@ directx_camera_server::directx_camera_server() :
   _pEvent(NULL),
   _pSampleGrabberFilter(NULL),
   _pGrabber(NULL),
+  _pStreamConfig(NULL),
   _started_graph(false)
 {
   // No image in memory yet.
@@ -408,19 +478,20 @@ directx_camera_server::directx_camera_server() :
   _vrpn_buffer_size=0;
 }
 
-/// Open nth available camera.
-directx_camera_server::directx_camera_server(int which) :
+/// Open nth available camera with specified resolution.
+directx_camera_server::directx_camera_server(int which, unsigned width, unsigned height) :
   _pGraph(NULL),
   _pBuilder(NULL),
   _pMediaControl(NULL),
   _pEvent(NULL),
   _pSampleGrabberFilter(NULL),
   _pGrabber(NULL),
+  _pStreamConfig(NULL),
   _started_graph(false),
   _mode(0)
 {
   //---------------------------------------------------------------------
-  if (!open_and_find_parameters(which)) {
+  if (!open_and_find_parameters(which, width, height)) {
     fprintf(stderr, "directx_camera_server::directx_camera_server(): Cannot open camera\n");
     _status = false;
     return;
@@ -456,6 +527,7 @@ void  directx_camera_server::close_device(void)
   // Clean up.
   if (_pGrabber) { _pGrabber->Release(); };
   if (_pSampleGrabberFilter) { _pSampleGrabberFilter->Release(); };
+  if (_pStreamConfig) { _pStreamConfig->Release(); };
   if (_pEvent) { _pEvent->Release(); };
   if (_pMediaControl) { _pMediaControl->Release(); };
   if (_pBuilder) { _pBuilder->Release(); };

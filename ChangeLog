@@ -1,3 +1,15 @@
+2002-11-05  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* argonot.cpp : Option to let the user clear the background.
+	* directx_camera_server.cpp : Enables setting the video resolution.
+		Prints timing information (frames/second read).
+	* directx_camera_server.h : Same.
+	* video_spot_tracker.cpp : Enabled hard-coding video resolution.
+		It was slow when set to 640x480, so I put it back to 320x240
+		until I can figure out why.
+	* video_tempimager_server.cpp : Enabled setting the video resolution
+		for DirectX cameras on the command line.
+
 2002-11-04  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* argonot.cpp : Modified the gain and offset settings to be clamp
