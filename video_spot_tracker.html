@@ -1,6 +1,6 @@
 <title>Video Spot Tracker v01.26</title>
-<h1>Video Spot Tracker version 01.26</h1>
-<p><img src="GUI.jpg" width="161" height="973" align="right">The <i><b>Video Spot 
+<h1>Video Spot Tracker version 01.28a</h1>
+<p><img src="GUI.jpg" width="161" height="767" align="right">The <i><b>Video Spot 
   Tracker</b></i> program is used to track the motion of one or more spots in 
   a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible 
   video file, from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible 
@@ -12,7 +12,7 @@
 <p>The program is run by dragging a video file onto the desktop icon that was 
   created when the program was installed. It can also be run by selecting one 
   of the camera-specific shortcuts from <i><b>Start Menu/All Programs/NSRG/Video 
-  Spot Tracker v01.25</b></i>.</p>
+  Spot Tracker v01.28a</b></i>.</p>
 <h2>Using the program</h2>
 <p>When the program is run, four windows will appear. The image window that appears 
   to the lower right contains the first image within the video file or a continually-updating 
@@ -175,6 +175,40 @@
   checkbox will step forwards one video frame each time it is pressed. The <b><i>rewind</i></b> 
   checkbox causes the video to rewind to the beginning, play the first frame of 
   the video, and then pause.</p>
+<h3>Kymograph function</h3>
+<p>Clicking on the <i><b>kymograph</b></i> button in the main control panel brings 
+  up two more windows and modifies the behavior of the first four tracked spots 
+  in the image. This function is aimed at the study of cellular mitosis, and it 
+  provides a &quot;spingle-centered&quot; trace through the image. The two centromeres 
+  define the ends of the spindle. The point halfway between the two centromeres 
+  is defined as the spindle center, which moves from frame to frame. The line 
+  through the two centromeres is defined as the spindle axis, which rotates from 
+  frame to frame.</p>
+<p><img src="kymo_main.jpg" width="680" height="546"></p>
+<p>When kymograph mode is enabled, the third and fourth points (the ones that 
+  would normally be labeled &quot;2&quot; and &quot;3&quot;) are relabeled &quot;P&quot; 
+  and &quot;A&quot; for posterior and anterior. These two points are not optimized 
+  each frame no matter what setting the kernel optimization checkbox has, as they 
+  are used to label the ends of the cell. A green line bisects the image halfway 
+  between these points, indicating the 0 value on the cell-centered axis. Negative 
+  values (to the left on the kymograph_center chart) are towards the posterior 
+  end; positive towards the anterior. The white line down the center indicates 
+  the cell center; dim lines indicate 10-pixel steps, and brighter lines indicate 
+  100-pixel steps away from the center.</p>
+<h2></h2>
+<p><img src="kymo_trace.jpg" width="349" height="130" align="right">The first 
+  window is named <b><i>kymograph</i></b> and it will accumulate traces from the 
+  image through the first two tracked points (the points labeled &quot;0&quot; 
+  and &quot;1&quot;). If there are not at least two tracked points, nothing is 
+  shown in this window. As the video is stepped through or played, a new line 
+  will be added to the window that is a resampling of the image pixels. The center 
+  of this window on each line corresponds to the spindle center and the sampling 
+  is done along the spindle axis. A green line is drawn between points 0 and 1 
+  to indicate the spindle axis, and a green cross-line indicates the spindle center.</p>
+<p><img src="kymo_graph.jpg" width="268" height="126" align="right">The second 
+  window is named <b><i>kymograph_center</i></b>, and it shows how the spindle 
+  center moves within the cell. If there are not at least four tracked points, 
+  nothing is shown in this window.</p>
 <h2>Downloading and installing the program</h2>
 <p>This program is brought to you courtesy of the National Institutes of Health 
   <a href="http://www.nibib.nih.gov/">National Institute for Biomedical Imaging 
@@ -186,6 +220,22 @@
   download page</a>. To run it, you must also download and install the <b><i>NSRG 
   Runtime</i></b> package, which is also available on that page.</p>
 <h2>Version Information</h2>
+<h3>Version 01.28a:</h3>
+<ul>
+  <li> Updated the manual. Same program as 01.28.</li>
+</ul>
+<h3></h3>
+<h3>Version 01.28:</h3>
+<ul>
+  <li> Improved kymograph now shows a trace of the spindle center with respect 
+    to the cell center.</li>
+</ul>
+<h3>Version 01.27:</h3>
+<ul>
+  <li> Added initial version of kymograph (misnamed kinograph) that records traces 
+    along the centerline between two spots. This is intended for use in cellular 
+    mitosis by placing the first two spots to be tracked on the centrosomes.</li>
+</ul>
 <h3>Version 01.26:</h3>
 <ul>
   <li> Added the output of .csv log files in addition to the .vrpn log files. 
