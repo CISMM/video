@@ -1,3 +1,11 @@
+2004-09-03  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Incremented version number for release.
+	* video_spot_tracker.html : Added information for changes up to
+		version 3.02.  Updated description to include new features.
+	* GUI.jpg : New image of modified control panel.
+	* kernel.jpg : Same.
+
 2004-09-02  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* SEM_library.dsp : Modified to use non-DLL code generation.
