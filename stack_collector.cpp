@@ -23,7 +23,7 @@
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.05";
+const char *Version_string = "01.06";
 double  g_focus = 0;    // Current setting for the microscope focus
 bool	g_focus_changed = false;
 roper_server  *g_roper = NULL;

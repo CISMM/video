@@ -1,5 +1,3 @@
-//XXX When I try to create the filter in the GraphEdit program in DX9,
-// the program hangs until killed...
 //XXX How to know what device to connect to when it is run?
 
 //----------------------------------------------------------------------------
@@ -81,7 +79,6 @@ protected:
   HRESULT FillBuffer(IMediaSample *pSample);
 
   vrpn_TempImager_Remote  *m_ti;    //< TempImager client object
-  bool	  m_got_dimensions;	    //< Heard image dimensions from server?
   bool	  m_ready_for_region;	    //< Everything set up to handle a region?
   unsigned char *m_image;	    //< Pointer to the storage for the image
 
@@ -105,7 +102,6 @@ protected:
 CVRPNPushPin::CVRPNPushPin(HRESULT *phr, CSource *pFilter)
 : CSourceStream(NAME("CVRPNPushPin"), phr, pFilter, L"Out")
 , m_ti(NULL)
-, m_got_dimensions(false)
 , m_ready_for_region(false)
 , m_image(NULL)
 {
@@ -127,25 +123,6 @@ CVRPNPushPin::CVRPNPushPin(HRESULT *phr, CSource *pFilter)
   m_ti = new vrpn_TempImager_Remote(device_name);
   m_ti->register_description_handler(this, handle_description_message);
   m_ti->register_region_handler(this, handle_region_change);
-
-#ifdef	DEBUG_ON
-  dialog("CVRPNPushPin::CVRPNPushPin", "Waiting to hear the image dimensions...\n");
-#endif
-  while (!m_got_dimensions) {
-    m_ti->mainloop();
-    vrpn_SleepMsecs(1);
-  }
-  if ( (m_image = new unsigned char[m_ti->nCols() * m_ti->nRows() * 3]) == NULL) {
-#ifdef	DEBUG_ON
-    dialog("CVRPNPushPin::CVRPNPushPin", "Out of memory when allocating image!\n");
-#endif
-    m_ready_for_region = false;
-    return;
-  }
-  m_ready_for_region = true;
-#ifdef	DEBUG_ON
-  dialog("CVRPNPushPin::CVRPNPushPin", "Receiving images \n");
-#endif
 }
 
 CVRPNPushPin::~CVRPNPushPin()
@@ -165,12 +142,22 @@ void  CVRPNPushPin::handle_description_message(void *userdata, const struct time
   // should allocate a new image array and get a new window size whenever it
   // does change.  Here, we just record that the entries in the imager client
   // are valid.
-  me->m_got_dimensions = true;
-}
+#ifdef	DEBUG_ON
+  dialog("CVRPNPushPin::handle_description_message", "Waiting to hear the image dimensions...\n");
+#endif
+  if ( (me->m_image = new unsigned char[me->m_ti->nCols() * me->m_ti->nRows() * 3]) == NULL) {
+#ifdef	DEBUG_ON
+    dialog("CVRPNPushPin::handle_description_message", "Out of memory when allocating image!\n");
+#endif
+    me->m_ready_for_region = false;
+    return;
+  }
+  me->m_ready_for_region = true;
+#ifdef	DEBUG_ON
+  dialog("CVRPNPushPin::handle_description_message", "Ready to receive images\n");
+#endif
 
-float fps[2]={0,0};
-DWORD lastCallTime[2]={0,0};
-DWORD ReportInterval=5000;
+}
 
 // New pixels coming; fill them into the image and sending a new image
 // down the filter graph when we have a complete one.  The userdata is
@@ -187,7 +174,22 @@ void  CVRPNPushPin::handle_region_change(void *userdata, const vrpn_IMAGERREGION
     vrpn_int32 nCols=me->m_ti->nCols();
     vrpn_int32 nRows=me->m_ti->nRows();
 
-    if (!me->m_ready_for_region) { return; }
+    // If we've not connected, we're not ready for a region.  Sleep a bit between
+    // tests so that we don't flood the filter graph; send only about 2 frames
+    // per second.
+    // XXX Should fill the image region with blue or something (better yet -- a
+    // message saying that there's no video connection!
+    if (!me->m_ready_for_region) {
+#ifdef	DEBUG_ON
+      dialog("CVRPNPushPin::handle_region_change", "Waiting to be ready for regions");
+#endif
+      vrpn_SleepMsecs(500);
+      return;
+    }
+
+#ifdef	DEBUG_ON
+      dialog("CVRPNPushPin::handle_region_change", "Got a region");
+#endif
 
     //--------------------------------------------------------------------------------
     // Copy pixels into the image buffer.
@@ -196,7 +198,6 @@ void  CVRPNPushPin::handle_region_change(void *userdata, const vrpn_IMAGERREGION
     //XXX Do this with memcpy() rather than a pixel at a time, since
     // we are not scaling?  Nope... need to fill into RGBA structure.
     // Maybe rethink and go just a single-valued grayscale type.
-    // XXX Assumes we are reading byte-sized pixels.
     for (r = info.region->d_rMin,RegionOffset=(r-region->d_rMin)*infoLineSize; r <= region->d_rMax; r++,RegionOffset+=infoLineSize) {
       int row_offset = r*nCols;
       for (c = info.region->d_cMin; c <= region->d_cMax; c++) {
@@ -365,6 +366,9 @@ HRESULT CVRPNPushPin::GetMediaType(CMediaType *pMediaType)
 
   // We want 24-bit (RGB) video.
   // XXX Not sure if this is going to do the trick properly or not.
+  // XXX Nope: Probably need to specify things in pbFormat (width, height,
+  // bit depth, compression, etc.)  How do we know the size before we've
+  // connected?  How do we connect before the filter graph has started?
   AM_MEDIA_TYPE mt;
   ZeroMemory(&mt, sizeof(AM_MEDIA_TYPE));
   mt.majortype = MEDIATYPE_Video;	  // Ask for video media producers
@@ -439,8 +443,17 @@ HRESULT CVRPNPushPin::FillBuffer(IMediaSample *pSample)
   // handler creation routine as the userdata parameter.
   m_pSample = pSample;
 
+#ifdef	DEBUG_ON
+  dialog("CVRPNPushPin::FillBuffer", "Entered");
+#endif
   m_bGotRegion = false;
-  do { m_ti->mainloop(); } while (!m_bGotRegion);
+  do {
+    m_ti->mainloop();
+    vrpn_SleepMsecs(1);
+#ifdef	DEBUG_ON
+    dialog("CVRPNPushPin::FillBuffer", "Looping");
+#endif
+  } while (!m_bGotRegion);
 
   return S_OK;
 };

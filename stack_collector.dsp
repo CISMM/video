@@ -42,7 +42,8 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
-# ADD CPP /nologo /MD /W3 /GX /O2 /I "..\nano\src\lib\nmImageViewer" /I "C:\Program Files\Roper Scientific\PVCAM" /I "..\vrpn" /I "..\glut" /I "..\external\pc_win32\include" /D "V_GLUT" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /FR /YX /FD /c /Tp
+# ADD CPP /nologo /MD /W3 /GX /O2 /I "..\nano\src\lib\nmImageViewer" /I "C:\Program Files\Roper Scientific\PVCAM" /I "..\vrpn" /I "..\glut" /I "..\external\pc_win32\include" /D "V_GLUT" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c /Tp
+# SUBTRACT CPP /Fr
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe

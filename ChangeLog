@@ -1,3 +1,12 @@
+2003-08-20  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* Installation_README.txt : Generalizing to also work for stack.
+	* stack_collector.cpp : New version number for installer release.
+	* stack_collector.dsp : Probably saving browse info.
+	* tempimager_directx_dll.cpp : Closer to working.
+	* stack_collector : Directory for installer information.
+	* video_spot_tracker : Directory for installer information.
+
 2003-08-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* argonot.dsp : Lots changed, not sure why.  It seems to work.
