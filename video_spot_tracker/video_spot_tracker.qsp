@@ -1,20 +1,25 @@
 [General]
 FileVersion=1.1
 FileType=QSetupIniFile
-ComposerVersion=3.5.0.3
+ComposerVersion=4.0.0.4
 
 [Project]
 ProjectName=video_spot_tracker
 ProjectDirectory=F:\taylorr\stm\src\video\video_spot_tracker
+NonSFXDirectory=F:\taylorr\stm\src\video\video_spot_tracker\NonSFX
 MediaFileName=video_spot_tracker_v01_16
 CopyMediaToFName=
 ProgramDescriptiveName=Video Spot Tracker v01.16
 ProgramVersion=01.16
-CompanyName=NSRG
+CompanyName=UNC Nanoscale Science Research Group
 ProgVerLiveUpdate=0
 RegisterAsApp=1
 LanguageFlag=1
 LanguageNames=|
+UseNonSFXDir=0
+ClrNonSFXDir=0
+CompressNonSFXFiles=0
+ForceCopyNonSFXFiles=0
 
 [Display]
 AddSetupBackground=1
@@ -29,12 +34,20 @@ TopBackgroundColor=16711680
 BottomBackgroundColor=0
 AddBottomColor=1
 DlgBmp3DFrame=1
+DialogStyle=Classic
 AddDialogBitmap=0
 DialogBitmapFileName=
 AddBackgroundBitmap=1
 BackgroundBitmapFileName=
 BackgroundBitmapLocation=|Top/Left|0|0|
+AddBackgroundWave=0
 BgBmpTransparent=0
+BackgroundWaveFileName=
+BackgroundWaveLocation=|Center|300|0|
+BackgroundWaveLoop=1
+BackgroundWaveDelay=0
+AddBackgroundWaveSlider=0
+BackgroundWaveSliderType=Fixed
 TopLabelSide=Left
 TopLabel2Side=Left
 BottomLabelSide=Left
@@ -58,6 +71,9 @@ SelectedDialogs=Welcome,License,*Readme,User Information,*Destination,*Setup Typ
 LicenseTextFile=
 ReadmeTextFile=F:\taylorr\STM\src\video\Intallation_README.txt
 ReadmeTextFile2=
+UseNotepad=0
+SpaceReqOnDriveCheckBox=0
+SpaceReqOnDrive=
 RequestUserName=1
 RequestCompanyName=0
 RequestSerialNumberAlso=0
@@ -65,8 +81,12 @@ RequestSerialCheckDLL=0
 SerialCheckDll=
 RequestPredefinedSerial=0
 CaseSensitiveSerial=0
-PredefinedSerialText=
+RequestTokenizedSerial=0
+CDSetup=0
 ShowCompactSetupAlso=1
+ForcePartialSetup=0
+ShowProgBar2=1
+SilentSetup=0
 ProposeReadme=0
 ProposeLaunch=0
 ProposeRestart=0
@@ -74,26 +94,33 @@ ProposeReadmeChecked=0
 ProposeLaunchChecked=0
 ShowCloseRecommendation=1
 ShowAdwareDisclaimer=0
+ShowCopyrightWarning=1
 
 [Shortcuts]
+AddMainShortCut=1
+ForceRemoveShortcutFolder=0
 ProgramLinkFolder=NSRG\Video Spot Tracker v01.16
 ProgramLinkName=Video_spot_tracker
 ProgramLinkParam=
 ProgramLinkWorkDir=<Application Folder>
+ProgramLinkRun=Minimized
 ProgramLinkIconFile=
 ProgramLinkIconNum=0
 StartMenuLinkName=Video Spot Tracker v01.03
 DesktopLinkName=Video Spot Tracker v01.16
 SendToLinkName=Video Spot Tracker v01.03
 StartUpLinkName=Video Spot Tracker v01.03
+QuickLaunchLinkName=
 StartMenuCheckBox=0
 DesktopCheckBox=1
 SendToCheckBox=0
 StartUpCheckBox=0
+QuickLaunchCheckBox=0
 StartMenuChecked=1
 DesktopChecked=1
 SendToChecked=1
 StartUpChecked=1
+QuickLaunchChecked=0
 SetAllUsers=1
 AddUninstallShortcut=1
 Item-000=*|VRPN to Matlab|<Application Folder>\vrpnLogToMatlab.exe|||<Application Folder>|Minimized||0|
@@ -102,6 +129,7 @@ Item-002=*|Roper Camera Spot Tracker|<Application Folder>\video_spot_tracker.bat
 Item-003=*|SPOT Camera Video Tracker|<Application Folder>\video_spot_tracker.bat||diaginc|<Application Folder>|Minimized||0|
 Item-004=*|DirectX Video Camera Tracker 640x480|<Application Folder>\video_spot_tracker.bat||directx640x480|<Application Folder>|Minimized||0|
 Item-005=*|DirectX Video Camera Tracker any res|<Application Folder>\video_spot_tracker.bat||directx|<Application Folder>|Minimized||0|
+Item-006=*|VRPN to Matlab|<Application Folder>\vrpnLogToMatlab.exe|<Desktop>|||Minimized||0|
 
 [Billboard]
 AddBillboard=1
@@ -132,16 +160,24 @@ ValidVersions=
 VersionNew=1
 ReAskDays=0
 AutoUpdateProbeSpin=1
-AutoUpdateProbeText=Only at Startup
+AutoUpdateProbeText=Only at Agent Start
 
 [Switches]
 OperatingSystems=All,95,98,ME,NT,2000,XP
 OverwriteFlag=1
 CreateUnInstall=1
-SilentSetup=0
+ScrambleUnInstallData=0
+HideErrMsgUnInstall=0
+HideLogBtnUnInstall=0
+UnInstallExeStampSwitch=0
+UnInstallExeStamp=
 CreateLogFile=0
 ConfirmExtract=0
 TestAdminRights=1
+TestAdminRightsUnInstall=1
+TestDotNetFramework=0
+TestExeBeforeInstall=0
+TestExeBeforeUnInstall=0
 
 [Registry]
 
@@ -185,7 +221,7 @@ Group-002=Documentation
 
 [Group-000]
 TypicalCompactData=7
-Description=
+Description=This is the main group of files
 Item-000=Fol*<Application Folder>[0]
 Item-001=Fil*F:\taylorr\STM\src\video\Release\video_spot_tracker.exe
 Item-002=Fil*F:\taylorr\STM\src\video\russ_widgets.tcl
