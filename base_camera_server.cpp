@@ -144,6 +144,7 @@ copy_of_image::~copy_of_image()
   if (_image) {
     delete [] _image;
   }
+  image_wrapper::~image_wrapper();
 }
 
 bool  copy_of_image::read_pixel(int x, int y, double &result, unsigned rgb) const
@@ -208,6 +209,7 @@ subtracted_image::~subtracted_image()
   if (_image) {
     delete [] _image;
   }
+  image_wrapper::~image_wrapper();
 }
 
 bool  subtracted_image::read_pixel(int x, int y, double &result, unsigned rgb) const
@@ -265,6 +267,7 @@ image_metric::~image_metric()
   if (_image) {
     delete [] _image;
   }
+  image_wrapper::~image_wrapper();
 }
 
 bool  image_metric::read_pixel(int x, int y, double &result, unsigned rgb) const
@@ -399,6 +402,7 @@ PSF_File::~PSF_File()
     d_lines[i] = NULL;
   }
   d_lines.clear();
+  image_wrapper::~image_wrapper();
 }
 
 bool  PSF_File::append_line(const image_wrapper &image, const double x, const double y)

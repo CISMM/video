@@ -60,7 +60,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.05";
+const char *Version_string = "01.06";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -443,14 +443,19 @@ static	bool  save_log_frame(unsigned frame_number)
     }
 
     // Figure out whether the image will be sixteen bits, and also
-    // the gain to apply (256 if 8-bit, 1 if 16-bit).
+    // the gain to apply (256 if 8-bit, 1 if 16-bit).  If it is 8-bit
+    // output, also apply a shift related to the global bit-shift,
+    // so that what ends up in the file is the same as what ends up
+    // on the screen.
     bool do_sixteen = (g_sixteenbits == 1);
     int bitshift_gain = 1;
-    if (!do_sixteen) { bitshift_gain = 256; }
+    if (!do_sixteen) {
+      bitshift_gain = 256;
+      bitshift_gain /= pow(2,g_bitdepth - 8);
+    }
 
     // Crop the region we want out of the image and then write it
-    // to a file.  Set the gain based on whether we're using 16 bits
-    // and the offset and scale (gain again) based on the global
+    // to a file.  Set the offset and scale (gain again) based on the global
     // clipping values.
     vrpn_uint16 clamp = (1 << ((unsigned)(g_bitdepth))) - 1;
     double  intensity_gain;

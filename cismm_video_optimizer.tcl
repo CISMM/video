@@ -115,7 +115,7 @@ proc update_gain_window_visibility {nm el op} {
 # This window should only be visible when imagemix_control is turned on.
 
 toplevel .imagemix
-wm geometry .imagemix +185+10
+wm geometry .imagemix +600+10
 wm withdraw .imagemix
 frame .imagemix.display
 pack .imagemix.display -side left

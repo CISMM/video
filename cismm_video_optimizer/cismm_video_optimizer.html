@@ -1,6 +1,6 @@
-<title>CISMM Video Optimizer v01.05</title>
+<title>CISMM Video Optimizer v01.06</title>
 
-<h1>CISMM Video Optimizer v01.05</h1>
+<h1>CISMM Video Optimizer v01.06</h1>
 
 <p>The <dfn>CISMM Video Optimizer</dfn> program is used to optimize video frames from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible video file, from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible camera, from a <a href="http://roperscientific.com">Roper Scientific</a> camera, from a <a href="http://diaginc.com">DiagInc</a> SPOT camera, or from a set of TIFF or BMP files (it can read other, compressed file formats but these are not included in the default set because these file formats distort images in ways that affect tracking accuracy). The program currently runs only on Windows, but it uses the portable openGL library for rendering, the portable Tcl/Tk for user interface control, and the portable ImageMagick package for reading images.</p>
 
@@ -10,9 +10,9 @@
 
 <h2>Running the program</h2>
 
-<p>The program is run by dragging a video file or image file onto the desktop icon that was created when the program was installed. To select a stack of image files that are numbered consecutively, drag any one of the files onto the icon.  It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start Menu/All Programs/NSRG/CISMM Video Optimizer v01.05</b></i>. If you run the program directly by double-clicking on the icon, it will ask for a video or image file (AVI, TIF, or BMP) that it should open.</p> 
+<p>The program is run by dragging a video file or image file onto the desktop icon that was created when the program was installed. To select a stack of image files that are numbered consecutively, drag any one of the files onto the icon.  It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start Menu/All Programs/NSRG/CISMM Video Optimizer v01.06</b></i>. If you run the program directly by double-clicking on the icon, it will ask for a video or image file (AVI, TIF, or BMP) that it should open.</p> 
 
-<h2><img src="GUI.jpg" width="173" height="595" align="right">Using the program</h2>
+<h2><img src="GUI.jpg" width="173" height="741" align="right">Using the program</h2>
 
 <p>When the program is run and a file is selected, four windows will appear. The image window that appears on the lower right contains the first image within the video file or a continually-updating image from a live camera feed. The control panel named <b><i>tk</i></b> that appears on the left when the program is run (shown here to the right) contains a number of interaction widgets that control the operation of the program. The <b><i>kernel</i></b> control panel that appears above the image window (described later) controls the type of tracking kernel being used. The <b><i>log</i></b> control panel is described later.</p> 
 
@@ -41,12 +41,13 @@
   though it exceeds the maximum slider value, it can be set in this manner. To 
   repeat, <b><i>this setting has no effect on tracking, only on the images shown 
   on the screen</i></b>. It also has no effect on the high-value cropping within 
-  the stored file: the screen only shows 8 bits, but if an image is saved as 16 
-  bits then the data values above the high-crop line (see below) and the maximum 
-  stored value will be maintained in the stored file.</p>
+  16-bit stored files: the screen only shows 8 bits, but if an image is saved 
+  as 16 bits then the data values above the high-crop line (see below) and the 
+  maximum stored value will be maintained in the stored file. It does affect the 
+  brightness in 8-bit stored files.</p>
 
 <h3>Adjusting contrast and brightness</h3>
-<p><img src="gain_controls.jpg" width="272" height="99" align="right">The brightness 
+<p><img src="gain_controls.jpg" width="326" height="99" align="right">The brightness 
   and contrast of the image can be adjusted using the gain control panel, which 
   is displayed when the <i>show_gain_control</i> box is checked; this box is off 
   by default. The control panel is shown to the right. The two sliders are used 
@@ -62,8 +63,15 @@
   occur because there are more representable values in the file than can be shown 
   on the screen; in this case, the stretching will still occur but the high values 
   will still be present in the output file.</p>
+<p>The <i>auto</i> check-box will cause the program to adjust the clipping values 
+  to bracket the actual intensity values found in the section of the file that 
+  is to be stored. This will automatically make the intensity span the available 
+  range for display, mapping all available colors to the display.</p>
 <p>The red, green, and blue channels of the input image are scaled using the same 
   settings.</p>
+<p><b>Note: </b> Adjusting the clipping values will produce variable gains in 
+  the intensity in the output file, relative to the actual intensities present 
+  in the input file. It should not be used if quantitative pixel values are required.</p>
 <h3>Cropping the video</h3>
 
 <p><img src="crop.jpg" width="168" height="154" align="right">To reduce the size of the resulting image stack, it is possible the select only a sub-region of the video that is to be saved, cropping the video to the selected region. The region can be selected in one of two ways. The first is to press and hold the right mouse button at the center of the desired region and then drag the mouse to set one corner of the region. The second is to select the <cite>show_clipping</cite> checkbox in the <cite>tk</cite> control panel. This will bring up a new control window that lets you slide the four sides of the selection region within the image.</p>
@@ -72,7 +80,20 @@
 
 <p>Remember that objects will move as the video goes, so be careful to preview your video and make sure everything stays in the cropped region for the segment of video you are optimizing, with room to spare for any border around objects that you need.</p>
 
-<h3>Selecting the type of transformation</h3>
+<h3>Performing image operations</h3>
+<p><img src="imagemix_controls.jpg" width="377" height="169" align="right">When 
+  the <i>show_imagemix_control</i> check-box is checked, the <i>imagemix</i> control 
+  panel appears. This enables the calculation of min, max, and mean images, which 
+  are per-pixel operations on all images seen while the <i>accumulate</i> check-boxes 
+  are turned on. A set of radio buttons on the left displays these statistical 
+  images, and by default shows the computed image.</p>
+<p>The computed image can either be the standard image as described above (when 
+  <i>subract_none</i> is) chosen in the central radio list or an image computed 
+  by subtracting one of the min, max, or mean images. It is also possible to subtract 
+  a single image from later images; when <i>subtract_single</i> is checked, the 
+  image will go grey (subtracted from itself) and later images will show the difference 
+  between the original image and the current image.</p>
+<h3>Spatially transforming the image</h3>
 
 <p>By default, the CISMM Video Optimizer only applies a translation to successive frames in the image and only provides one fiducial mark, which follows a point on the images that is to remain fixed in the output video.</p>
 
@@ -90,7 +111,7 @@
 
 <p><img src="kernel.jpg" width="528" height="117"></p>
 
-<p>There are three types of tracking kernels available in version 1.05, disc, cone, and symmetric. Their properties are controlled using interface widgets in the <cite>kernel</cite> control panel.</p> 
+<p>There are three types of tracking kernels available in version 1.06, disc, cone, and symmetric. Their properties are controlled using interface widgets in the <cite>kernel</cite> control panel.</p> 
 
 <p>For tracking spots that are even in intensity, or which have uneven intensities within them but a defined circular edge, the <cite><strong>disc</strong></cite> kernel should be used. The radius should be set to match the radius of the spots you wish to track. The <cite><strong>interpolate</strong></cite> checkbox should be set for more accuracy and cleared for more speed.</p> 
 
@@ -159,6 +180,14 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 01.06</h3>
+<ul>
+  <li>Adds ability to do auto gain control.</li>
+  <li>Adds ability to compute min, max, and mean images.</li>
+  <li>Adds ability to subtract a single image or one of the (min, max, mean) images 
+    from the displayed image.</li>
+</ul>
+<h3></h3>
 <h3>Version 01.05</h3>
 <ul>
   <li>Adds spread-function saving option.</li>

@@ -17,6 +17,10 @@
 
 class image_wrapper {
 public:
+
+  // Virtual destructor to let children de-allocate space as needed.
+  virtual ~image_wrapper() {};
+
   // Tell what the range is for the image.
   virtual void	read_range(int &minx, int &maxx, int &miny, int &maxy) const = 0;
 
@@ -436,7 +440,6 @@ protected:
 class minimum_image: public image_metric {
 public:
   minimum_image(const image_wrapper &copyfrom) : image_metric(copyfrom) {};
-  ~minimum_image();
 
   // Take the minimum of the existing image and this new image
   virtual void operator+= (const image_wrapper &newimage);
@@ -449,7 +452,6 @@ public:
 class maximum_image: public image_metric {
 public:
   maximum_image(const image_wrapper &copyfrom) : image_metric(copyfrom) {};
-  ~maximum_image();
 
   // Take the maximum of the existing image and this new image
   virtual void operator+= (const image_wrapper &newimage);
@@ -462,7 +464,6 @@ public:
 class mean_image: public image_metric {
 public:
   mean_image(const image_wrapper &copyfrom) : image_metric(copyfrom), d_num_images(1) {};
-  ~mean_image();
 
   // Take the mean of the existing image and this new image
   virtual void operator+= (const image_wrapper &newimage);
