@@ -133,15 +133,23 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
       _mode = 1;
     }
 
-    //XXX Get the size and stride parameters from the videoinfo header and use
-    // that to perform a series of memcpy() operations based on the values it
-    // returns to get the image into our buffer.  (Make sure the size is what
-    // we expect).
     if (_pCallback->imageReady) {
       _pCallback->imageReady = false;
+      // Check the size of the sample to ensure it is what we expect.  XXX We
+      // should really check the size and stride parameters from the videoinfo
+      // header and use this to perform one memcpy() per line based on the values
+      // it returns to get the image into our buffer.  Right now, we flag it as
+      // an error and return if the sizes don't match.
+      if (_pCallback->imageSample->GetActualDataLength() != (long)_buflen) {
+	fprintf(stderr,"directx_camera_server::read_one_frame(): Unexpected buffer length\n");
+	_status = false;
+	_pCallback->imageDone = true;
+	return false;
+      }
       if (FAILED(_pCallback->imageSample->GetPointer(&imageLocation))) {
 	fprintf(stderr,"directx_camera_server::read_one_frame(): Can't get buffer\n");
 	_status = false;
+	_pCallback->imageDone = true;
 	return false;
       }
       memcpy(_buffer, imageLocation, _buflen);

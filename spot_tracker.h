@@ -95,11 +95,11 @@ protected:
 // This class will optimize the response of a disk-shaped kernel on an image.
 // It does bilinear interpolation on the four neighboring pixels when computing
 // the fit, to try and improve sub-pixel accuracy.  The samples take place at
-// the center of the disk on circles of single-pixel-stepped radii away from
+// the center of the disk and on circles of single-pixel-stepped radii away from
 // the center, out to the radius (and then negative values looking for an off-
 // surround outside the radius).  Around each circle, the samples are placed
 // at single-pixel distances from each other, with the first pixel in each
-// ring offset by 1/2 pixel from teh ones in teh previous ring.
+// ring offset by 1/2 pixel from the ones in the previous ring.
 // The class is given an image to search in, and whether to search for a bright
 // spot on a dark background (the default) or a dark spot on a bright background.
 
@@ -107,6 +107,31 @@ class disk_spot_tracker_interp : public spot_tracker {
 public:
   // Set initial parameters of the disk search routine
   disk_spot_tracker_interp(double radius, bool inverted = false,
+		    double pixelaccuracy = 0.25,
+		    double radiusaccuracy = 0.25);
+
+  /// Check the fitness of the disk against an image, at the current parameter settings.
+  // Return the fitness value there.
+  virtual double  check_fitness(const image_wrapper &image);
+
+protected:
+};
+
+//----------------------------------------------------------------------------
+// This class will optimize the response of a cone-shaped kernel on an image.
+// It does bilinear interpolation on the four neighboring pixels when computing
+// the fit, to try and improve sub-pixel accuracy.  The samples take place at
+// the center of the cone and on circles of single-pixel-stepped radii away from
+// the center, out to the radius.  Around each circle, the samples are placed
+// at single-pixel distances from each other, with the first pixel in each
+// ring offset by 1/2 pixel from the ones in the previous ring.
+// The class is given an image to search in, and whether to search for a bright
+// spot on a dark background (the default) or a dark spot on a bright background.
+
+class cone_spot_tracker_interp : public spot_tracker {
+public:
+  // Set initial parameters of the disk search routine
+  cone_spot_tracker_interp(double radius, bool inverted = false,
 		    double pixelaccuracy = 0.25,
 		    double radiusaccuracy = 0.25);
 

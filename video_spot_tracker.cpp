@@ -1,5 +1,9 @@
-//XXX Small-area code should fill in around all trackers, not just the active one.
-//XXX Make a better match (Gaussian kernel, or re-use existing, or something)
+//XXX CIMS3.AVI shows up skewed!  It looks fine in Windows Media Player.  This
+//    is because its buffer size is not the same as its media size.  Need to
+//    implement stride test and such as described in the book.
+//XXX Better interface for selecting color component.
+//XXX Nice to tag each tracker with its sensor number.
+//XXX Make a better match (Gaussian kernel, or best fit to previous spot found, or something)
 //XXX Put in times based on video timestamps for samples rather than real time.
 //XXX Would like to be able to specify the microns-per-pixel value
 //    and have it stored in the log file.
@@ -7,24 +11,6 @@
 //XXX When we don't find the camera (or file), in debug the code hangs on camera delete.
 //XXX All of the Y coordinates seem to be inverted in this code compared
 //    to the image-capture code.  Mouse, display, and video clipping.
-//XXX The camera code seems to stop updating the video after about
-//    five minutes of tracking.  The video in the window stops being
-//    updated, the tracking optimization doesn't change, but the rest
-//    of the UI keeps running (and the VRPN connect/disconnect).
-//    After a while using the camera, it make DirectX think that there
-//    was not a camera anymore.
-//    This does not happen with the USB-connected Logitech camera,
-//    it runs fine for many minutes, both with video showing and small
-//    range (40 fps) and with video off (60fps).
-//    This does not happen on the lab machine running Windows 2000.
-//    It does not use up more GDI objects when it is locked up.  It
-//    does seem to drop the camera offline.  Video doesn't have to be
-//    off for this to happen.  This is using DirectX 9 on the laptop
-//    and the Dazzle video converter.  Jeremy Cribb's Sony laptop.
-//    The AMCAP example application runs fine for a long time.  Also
-//    AMCAP needs to be run ahead of time to "turn on" the video from
-//    the device -- it stays on after the program exits.  Maybe it is
-//    timing out somehow?
 
 #include <math.h>
 #include <stdio.h>
@@ -54,7 +40,7 @@ const int MAX_TRACKERS = 100; // How many trackers can exist (for VRPN's tracker
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.12";
+const char *Version_string = "01.13";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -88,8 +74,10 @@ Tclvar_float_with_scale	*g_maxX;
 Tclvar_float_with_scale	*g_minY;
 Tclvar_float_with_scale	*g_maxY;
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
+Tclvar_float_with_scale	g_colorIndex("red_green_blue", "", 0, 2, 0);
 Tclvar_int_with_button	g_invert("dark_spot","",1, rebuild_trackers);
 Tclvar_int_with_button	g_interpolate("interpolate","",1, rebuild_trackers);
+Tclvar_int_with_button	g_cone("cone","",0, rebuild_trackers);
 Tclvar_int_with_button	g_opt("optimize","");
 Tclvar_int_with_button	g_globalopt("global_optimize_now","",0);
 Tclvar_int_with_button	g_small_area("small_area","");
@@ -99,6 +87,7 @@ Tclvar_int_with_button	g_show_video("show_video","",1);
 Tclvar_int_with_button	g_quit("quit","");
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
+bool g_video_valid = false; // Do we have a valid video frame in memory?
 
 //--------------------------------------------------------------------------
 // Helper routine to get the Y coordinate right when going between camera
@@ -159,7 +148,7 @@ public:
   }
   virtual bool	read_pixel(int x, int y, double &result) const {
     uns16 val;
-    if (get_pixel_from_memory(x, flip_y(y), val)) {
+    if (get_pixel_from_memory(x, flip_y(y), val, g_colorIndex)) {
       result = val;
       return true;
     } else {
@@ -177,7 +166,7 @@ public:
   }
   virtual bool	read_pixel(int x, int y, double &result) const {
     uns16 val;
-    if (get_pixel_from_memory(x, flip_y(y), val)) {
+    if (get_pixel_from_memory(x, flip_y(y), val, g_colorIndex)) {
       result = val;
       return true;
     } else {
@@ -230,7 +219,9 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
 
 spot_tracker  *create_appropriate_tracker(void)
 {
-  if (g_interpolate) {
+  if (g_cone) {
+    return new cone_spot_tracker_interp(g_Radius,(g_invert != 0), 0.05, 0.1);
+  } else if (g_interpolate) {
     return new disk_spot_tracker_interp(g_Radius,(g_invert != 0), 0.05, 0.1);
   } else {
     return new disk_spot_tracker(g_Radius,(g_invert != 0));
@@ -280,7 +271,7 @@ void myDisplayFunc(void)
 #endif
     for (r = *g_minY; r <= *g_maxY; r++) {
       for (c = *g_minX; c <= *g_maxX; c++) {
-	if (!g_camera->get_pixel_from_memory(c, r, uns_pix)) {
+	if (!g_camera->get_pixel_from_memory(c, r, uns_pix, g_colorIndex)) {
 	  fprintf(stderr, "Cannot read pixel from region\n");
 	  cleanup();
 	  exit(-1);
@@ -295,6 +286,16 @@ void myDisplayFunc(void)
 	g_glut_image[1 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> g_shift;
 	g_glut_image[2 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> g_shift;
 	g_glut_image[3 + 4 * (c + g_camera->get_num_columns() * r)] = 255;
+
+#ifdef DEBUG
+	// If we're debugging, fill the border pixels with green
+	if ( (r == *g_minY) || (r == *g_maxY) || (c == *g_minX) || (c == *g_maxX) ) {
+	  g_glut_image[0 + 4 * (c + g_camera->get_num_columns() * r)] = 0;
+	  g_glut_image[1 + 4 * (c + g_camera->get_num_columns() * r)] = 255;
+	  g_glut_image[2 + 4 * (c + g_camera->get_num_columns() * r)] = 0;
+	  g_glut_image[3 + 4 * (c + g_camera->get_num_columns() * r)] = 255;
+	}
+#endif
       }
     }
 
@@ -313,6 +314,7 @@ void myDisplayFunc(void)
   // The active one is drawn in red and the others are drawn in blue.
   if (g_mark) {
     list <spot_tracker *>::iterator loop;
+    glEnable(GL_LINE_SMOOTH); //< Use smooth lines here to avoid aliasing showing spot in wrong place
     for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
       // Normalize center and radius so that they match the coordinates
       // (-1..1) in X and Y.
@@ -338,6 +340,7 @@ void myDisplayFunc(void)
   // Draw a green border around the selected area.  It will be beyond the
   // window border if it is set to the edges; it will just surround the
   // region being selected if it is inside the window.
+  glDisable(GL_LINE_SMOOTH);
   glColor3f(0,1,0);
   glBegin(GL_LINE_STRIP);
   glVertex3f( -1 + 2*((*g_minX-1) / (g_camera->get_num_columns()-1)),
@@ -416,17 +419,29 @@ void myIdleFunc(void)
 
   // If we are asking for a small region around the tracked dot,
   // set the borders to be around the set of trackers.
-  //XXX Modify to include all trackers in the calculation, not
-  // just the active one.  This will be a min/max over all of the
-  // bounding boxes.  Actually, probably it is better to move this
-  // to the render loop and have it update the values in the whole
-  // set and draw boxes around all of them; this will be less video
-  // than the whole block.
+  // This will be a min/max over all of the
+  // bounding boxes.
   if (g_opt && g_small_area) {
+    // Initialize it with values from the active tracker, which are stored
+    // in the global variables.
     (*g_minX) = g_X - 4*g_Radius;
     (*g_minY) = g_Y - 4*g_Radius;
     (*g_maxX) = g_X + 4*g_Radius;
     (*g_maxY) = g_Y + 4*g_Radius;
+
+    // Check them against all of the open trackers and push them to bound all
+    // of them.
+
+    list<spot_tracker *>::iterator  loop;
+    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+      double x = (*loop)->get_x();
+      double y = flip_y((*loop)->get_y());
+      double fourRad = 4 * (*loop)->get_radius();
+      if (*g_minX > x - fourRad) { *g_minX = x - fourRad; }
+      if (*g_maxX < x + fourRad) { *g_maxX = x + fourRad; }
+      if (*g_minY > y - fourRad) { *g_minY = y - fourRad; }
+      if (*g_maxY < y + fourRad) { *g_maxY = y + fourRad; }
+    }
 
     // Make sure not to push them off the screen
     if ((*g_minX) < 0) { (*g_minX) = 0; }
@@ -446,7 +461,13 @@ void myIdleFunc(void)
       fprintf(stderr, "Can't read image to memory!\n");
       cleanup();
       exit(-1);
+    } else {
+      // We timed out; either paused or at the end.  Don't log in this case.
+      g_video_valid = false;
     }
+  } else {
+    // Got a valid video frame; can log it.
+    g_video_valid = true;
   }
   g_ready_to_display = true;
 
@@ -477,8 +498,9 @@ void myIdleFunc(void)
     g_Radius = (float)g_active_tracker->get_radius();
 
     // Update the VRPN tracker position for each tracker and report it
-    // using the same time value for each.
-    if (g_vrpn_tracker) {
+    // using the same time value for each.  Don't do the update if we
+    // don't currently have a valid video frame.
+    if (g_vrpn_tracker && g_video_valid) {
       int i = 0;
       struct timeval now; gettimeofday(&now, NULL);
       for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++, i++) {
@@ -855,9 +877,16 @@ int main(int argc, char *argv[])
     exit(-1);
   }
   if (g_video) {  // Put these in a separate control panel?
-    g_play = new Tclvar_int_with_button("play_video","",1);
-    g_rewind = new Tclvar_int_with_button("rewind_video","");
+    // Start out paused at the beginning of the file.
+    g_play = new Tclvar_int_with_button("play_video","",0);
+    g_rewind = new Tclvar_int_with_button("rewind_video","",1);
     g_step = new Tclvar_int_with_button("single_step_video","");
+  }
+  sprintf(command, "wm geometry . +10+10");
+  if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
+          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+                  tk_control_interp->result);
+          return(-1);
   }
 
   // Verify that the camera is working.
@@ -894,11 +923,11 @@ int main(int argc, char *argv[])
   // opened in VRPN.
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
+  glutInitWindowPosition(200, 40);
   glutInitWindowSize(g_camera->get_num_columns(), g_camera->get_num_rows());
 #ifdef DEBUG
   printf("XXX initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());
 #endif
-  glutInitWindowPosition(5, 30);
   glutCreateWindow(device_name);
   glutMotionFunc(motionCallbackForGLUT);
   glutMouseFunc(mouseCallbackForGLUT);

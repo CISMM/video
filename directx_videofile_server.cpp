@@ -4,6 +4,8 @@
 #include "directx_videofile_server.h"
 #include <vrpn_BaseClass.h>
 
+#define	DEBUG
+
 //-----------------------------------------------------------------------
 // Helper functions for editing the filter graph:
 
@@ -221,9 +223,13 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
   // Number of rows and columns
   _num_columns = pVih->bmiHeader.biWidth;
   // A negative height indicates that the images are stored non-inverted in Y
-  _num_rows = abs(pVih->bmiHeader.biHeight);
+  _num_rows = pVih->bmiHeader.biHeight;
+#ifdef	DEBUG
+  printf("directx_videofile_server: Found video of size %d by %d\n", _num_columns, _num_rows);
+#endif
   if (_num_rows < 0) {
     _invert_y = false;
+    _num_rows *= -1;
   } else {
     _invert_y = true;
   }

@@ -312,7 +312,7 @@ double	disk_spot_tracker_interp::check_fitness(const image_wrapper &image)
 
   // Pixels within the radius have positive weights
   // Shift the start location by 1/2 pixel on each outgoing ring, to
-  // keep them from linking up with each other.
+  // keep them from lining up with each other.
   for (r = 1; r <= _rad; r++) {
     double rads_per_pixel = 1 / r;
     for (theta = r*rads_per_pixel*0.5; theta <= 2*M_PI + r*rads_per_pixel*0.5; theta += rads_per_pixel) {
@@ -325,13 +325,76 @@ double	disk_spot_tracker_interp::check_fitness(const image_wrapper &image)
 
   // Pixels outside the radius have negative weights
   // Shift the start location by 1/2 pixel on each outgoing ring, to
-  // keep them from linking up with each other.
+  // keep them from lining up with each other.
   for (r = r /* Keep going */; r <= surroundr; r++) {
     double rads_per_pixel = 1 / r;
     for (theta = r*rads_per_pixel*0.5; theta <= 2*M_PI + r*rads_per_pixel*0.5; theta += rads_per_pixel) {
       if (image.read_pixel_bilerp(_x+r*cos(theta),_y+r*sin(theta),val)) {
 	pixels++;
 	fitness -= val;
+      }
+    }
+  }
+
+  if (_invert) { fitness *= -1; }
+  if (pixels == 0) {
+    return 0;
+  } else {
+    fitness /= pixels;
+  }
+
+  return fitness;
+}
+
+cone_spot_tracker_interp::cone_spot_tracker_interp(double radius, bool inverted, double pixelaccuracy,
+				     double radiusaccuracy) :
+  spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy)
+{
+}
+
+// Check the fitness of the disk against an image, at the current parameter settings.
+// Return the fitness value there.  This is done by multiplying the image values within
+// one radius of the center by a value the falls off from 1 at the center to 0 at the
+// radius.  If the test is inverted, then the fitness value
+// is inverted before returning it.  The fitness is normalized by the number of pixels
+// tested (pixels both within the radii and within the image).
+
+// We assume that we are looking at a smooth function, so we do linear
+// interpolation and sample within the space of the kernel, rather than
+// point-sampling the nearest pixel.
+
+// XXX This function should keep track of the last radius it computed the list
+// of points for and rebuild an "inside" and "outside" list when it changes.
+// Then the list can be re-used and the math avoided if the radius does not
+// change, making this run a lot faster.  It could also keep track of the
+// multiplier at each pixel.
+
+double	cone_spot_tracker_interp::check_fitness(const image_wrapper &image)
+{
+  double  r,theta;			//< Coordinates in disk space
+  int	  pixels = 0;			//< How many pixels we ended up using
+  double  fitness = 0.0;		//< Accumulates the fitness values
+  double  val;				//< Pixel value read from the image
+  double  surroundfac = 1.3;		//< How much larger the surround is
+  double  surroundr = _rad*surroundfac;  //< The surround "off" disk radius
+
+  // Start with the pixel in the middle.
+  if (image.read_pixel_bilerp(_x,_y,val)) {
+    pixels++;
+    fitness += val;
+  }
+
+  // Pixels within the radius have positive weights that fall off from 1
+  // in the center to 0 at the radius.
+  // Shift the start location by 1/2 pixel on each outgoing ring, to
+  // keep them from lining up with each other.
+  for (r = 1; r <= _rad; r++) {
+    double rads_per_pixel = 1 / r;
+    double weight = 1 - (r / _rad);
+    for (theta = r*rads_per_pixel*0.5; theta <= 2*M_PI + r*rads_per_pixel*0.5; theta += rads_per_pixel) {
+      if (image.read_pixel_bilerp(_x+r*cos(theta),_y+r*sin(theta),val)) {
+	pixels++;
+	fitness += val * weight;
       }
     }
   }

@@ -1,3 +1,18 @@
+2003-08-13  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* directx_camera_server.cpp: Returns failure when it gets a file
+		with different sizes than it expects.
+	* directx_videofile_server.cpp : Clean up of size calculation.
+	* spot_tracker.cpp : Added a cone-kernel spot tracker for cases
+		where the spot is really brighter in the center.
+	* spot_tracker.h : Same.
+	* test_spot_tracker.cpp : Added test for cone.
+	* video_spot_tracker.cpp : New version number.  Added ability
+		to select which color from an RGB input.  Added
+		ability to use the cone kernel.  Antialiased the cross
+		lines, so they appear in the correct location.  Set up
+		initial window placement for the Tcl and Glut windows.
+
 2003-08-07  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* image_wrapper.h : Defaults to no noise.
