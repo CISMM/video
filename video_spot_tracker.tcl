@@ -6,6 +6,23 @@
 # Global variable to remember where they are saving files.
 set fileinfo(open_dir) ""
 
+###########################################################
+# Put the places for the controls to let the user pick a kernel.
+
+toplevel .kernel
+wm geometry .kernel +170+10
+frame .kernel.invert
+pack .kernel.invert -side left
+frame .kernel.interp
+pack .kernel.interp -side left
+frame .kernel.cone
+pack .kernel.cone -side left
+frame .kernel.symmetric
+pack .kernel.symmetric -side left
+frame .kernel.radius
+pack .kernel.radius -side left
+frame .kernel.optimize
+pack .kernel.optimize -side left
 
 ###########################################################
 # Put the controls that will let the user store a log file.
@@ -17,8 +34,8 @@ set fileinfo(open_dir) ""
 
 set logging 0
 set logfilename ""
-frame .log -relief raised -bd 1
-pack .log -side top -fill both
+toplevel .log
+wm geometry .log +690+10
 checkbutton .log.button -text Logging -variable logging -anchor w
 pack .log.button -side top -fill x
 label .log.label -textvariable logfilename

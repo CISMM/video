@@ -1,6 +1,5 @@
-//XXX Better interface for selecting color component.
 //XXX Nice to tag each tracker with its sensor number.
-//XXX Make a better match (Gaussian kernel, or best fit to previous spot found, or something)
+//XXX Put in times based on video timestamps for samples rather than real time.
 //XXX Put in times based on video timestamps for samples rather than real time.
 //XXX Would like to be able to specify the microns-per-pixel value
 //    and have it stored in the log file.
@@ -37,7 +36,7 @@ const int MAX_TRACKERS = 100; // How many trackers can exist (for VRPN's tracker
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.14";
+const char *Version_string = "01.15";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -65,17 +64,18 @@ void  rebuild_trackers(int newvalue, void *);
 //XXX X and Y range should match the image range, like the region size controls are.
 Tclvar_float_with_scale	g_X("x", "", 0, 1391, 0);
 Tclvar_float_with_scale	g_Y("y", "", 0, 1039, 0);
-Tclvar_float_with_scale	g_Radius("radius", "", 1, 30, 5);
+Tclvar_float_with_scale	g_Radius("radius", ".kernel.radius", 1, 30, 5);
 Tclvar_float_with_scale	*g_minX;
 Tclvar_float_with_scale	*g_maxX;
 Tclvar_float_with_scale	*g_minY;
 Tclvar_float_with_scale	*g_maxY;
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
 Tclvar_float_with_scale	g_colorIndex("red_green_blue", "", 0, 2, 0);
-Tclvar_int_with_button	g_invert("dark_spot","",1, rebuild_trackers);
-Tclvar_int_with_button	g_interpolate("interpolate","",1, rebuild_trackers);
-Tclvar_int_with_button	g_cone("cone","",0, rebuild_trackers);
-Tclvar_int_with_button	g_opt("optimize","");
+Tclvar_int_with_button	g_invert("dark_spot",".kernel.invert",1, rebuild_trackers);
+Tclvar_int_with_button	g_interpolate("interpolate",".kernel.interp",1, rebuild_trackers);
+Tclvar_int_with_button	g_cone("cone",".kernel.cone",0, rebuild_trackers);
+Tclvar_int_with_button	g_symmetric("symmetric",".kernel.symmetric",0, rebuild_trackers);
+Tclvar_int_with_button	g_opt("optimize",".kernel.optimize");
 Tclvar_int_with_button	g_globalopt("global_optimize_now","",0);
 Tclvar_int_with_button	g_small_area("small_area","");
 Tclvar_int_with_button	g_full_area("full_area","");
@@ -216,7 +216,12 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
 
 spot_tracker  *create_appropriate_tracker(void)
 {
-  if (g_cone) {
+  if (g_symmetric) {
+    g_interpolate = 1;
+    g_cone = 0;
+    return new symmetric_spot_tracker_interp(g_Radius,(g_invert != 0), 0.05, 0.1);
+  } else if (g_cone) {
+    g_interpolate = 1;
     return new cone_spot_tracker_interp(g_Radius,(g_invert != 0), 0.05, 0.1);
   } else if (g_interpolate) {
     return new disk_spot_tracker_interp(g_Radius,(g_invert != 0), 0.05, 0.1);
@@ -845,6 +850,17 @@ int main(int argc, char *argv[])
   }
 
   //------------------------------------------------------------------
+  // Load the specialized Tcl code needed by this program.  This must
+  // be loaded before the Tclvar_init() routine is called because it
+  // puts together some of the windows needed by the variables.
+  sprintf(command, "source video_spot_tracker.tcl");
+  if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
+          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+                  tk_control_interp->result);
+          return(-1);
+  }
+
+  //------------------------------------------------------------------
   // This routine must be called in order to initialize all of the
   // variables that came into scope before the interpreter was set
   // up, and to tell the variables which interpreter to use.  It is
@@ -854,15 +870,6 @@ int main(int argc, char *argv[])
   if (Tclvar_init(tk_control_interp)) {
 	  fprintf(stderr,"Can't do init!\n");
 	  return -1;
-  }
-
-  //------------------------------------------------------------------
-  // Load the specialized Tcl code needed by this program.
-  sprintf(command, "source video_spot_tracker.tcl");
-  if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
-          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
-                  tk_control_interp->result);
-          return(-1);
   }
 
   //------------------------------------------------------------------
@@ -920,7 +927,7 @@ int main(int argc, char *argv[])
   // opened in VRPN.
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(200, 40);
+  glutInitWindowPosition(175, 140);
   glutInitWindowSize(g_camera->get_num_columns(), g_camera->get_num_rows());
 #ifdef DEBUG
   printf("XXX initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());

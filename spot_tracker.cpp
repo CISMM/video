@@ -375,8 +375,6 @@ double	cone_spot_tracker_interp::check_fitness(const image_wrapper &image)
   int	  pixels = 0;			//< How many pixels we ended up using
   double  fitness = 0.0;		//< Accumulates the fitness values
   double  val;				//< Pixel value read from the image
-  double  surroundfac = 1.3;		//< How much larger the surround is
-  double  surroundr = _rad*surroundfac;  //< The surround "off" disk radius
 
   // Start with the pixel in the middle.
   if (image.read_pixel_bilerp(_x,_y,val)) {
@@ -406,6 +404,67 @@ double	cone_spot_tracker_interp::check_fitness(const image_wrapper &image)
     fitness /= pixels;
   }
 
+  return fitness;
+}
+
+symmetric_spot_tracker_interp::symmetric_spot_tracker_interp(double radius, bool inverted, double pixelaccuracy,
+				     double radiusaccuracy) :
+  spot_tracker(radius, inverted, pixelaccuracy, radiusaccuracy)
+{
+}
+
+// Check the fitness of the disk against an image, at the current parameter settings.
+// Return the fitness value there.
+
+// Compute the variance of all the points using the shortcut
+// formula: var = (sum of squares of measures) - (sum of measurements)^2 / n
+
+  // We assume that we are looking at a smooth function, so we do linear
+// interpolation and sample within the space of the kernel, rather than
+// point-sampling the nearest pixel.
+
+// XXX This function should keep track of the last radius it computed the list
+// of points for and rebuild a membership list for each circle when it changes.
+// Then the list can be re-used and the math avoided if the radius does not
+// change, making this run a lot faster.
+
+double	symmetric_spot_tracker_interp::check_fitness(const image_wrapper &image)
+{
+  double  r,theta;			//< Coordinates in disk space
+  int	  pixels = 0;			//< How many pixels we ended up using
+  double  fitness = 0.0;		//< Accumulates the fitness values
+  double  val;				//< Pixel value read from the image
+
+  // Avoid divide-by-zero and other degeneracies later.
+  if (_rad < 1) {
+    return 0;
+  }
+
+  // Don't check the pixel in the middle; it makes no difference to circular
+  // symmetry.
+  // Shift the start location by 1/2 pixel on each outgoing ring, to
+  // keep them from lining up with each other.
+  for (r = 1; r <= _rad; r++) {
+    double rads_per_pixel = 1 / r;
+    double squareValSum = 0.0;
+    double valSum = 0.0;
+
+    pixels = 0;	// No pixels in this circle yet.
+    for (theta = r*rads_per_pixel*0.5; theta <= 2*M_PI + r*rads_per_pixel*0.5; theta += rads_per_pixel) {
+      if (image.read_pixel_bilerp(_x+r*cos(theta),_y+r*sin(theta),val)) {
+	pixels++;
+	valSum += val;
+	squareValSum += val*val;
+      }
+    }
+    fitness -= squareValSum - valSum*valSum / pixels;
+  }
+  // Divide by the number of circles so that the optimization over
+  // radius doesn't simply get better by reducing the radius.
+  fitness /= (r-1);
+
+  // We never invert the fitness: we don't care whether it is a dark
+  // or bright spot.
   return fitness;
 }
 

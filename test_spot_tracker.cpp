@@ -298,6 +298,86 @@ int main(int, char *[])
   gettimeofday(&end, NULL);
   printf("  Time: %lg seconds per optimization\n", duration(end, start)/avgcount);
 
+  printf("-----------------------------------------------------------------\n");
+  printf("Generating interpolating symmetric spot tracker\n");
+  symmetric_spot_tracker_interp symmetrictracker(seedrad);
+
+  printf("Looking for best fit within the image\n");
+  symmetrictracker.locate_good_fit_in_image(image, seedx, seedy);
+
+  printf("Optimization, starting at found location %lg, %lg,  rad %lg\n", seedx, seedy, seedrad);
+  symmetrictracker.take_single_optimization_step(image, x,y, seedx, seedy);
+  for (i = 0; i < 5; i++) {
+    symmetrictracker.take_single_optimization_step(image, x, y, true, true, true);
+    rad = symmetrictracker.get_radius();
+    fit = symmetrictracker.get_fitness();
+    printf("Next step: X = %8.3lg,  Y = %8.3lg,  rad = %8.3lg, fit = %12.5lg\n", x,y,rad, fit);
+  }
+
+  printf("Chasing around a slightly noisy spot using full optimization\n");
+  avgcount = 50;
+  minerr = 1000; maxerr = 0; sumerr = 0;
+  minraderr = 1000; maxraderr = 0; sumraderr = 0;
+  biasx = 0; biasy = 0;
+  for (i = 0; i < avgcount; i++) {
+    testrad += ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * 1;
+    if (testrad < 3) { testrad = 3; }
+    testx += ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2);
+    testy += ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2);
+    {
+      test_image image2(0,255, 0,255, 127, 5, testx, testy, testrad, 250);
+      symmetrictracker.optimize(image2, x, y);
+      rad = symmetrictracker.get_radius();
+      fit = symmetrictracker.get_fitness();
+      err = sqrt( (x-testx)*(x-testx) + (y-testy)*(y-testy) );
+      if (err < minerr) { minerr = err; }
+      if (err > maxerr) { maxerr = err; }
+      sumerr += err;
+      raderr = fabs(rad-testrad);
+      if (raderr < minraderr) { minraderr = raderr; }
+      if (raderr > maxraderr) { maxraderr = raderr; }
+      sumraderr += raderr;
+      biasx += x - testx;
+      biasy += y - testy;
+      if (i == 0) {
+	printf("First opt: real coords (%g,%g), found coords (%g,%g)\n", testx,testy, x,y);
+      }
+    }
+  }
+  printf("Pos err: min=%g, max=%g, mean=%g, xbias = %g, ybias = %g\n", minerr, maxerr, sumerr/avgcount, biasx/avgcount, biasy/avgcount);
+  printf("Rad err: min=%g, max=%g, mean=%g\n", minraderr, maxraderr, sumraderr/avgcount);
+
+  testrad = 5.5;
+  pixacc = 0.05;
+  avgcount = 50;
+  printf("Chasing around a slightly noisy spot of known radius %g to %g pixel\n", testrad, pixacc);
+  // Make the radius slightly larger than the radius of the spot.
+  compute_chase_statistics(symmetrictracker, 1.3*testrad, pixacc, avgcount, minerr, maxerr, sumerr, biasx,biasy, x,y);
+  printf("Pos err: min=%g, max=%g, mean=%g, xbias = %g, ybias = %g\n", minerr, maxerr, sumerr/avgcount, biasx/avgcount, biasy/avgcount);
+
+  testrad = 5.5;
+  pixacc = 0.05;
+  x = 120.5; y = 120;
+  test_image image5(0,255,0,255,127,0,x,y,testrad, 250);
+  printf("Optimizing a slightly noisy spot of known radius %g at %g,%g\n", testrad, x,y);
+  symmetrictracker.optimize_xy(image5, x, y, floor(x), ceil(y));
+  printf("  Found a spot of radius %g at %g,%g\n", symmetrictracker.get_radius(), symmetrictracker.get_x(), symmetrictracker.get_y());
+
+  pixacc = 0.05;
+  testrad = 5.5;
+  symmetrictracker.set_pixel_accuracy(pixacc);
+  printf("Timing how long it takes to optimize pos to %g pixels from a nearby position on average\n", pixacc);
+  avgcount = 100;
+  symmetrictracker.optimize(image, x,y);	      // Get back to the correct starting location
+  gettimeofday(&start, NULL);
+  for (i = 0; i < avgcount; i++) {
+    symmetrictracker.optimize_xy(image, x, y,
+      x + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2),
+      y + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2));
+  }
+  gettimeofday(&end, NULL);
+  printf("  Time: %lg seconds per optimization\n", duration(end, start)/avgcount);
+
   
   return 0;
 }
