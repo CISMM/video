@@ -359,6 +359,7 @@ bool  roper_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned 
 {
   //---------------------------------------------------------------------
   // In case we fail, clear these
+  //XXX This will miss the last pixel(s) when binning since they are past the max.
   _minX = minX * _binning;
   _maxX = maxX * _binning;
   _minY = minY * _binning;
@@ -509,8 +510,8 @@ bool	roper_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint8 &val
     return false;
   }
   uns16	*vals = (uns16 *)_memory;
-  uns16	cols = (_maxX - _minX)/_binning + 1;
-  val = (vrpn_uint8)(vals[Y*cols + X] >> 4);
+  uns16	cols = (_maxX - _minX + 1)/_binning;
+  val = (vrpn_uint8)(vals[(Y-_minY/_binning)*cols + (X-_minX/_binning)] >> 4);
   return true;
 }
 
@@ -528,8 +529,8 @@ bool	roper_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &va
     return false;
   }
   uns16	*vals = (uns16 *)_memory;
-  uns16	cols = (_maxX - _minX)/_binning + 1;
-  val = vals[Y*cols + X];
+  uns16	cols = (_maxX - _minX + 1)/_binning;
+  val = vals[(Y-_minY/_binning)*cols + (X-_minX/_binning)];
   return true;
 }
 

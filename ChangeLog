@@ -1,3 +1,19 @@
+2003-03-06  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* base_camera_server.h : Declaring functions const.
+	* directx_camera_server.cpp : Fixing pixel-lookup for subsetted images.
+	* roper_server.cpp : Making pixel-reading work when binning.
+	* spot_tracker.cpp : Changed the surround_frac to be smaller to make
+		it track the center correctly.
+	* stack_collector.cpp : Newline at end of file.
+	* video_spot_tracker.cpp : Lots of changes.  Added mouse-based direction
+		of point and radius.  Added ability to subset the display.
+		Added auto-subsetting following the tracked area.  Lets you
+		turn off the video display to speed things up.  Lets you
+		track either dark or white spots.  Image inversion where
+		needed in Y.  Debugging.  Doesn't post redisplay multiple
+		times between displays.
+
 2003-03-05  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
         * stack_collector.cpp : Made it so that you can select the region

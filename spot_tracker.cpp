@@ -2,6 +2,8 @@
 #include  <stdio.h>
 #include  "spot_tracker.h"
 
+//#define DEBUG
+
 disk_spot_tracker::disk_spot_tracker(double radius, bool inverted, double pixelaccuracy,
 				     double radiusaccuracy) :
     _rad(radius),	      // Initial radius of the disk
@@ -105,6 +107,12 @@ bool  disk_spot_tracker::take_single_optimization_step(const image_wrapper &imag
 // is inverted before returning it.  The fitness is normalized by the number of pixels
 // tested (pixels both within the radii and within the image).
 
+// Be careful when selecting the surround fraction below.  If the area in the off-
+// surround is larger than the on-area, the code seeks for dark surround more than
+// for bright center, effectively causing it to seek an inverted patch that is
+// that many times as large as the radius (switches dark-on-light vs. light-on-dark
+// behavior).
+
 // XXX Assuming that we are looking at a smooth function, we should do linear
 // interpolation and sample within the space of the disk kernel, rather than
 // point-sampling the nearest pixel.
@@ -115,7 +123,7 @@ double	disk_spot_tracker::check_fitness(const image_wrapper &image)
   int	  pixels = 0;			//< How many pixels we ended up using
   double  fitness = 0.0;		//< Accumulates the fitness values
   double  val;				//< Pixel value read from the image
-  double  surroundfac = 2.0;		//< How much larger the surround is
+  double  surroundfac = 1.3;		//< How much larger the surround is
   double  centerr2 = _rad * _rad;	//< Square of the center "on" disk radius
   double  surroundr2 = centerr2*surroundfac*surroundfac;  //< Square of the surround "off" disk radius
   double  dist2;			//< Square of the distance from the center
@@ -143,7 +151,7 @@ double	disk_spot_tracker::check_fitness(const image_wrapper &image)
 	}
       }
 
-      // See if we are within the outer disk (2 * radius)
+      // See if we are within the outer disk (surroundfac * radius)
       else if ( dist2 <= surroundr2 ) {
 	if (image.read_pixel(i,j,val)) {
 	  pixels++;

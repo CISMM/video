@@ -1,16 +1,15 @@
-//XXX Figure out mouse input so you can click on a place for it to go
-//XXX At least with the roper, it crashes when you pick a sub-image
-//XXX Image is inverted in Y...
+//XXX Make a vrpn_Tracker that reports the tracked position.
+//XXX Off-by-1 somewhere in Roper when binning (top line dark)
 //XXX PerfectOrbit video doesn't seem to play once it has been loaded!
 //    Pausing does make it jump to the end, like other videos
 //    LongOrbit behaves the same way... (both are large files)
 //    BigBeadCatch plays herky-jerky, especially with larger radius optimizer
 //    The test.avi program seemed to work smoothly.
-//XXX Make it so you can click with the mouse where you want it to track.
-//XXX Make it a vrpn_Tracker that reports the tracked position.
-//XXX Make tracking not get lost so easily.
 //XXX Pause seems to be broken on the video playback -- it skips to the end.
+//XXX All of the Y coordinates seem to be inverted in this code compared
+//    to the image-capture code.  Mouse, display, and video clipping.
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,22 +40,28 @@ base_camera_server  *g_camera;	    //< Camera used to get an image
 image_wrapper	    *g_image;	    //< Image wrapper for the camera
 directx_videofile_server  *g_video = NULL;  //< Video controls, if we have them
 unsigned char	    *g_glut_image = NULL; //< Pointer to the storage for the image
-disk_spot_tracker   g_tracker(5,true);   //< Follows the bead around.  Dark bead on light when this is true
+disk_spot_tracker   *g_tracker = new disk_spot_tracker(5,false);   //< Tracker to follow the bead, white-on-dark when false.
 bool		    g_ready_to_display = false;	//< Don't unless we get an image
+bool	g_already_posted = false;	//< Posted redisplay since the last display?
+int	g_mousePressX, g_mousePressY;	//< Where the mouse was when the button was pressed
+int		    g_shift = 0;	//< How many bits to shift right to get to 8
 
 //--------------------------------------------------------------------------
 // Tcl controls and displays
 Tclvar_float_with_scale	g_X("x", "", 0, 1391, 0);
 Tclvar_float_with_scale	g_Y("y", "", 0, 1039, 0);
 Tclvar_float_with_scale	g_Radius("radius", "", 1, 30, 5);
-Tclvar_float_with_scale	g_minX("minX", "", 0, 1391, 0);
-Tclvar_float_with_scale	g_maxX("maxX", "", 0, 1391, 1391);
-Tclvar_float_with_scale	g_minY("minY", "", 0, 1039, 0);
-Tclvar_float_with_scale	g_maxY("maxY", "", 0, 1039, 1039);
+Tclvar_float_with_scale	*g_minX;
+Tclvar_float_with_scale	*g_maxX;
+Tclvar_float_with_scale	*g_minY;
+Tclvar_float_with_scale	*g_maxY;
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
+Tclvar_int_with_button	g_invert("dark_spot","");
 Tclvar_int_with_button	g_opt("optimize","");
 Tclvar_int_with_button	g_globalopt("global_optimize_now","",1);
-Tclvar_int_with_button	g_mark("show_tracker","");
+Tclvar_int_with_button	g_small_area("small_area","");
+Tclvar_int_with_button	g_mark("show_tracker","",1);
+Tclvar_int_with_button	g_show_video("show_video","",1);
 Tclvar_int_with_button	g_quit("quit","");
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL;
 
@@ -73,7 +78,7 @@ public:
   }
   virtual bool	read_pixel(int x, int y, double &result) const {
     uns16 val;
-    if (get_pixel_from_memory(x, y, val)) {
+    if (get_pixel_from_memory(x, get_num_rows() - 1 - y, val)) {
       result = val;
       return true;
     } else {
@@ -91,7 +96,7 @@ public:
   }
   virtual bool	read_pixel(int x, int y, double &result) const {
     uns16 val;
-    if (get_pixel_from_memory(x, y, val)) {
+    if (get_pixel_from_memory(x, get_num_rows() - 1 - y, val)) {
       result = val;
       return true;
     } else {
@@ -109,7 +114,7 @@ public:
   }
   virtual bool	read_pixel(int x, int y, double &result) const {
     uns16 val;
-    if (get_pixel_from_memory(x, y, val)) {
+    if (get_pixel_from_memory(x, get_num_rows() - 1 - y, val)) {
       result = val;
       return true;
     } else {
@@ -126,16 +131,19 @@ bool  get_camera_and_imager(const char *type, base_camera_server **camera, image
     roper_imager *r = new roper_imager();
     *camera = r;
     *imager = r;
+    g_shift = 4;
   } else if (!strcmp(type, "directx")) {
     directx_imager *d = new directx_imager(1,640,480);	// Use camera #1 (first one found)
     *camera = d;
     *imager = d;
+    g_shift = 0;
   } else {
     fprintf(stderr,"get_camera_and_imager(): Assuming filename (%s)\n", type);
     directx_file_imager	*f = new directx_file_imager(type);
     *camera = f;
     *video = f;
     *imager = f;
+    g_shift = 0;
   }
   return true;
 }
@@ -148,6 +156,7 @@ static void  cleanup(void)
   // Done with the camera
   printf("Exiting\n");
   delete g_camera;
+  delete g_tracker;
   if (g_glut_image) { delete [] g_glut_image; };
   if (g_play) { delete g_play; };
   if (g_rewind) { delete g_rewind; };
@@ -155,7 +164,7 @@ static void  cleanup(void)
 
 void myDisplayFunc(void)
 {
-  unsigned  r,c,ir;
+  unsigned  r,c;
   vrpn_uint16  uns_pix;
 
   if (!g_ready_to_display) { return; }
@@ -165,31 +174,33 @@ void myDisplayFunc(void)
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT);
 
-  // Copy pixels into the image buffer.  Flip the image over in
-  // Y so that the image coordinates display correctly in OpenGL.
-  for (r = 0; r < g_camera->get_num_rows(); r++) {
-    ir = g_camera->get_num_rows() - r - 1;
-    for (c = 0; c < g_camera->get_num_columns(); c++) {
-      if (!g_camera->get_pixel_from_memory(c, r, uns_pix)) {
-	fprintf(stderr, "Cannot read pixel from region\n");
-	exit(-1);
-      }
+  if (g_show_video) {
+    // Copy pixels into the image buffer.  Flip the image over in
+    // Y so that the image coordinates display correctly in OpenGL.
+    for (r = *g_minY; r <= *g_maxY; r++) {
+      for (c = *g_minX; c <= *g_maxX; c++) {
+	if (!g_camera->get_pixel_from_memory(c, r, uns_pix)) {
+	  fprintf(stderr, "Cannot read pixel from region\n");
+	  cleanup();
+	  exit(-1);
+	}
       
-      // This assumes that the pixels are actually 8-bit values
-      // and will clip if they go above this.  It also writes pixels
-      // from the first channel into all colors of the image.
-      g_glut_image[0 + 3 * (c + g_camera->get_num_columns() * ir)] = uns_pix >> 4;
-      g_glut_image[1 + 3 * (c + g_camera->get_num_columns() * ir)] = uns_pix >> 4;
-      g_glut_image[2 + 3 * (c + g_camera->get_num_columns() * ir)] = uns_pix >> 4;
+	// This assumes that the pixels are actually 8-bit values
+	// and will clip if they go above this.  It also writes pixels
+	// from the first channel into all colors of the image.
+	g_glut_image[0 + 3 * (c + g_camera->get_num_columns() * r)] = uns_pix >> g_shift;
+	g_glut_image[1 + 3 * (c + g_camera->get_num_columns() * r)] = uns_pix >> g_shift;
+	g_glut_image[2 + 3 * (c + g_camera->get_num_columns() * r)] = uns_pix >> g_shift;
+      }
     }
-  }
 
-  // Store the pixels from the image into the frame buffer
-  // so that they cover the entire image (starting from lower-left
-  // corner, which is at (-1,-1)).
-  glRasterPos2f(-1, -1);
-  glDrawPixels(g_camera->get_num_columns(),g_camera->get_num_rows(),
-    GL_RGB, GL_UNSIGNED_BYTE, g_glut_image);
+    // Store the pixels from the image into the frame buffer
+    // so that they cover the entire image (starting from lower-left
+    // corner, which is at (-1,-1)).
+    glRasterPos2f(-1, -1);
+    glDrawPixels(g_camera->get_num_columns(),g_camera->get_num_rows(),
+      GL_RGB, GL_UNSIGNED_BYTE, g_glut_image);
+  }
 
   // If we have been asked to show the tracking marker, draw it.
   if (g_mark) {
@@ -200,9 +211,6 @@ void myDisplayFunc(void)
     double  dx = g_Radius * (2.0/g_camera->get_num_columns());
     double  dy = g_Radius * (2.0/g_camera->get_num_rows());
 
-    // Invert y to make it match the correct image coordinate system
-    y *= -1;
-
     glColor3f(1,0,0);
     glBegin(GL_LINES);
       glVertex2f(x-dx,y);
@@ -211,6 +219,23 @@ void myDisplayFunc(void)
       glVertex2f(x,y+dy);
     glEnd();
   }
+
+  // Draw a green border around the selected area.  It will be beyond the
+  // window border if it is set to the edges; it will just surround the
+  // region being selected if it is inside the window.
+  glColor3f(0,1,0);
+  glBegin(GL_LINE_STRIP);
+  glVertex3f( -1 + 2*((*g_minX-1) / (g_camera->get_num_columns()-1)),
+	      -1 + 2*((*g_minY-1) / (g_camera->get_num_rows()-1)) , 0.0 );
+  glVertex3f( -1 + 2*((*g_maxX+1) / (g_camera->get_num_columns()-1)),
+	      -1 + 2*((*g_minY-1) / (g_camera->get_num_rows()-1)) , 0.0 );
+  glVertex3f( -1 + 2*((*g_maxX+1) / (g_camera->get_num_columns()-1)),
+	      -1 + 2*((*g_maxY+1) / (g_camera->get_num_rows()-1)) , 0.0 );
+  glVertex3f( -1 + 2*((*g_minX-1) / (g_camera->get_num_columns()-1)),
+	      -1 + 2*((*g_maxY+1) / (g_camera->get_num_rows()-1)) , 0.0 );
+  glVertex3f( -1 + 2*((*g_minX-1) / (g_camera->get_num_columns()-1)),
+	      -1 + 2*((*g_minY-1) / (g_camera->get_num_rows()-1)) , 0.0 );
+  glEnd();
 
   // Swap buffers so we can see it.
   glutSwapBuffers();
@@ -238,46 +263,18 @@ void myDisplayFunc(void)
       }
     }
   }
+
+  // Have no longer posted redisplay since the last display.
+  g_already_posted = false;
 }
 
 void myIdleFunc(void)
 {
-  // Read an image from the camera into memory, within a structure that
-  // is wrapped by an image_wrapper object that the tracker can use.
-  // Tell Glut that it can display an image.
-  if (!g_camera->read_image_to_memory((int)g_minX,(int)g_maxX, (int)g_minY,(int)g_maxY, g_exposure)) {
-    fprintf(stderr, "Can't read image to memory!\n");
-    delete g_camera;
-    exit(-1);
-  }
-  g_ready_to_display = true;
-
-  if (g_opt) {
-    double  x, y;
-    g_tracker.set_radius(g_Radius);
-
-    // If the user has requested a global search, do this once and then reset the
-    // checkbox.  Otherwise, keep tracking the last feature found.
-    if (g_globalopt) {
-      g_tracker.locate_good_fit_in_image(*g_image, x,y);
-      g_tracker.optimize(*g_image, x, y);
-      g_globalopt = 0;
-    } else {
-      // Optimize to find the best fit starting from last position.
-      // Don't let it adjust the radius here (otherwise it gets too
-      // jumpy).
-      g_tracker.optimize_xy(*g_image, x, y, g_X, g_Y);
-    }
-
-    // Show the result
-    g_X = (float)x;
-    g_Y = (float)y;
-    g_Radius = (float)g_tracker.get_radius();
-  }
-
   //------------------------------------------------------------
   // This must be done in any Tcl app, to allow Tcl/Tk to handle
-  // events
+  // events.  This must happen at the beginning of the idle function
+  // so that the camera-capture and video-display routines are
+  // using the same values for the global parameters.
 
   while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
 
@@ -287,6 +284,55 @@ void myIdleFunc(void)
 
   if (Tclvar_mainloop()) {
     fprintf(stderr,"Tclvar Mainloop failed\n");
+  }
+
+  // If we are asking for a small region around the tracked dot,
+  // set the borders to be around the dot.
+  if (g_opt && g_small_area) {
+    (*g_minX) = g_X - 4*g_Radius;
+    (*g_minY) = g_Y - 4*g_Radius;
+    (*g_maxX) = g_X + 4*g_Radius;
+    (*g_maxY) = g_Y + 4*g_Radius;
+
+    // Make sure not to push them off the screen
+    if ((*g_minX) < 0) { (*g_minX) = 0; }
+    if ((*g_minY) < 0) { (*g_minY) = 0; }
+    if ((*g_maxX) >= g_camera->get_num_columns()) { (*g_maxX) = g_camera->get_num_columns() - 1; }
+    if ((*g_maxY) >= g_camera->get_num_rows()) { (*g_maxY) = g_camera->get_num_rows() - 1; }
+  }
+
+  // Read an image from the camera into memory, within a structure that
+  // is wrapped by an image_wrapper object that the tracker can use.
+  // Tell Glut that it can display an image.
+  if (!g_camera->read_image_to_memory((int)(*g_minX),(int)(*g_maxX), (int)(*g_minY),(int)(*g_maxY), g_exposure)) {
+    fprintf(stderr, "Can't read image to memory!\n");
+    cleanup();
+    exit(-1);
+  }
+  g_ready_to_display = true;
+
+  if (g_opt) {
+    double  x, y;
+    g_tracker->set_radius(g_Radius);
+
+    // If the user has requested a global search, do this once and then reset the
+    // checkbox.  Otherwise, keep tracking the last feature found.
+    if (g_globalopt) {
+      g_tracker->locate_good_fit_in_image(*g_image, x,y);
+      g_tracker->optimize(*g_image, x, y);
+      g_globalopt = 0;
+    } else {
+      // Optimize to find the best fit starting from last position.
+      // Invert the Y values on the way in and out.
+      // Don't let it adjust the radius here (otherwise it gets too
+      // jumpy).
+      g_tracker->optimize_xy(*g_image, x, y, g_X, g_camera->get_num_rows() - 1 - g_Y );
+    }
+
+    // Show the result
+    g_X = (float)x;
+    g_Y = (float)g_camera->get_num_rows() - 1 - y;
+    g_Radius = (float)g_tracker->get_radius();
   }
 
   //------------------------------------------------------------
@@ -318,7 +364,10 @@ void myIdleFunc(void)
 
   //------------------------------------------------------------
   // Post a redisplay so that Glut will draw the new image
-  glutPostRedisplay();
+  if (!g_already_posted) {
+    glutPostRedisplay();
+    g_already_posted = true;
+  }
 
   //------------------------------------------------------------
   // Time to quit?
@@ -331,6 +380,64 @@ void myIdleFunc(void)
   vrpn_SleepMsecs(1);
 }
 
+
+void mouseCallbackForGLUT(int button, int state, int x, int y) {
+
+    switch(button) {
+	case GLUT_LEFT_BUTTON:
+	  if (state == GLUT_DOWN) {
+	    // Move the pointer to where the user clicked.
+	    // Invert Y to match the coordinate systems.
+	    g_X = x;
+	    g_Y = g_camera->get_num_rows() - 1 - y;
+
+	    // Record where the button was pressed so we can change radius
+	    g_mousePressX = x;
+	    g_mousePressY = y;
+
+	    // Turn off optimization while we're picking.
+	    g_opt = 0;
+	  } else {
+	    // Turn optimization on, global optimization off.
+	    g_opt = 1;
+	    g_globalopt = 0;
+	  }
+	  break;
+	case GLUT_MIDDLE_BUTTON:
+	  g_mousePressX = g_mousePressY = -1;
+	  break;
+	case GLUT_RIGHT_BUTTON:
+	  g_mousePressX = g_mousePressY = -1;
+	  break;
+    }
+}
+
+void motionCallbackForGLUT(int x, int y) {
+
+  // Make sure the mouse press was valid
+  if ( (g_mousePressX < 0) || (g_mousePressY < 0) ) {
+    return;
+  }
+
+  // Clip the motion to stay within the window boundaries.
+  if (x < 0) { x = 0; };
+  if (y < 0) { y = 0; };
+  if (x >= (int)g_camera->get_num_columns()) { x = g_camera->get_num_columns() - 1; }
+  if (y >= (int)g_camera->get_num_rows()) { y = g_camera->get_num_rows() - 1; };
+
+  // Set the radius based on how far the user has moved from click
+  double radius = sqrt( (x - g_mousePressX) * (x - g_mousePressX) + (y - g_mousePressY) * (y - g_mousePressY) );
+  if (radius >= 3) {
+    g_Radius = radius;
+  }
+  return;
+}
+
+void	handle_invert_change(int newvalue, void *userdata)
+{
+  delete g_tracker;
+  g_tracker = new disk_spot_tracker(g_Radius, (newvalue != 0));
+}
 
 int main(int argc, char *argv[])
 {
@@ -442,6 +549,20 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
+  //------------------------------------------------------------------
+  // Initialize the controls for the clipping based on the size of
+  // the image we got.
+  g_minX = new Tclvar_float_with_scale("minX", "", 0, g_camera->get_num_columns()-1, 0);
+  g_maxX = new Tclvar_float_with_scale("maxX", "", 0, g_camera->get_num_columns()-1, g_camera->get_num_columns()-1);
+  g_minY = new Tclvar_float_with_scale("minY", "", 0, g_camera->get_num_rows()-1, 0);
+  g_maxY = new Tclvar_float_with_scale("maxY", "", 0, g_camera->get_num_rows()-1, g_camera->get_num_rows()-1);
+
+
+  //------------------------------------------------------------------
+  // Set up callbacks to track changes on the Tcl side
+
+  g_invert.set_tcl_change_callback(handle_invert_change, NULL);
+
   // Initialize GLUT and create the window that will display the
   // video -- name the window after the device that has been
   // opened in VRPN.
@@ -450,6 +571,8 @@ int main(int argc, char *argv[])
   glutInitWindowSize(g_camera->get_num_columns(), g_camera->get_num_rows());
   glutInitWindowPosition(5, 30);
   glutCreateWindow(device_name);
+  glutMotionFunc(motionCallbackForGLUT);
+  glutMouseFunc(mouseCallbackForGLUT);
 
   // Create the buffer that Glut will use to send to the screen
   if ( (g_glut_image = new unsigned char

@@ -11,8 +11,8 @@ public:
 
   /// Is the camera working properly?
   bool working(void) const { return _status; };
-  unsigned  get_num_rows(void) { return _num_rows / _binning; };
-  unsigned  get_num_columns(void) { return _num_columns / _binning; };
+  unsigned  get_num_rows(void) const { return _num_rows / _binning; };
+  unsigned  get_num_columns(void) const { return _num_columns / _binning; };
 
   /// Read an image to a memory buffer.  Max < min means "whole range".
   /// Setting binning > 1 packs more camera pixels into each image pixel, so

@@ -667,7 +667,7 @@ bool	directx_camera_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_u
   if ( (X < _minX) || (X > _maxX) || (Y < _minY) || (Y > _maxY) ) {
     return false;
   }
-  unsigned  cols = (_maxX - _minX) + 1;
+  unsigned  cols = _num_columns;
   val = _buffer[ (Y*cols + X) * 3 + RGB ];
   return true;
 }
@@ -687,7 +687,7 @@ bool	directx_camera_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_u
   if ( (X < _minX) || (X > _maxX) || (Y < _minY) || (Y > _maxY) ) {
     return false;
   }
-  unsigned  cols = (_maxX - _minX) + 1;
+  unsigned  cols = _num_columns;
   val = _buffer[ (Y*cols + X) * 3 + RGB ];
   return true;
 }
