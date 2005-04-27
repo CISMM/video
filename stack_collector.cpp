@@ -1,10 +1,5 @@
-//XXX Let the user set a directory to save in
 //XXX Make an HTML page in the directory describing the data set
 
-//XXX There is an infinite-loop problem with the focus control setting.
-//    It jumps back to the initial value when the slider is slid.  This
-//    happens with the Nikon stage; try this one out before going to the
-//    MCL stage (which could have serious clicking problems).
 //XXX There are some off-by-1 errors in the way the red lines are drawn, maybe to
 //    do with binning > 1.
 //XXX It is not possible to select all the way to the top or right
@@ -71,6 +66,7 @@ const double  METERS_PER_MICRON = 1e-6;
 //--------------------------------------------------------------------------
 // Tcl controls and displays
 
+void  logfilename_changed(char *newvalue, void *);
 void  handle_preview_change(int newvalue, void *);
 void  handle_tcl_focus_change(float newvalue, void *);
 void  move_focus_and_wait_until_it_gets_there(double where_to_go_meters);
@@ -78,24 +74,42 @@ Tclvar_float_with_scale	*g_minX;
 Tclvar_float_with_scale	*g_maxX;
 Tclvar_float_with_scale	*g_minY;
 Tclvar_float_with_scale	*g_maxY;
-Tclvar_float_with_scale	g_focus("focus_microns", "", 0, 100, 50, handle_tcl_focus_change);
-Tclvar_float_with_scale	g_focusDown("focus_lower_microns", "", -20, 0, -5);
-Tclvar_float_with_scale	g_focusUp("focus_raise_microns", "", 0, 20, 5);
-Tclvar_float_with_scale	g_focusStep("focus_step_microns", "", (float)0.05, 5, 1);
-Tclvar_float_with_scale	g_repeat("repeat", "", (float)1, 20, 1);
-Tclvar_float_with_scale	g_min_repeat_wait_sec("min_repeat_wait_secs", "", (float)0, 60, 0);
-Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
+Tclvar_float_with_scale	g_focus_command("focus_command_microns", "", 0, 100, 50, handle_tcl_focus_change);
+Tclvar_float_with_scale	g_focus("focus_microns", NULL, 0, 100, -1);
+Tclvar_float_with_scale	g_focusDown("focus_lower_microns", NULL, 0, 20, 5);
+Tclvar_float_with_scale	g_focusUp("focus_raise_microns", NULL, 0, 20, 5);
+Tclvar_float_with_scale	g_focusStep("focus_step_microns", NULL, (float)0.05, 5, 1);
+Tclvar_float_with_scale	g_number_of_stacks("number_of_stacks", NULL, (float)1, 20, 1);
+Tclvar_float_with_scale	g_min_repeat_wait_sec("min_repeat_wait_secs", NULL, (float)0, 60, 0);
+Tclvar_float_with_scale	g_exposure("exposure_millisecs", NULL, 1, 1000, 10);
 Tclvar_float_with_scale	g_gain("gain", "", 1, 32, 1);
 Tclvar_float_with_scale	g_close_enough("position_error_microns", "", 0.001, 1, 0.05);
-Tclvar_int_with_button	g_quit("quit","");
+Tclvar_int_with_button	g_quit("quit",NULL);
 // When the user pushes this button, the stack starts to be taken and it
 // continues until the end, then the program turns this back off.
-Tclvar_int_with_button	g_take_stack("take_stack","");
-Tclvar_int_with_button	g_sixteenbits("save_sixteen_bits","");
+Tclvar_int_with_button	g_take_stack("logging",NULL);
+Tclvar_selector		g_base_filename("logfilename", NULL, NULL, "", logfilename_changed);
+char *                  g_base_filename_char = NULL;
+Tclvar_int_with_button	g_sixteenbits("save_sixteen_bits",NULL);
 Tclvar_float_with_scale	g_pixelcount("pixels_from_camera","", 8,12, 8);
 Tclvar_int_with_button	g_step_past_bottom("step_past_bottom","",1);
-Tclvar_int_with_button	g_preview("preview","", 1, handle_preview_change);
+Tclvar_int_with_button	g_preview("preview_video","", 1, handle_preview_change);
 
+
+void  cleanup(void)
+{
+  glFinish();
+  glutDestroyWindow(g_window_id);
+
+  if (g_camera != NULL) { delete g_camera; };
+
+#ifndef	FAKE_STAGE
+  if (read_z) { delete read_z; read_z = NULL; };
+  if (set_z) { delete set_z; set_z = NULL; };
+  if (svr) { delete svr; svr = NULL; };
+  if (con) { delete con; con = NULL; };
+#endif
+}
 
 //--------------------------------------------------------------------------
 /// Open the wrapped camera we want to use depending on the name of the
@@ -176,13 +190,38 @@ void myDisplayFunc(void)
   g_already_posted = false;
 }
 
+// Set stack collecting to be on or off depending on whether
+// the logfilename is empty.  Also, copy the newvalue to the
+// string base name for the file because otherwise it can become
+// truncated (Tcl seems to have a maximum string length, or
+// perhaps it is the TclVars that do.
+void  logfilename_changed(char *newvalue, void *)
+{
+  if (strlen(newvalue) == 0) {
+    g_take_stack = 0;
+  } else {
+    if (g_base_filename_char != NULL) {
+      delete [] g_base_filename_char;
+    }
+    g_base_filename_char = new char[strlen(newvalue)+1];
+    if (g_base_filename_char == NULL) {
+      fprintf(stderr,"Out of memory allocating file name\n");
+      cleanup();
+      exit(-1);
+    }
+    strcpy(g_base_filename_char, newvalue);
+    g_take_stack = 1;
+  }
+}
+
 void  handle_tcl_focus_change(float newvalue_microns, void *)
 {
-  // XXX We want to enable control over the MCL stage
-  // here.  Maybe also control over the Nikon.  First, we
-  // need to figure out how to make it not oscillate back
-  // and forth between the value coming our way through
-  // VRPN and the value coming our way through Tcl.
+  // Send the request for a new position in meters to the Poser.
+  vrpn_float64  pos[3] = { 0, 0, newvalue_microns * METERS_PER_MICRON };
+  vrpn_float64  quat[4] = { 0, 0, 0, 1 };
+  struct timeval now;
+  gettimeofday(&now, NULL);
+  set_z->request_pose(now, pos, quat);
 }
 
 void  handle_preview_change(int newvalue, void *)
@@ -206,7 +245,7 @@ void  preview_image(base_camera_server *camera)
     for (x = *g_minX; x <= *g_maxX; x+= g_window_size_divisor) {
       // Mark the border in red
 #ifdef	FAKE_CAMERA
-      int val = ((x+y)%256) * g_gain;
+      int val = ((x+y + static_cast<int>((float)g_focus) )%256) * g_gain;
       if (val > 255) { val = 255; }
       *(rgb_i++) = val;
       *(rgb_i++) = val;
@@ -257,7 +296,6 @@ void  set_region_based_on_mouse(int sx, int sy, int fx, int fy)
     *g_minY = fy;
     *g_maxY = sy;
   }
-
 }
 
 void mouseCallbackForGLUT(int button, int state, int x, int y) {
@@ -294,21 +332,6 @@ void motionCallbackForGLUT(int x, int y) {
   return;
 }
 
-void  cleanup(void)
-{
-  glFinish();
-  glutDestroyWindow(g_window_id);
-
-  if (g_camera != NULL) { delete g_camera; };
-
-#ifndef	FAKE_STAGE
-  if (read_z) { delete read_z; read_z = NULL; };
-  if (set_z) { delete set_z; set_z = NULL; };
-  if (svr) { delete svr; svr = NULL; };
-  if (con) { delete con; con = NULL; };
-#endif
-}
-
 //--------------------------------------------------------------------------
 // Handles updates for the Stage from the microscope by setting the
 // focus to that location (in microns) and telling that the focus has changed.
@@ -318,7 +341,6 @@ void VRPN_CALLBACK handle_vrpn_focus_change(void *, const vrpn_TRACKERCB info)
   if (info.sensor == 0) {
     g_focus = info.pos[2] / METERS_PER_MICRON;
     g_focus_changed = true;
-    //printf("XXX New focus %g\n", (float)g_focus);
   }
 }
 
@@ -429,7 +451,7 @@ void myIdleFunc(void)
       // (which are in microns).  The VRPN values are reported in meters, so they don't get
       // converted here.
       double  startfocus;		      //< Where the focus started at connection time
-      double  focusdown = g_focusDown * METERS_PER_MICRON;    //< How far down to go when adjusting the focus (in meters)
+      double  focusdown = -g_focusDown * METERS_PER_MICRON;    //< How far down to go when adjusting the focus (in meters)
       double  focusstep = g_focusStep * METERS_PER_MICRON;    //< Step size to change the focus by (in meters)
       double  focusup = g_focusUp * METERS_PER_MICRON;	      //< How far above initial to set the focus (in meters)
       double  focusloop;		      //< Used to step the focus
@@ -476,7 +498,7 @@ void myIdleFunc(void)
       struct timeval last_stack_started;
 
       // Loop through the number of repeats we have been asked to do
-      for (repeat = 0; repeat < g_repeat; repeat++) {
+      for (repeat = 0; repeat < g_number_of_stacks; repeat++) {
 
         // Make sure we have waited the minimum time length since the
         // last time we collected a stack before starting the next
@@ -514,10 +536,16 @@ void myIdleFunc(void)
 	  }
 #endif
 	  // Write the image to a TIFF file.
-	  char name[1024];
+	  char name[4096];
+          if (strlen(g_base_filename_char) + 500 > sizeof(name)) {
+            fprintf(stderr,"File name too long -- not saving\n");
+            g_base_filename = "";
+            break;
+          }
+
           // The file name stores the REQUESTED height of the stack in nanometers, rounded to the nearest nm.
           // Store the stack relative to having a zero value at is lowest sampled location.
-	  sprintf(name, "output_image_G%03dR%02dNM%07ld.tif", (int)g_gain, repeat, (long)((focusloop-focusdown)/METERS_PER_MICRON*1000 + 0.5) );
+	  sprintf(name, "%s_G%03dR%02dNM%07ld.tif", g_base_filename_char, (int)g_gain, repeat, (long)((focusloop-focusdown)/METERS_PER_MICRON*1000 + 0.5) );
 	  printf("Writing image to %s\n", name);
 #ifndef	FAKE_CAMERA
 	  // Write the selected subregion to a TIFF file.
@@ -547,11 +575,11 @@ void myIdleFunc(void)
 	}
       }
 
-      // Put the focus back where it started.
+      // Put the focus back where it started.  Clear the logging name.
       printf("Setting focus back to %lg\n", startfocus/METERS_PER_MICRON);
       move_focus_and_wait_until_it_gets_there(startfocus);
       printf("Done with stack\n");
-      g_take_stack = 0;
+      g_base_filename = "";
     }
 
     //------------------------------------------------------------
@@ -585,7 +613,7 @@ void myIdleFunc(void)
     *g_maxX = floor(*g_maxX);
     *g_minY = floor(*g_minY);
     *g_maxY = floor(*g_maxY);
-    g_repeat = floor(g_repeat);
+    g_number_of_stacks = floor(g_number_of_stacks);
     g_gain = floor(g_gain);
 
     // Sleep a bit so as not to eat the whole CPU
@@ -711,7 +739,7 @@ int main(int argc, char *argv[])
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
   glutInitWindowSize(g_window_width, g_window_height);
-  glutInitWindowPosition(370, 40);
+  glutInitWindowPosition(370, 140);
   g_window_id = glutCreateWindow("Preview");
   // Set the display function and idle function for GLUT (they
   // will do all the work) and then give control over to GLUT.
@@ -773,7 +801,7 @@ int main(int argc, char *argv[])
                   tk_control_interp->result);
           return(-1);
   }
-  sprintf(command, "wm geometry .clip +200+10");
+  sprintf(command, "wm geometry .clip +200+110");
   if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
           fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
                   tk_control_interp->result);
@@ -789,6 +817,17 @@ int main(int argc, char *argv[])
           return(-1);
   }
   sprintf(command, "pack .versionlabel");
+  if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
+          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+                  tk_control_interp->result);
+          return(-1);
+  }
+
+  //------------------------------------------------------------------
+  // Load the specialized Tcl code needed by this program.  This must
+  // be loaded before the Tclvar_init() routine is called because it
+  // puts together some of the windows needed by the variables.
+  sprintf(command, "source stack_collector.tcl");
   if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
           fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
                   tk_control_interp->result);

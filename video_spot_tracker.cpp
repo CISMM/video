@@ -62,7 +62,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "04.00";
+const char *Version_string = "05.00";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -272,7 +272,7 @@ Tclvar_int_with_button	g_show_video("show_video","",1);
 Tclvar_int_with_button	g_show_debug("show_debug","",0, set_debug_visibility);
 Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
 Tclvar_int_with_button	g_kymograph("kymograph","",0, set_kymograph_visibility);
-Tclvar_int_with_button	g_quit("quit","");
+Tclvar_int_with_button	g_quit("quit",NULL);
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
 Tclvar_int		g_log_relative("logging_relative");
@@ -939,6 +939,15 @@ void myLandscapeDisplayFunc(void)
       }
     }
     g_active_tracker->xytracker()->set_location(start_x, start_y);
+    printf("XXX Min fit = %lg, max = %lg, center = %lg\n", min_val, max_val, g_active_tracker->xytracker()->check_fitness(*g_camera));
+    // XXX Some ideas for determining goodness of tracking for a bead.
+    // It looks like different metrics are needed for symmetric and cone and disc.
+    // For symmetric:
+    //    Value compared to initial value when tracking that bead: When in a flat area, it can be better.
+    //    Minimum over area vs. center value: get low-valued lobes in certain directions, but other directions bad.
+    //    Maximum at radius from center: How do you know what radius to select?
+    //      Max at radius of the minimum value from center: 
+    //    Maximum of all minima as you travel in different directions from center:
 
     // Copy pixels into the image buffer.
     // Scale and offset them to fit in the range 0-255.

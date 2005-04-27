@@ -1,3 +1,18 @@
+2005-04-27  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* mcl.cfg : Edited to work correctly, had a bug before in
+		the arguments to the MCL control.
+	* stack_collector.cpp : Moved a lot of the interface into
+		a TCL script.  Made it work with the MCL stage as well
+		as the Nikon stage.  Made it work with the Pulnix
+		camera.  Tested it running on Hercules with installer.
+	* stack_collector.tcl : Same.
+	* video_spot_tracker.cpp : Start of changes to include a
+		"I think I'm lost" function.  For now, just printouts
+		that need to be disabled again later.  Also moved "Quit"
+		button into TCL script.
+	* video_spot_tracker.tcl : Same.
+
 2005-02-17  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* cismm_video_optimizer.cpp : Version number change to match

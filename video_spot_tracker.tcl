@@ -2,6 +2,12 @@
 # Sets up the control panel for the Video Spot Tracker program.
 # XXX Eventually, it should handle all of the controls.
 
+###########################################################
+# Put in a big "Quit" button at the top of the main window.
+
+button .quit -text "Quit" -command { set quit 1 }
+pack .quit -side top -fill x
+
 # Global variable to remember where they are saving files.
 set fileinfo(open_dir) "C:\\"
 
