@@ -82,8 +82,22 @@ label .story.sec6.part1 -text "exposing for"
 pack .story.sec6.part1 -side left
 entry .story.sec6.part2 -textvariable exposure_millisecs -width 4
 pack .story.sec6.part2 -side left
-label .story.sec6.part3 -text "milliseconds."
+label .story.sec6.part3 -text "milliseconds,"
 pack .story.sec6.part3 -side left
+
+frame .story.sec6b
+pack .story.sec6b -fill x
+label .story.sec6b.part1 -text "with at least "
+pack .story.sec6b.part1 -side left
+entry .story.sec6b.part2 -textvariable min_image_wait_millisecs -width 4
+pack .story.sec6b.part2 -side left
+label .story.sec6b.part3 -text "milliseconds"
+pack .story.sec6b.part3 -side left
+
+frame .story.sec6c
+pack .story.sec6c -fill x
+label .story.sec6c.part1 -text "between successive images."
+pack .story.sec6c.part1 -side left
 
 frame .story.sec7
 pack .story.sec7
@@ -138,5 +152,8 @@ proc request_stack { } {
 	    # dialog check whether file exists.
 	    set logfilename $filename
 	    set fileinfo(open_dir) [file dirname $filename]
+	} else {
+	    # Blank file name, cancel stack
+	    set logfilename ""
 	}
 }

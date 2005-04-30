@@ -114,6 +114,7 @@ bool  init_server_code(const char *outgoing_logfile_name)
     fprintf(stderr, "Could not open Imager Server\n");
     return false;
   }
+  // XXX This should either be (red, green, blue) or (mono).
   if ( (svrchan = svr->add_channel("mono", "unknown", 0, (float)(g_maxval) )) == -1) {
     fprintf(stderr, "Could not add channel to server image\n");
     return false;

@@ -40,7 +40,7 @@ const unsigned FAKE_CAMERA_SIZE = 256;
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "02.02";
+const char *Version_string = "02.03";
 char  *g_device_name = NULL;			  //< Name of the device to open
 bool	g_focus_changed = false;
 base_camera_server  *g_camera = NULL;
@@ -79,11 +79,13 @@ Tclvar_float_with_scale	g_focus("focus_microns", NULL, 0, 100, -1);
 Tclvar_float_with_scale	g_focusDown("focus_lower_microns", NULL, 0, 20, 5);
 Tclvar_float_with_scale	g_focusUp("focus_raise_microns", NULL, 0, 20, 5);
 Tclvar_float_with_scale	g_focusStep("focus_step_microns", NULL, (float)0.05, 5, 1);
+Tclvar_float_with_scale	g_images_per_step("images_per_step", NULL, (float)1, 20, 1);
+Tclvar_float_with_scale	g_min_image_wait_millisecs("min_image_wait_millisecs", NULL, (float)0, 1000, 0);
 Tclvar_float_with_scale	g_number_of_stacks("number_of_stacks", NULL, (float)1, 20, 1);
 Tclvar_float_with_scale	g_min_repeat_wait_sec("min_repeat_wait_secs", NULL, (float)0, 60, 0);
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", NULL, 1, 1000, 10);
 Tclvar_float_with_scale	g_gain("gain", "", 1, 32, 1);
-Tclvar_float_with_scale	g_close_enough("position_error_microns", "", 0.001, 1, 0.05);
+Tclvar_float_with_scale	g_close_enough("position_error_microns", "", 0.001, 1, 0.1);
 Tclvar_int_with_button	g_quit("quit",NULL);
 // When the user pushes this button, the stack starts to be taken and it
 // continues until the end, then the program turns this back off.
@@ -496,6 +498,11 @@ void myIdleFunc(void)
       startfocus = g_focus * METERS_PER_MICRON;
 
       struct timeval last_stack_started;
+      last_stack_started.tv_sec = 0;
+      last_stack_started.tv_usec = 0;
+      struct timeval last_image_started;
+      last_image_started.tv_sec = 0;
+      last_image_started.tv_usec = 0;
 
       // Loop through the number of repeats we have been asked to do
       for (repeat = 0; repeat < g_number_of_stacks; repeat++) {
@@ -523,57 +530,87 @@ void myIdleFunc(void)
 	  printf("Going to %lg\n", focusloop/METERS_PER_MICRON);
 	  move_focus_and_wait_until_it_gets_there(focusloop);
 
-	  // Read the image from the camera.  If we are previewing,
-	  // then display the image in the video window.  We read
-	  // two images here to make sure that we flush any image
-	  // that was actually acquired before or during the move.
+          // We first read one image to make sure that we flush
+          // any image that was actually acquired before or during the move.
 #ifndef	FAKE_CAMERA
 	  g_camera->read_image_to_memory((int)*g_minX,(int)*g_maxX, (int)*g_minY,(int)*g_maxY, g_exposure);
-	  g_camera->read_image_to_memory((int)*g_minX,(int)*g_maxX, (int)*g_minY,(int)*g_maxY, g_exposure);
-	  if (g_preview) {
-	    preview_image(g_camera);
-	    myDisplayFunc();
-	  }
 #endif
-	  // Write the image to a TIFF file.
-	  char name[4096];
-          if (strlen(g_base_filename_char) + 500 > sizeof(name)) {
-            fprintf(stderr,"File name too long -- not saving\n");
-            g_base_filename = "";
-            break;
-          }
+          //-----------------------------------------------------
+	  // Read the requested number of images from the camera.
+          // If we are previewing, then display the image in the
+          // video window.
+          for (unsigned image = 0; image < g_images_per_step; image++) {
 
-          // The file name stores the REQUESTED height of the stack in nanometers, rounded to the nearest nm.
-          // Store the stack relative to having a zero value at is lowest sampled location.
-	  sprintf(name, "%s_G%03dR%02dNM%07ld.tif", g_base_filename_char, (int)g_gain, repeat, (long)((focusloop-focusdown)/METERS_PER_MICRON*1000 + 0.5) );
-	  printf("Writing image to %s\n", name);
+            // Make sure we have waited the minimum time length since the
+            // last time we grabbed an image before starting the next
+            // one.  This is true for images at the same location in the
+            // stack and for the last image taken at one stack location and
+            // the first image taken at the next.  It does not govern the
+            // time between two stacks; the first image from a second or
+            // later stack could be right after the last image from the
+            // previous stack.
+            if ( (focusloop != startfocus + focusdown) || (image > 0) ) {
+              wait_until_enough_time_has_passed_since(last_image_started, g_min_image_wait_millisecs / 1000.0);
+            }
+            gettimeofday(&last_image_started, NULL);
 #ifndef	FAKE_CAMERA
-	  // Write the selected subregion to a TIFF file.
-	  g_camera->write_to_tiff_file(name, (int)(g_gain * (g_sixteenbits ? 1 : 256 )), g_sixteenbits != 0);
+	    g_camera->read_image_to_memory((int)*g_minX,(int)*g_maxX, (int)*g_minY,(int)*g_maxY, g_exposure);
+	    if (g_preview) {
+	      preview_image(g_camera);
+	      myDisplayFunc();
+	    }
 #endif
-	  //------------------------------------------------------------
-	  // This must be done in any Tcl app, to allow Tcl/Tk to handle
-	  // events.
+	    // Write the image to a TIFF file.
+	    char name[4096];
+            if (strlen(g_base_filename_char) + 500 > sizeof(name)) {
+              fprintf(stderr,"File name too long -- not saving\n");
+              g_base_filename = "";
+              break;
+            }
 
-	  while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
+            // Figure out the name of the image, inserting numbers to show
+            // variability where there is more than one element in the loop.
+            char repeat_string[100];
+            repeat_string[0] = 0;
+            if (g_number_of_stacks > 1) { sprintf(repeat_string,"R%02d", repeat); }
+            char image_string[100];
+            image_string[0] = 0;
+            if (g_images_per_step > 1) { sprintf(image_string,"I%02d", image); }
+            // The file name stores the REQUESTED height of the stack in nanometers, rounded to the nearest nm.
+            // Store the stack relative to having a zero value at its lowest sampled location.
+	    sprintf(name, "%s_G%03d%sNM%07ld%s.tif", g_base_filename_char, (int)g_gain, repeat_string,
+              (long)((focusloop-startfocus-focusdown)/METERS_PER_MICRON*1000 + 0.5), image_string );
+	    printf("Writing image to %s\n", name);
+#ifndef	FAKE_CAMERA
+	    // Write the selected subregion to a TIFF file.
+	    g_camera->write_to_tiff_file(name, (int)(g_gain * (g_sixteenbits ? 1 : 256 )), g_sixteenbits != 0);
+#endif
+	    //------------------------------------------------------------
+	    // This must be done in any Tcl app, to allow Tcl/Tk to handle
+	    // events.
 
-          //------------------------------------------------------------
-          // This is called once every time through the main loop.  It
-          // pushes changes in the C variab`les over to Tcl.
+	    while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
 
-          if (Tclvar_mainloop()) {
-	          fprintf(stderr,"Mainloop failed\n");
-	          exit(-1);
-          }
+            //------------------------------------------------------------
+            // This is called once every time through the main loop.  It
+            // pushes changes in the C variab`les over to Tcl.
 
-	  //------------------------------------------------------------
-	  // If the user has deselected the "take_stack" or pressed "quit" then
-	  // break out of the loop.
-	  if ( g_quit || !g_take_stack) {
-	    break;
-	  }
-	}
-      }
+            if (Tclvar_mainloop()) {
+	            fprintf(stderr,"Mainloop failed\n");
+	            exit(-1);
+            }
+
+	    //------------------------------------------------------------
+	    // If the user has deselected the "take_stack" or pressed "quit" then
+	    // break out of the loop.
+	    if ( g_quit || !g_take_stack) {
+	      goto jump_out_because_user_pressed_quit;
+	    }
+          } // End of one image acquisition
+	} // End of one stack acquisition
+      } // End of set of stack acquisitions
+
+jump_out_because_user_pressed_quit:
 
       // Put the focus back where it started.  Clear the logging name.
       printf("Setting focus back to %lg\n", startfocus/METERS_PER_MICRON);
@@ -630,7 +667,7 @@ int main(int argc, char *argv[])
 {
   g_device_name = "directx";
   char  *config_file_name = "nikon.cfg";
-  char	*Stage_name = "Focus";
+  char	*Stage_name = "Focus@localhost";
   bool	use_local_server = true;
   con = NULL;
   svr = NULL;
@@ -661,7 +698,7 @@ int main(int argc, char *argv[])
     } else {
       config_file_name = new char[strlen(Stage_name) + 4];
       if (config_file_name == NULL) {
-        fprintf(stderr,"Out of memory allocating configuratin file name\n");
+        fprintf(stderr,"Out of memory allocating configuration file name\n");
         exit(-1);
       }
 

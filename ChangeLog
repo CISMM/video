@@ -1,3 +1,11 @@
+2005-04-29  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* stack_collector.cpp : Adds a field that controls how many
+		images are taken at one focal plane and another that
+		sets the minimum delay between images.
+	* stack_collector.tcl : Same.
+	* video_imager_server.cpp : Comment changes.
+
 2005-04-27  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* mcl.cfg : Edited to work correctly, had a bug before in
