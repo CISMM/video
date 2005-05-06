@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v04.00</title>
+<title>Video Spot Tracker v04.01</title>
 
-<h1>Video Spot Tracker version 04.00</h1>
+<h1>Video Spot Tracker version 04.01</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -21,13 +21,13 @@
   icon that was created when the program was installed. To select a stack of image 
   files that are numbered consecutively, drag any one of the files onto the icon. 
   It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
-  Menu/All Programs/NSRG/Video Spot Tracker v04.00</b></i>. If you run the program 
+  Menu/All Programs/NSRG/Video Spot Tracker v04.01</b></i>. If you run the program 
   directly by double-clicking on the icon, it will ask for a video or image file 
   (AVI, TIF, or BMP) that it should open.</p>
 
 <p><b><i>NOTE:</i></b> With Windows XP service pack 2 and with other firewall software, running the program causes a dialog box to appear asking whether to block the program; the program needs to be unblocked only if the program is to be connected to a local or remote feedback system that relies on the tracking data. This happens when the program opens the Internet port assigned to it (3883) by the Internet Domain Naming Authority to export the data through the standard VRPN protocol (<a href="http://www.vrpn.org">www.vrpn.org</a>).</p> 
 
-<h2><img src="GUI.jpg" width="161" height="740" align="right">Using the program</h2>
+<h2><img src="GUI.jpg" width="161" height="806" align="right">Using the program</h2>
 
 <p>When the program is run and a file is selected, four windows will appear. The image window that appears on the lower right contains the first image within the video file or a continually-updating image from a live camera feed. The control panel named <b><i>tk</i></b> that appears on the left when the program is run (shown here to the right) contains a number of interaction widgets that control the operation of the program. The <b><i>kernel</i></b> control panel that appears above the image window (described later) controls the type of tracking kernel being used. The <b><i>log</i></b> control panel is described later.</p>
 
@@ -57,7 +57,7 @@
 
 <p><img src="kernel.jpg" width="688" height="117"></p>
 
-<p>There are three types of tracking kernels available in version 4.00: disc, 
+<p>There are three types of tracking kernels available in version 4.01: disc, 
   cone, and symmetric. Their properties are controlled using interface widgets 
   in the <cite>kernel</cite> control panel.</p>
 
@@ -89,7 +89,6 @@
 <p>This following can be made faster (and slightly less reliable) by using estimated velocity to predict where the bead will be and reducing the search area. This is only true for beads whose motion is driven by a force; using velocity estimation on Brownian motion will produce worse results. Prediction is enabled by selecting the <cite><strong>predict</strong></cite> check-box. It is not recommended to use prediction without follow_jumps unless the motion is very linear. To get the tracker to reliably lock on, it is important to catch the bead when it is moving relatively slowly because the initial velocity estimate is zero velocity.</p> 
 
 <h3>Activating the trackers</h3>
-
 <p>Once you have selected the type of tracker to use, and have selected spots 
   to track, check the <cite>optimize</cite> checkbox. When you do this, the trackers 
   should all move themselves to the centers of the spots they were started on. 
@@ -102,6 +101,23 @@
   and then selecting the spread function's TIF file in the dialog box that appears. 
   The Z location will now be updated based on the spread-function stack.</p>
 
+<h3>Checking for lost trackers</h3>
+<h3></h3>
+<p>There is a <i>lost_tracking_sensitivity</i> slider located on the main control 
+  panel that sets a threshold for detection of lost tracking. A threshold setting 
+  of zero disables this feature, and is the default. The actual threshold depends 
+  on the type of kernel you are using to track; this slider provides a normalized 
+  &quot;how sensitive&quot; control that should be approximately the same across 
+  types. If the threshold is exceeded while tracking, the program will say &quot;lost&quot; 
+  and will immediately stop going forward in the video until the problem is corrected. 
+  The tracker causing the problem is made active (red), so that you can find the 
+  troublemaker easily.</p>
+<p>The problem can be corrected by moving the tracker back onto the bead, or by 
+  reducing the sensitivity threshold so that the criterion is met. Once the threshold 
+  is met, the program may skip ahead a frame or two in video formats such as AVI 
+  whose player provides buffered playout. It will then pause. Pressing &quot;Play&quot; 
+  at this point will resume activity through the file.</p>
+<p></p>
 <h3>Faster display update</h3>
 
 <p><img src="small_area.jpg" width="162" height="175" align="right">Once you have created all of the trackers you want, you may check the <cite><strong>small_area</strong></cite> checkbox. This will cause the program to limit its update to a small area of pixels that surrounds the active trackers. This requires less processing and makes the update rate faster when the video is played. For the Roper and SPOT cameras, it also reduces the amount of data transmitted from the camera itself, again increasing the frame rate. This area will update itself as the trackers move, and it extends 4 radii past each tracker. This should enable the trackers to continue to track spots that are moving away from the updated video area.  A green box shows up in the video window to indicate the area being updated.</p>
@@ -132,7 +148,7 @@
   program was. You convert the &quot;.vrpn&quot; file into a Matlab file by dragging 
   it onto a shortcut that points to the program (or by dragging it onto the program 
   itself). The vrpnLogToMatlab program will have been installed in the directory: 
-  <b><i>C:\Program Files\NSRG\Video Spot Tracker v04.00\VrpnLogToMatlib</i></b> 
+  <b><i>C:\Program Files\NSRG\Video Spot Tracker v04.01\VrpnLogToMatlib</i></b> 
   and it will also be located on the desktop.</p>
 
 <p><strong>Data description:</strong> Positions and radii are reported in units of pixels, with the origin at the upper-right corner of the screen. +X is towards the right on the displayed window and +Y is towards the bottom.</p>
@@ -165,6 +181,20 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 4.01:</h3>
+<ul>
+  <li>Adds heuristic to determine when tracking is not being robust, and a slider 
+    to select a threshold value. When the threshold is exceeded, the program says 
+    &quot;lost&quot; and stops playback of the video until the problem is corrected. 
+    This is intended to be used to enable eyes-free use of the program without 
+    having the trackers go wandering off to nowhere while you're not looking. 
+    It also provides frame-accurate stopping, so that even with video file formats 
+    like AVI that have a buffer of frames, it stops right at the frame where the 
+    problem is. The heuristics for symmetric-kernel tracking are optimized more 
+    than those for the disc and cone kernels; no telling if they work very well.</li>
+  <li>Big, fat &quot;Quit&quot; button added in place of wimpy little check-box 
+    that easily got lost in the noisy interface.</li>
+</ul>
 <h3>Version 4.00:</h3>
 <ul>
   <li>Modified the output format for both the CSV and VRPN files to include the 

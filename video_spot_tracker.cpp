@@ -62,12 +62,12 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.00";
+const char *Version_string = "04.01";
 
 //--------------------------------------------------------------------------
 // Global constants
 
-const int KERNEL_DISC = 0;	  //< These must match the values used in video_spot_tracker.tcl.
+const int KERNEL_DISK = 0;	  //< These must match the values used in video_spot_tracker.tcl.
 const int KERNEL_CONE = 1;
 const int KERNEL_SYMMETRIC = 2;
 
@@ -204,6 +204,7 @@ bool		    g_ready_to_display = false;	  //< Don't unless we get an image
 bool		    g_already_posted = false;	  //< Posted redisplay since the last display?
 int		    g_mousePressX, g_mousePressY; //< Where the mouse was when the button was pressed
 int		    g_whichDragAction;		  //< What action to take for mouse drag
+bool                g_tracker_is_lost = false;    //< Is there a lost tracker?
 
 vrpn_Connection	    *g_vrpn_connection = NULL;    //< Connection to send position over
 vrpn_Tracker_Server *g_vrpn_tracker = NULL;	  //< Tracker server to send positions
@@ -252,6 +253,7 @@ Tclvar_float_with_scale	g_colorIndex("red_green_blue", "", 0, 2, 0);
 Tclvar_float_with_scale	g_bitdepth("bit_depth", "", 8, 12, 8);
 Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_trackers);
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
+Tclvar_float_with_scale g_lossSensitivity("lost_tracking_sensitivity", "", 0.0, 1.0, 0.0);
 Tclvar_int_with_button	g_invert("dark_spot",NULL,1, rebuild_trackers);
 Tclvar_int_with_button	g_interpolate("interpolate",NULL,1, rebuild_trackers);
 Tclvar_int_with_button	g_parabolafit("parabolafit",NULL,0);
@@ -679,6 +681,7 @@ void myDisplayFunc(void)
 	  glVertex2f(x+dx,y+dy);
 	glEnd();
       } else if (g_round_cursor) {
+        // First, make a ring that is twice the radius so that it does not obscure the border.
 	double stepsize = M_PI / (*loop)->xytracker()->get_radius();
 	double runaround;
 	glBegin(GL_LINE_STRIP);
@@ -686,6 +689,14 @@ void myDisplayFunc(void)
 	    glVertex2f(x + 2*dx*cos(runaround),y + 2*dy*sin(runaround));
 	  }
 	  glVertex2f(x + 2*dx, y);  // Close the circle
+	glEnd();
+        // Then, make four lines coming from the cirle in to the radius of the spot
+        // so we can tell what radius we have set
+	glBegin(GL_LINES);
+	  glVertex2f(x+dx,y); glVertex2f(x+2*dx,y);
+	  glVertex2f(x,y+dy); glVertex2f(x,y+2*dy);
+	  glVertex2f(x-dx,y); glVertex2f(x-2*dx,y);
+	  glVertex2f(x,y-dy); glVertex2f(x,y-2*dy);
 	glEnd();
       } else {
 	glBegin(GL_LINES);
@@ -706,7 +717,7 @@ void myDisplayFunc(void)
 	default: break;
 	}
       }
-      drawStringAtXY(x+dx,y, numString);
+      drawStringAtXY(x+2*dx,y, numString);
     }
   }
 
@@ -938,16 +949,6 @@ void myLandscapeDisplayFunc(void)
 	if (this_val > max_val) { max_val = this_val; }
       }
     }
-    g_active_tracker->xytracker()->set_location(start_x, start_y);
-    printf("XXX Min fit = %lg, max = %lg, center = %lg\n", min_val, max_val, g_active_tracker->xytracker()->check_fitness(*g_camera));
-    // XXX Some ideas for determining goodness of tracking for a bead.
-    // It looks like different metrics are needed for symmetric and cone and disc.
-    // For symmetric:
-    //    Value compared to initial value when tracking that bead: When in a flat area, it can be better.
-    //    Minimum over area vs. center value: get low-valued lobes in certain directions, but other directions bad.
-    //    Maximum at radius from center: How do you know what radius to select?
-    //      Max at radius of the minimum value from center: 
-    //    Maximum of all minima as you travel in different directions from center:
 
     // Copy pixels into the image buffer.
     // Scale and offset them to fit in the range 0-255.
@@ -1169,8 +1170,10 @@ void myIdleFunc(void)
   // If we are asking for a small region around the tracked dot,
   // set the borders to be around the set of trackers.
   // This will be a min/max over all of the
-  // bounding boxes.
-  if (g_opt && g_small_area && g_active_tracker) {
+  // bounding boxes.  Do not do this if the tracker is lost, mainly
+  // because it causes the program to exit when a wanted pixel is not
+  // found but also because we don't want to follow the lost tracker.
+  if (g_opt && g_small_area && g_active_tracker && !g_tracker_is_lost) {
     // Initialize it with values from the active tracker, which are stored
     // in the global variables.
     (*g_minX) = g_X - 4*g_Radius;
@@ -1220,30 +1223,38 @@ void myIdleFunc(void)
   // We ignore the error return if we're doing a video file because
   // this can happen due to timeouts when we're paused or at the
   // end of a file.
-  if (!g_camera->read_image_to_memory((int)(*g_minX),(int)(*g_maxX), (int)(*g_minY),(int)(*g_maxY), g_exposure)) {
-    if (!g_video) {
-      fprintf(stderr, "Can't read image to memory!\n");
-      cleanup();
-      exit(-1);
-    } else {
-      // We timed out; either paused or at the end.  Don't log in this case.
-      g_video_valid = false;
 
-      // If we are playing, then say that we've finished the run and
-      // stop playing.
-      if (((int)(*g_play)) != 0) {
-#ifdef	_WIN32
-	if (!PlaySound("end_of_video.wav", NULL, SND_FILENAME | SND_ASYNC)) {
-	  fprintf(stderr,"Cannot play sound %s\n", "end_of_video.wav");
-	}
-#endif
-	*g_play = 0;
+  // If we have a lost tracker, then do not attempt to read more frames
+  // from the camera.  This is intended to prevent us from going
+  // past the frame before the problem is corrected, either by
+  // moving the tracker back on or by adjusting the sensitivity.
+
+  if (!g_tracker_is_lost) {
+    if (!g_camera->read_image_to_memory((int)(*g_minX),(int)(*g_maxX), (int)(*g_minY),(int)(*g_maxY), g_exposure)) {
+      if (!g_video) {
+        fprintf(stderr, "Can't read image to memory!\n");
+        cleanup();
+        exit(-1);
+      } else {
+        // We timed out; either paused or at the end.  Don't log in this case.
+        g_video_valid = false;
+
+        // If we are playing, then say that we've finished the run and
+        // stop playing.
+        if (((int)(*g_play)) != 0) {
+  #ifdef	_WIN32
+	  if (!PlaySound("end_of_video.wav", NULL, SND_FILENAME | SND_ASYNC)) {
+	    fprintf(stderr,"Cannot play sound %s\n", "end_of_video.wav");
+	  }
+  #endif
+	  *g_play = 0;
+        }
       }
+    } else {
+      // Got a valid video frame; can log it.  Add to the frame number.
+      g_video_valid = true;
+      g_frame_number++;
     }
-  } else {
-    // Got a valid video frame; can log it.  Add to the frame number.
-    g_video_valid = true;
-    g_frame_number++;
   }
   g_ready_to_display = true;
 
@@ -1279,8 +1290,12 @@ void myIdleFunc(void)
 	exit(-1);
       }
     }
-
   }
+
+  // Nobody is known to be lost yet...
+  g_tracker_is_lost = false;
+
+  // Optimize all trackers and see if they are lost.
   if (g_opt && g_active_tracker) {
     double  x, y;
 
@@ -1402,6 +1417,109 @@ void myIdleFunc(void)
 	(*loop)->set_acceleration(new_acc);
       }
 
+      // If we have a non-zero threshold for determining if we are lost,
+      // check and see if we are.  This is done by finding the value of
+      // the fitness function at the actual tracker location and comparing
+      // it to the maximum values located on concentric rings around the
+      // tracker.  We look for the minimum of these maximum values (the
+      // deepest moat around the peak in the center) and determine if we're
+      // lost based on the type of kernel we are using.
+      // Some ideas for determining goodness of tracking for a bead...
+      //   (It looks like different metrics are needed for symmetric and cone and disk.)
+      // For symmetric:
+      //    Value compared to initial value when tracking that bead: When in a flat area, it can be better.
+      //    Minimum over area vs. center value: get low-valued lobes in certain directions, but other directions bad.
+      //    Maximum of all minima as you travel in different directions from center: dunno.
+      //    Maximum at radius from center: How do you know what radius to select?
+      //      Max at radius of the minimum value from center?
+      //      Minimum of the maxima over a number of radii? -- Yep, we're trying this one.
+      if (g_lossSensitivity > 0.0) {
+        double min_val = 1e100; //< Min over all circles
+        double start_x = (*loop)->xytracker()->get_x();
+        double start_y = (*loop)->xytracker()->get_y();
+        double this_val;
+        double r, theta;
+        double x, y;
+        // Only look every two-pixel radius from three out to the radius of the tracker.
+        for (r = 3; r <= (*loop)->xytracker()->get_radius(); r += 2) {
+          double max_val = -1e100;  //< Max over this particular circle
+          // Look at every pixel around the circle.
+          for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
+            x = r * cos(theta);
+            y = r * sin(theta);
+	    (*loop)->xytracker()->set_location(x + start_x, y + start_y);
+	    this_val = (*loop)->xytracker()->check_fitness(*g_camera);
+	    if (this_val > max_val) { max_val = this_val; }
+          }
+	  if (max_val < min_val) { min_val = max_val; }
+        }
+        //Put the tracker back where it started.
+        (*loop)->xytracker()->set_location(start_x, start_y);
+
+        // See if we are lost.  The way we tell if we are lost or not depends
+        // on the type of kernel we are using.  It also depends on the setting of
+        // the "lost sensitivity" parameter, which varies from 0 (not sensitive at
+        // all) to 1 (most sensitive).
+        double starting_value = (*loop)->xytracker()->check_fitness(*g_camera);
+        //printf("XXX Center = %lg, min of maxes = %lg, scale = %lg\n", starting_value, min_val, min_val/starting_value);
+        if (g_kernel_type == KERNEL_SYMMETRIC) {
+          // The symmetric kernel reports values that are strictly non-positive for
+          // its fitness function.  Some observation of values reveals that the key factor
+          // seems to be how many more times negative the "moat" is than the central peak.
+          // Based on a few observations of different bead tracks, it looks like a factor
+          // of 2 is almost always too small, and a factor of 4-10 is almost always fine.
+          // So, we'll set the "scale factor" to be between 1 (when sensitivity is just
+          // above zero) and 10 (when the scale factor is just at one).  If a tracker gets
+          // lost, set it to be the active tracker so the user can tell which one is
+          // causing trouble.
+          double scale_factor = 1 + 9*g_lossSensitivity;
+          if (starting_value * scale_factor < min_val) {
+            g_tracker_is_lost = true;
+            g_active_tracker = *loop;
+          }
+        } else if (g_kernel_type == KERNEL_CONE) {
+          // Differences (not factors) of 0-5 seem more appropriate for a quick test of the cone kernel.
+          double difference = 5*g_lossSensitivity;
+          if (starting_value - min_val < difference) {
+            g_tracker_is_lost = true;
+            g_active_tracker = *loop;
+          }
+        } else {  // Must be a disk kernel
+          // Differences (not factors) of 0-5 seem more appropriate for a quick test of the disk kernel.
+          double difference = 5*g_lossSensitivity;
+          if (starting_value - min_val < difference) {
+            g_tracker_is_lost = true;
+            g_active_tracker = *loop;
+          }
+        }
+
+        if (g_tracker_is_lost) {
+          // If we have a playable video and the video is not paused, then say we're lost and pause it.
+          if (g_play != NULL) {
+            if (*g_play) {
+              fprintf(stderr, "Lost in frame %d\n", (int)(float)(g_frame_number));
+              if (g_video) { g_video->pause(); }
+              *g_play = 0;
+#ifdef	_WIN32
+	      if (!PlaySound("lost.wav", NULL, SND_FILENAME | SND_ASYNC)) {
+	        fprintf(stderr,"Cannot play sound %s\n", "lost.wav");
+	      }
+#endif
+            }
+          }
+
+          // XXX What to do about video that cannot be paused at the exact instant, like AVI?
+          // XXX Do not attempt to pause live video, but do tell that we're lost -- only tell once.
+        }
+      }
+
+      // If we are optimizing in Z, then do it here.
+      if (g_opt_z) {
+        double  z = 0;
+        (*loop)->ztracker()->locate_close_fit_in_depth(*g_camera, (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y(), z);
+        (*loop)->ztracker()->optimize(*g_camera, (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y(), z);
+      }
+
       // If we are running a kymograph, then we don't optimize any trackers
       // past the first two because they are only there as markers in the
       // image for cell boundaries.
@@ -1413,15 +1531,6 @@ void myIdleFunc(void)
     }
 
     last_optimized_frame_number = g_frame_number;
-  }
-
-  // If we are optimizing in Z, then do it here.
-  if (g_opt_z && g_active_tracker) {
-    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-      double  z = 0;
-      (*loop)->ztracker()->locate_close_fit_in_depth(*g_camera, (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y(), z);
-      (*loop)->ztracker()->optimize(*g_camera, (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y(), z);
-    }
   }
 
   // Update the kymograph if it is active and if we have a new video frame.

@@ -123,7 +123,7 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
   // Construct the sample grabber callback handler that will be used
   // to receive image data from the sample grabber.
   if ( (_pCallback = new directx_samplegrabber_callback()) == NULL) {
-    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't create sample grabber callback handler (out of memory?)\n");
+    fprintf(stderr,"directx_videofile_server::open_and_find_parameters(): Can't create sample grabber callback handler (out of memory?)\n");
     return false;
   }
 
@@ -225,14 +225,14 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
   } else {
     _num_columns = pVih->rcTarget.right;
     _num_rows = pVih->bmiHeader.biHeight;
-    printf("XXX directx_camera_server::open_and_find_parameters(): Warning: may not work correctly with target rectangle\n");
+    printf("XXX directx_videofile_server::open_and_find_parameters(): Warning: may not work correctly with target rectangle\n");
   }
   printf("Got %dx%d video\n", _num_columns, _num_rows);
 
   // Make sure that the image is not compressed and that we have 8 bits
   // per pixel.
   if (pVih->bmiHeader.biCompression != BI_RGB) {
-    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Compression not RGB\n");
+    fprintf(stderr,"directx_videofile_server::open_and_find_parameters(): Compression not RGB\n");
     switch (pVih->bmiHeader.biCompression) {
       case BI_RLE8:
 	fprintf(stderr,"  (It is BI_RLE8)\n");
@@ -249,7 +249,7 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
   }
   int BytesPerPixel = pVih->bmiHeader.biBitCount / 8;
   if (BytesPerPixel != 3) {
-    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Not 3 bytes per (%d)\n",
+    fprintf(stderr,"directx_videofile_server::open_and_find_parameters(): Not 3 bytes per (%d)\n",
       pVih->bmiHeader.biBitCount);
     return false;
   }
@@ -258,7 +258,7 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
   // Not sure what to do with images that have negative height -- need to
   // read the book some more to find out.
   if (_num_rows < 0) {
-    fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Num Rows is negative (internal error)\n");
+    fprintf(stderr,"directx_videofile_server::open_and_find_parameters(): Num Rows is negative (internal error)\n");
     return false;
   }
 

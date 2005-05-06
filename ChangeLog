@@ -1,3 +1,13 @@
+2005-05-06  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* directx_videofile_server.cpp : Fixed error messages (copy/paste
+		error left wrong class name).
+	* video_spot_tracker.cpp : Added a bit "Quit" button, rather than
+		the small check-box hidden down in the "Sea of Tcl".  Also
+		added a "tell if I'm lost" feature that stops the tracking
+		when a tracker has too small of a signal on a bead.
+	* lost.wav : The sound it plays when it gets lost.
+
 2005-04-29  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* stack_collector.cpp : Adds a field that controls how many
