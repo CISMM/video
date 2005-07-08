@@ -1,3 +1,16 @@
+2005-07-08  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* SEM_camera_server.cpp : Removed Synchronized from VRPN connections.
+	* SEM_camera_server.h : Same.
+	* diaginc_server.cpp : Same.
+	* directx_camera_server.cpp : Same.
+	* edt_server.cpp : Same.
+	* file_stack_server.cpp : Same.
+	* file_stack_server.h : Same.
+	* roper_server.cpp : Same.
+	* stack_collector.cpp : Same.
+	* video_spot_tracker.cpp : Same.
+
 2005-06-06  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* base_camera_server.h : Modified to use an unsynchronized VRPN

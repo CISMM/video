@@ -576,7 +576,7 @@ bool	diaginc_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &
 }
 
 // XXX This routine needs to be tested.
-bool diaginc_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan, int)
+bool diaginc_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int)
 {
     _minX=_minY=0;
     _maxX=_num_columns - 1;

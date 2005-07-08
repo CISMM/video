@@ -54,7 +54,7 @@ unsigned char *g_image = NULL;		//< Pointer to the storage for the image
 bool	g_already_posted = false;	//< Posted redisplay since the last display?
 int	g_mousePressX, g_mousePressY;	//< Where the mouse was when the button was pressed
 
-vrpn_Synchronized_Connection	*con = NULL;
+vrpn_Connection	*con = NULL;
 vrpn_Generic_Server_Object      *svr = NULL;
 
 vrpn_Tracker_Remote		*read_z = NULL;
@@ -727,7 +727,7 @@ int main(int argc, char *argv[])
     // meters and a Poser whose job it is to move the stage in Z in
     // meters.  Both servers should have the name "Focus".  Other
     // auxilliary servers may be needed as well.
-    con = new vrpn_Synchronized_Connection();
+    con = new vrpn_Connection();
 
     svr = new vrpn_Generic_Server_Object(con, config_file_name);
     Stage_name = "Focus";

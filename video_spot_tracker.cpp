@@ -2393,7 +2393,7 @@ int main(int argc, char *argv[])
   //------------------------------------------------------------------
   // Set up the VRPN server connection and the tracker object that will
   // report the position when tracking is turned on.
-  g_vrpn_connection = new vrpn_Synchronized_Connection();
+  g_vrpn_connection = new vrpn_Connection();
   g_vrpn_tracker = new vrpn_Tracker_Server("Spot", g_vrpn_connection, MAX_TRACKERS);
   g_vrpn_analog = new vrpn_Analog_Server("FrameNumber", g_vrpn_connection, 1);
 
