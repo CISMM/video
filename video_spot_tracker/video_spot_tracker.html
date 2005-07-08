@@ -128,8 +128,28 @@
 
 <h3>Reading the position of a tracker</h3>
 
-<p>You can check the position of each tracker in turn by clicking on each with the right mouse button, which makes each the active tracker that shows its values in the <b><i>x</i></b>, <b><i>y</i></b>, and <b><i>radius</i></b> displays.  Note that these may show subpixel positions and radii. You can control the minimum step size that the optimizer will use by adjusting the <b><i>precision</i></b> slider within the <b><i>tk</i></b> control panel. Smaller values make the program run more slowly but will result in the program attempting to find the position with greater precision (this will not necessarily correspond to greater accuracy, due to noise and possibly aliasing).</p>
-
+<p>You can check the position of each tracker in turn by clicking on each with 
+  the right mouse button, which makes each the active tracker that shows its values 
+  in the <b><i>x</i></b>, <b><i>y</i></b>, and <b><i>radius</i></b> displays. 
+  Note that these may show subpixel positions and radii.</p>
+<h3>Performance adjustments<img src="circle_of_spots.jpg" width="361" height="318" align="right"></h3>
+<p>You can control the minimum step size that the optimizer will use by adjusting 
+  the <b><i>precision</i></b> slider within the <b><i>tk</i></b> control panel. 
+  Smaller values make the program run more slowly but will result in the program 
+  attempting to find the position with greater precision (this will not necessarily 
+  correspond to greater accuracy, due to noise and possibly aliasing).</p>
+<p>You can also adjust the number of samples made to determine the fit at each 
+  spot location. The <b><i>sample_spacing</i></b> slider controls both the number 
+  of circles around each point that are sampled and the number of samples around 
+  each circle. The default spacing of one pixels causes a pixel-sized step to 
+  be taken between the center and each radial distance, and also a single-pixel 
+  step to be taken around each circle. The speed of calculation varies as the 
+  inverse square of the pixel spacing. Note that the samples are <i>not</i> taken 
+  at pixel centers, but are interpolated based on the tracker center. Also, the 
+  pixel starting location is staggered for each new circle (moving a half pixel 
+  further around) to prevent sampling preferentially along the horizontal axis. 
+  the image shown here is for the symmetric tracker, which does not sample at 
+  the center; the cone and disc trackers have a single sample in the center.</p>
 <h3>Recording the tracker motion</h3>
 
 <p><img src="log.jpg" width="348" height="80" align="right">You can record the motion of the trackers by checking the <b><i>Logging</i></b> checkbox within the <b><i>log</i></b> control panel (shown to the right). This will bring up a dialog box that will let you select a filename. It will automatically add the default extension &quot;.vrpn&quot; to the filename you create. (A second file, with the extension &quot;.csv&quot; will also be created, though the program does not mention it.) Once you have selected a file name, you check the <b><i>play_video</i></b> checkbox to begin going through the video file, or you can use the <b><i>single_step_video</i></b> repeatedly to step through a frame at a time. When you are finished with the section of tracking that you are interested in, uncheck the Logging checkbox to stop the logging. You can then go forward to another section, turn on logging, and save a different file if you like.</p>

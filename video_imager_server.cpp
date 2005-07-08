@@ -98,14 +98,14 @@ void  mainloop_camera_code(void)
 //-----------------------------------------------------------------
 // This section contains code that does what the server should do
 
-vrpn_Synchronized_Connection  *svrcon;	//< Connection for server to talk on
+vrpn_Connection  *svrcon;	//< Connection for server to talk on
 vrpn_Imager_Server	      *svr;	//< Image server to be used to send
 int			      svrchan;	//< Server channel index for image data
 
 bool  init_server_code(const char *outgoing_logfile_name)
 {
   const int PORT = vrpn_DEFAULT_LISTEN_PORT_NO;
-  if ( (svrcon = new vrpn_Synchronized_Connection(PORT, NULL, outgoing_logfile_name)) == NULL) {
+  if ( (svrcon = new vrpn_Connection(PORT, NULL, outgoing_logfile_name)) == NULL) {
     fprintf(stderr, "Could not open server connection\n");
     return false;
   }

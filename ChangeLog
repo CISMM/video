@@ -1,3 +1,13 @@
+2005-06-06  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* base_camera_server.h : Modified to use an unsynchronized VRPN
+		connection, which has been removed from VRPN.
+	* diaginc_server.h : Same.
+	* directx_camera_server.h : Same.
+	* edt_server.h : Same.
+	* roper_server.h : Same.
+	* video_imager_server.cpp : Same.
+
 2005-05-06  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* directx_videofile_server.cpp : Fixed error messages (copy/paste
