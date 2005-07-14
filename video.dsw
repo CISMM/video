@@ -246,6 +246,21 @@ Package=<4>
 
 ###############################################################################
 
+Project: "imager_directx_dll"=.\imager_directx_dll.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name BaseClasses
+    End Project Dependency
+}}}
+
+###############################################################################
+
 Project: "make_test_image"=.\make_test_image.dsp - Package Owner=<4>
 
 Package=<5>
@@ -272,6 +287,21 @@ Package=<5>
 
 Package=<4>
 {{{
+}}}
+
+###############################################################################
+
+Project: "nikon_camera"=.\nikon_camera.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name base_camera_server
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -408,21 +438,6 @@ Package=<4>
 
 ###############################################################################
 
-Project: "imager_directx_dll"=.\imager_directx_dll.dsp - Package Owner=<4>
-
-Package=<5>
-{{{
-}}}
-
-Package=<4>
-{{{
-    Begin Project Dependency
-    Project_Dep_Name BaseClasses
-    End Project Dependency
-}}}
-
-###############################################################################
-
 Project: "test_directx_library"=.\test_directx_library.dsp - Package Owner=<4>
 
 Package=<5>
@@ -454,6 +469,33 @@ Package=<4>
     End Project Dependency
     Begin Project Dependency
     Project_Dep_Name base_camera_server
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "video_imager_server"=.\video_imager_server.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name BaseClasses
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name directx_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name diaginc_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name roper_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name edt_library
     End Project Dependency
 }}}
 
@@ -493,33 +535,6 @@ Package=<4>
     End Project Dependency
     Begin Project Dependency
     Project_Dep_Name base_camera_server
-    End Project Dependency
-}}}
-
-###############################################################################
-
-Project: "video_imager_server"=.\video_imager_server.dsp - Package Owner=<4>
-
-Package=<5>
-{{{
-}}}
-
-Package=<4>
-{{{
-    Begin Project Dependency
-    Project_Dep_Name BaseClasses
-    End Project Dependency
-    Begin Project Dependency
-    Project_Dep_Name directx_library
-    End Project Dependency
-    Begin Project Dependency
-    Project_Dep_Name diaginc_library
-    End Project Dependency
-    Begin Project Dependency
-    Project_Dep_Name roper_library
-    End Project Dependency
-    Begin Project Dependency
-    Project_Dep_Name edt_library
     End Project Dependency
 }}}
 

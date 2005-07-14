@@ -1,3 +1,13 @@
+2005-07-14  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* nikon_camera.dsp : Adds a project to build controls for Nikon
+		cameras.  Does not yet compile, but wanted to check in before
+		other changes made.  This is for controlling the D1 and D2X
+		cameras that are used by the Rheology mixing group.
+	* nikon_server.cpp : Same.
+	* nikon_server.h : Same.
+	* video.dsw : Same.
+
 2005-07-14  Jeremy Cribb <jcribb@email.unc.edu>
 
 * glui_take.cpp : 
