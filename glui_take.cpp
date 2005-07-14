@@ -20,8 +20,9 @@
 #include <GL/glut.h>
 #include "glui.h"
 #include "edtinc.h"
+//#include "vrpn_shared.h"
 
-const char VERSION_STRING[] = "00.10a";
+const char VERSION_STRING[] = "0.11";
 #define NUM_THREADS 2
 #define COLLECT 1
 #define DISPLAY 2
@@ -43,31 +44,35 @@ void close_camera();
 int   main_window;
 
 int   unit       = 0;
+int   channel    = 0;
 int   numbufs    = 300;
 int   loops      = 120;
-int   channel    = 0;
 int   skipframes = 1;
 int   swaplines  = 1;
+int   timestamps = 1;
+//int   integrate = 0;
 
 char  filename[2048];
 char  devname[128];
 
 
 /*** other global variables.  Maybe I'll fix that soon.  ***/
-int width=648;
-int height=484;
-int depth=8;
-int showframe = 4; // Display every i % showframe in GL window
-bool display_frames = true;
-unsigned char *dispbuf = new unsigned char[height*width];
-unsigned char *GLdispbuf = new unsigned char[4*(height*width)];
-unsigned char *swapbuf = new unsigned char[width];
 bool collecting = false;
 bool showing = false;
 int i = 0;
 char   *cameratype;
 PdvDev *pdv_p;
 bool camera_open = false;
+
+int width = 648;
+int height= 484;
+int depth = 8;
+int showframe = 4; // Display every i % showframe in GL window
+bool display_frames = true;
+unsigned char *dispbuf = new unsigned char[height*width];
+unsigned char *GLdispbuf = new unsigned char[4*(height*width)];
+unsigned char *swapbuf = new unsigned char[width];
+
 
 HANDLE hThread[NUM_THREADS];
 CRITICAL_SECTION hUpdateMutex;
@@ -93,7 +98,7 @@ void myGlutIdle( void )
     showCurrentFrame();
   }
   
-  glutPostRedisplay();
+  glutPostRedisplay(); 
 }
 
 
@@ -155,13 +160,27 @@ void main(int argc, char* argv[])
     devname[0] = '\0';
     *filename = '\0';
 
+/*	// test time code 
+	struct timeval time_now;
+	gettimeofday(&time_now, NULL);
+*/
+
+	//
   // open the camera interface
     open_camera();
+
+  // report stuff
+	fprintf(stderr, "\nGLUItake Pulnix Frame Grabber, version %s\n\n", VERSION_STRING);
+	fprintf(stderr, "exposure: %i\n", pdv_get_exposure(pdv_p));
+	fprintf(stderr, "width: %i\n", pdv_get_width(pdv_p));
+	fprintf(stderr, "height: %i\n", pdv_get_height(pdv_p));
+	fprintf(stderr, "depth: %i\n", pdv_get_depth(pdv_p));
 
   /****************************************/
   /*   Initialize GLUT and create window  */
   /****************************************/
 
+  
   glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH );
   glutInitWindowPosition( 200, 200 );
   glutInitWindowSize( 648, 484 );
@@ -178,10 +197,12 @@ void main(int argc, char* argv[])
   /****************************************/
   /*         Here's the GLUI code         */
   /****************************************/
-  
+
   GLUI *glui = GLUI_Master.create_glui( "GLUItake" );
   
   glui->add_checkbox( "Swap Lines", &swaplines );
+  glui->add_checkbox( "TimeStamps", &timestamps );
+//  glui->add_checkbox( "Integrate", &integrate );
 
   GLUI_Spinner *unit_spinner = 
     glui->add_spinner( "Unit:", GLUI_SPINNER_INT, &unit );
@@ -193,7 +214,7 @@ void main(int argc, char* argv[])
     
   GLUI_Spinner *numbufs_spinner = 
     glui->add_spinner( "Buffers:", GLUI_SPINNER_INT, &numbufs );
-    numbufs_spinner->set_int_limits( 0, 500 ); 
+    numbufs_spinner->set_int_limits( 0, 999 ); 
 
   GLUI_Spinner *loops_spinner = 
     glui->add_spinner( "Frames:", GLUI_SPINNER_INT, &loops );
@@ -201,7 +222,7 @@ void main(int argc, char* argv[])
 
   GLUI_Spinner *skipframes_spinner = 
     glui->add_spinner( "Skip Frames:", GLUI_SPINNER_INT, &skipframes );
-    skipframes_spinner->set_int_limits( 0, 10 ); 
+    skipframes_spinner->set_int_limits( 1, 120 ); 
 
   GLUI_EditText *filename_EditText =
     glui->add_edittext( "filename:", GLUI_EDITTEXT_TEXT, filename);
@@ -214,10 +235,11 @@ void main(int argc, char* argv[])
 
   glui->set_main_gfx_window( main_window );
 
-  /* We register the idle callback with GLUI, *not* with GLUT */
+  // We register the idle callback with GLUI, *not* with GLUT 
   GLUI_Master.set_glutIdleFunc( myGlutIdle ); 
 
   glutMainLoop();
+    
 }
 
 
@@ -246,9 +268,17 @@ void collect(void *)
     int     started;
     u_char *image_p;
     
-    double  dtime;    
+    double  dtime;
 
+	u_int   timestamp[2];
+	double curtime = 0;
+	double *timestack = new double[loops];
+	FILE   *out_time_file;
+	char *tfilename;
+	
     open_camera();
+
+	fprintf(stderr,"--------------------------------------------------------\n");
 
     if (swaplines && (height % 2 != 0)) {
       fprintf(stderr,"Cannot swap lines with odd-height image (%d)\n", height);
@@ -285,6 +315,9 @@ void collect(void *)
     if (strlen(filename) == 0) {
       fprintf(stderr,"No output filename specified!\n");
       return;
+	}
+	else {
+	  fprintf(stderr,"Streaming data to %s\n", filename);
     }
 
     if ( (outfile = fopen(filename, "wb")) == NULL) {
@@ -306,19 +339,19 @@ void collect(void *)
 
     if (pdv_p->dd_p->force_single)
     {
-	pdv_start_image(pdv_p);
-	started = 1;
+		pdv_start_image(pdv_p);
+		started = 1;
     }
     else
     {
-	pdv_start_images(pdv_p, numbufs);
-	started = numbufs;
+		pdv_start_images(pdv_p, numbufs);
+		started = numbufs;
     }
 
     (void) edt_dtime();		/* initialize time so that the later check will be zero-based. */
     
-    // this is where the output data is collected
-    for (i = 0; i < loops; i++)
+//  this is where the output data is collected
+    for (i = 0; i < loops * skipframes; i++)
     {
 	/*
 	 * get the image and immediately start the next one (if not the last
@@ -326,10 +359,19 @@ void collect(void *)
 	 * can then occur in parallel with the next acquisition
 	 */
 
-//       EnterCriticalSection(&hUpdateMutex); // threading
+     //  EnterCriticalSection(&hUpdateMutex); // threading
 
-       image_p = pdv_wait_image(pdv_p);
-    
+		if (timestamps)  {
+	       image_p = pdv_wait_image_timed(pdv_p, timestamp);
+           curtime = (double) timestamp[0] * 1000000000L + timestamp[1];
+	       curtime /= 1000000000.0;
+	       timestack[i] = curtime;
+		}
+		else {
+			image_p = pdv_wait_image(pdv_p);
+		}
+
+
 	if (i <= loops - started)
 	{
 	    pdv_start_image(pdv_p);
@@ -380,7 +422,7 @@ void collect(void *)
 	    return;
 	  }
 
-//	  LeaveCriticalSection(&hUpdateMutex);
+      //    LeaveCriticalSection(&hUpdateMutex);
 	}
     }
 
@@ -395,6 +437,29 @@ void collect(void *)
 	printf("Wrote %lf frames/sec to disk\n", (double) (loops) / (dtime * skipframes));
     }
 
+
+    // Handle writing out the timestamps in a file	
+	if (timestamps) {
+		char buff[2048];
+
+		strcpy(buff,filename);
+		tfilename = strcat(buff, ".tstamp.txt");		
+		if ( (out_time_file = fopen(tfilename, "wb")) == NULL) {
+		  perror("Cannot open output timestamps file");
+		  return;
+		}
+		
+		for(i=0; i<loops; i+=skipframes) {
+		   fprintf(out_time_file, "%f\n", timestack[i]);
+		}
+		fclose(out_time_file);
+		printf("timestamps successfully written to: %s\n\n", tfilename);
+	}
+	else {
+		printf("\n");
+	}
+
+
     /*
      * if we got timeouts it indicates there is a problem
      */
@@ -404,6 +469,12 @@ void collect(void *)
     collecting = false; 
 
     return;
+
+	// clear out old filename
+/*	for(int j=0; j<2048; j++) {
+		filename[j]='\0';
+	} */
+
 }
 
 
@@ -470,7 +541,7 @@ void open_camera() {
     }
     else
     {
-	strcpy(devname, EDT_INTERFACE);
+		strcpy(devname, EDT_INTERFACE);
     }
 
     camera_open = true;

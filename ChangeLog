@@ -1,3 +1,18 @@
+2005-07-14  Jeremy Cribb <jcribb@email.unc.edu>
+
+* glui_take.cpp : 
+		- Incremented VERSION_STRING to 0.11 from 0.10a.
+		- Added feature for saving timestamps via EDTpdv function call to 
+		  pdv_wait_image_timed.  Timestamps are accumulated while images 
+			are streamed to the disk and then saved in a separate file.  
+			The physical value of the timestamps are in seconds since bootup.
+			Using vrpn_gettimeofday would be better and will be used soon.
+		- Added informational text describing software version and 
+			camera parameters.
+	* glui_take.bat :
+		- Added this batch file that loads the camera configuration and
+			initializes the camera before starting glui_take.cpp.
+
 2005-07-08  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* SEM_camera_server.cpp : Removed Synchronized from VRPN connections.
