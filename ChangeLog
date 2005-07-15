@@ -1,3 +1,34 @@
+2005-07-15  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+        * GLUItake.dsp : Switching over everything to use the compiled
+		version of ImageMagick which has static linkage and does not
+		require an installed ImageMagick library.  Also, modifying all
+		of the preprocessor paths and include paths to point at
+		external in C:\nsrg rather than relative paths.  Also, removing
+		extra entries in these lists that used to be needed.
+        * airy_maker.dsp : Same.
+        * argonot.cpp : Same.
+        * argonot.dsp : Same.
+        * base_camera_server.dsp : Same.
+        * cismm_video_optimizer.dsp : Same.
+        * diaginc_library.dsp : Same.
+        * edt_library.dsp : Same.
+        * edt_raw_video_store.dsp : Same.
+        * file_stack_library.dsp : Same.
+        * file_stack_server.h : Same.
+        * imager_directx_dll.dsp : Same.
+        * make_test_image.cpp : Same.
+        * make_test_image.dsp : Same.
+        * manual_capture.dsp : Same.
+        * roper_example.dsp : Same.
+        * roper_spot_tracker.dsp : Same.
+        * stack_collector.dsp : Same.
+        * swap_ppm_lines.dsp : Same.
+        * test_directx_library.dsp : Same.
+        * test_spot_tracker.dsp : Same.
+        * video_imager_server.dsp : Same.
+        * video_spot_tracker.dsp : Same.
+
 2005-07-14  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Fixed a bug that caused positions to be

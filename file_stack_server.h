@@ -5,7 +5,7 @@
 
 class file_stack_server : public base_camera_server {
 public:
-  file_stack_server(const char *filename, const char *magickFilesDir = "C:/nsrg/external/pc_win32/bin/ImageMagick-5.5.7-Q16/MAGIC_DIR_PATH");
+  file_stack_server(const char *filename, const char *magickFilesDir = "");
   virtual ~file_stack_server(void);
 
   /// Start the stored video playing.

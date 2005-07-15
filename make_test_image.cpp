@@ -10,7 +10,7 @@
 #include <magick/api.h>
 #include "image_wrapper.h"
 
-static	char  magickfilesdir[] = "C:/nsrg/external/pc_win32/bin/ImageMagick-5.5.7-Q16/MAGIC_DIR_PATH";
+static	char  magickfilesdir[] = "";
 
 void Usage (const char * s)
 {
