@@ -1,6 +1,6 @@
 <title>Video Spot Tracker v04.01</title>
 
-<h1>Video Spot Tracker version 04.01</h1>
+<h1>Video Spot Tracker version 04.02</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -21,7 +21,7 @@
   icon that was created when the program was installed. To select a stack of image 
   files that are numbered consecutively, drag any one of the files onto the icon. 
   It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
-  Menu/All Programs/NSRG/Video Spot Tracker v04.01</b></i>. If you run the program 
+  Menu/All Programs/NSRG/Video Spot Tracker v04.02</b></i>. If you run the program 
   directly by double-clicking on the icon, it will ask for a video or image file 
   (AVI, TIF, or BMP) that it should open.</p>
 
@@ -57,7 +57,7 @@
 
 <p><img src="kernel.jpg" width="688" height="117"></p>
 
-<p>There are three types of tracking kernels available in version 4.01: disc, 
+<p>There are three types of tracking kernels available in version 4.02: disc, 
   cone, and symmetric. Their properties are controlled using interface widgets 
   in the <cite>kernel</cite> control panel.</p>
 
@@ -168,7 +168,7 @@
   program was. You convert the &quot;.vrpn&quot; file into a Matlab file by dragging 
   it onto a shortcut that points to the program (or by dragging it onto the program 
   itself). The vrpnLogToMatlab program will have been installed in the directory: 
-  <b><i>C:\Program Files\NSRG\Video Spot Tracker v04.01\VrpnLogToMatlib</i></b> 
+  <b><i>C:\Program Files\NSRG\Video Spot Tracker v04.02\VrpnLogToMatlib</i></b> 
   and it will also be located on the desktop.</p>
 
 <p><strong>Data description:</strong> Positions and radii are reported in units of pixels, with the origin at the upper-right corner of the screen. +X is towards the right on the displayed window and +Y is towards the bottom.</p>
@@ -201,6 +201,12 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 4.02:</h3>
+<ul>
+  <li>Fixes bug in 04.01 where the tracker locations would be logged a bunch of 
+    times at the same frame number when one of the trackers had lost tracking.</li>
+</ul>
+<h3></h3>
 <h3>Version 4.01:</h3>
 <ul>
   <li>Adds heuristic to determine when tracking is not being robust, and a slider 

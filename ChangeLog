@@ -1,5 +1,10 @@
 2005-07-14  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* video_spot_tracker.cpp : Fixed a bug that caused positions to be
+		logged to the logfile when a tracker is lost.  Version 4.02.
+
+2005-07-14  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* nikon_camera.dsp : Adds a project to build controls for Nikon
 		cameras.  Does not yet compile, but wanted to check in before
 		other changes made.  This is for controlling the D1 and D2X

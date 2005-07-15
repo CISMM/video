@@ -62,7 +62,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "04.01";
+const char *Version_string = "04.02";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -1229,7 +1229,9 @@ void myIdleFunc(void)
   // past the frame before the problem is corrected, either by
   // moving the tracker back on or by adjusting the sensitivity.
 
-  if (!g_tracker_is_lost) {
+  if (g_tracker_is_lost) {
+    g_video_valid = false;
+  } else {
     if (!g_camera->read_image_to_memory((int)(*g_minX),(int)(*g_maxX), (int)(*g_minY),(int)(*g_maxY), g_exposure)) {
       if (!g_video) {
         fprintf(stderr, "Can't read image to memory!\n");
@@ -1269,7 +1271,7 @@ void myIdleFunc(void)
 
     // Update the VRPN tracker position for each tracker and report it
     // using the same time value for each.  Don't do the update if we
-    // don't currently have a valid video frame.  Sensors are indexed
+    // don't currently have a valid video frame or if we are lost.  Sensors are indexed
     // by their position in the list.  Putting this here before the
     // optimize loop means that we're reporting the PREVIOUS values of
     // the optimizer (the ones for the frame just ending) rather than
