@@ -1,3 +1,14 @@
+2005-07-19  Jeremy Cribb <jcribb@email.unc.edu>
+	glui_take.dsp : 
+		- changed configuration to include vrpn headers and vrpn.lib.
+	glui_take.cpp : 
+		- changed timestamps to UTC format.  Output text file is now 
+		  similar to vrpn-log output.
+		- made interface more friendly by removing desired number of
+			frames and number of frames to skip.  Instead the user inputs
+			the desired duration for frame capture and the desired frame-rate
+			from a selection.
+
 2005-07-15  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
         * GLUItake.dsp : Switching over everything to use the compiled

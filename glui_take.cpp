@@ -20,9 +20,9 @@
 #include <GL/glut.h>
 #include "glui.h"
 #include "edtinc.h"
-//#include "vrpn_shared.h"
+#include "vrpn_shared.h"
 
-const char VERSION_STRING[] = "0.11";
+const char VERSION_STRING[] = "0.12";
 #define NUM_THREADS 2
 #define COLLECT 1
 #define DISPLAY 2
@@ -39,14 +39,17 @@ void showCurrentFrame();
 void open_camera();
 void close_and_exit();
 void close_camera();
-
+ 
 /*** These are the live variables passed into GLUI ***/
 int   main_window;
 
 int   unit       = 0;
 int   channel    = 0;
 int   numbufs    = 300;
-int   loops      = 120;
+int   loops      = 1200;
+int   duration   = 5; // seconds
+int   fps_idx = 0;
+int   fpsid = 0;
 int   skipframes = 1;
 int   swaplines  = 1;
 int   timestamps = 1;
@@ -63,12 +66,15 @@ int i = 0;
 char   *cameratype;
 PdvDev *pdv_p;
 bool camera_open = false;
+struct timeval start_time;
 
 int width = 648;
 int height= 484;
 int depth = 8;
 int showframe = 4; // Display every i % showframe in GL window
 bool display_frames = true;
+char *fps_list[] = {"120", "60", "40","30","24","20","15", "12", "10", "8", "5", "1"};
+int  skip_list[] = {   1,    2,    3,   4,   5,   6,   8,   10,   12,  15,  24,  120};
 unsigned char *dispbuf = new unsigned char[height*width];
 unsigned char *GLdispbuf = new unsigned char[4*(height*width)];
 unsigned char *swapbuf = new unsigned char[width];
@@ -76,8 +82,6 @@ unsigned char *swapbuf = new unsigned char[width];
 
 HANDLE hThread[NUM_THREADS];
 CRITICAL_SECTION hUpdateMutex;
-
-
 
 
 
@@ -99,6 +103,9 @@ void myGlutIdle( void )
   }
   
   glutPostRedisplay(); 
+  
+  // update the current desired framerate by changing value of skipframes via fps_idx
+  skipframes = skip_list[fps_idx];
 }
 
 
@@ -160,16 +167,10 @@ void main(int argc, char* argv[])
     devname[0] = '\0';
     *filename = '\0';
 
-/*	// test time code 
-	struct timeval time_now;
-	gettimeofday(&time_now, NULL);
-*/
-
-	//
-  // open the camera interface
+    // open the camera interface
     open_camera();
 
-  // report stuff
+    // report stuff
 	fprintf(stderr, "\nGLUItake Pulnix Frame Grabber, version %s\n\n", VERSION_STRING);
 	fprintf(stderr, "exposure: %i\n", pdv_get_exposure(pdv_p));
 	fprintf(stderr, "width: %i\n", pdv_get_width(pdv_p));
@@ -216,14 +217,19 @@ void main(int argc, char* argv[])
     glui->add_spinner( "Buffers:", GLUI_SPINNER_INT, &numbufs );
     numbufs_spinner->set_int_limits( 0, 999 ); 
 
-  GLUI_Spinner *loops_spinner = 
-    glui->add_spinner( "Frames:", GLUI_SPINNER_INT, &loops );
-    loops_spinner->set_int_limits( 0, 1000000 ); 
+  GLUI_Spinner *duration_spinner = 
+    glui->add_spinner( "Duration:", GLUI_SPINNER_INT, &duration );
+    duration_spinner->set_int_limits( 0, 1000000 ); 
 
-  GLUI_Spinner *skipframes_spinner = 
+  GLUI_Listbox *fps_listbox =
+	glui->add_listbox( "fps:", &fps_idx);
+    for(int idx=0; idx<12; idx++ )
+      fps_listbox->add_item( idx, fps_list[idx] );	
+
+/*GLUI_Spinner *skipframes_spinner = 
     glui->add_spinner( "Skip Frames:", GLUI_SPINNER_INT, &skipframes );
     skipframes_spinner->set_int_limits( 1, 120 ); 
-
+*/
   GLUI_EditText *filename_EditText =
     glui->add_edittext( "filename:", GLUI_EDITTEXT_TEXT, filename);
 
@@ -254,28 +260,35 @@ void start_collection()
 ////////////////////
 void collect(void *)
 {
-    
+
     HANDLE me = GetCurrentThread();
     //SetPriorityClass(me, REALTIME_PRIORITY_CLASS);
     SetThreadPriority(me, THREAD_PRIORITY_TIME_CRITICAL);
     SetThreadAffinityMask(me, 0x1);
 
+	// determine the number of frames to collect at full bandwidth (120 fps)
+	int fps = 120;
+	int frames_at_full_bandwidth = duration * fps;
+	loops = frames_at_full_bandwidth;
+	
+	// time-related variables
     int     timeouts = 0;
     int     first_timeouts = 0;
     int	    last_timeouts = 0;
-
-    FILE   *outfile;
+	struct timeval *pdv_time = new timeval[loops];
+    double  dtime;
+	u_int   timestamp[2];
+	double  curtime = 0;
+	double *timestack = new double[loops];
+    
+	FILE   *outfile;
     int     started;
     u_char *image_p;
     
-    double  dtime;
-
-	u_int   timestamp[2];
-	double curtime = 0;
-	double *timestack = new double[loops];
 	FILE   *out_time_file;
-	char *tfilename;
-	
+	char   *tfilename;
+
+
     open_camera();
 
 	fprintf(stderr,"--------------------------------------------------------\n");
@@ -298,7 +311,13 @@ void collect(void *)
       pdv_close(pdv_p);
       return;
     }
-
+	
+	// get starting time as close as possible to frame capture
+	gettimeofday(&start_time, NULL);
+//	fprintf(stderr, "--STARTTIME--\n");
+//	fprintf(stderr, " sec: %d\n", start_time.tv_sec);
+//	fprintf(stderr, "usec: %d\n", start_time.tv_usec);
+	
     /*
      * allocate four buffers for optimal pdv ring buffer pipeline (reduce if
      * memory is at a premium)
@@ -350,8 +369,8 @@ void collect(void *)
 
     (void) edt_dtime();		/* initialize time so that the later check will be zero-based. */
     
-//  this is where the output data is collected
-    for (i = 0; i < loops * skipframes; i++)
+/*** this is where the output data is collected ***/
+    for (i = 0; i < loops; i++)
     {
 	/*
 	 * get the image and immediately start the next one (if not the last
@@ -366,6 +385,8 @@ void collect(void *)
            curtime = (double) timestamp[0] * 1000000000L + timestamp[1];
 	       curtime /= 1000000000.0;
 	       timestack[i] = curtime;
+		   pdv_time->tv_sec = (long) timestamp[0];  // value is in seconds
+		   pdv_time->tv_usec = (long) (timestamp[1]/1000); // value is now in microseconds
 		}
 		else {
 			image_p = pdv_wait_image(pdv_p);
@@ -431,6 +452,13 @@ void collect(void *)
     fclose(outfile);
     puts("");
 
+    // test time code 
+/*  gettimeofday(&start_time, NULL);
+	fprintf(stderr, "--ENDTIME--\n");
+	fprintf(stderr, " sec: %d\n", start_time.tv_sec);
+	fprintf(stderr, "usec: %d\n", start_time.tv_usec);
+*/
+
     printf("%d images from camera, %lg seconds, %d timeouts\n", loops, dtime, timeouts-first_timeouts);
     if (loops > 3) {
 	printf("Read %lf frames/sec from camera\n", (double) (loops) / dtime);
@@ -438,19 +466,36 @@ void collect(void *)
     }
 
 
-    // Handle writing out the timestamps in a file	
+    // Write out the timestamps to a file	
 	if (timestamps) {
 		char buff[2048];
+		int pdv_sec = 0;
+		int pdv_usec= 0;
+		long GLUItake_sec = 0L;
+		long GLUItake_usec= 0L;
+		double GLUItake_time = 0;
+		struct timeval our_time;
 
 		strcpy(buff,filename);
 		tfilename = strcat(buff, ".tstamp.txt");		
 		if ( (out_time_file = fopen(tfilename, "wb")) == NULL) {
-		  perror("Cannot open output timestamps file");
+		  perror("Cannot open output timestamps file"); 
 		  return;
 		}
 		
 		for(i=0; i<loops; i+=skipframes) {
-		   fprintf(out_time_file, "%f\n", timestack[i]);
+		   pdv_sec = (long) timestack[i];
+		   pdv_usec = (long) ((timestack[i] - pdv_sec) * 1000000);
+		   GLUItake_sec = pdv_sec + start_time.tv_sec;
+		   GLUItake_usec = pdv_usec + start_time.tv_usec;
+		   
+		   // handle overflow in microseconds column
+		   if (GLUItake_usec > 1000000L) {
+				GLUItake_sec++;
+				GLUItake_usec -= 1000000L;
+		   }
+
+		   fprintf(out_time_file, "%d\t%d\n", GLUItake_sec, GLUItake_usec);
 		}
 		fclose(out_time_file);
 		printf("timestamps successfully written to: %s\n\n", tfilename);
