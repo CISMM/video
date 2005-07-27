@@ -60,7 +60,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.07";
+const char *Version_string = "01.08";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -192,7 +192,6 @@ unsigned char	    *g_glut_image = NULL;	  //< Pointer to the storage for the ima
 
 list <Spot_Information *>g_trackers;		  //< List of active trackers
 spot_tracker_XY	    *g_active_tracker = NULL;	  //< The tracker that the controls refer to
-spot_tracker_XY	    *g_second_tracker = NULL;	  //< The second tracker in the list (used for scale and/or offset)
 bool		    g_ready_to_display = false;	  //< Don't unless we get an image
 bool		    g_already_posted = false;	  //< Posted redisplay since the last display?
 int		    g_mousePressX, g_mousePressY; //< Where the mouse was when the button was pressed
@@ -404,9 +403,15 @@ static	bool  save_log_frame(unsigned frame_number)
     g_log_frame_number_last_logged = frame_number;
     sprintf(filename, "%s.opt.%04d.tif", g_logfile_base_name, frame_number);
 
+    list<Spot_Information *>::iterator  loop;
+    loop = g_trackers.begin();
+    spot_tracker_XY *first_tracker = (*loop)->tracker() ;
+    loop++;
+    spot_tracker_XY *second_tracker = (*loop)->tracker();
+
     // Difference in position between first and second tracker.
-    double dx = g_second_tracker->get_x() - g_trackers.front()->tracker()->get_x();
-    double dy = g_second_tracker->get_y() - g_trackers.front()->tracker()->get_y();
+    double dx = second_tracker->get_x() - first_tracker->get_x();
+    double dy = second_tracker->get_y() - first_tracker->get_y();
 
     double rotation = 0.0;
     double scale = 1.0;
@@ -1339,14 +1344,20 @@ void  logfilename_changed(char *newvalue, void *)
   // it is appropriate to do so.
   g_log_last_image = new copy_of_image(*g_image_to_display);
 
+  list<Spot_Information *>::iterator  loop;
+  loop = g_trackers.begin();
+  spot_tracker_XY *first_tracker = (*loop)->tracker() ;
+  loop++;
+  spot_tracker_XY *second_tracker = (*loop)->tracker();
+
   // Set the offsets to use when logging to the current position of
   // the zeroeth tracker.
-  g_log_offset_x = g_trackers.front()->tracker()->get_x();
-  g_log_offset_y = g_trackers.front()->tracker()->get_y();
+  g_log_offset_x = first_tracker->get_x();
+  g_log_offset_y = first_tracker->get_y();
 
   // Set the length and orientation of the original pair of trackers.
-  double dx = g_second_tracker->get_x() - g_trackers.front()->tracker()->get_x();
-  double dy = g_second_tracker->get_y() - g_trackers.front()->tracker()->get_y();
+  double dx = second_tracker->get_x() - first_tracker->get_x();
+  double dy = second_tracker->get_y() - first_tracker->get_y();
   g_orig_length = sqrt( dx*dx + dy*dy );
   g_orig_orient = atan2( dy, dx);
 
@@ -1772,8 +1783,9 @@ int main(int argc, char *argv[])
   // Create two trackers and place them near the center of the window.
   g_trackers.push_back(new Spot_Information(g_active_tracker = create_appropriate_tracker()));
   g_active_tracker->set_location(g_camera->get_num_columns()/2, g_camera->get_num_rows()/2);
-  g_trackers.push_back(new Spot_Information(g_second_tracker = create_appropriate_tracker()));
-  g_second_tracker->set_location(0, g_camera->get_num_rows()/2);
+  spot_tracker_XY *temp;
+  g_trackers.push_back(new Spot_Information(temp = create_appropriate_tracker()));
+  temp->set_location(g_camera->get_num_columns()*3/4, g_camera->get_num_rows()*3/4);
 
   // Set the display functions for each window and idle function for GLUT (they
   // will do all the work) and then give control over to GLUT.

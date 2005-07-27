@@ -1,6 +1,6 @@
-<title>CISMM Video Optimizer v01.07</title>
+<title>CISMM Video Optimizer v01.08</title>
 
-<h1>CISMM Video Optimizer v01.07</h1>
+<h1>CISMM Video Optimizer v01.08</h1>
 
 <p>The <dfn>CISMM Video Optimizer</dfn> program is used to optimize video frames from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible video file, from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible camera, from a <a href="http://roperscientific.com">Roper Scientific</a> camera, from a <a href="http://diaginc.com">DiagInc</a> SPOT camera, or from a set of TIFF or BMP files (it can read other, compressed file formats but these are not included in the default set because these file formats distort images in ways that affect tracking accuracy). The program currently runs only on Windows, but it uses the portable openGL library for rendering, the portable Tcl/Tk for user interface control, and the portable ImageMagick package for reading images.</p>
 
@@ -18,7 +18,7 @@
 
 <h2>Running the program</h2>
 
-<p>The program is run by dragging a video file or image file onto the desktop icon that was created when the program was installed. To select a stack of image files that are numbered consecutively, drag any one of the files onto the icon.  It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start Menu/All Programs/NSRG/CISMM Video Optimizer v01.07</b></i>. If you run the program directly by double-clicking on the icon, it will ask for a video or image file (AVI, TIF, or BMP) that it should open.</p> 
+<p>The program is run by dragging a video file or image file onto the desktop icon that was created when the program was installed. To select a stack of image files that are numbered consecutively, drag any one of the files onto the icon.  It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start Menu/All Programs/NSRG/CISMM Video Optimizer v01.08</b></i>. If you run the program directly by double-clicking on the icon, it will ask for a video or image file (AVI, TIF, or BMP) that it should open.</p> 
 
 <h2><img src="GUI.jpg" width="173" height="741" align="right">Using the program</h2>
 
@@ -119,7 +119,7 @@
 
 <p><img src="kernel.jpg" width="528" height="117"></p>
 
-<p>There are three types of tracking kernels available in version 1.07, disc, cone, and symmetric. Their properties are controlled using interface widgets in the <cite>kernel</cite> control panel.</p> 
+<p>There are three types of tracking kernels available in version 1.08, disc, cone, and symmetric. Their properties are controlled using interface widgets in the <cite>kernel</cite> control panel.</p> 
 
 <p>For tracking spots that are even in intensity, or which have uneven intensities within them but a defined circular edge, the <cite><strong>disc</strong></cite> kernel should be used. The radius should be set to match the radius of the spots you wish to track. The <cite><strong>interpolate</strong></cite> checkbox should be set for more accuracy and cleared for more speed.</p> 
 
@@ -188,6 +188,13 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 01.08</h3>
+<ul>
+  <li>Fixed a bug in the rotation adjustment code, which should also fix the same 
+    bug in the rescaling function. It was using old pointers for trackers, thus 
+    getting useless data.</li>
+</ul>
+<h3></h3>
 <h3>Version 01.07</h3>
 <ul>
   <li>Documentation changes only.</li>

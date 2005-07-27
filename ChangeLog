@@ -1,3 +1,8 @@
+2005-07-27  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* cismm_video_optimizer.cpp : Fixed a bug in the reorientation code.
+		Updated version number to 1.08.
+
 2005-07-19  Jeremy Cribb <jcribb@email.unc.edu>
 	glui_take.dsp : 
 		- changed configuration to include vrpn headers and vrpn.lib.
