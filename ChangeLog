@@ -1,3 +1,10 @@
+2005-08-08  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* roper_server.cpp : Modified to handle binning with VRPN Imager.
+	* video_imager_server.bat : Modified to send multiple parameters if
+		they exist.
+	* video_imager_server.qsp : Builds version 02.00.
+
 2005-07-27  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* cismm_video_optimizer.cpp : Fixed a bug in the reorientation code.

@@ -563,8 +563,10 @@ bool roper_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrc
     }
 
     // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION)
-    unsigned  num_x = get_num_columns();
-    unsigned  num_y = get_num_rows();
+    uns16 cols = (_maxX - _minX)/_binning + 1;
+    uns16 rows = (_maxY - _minY)/_binning + 1;
+    unsigned  num_x = cols;
+    unsigned  num_y = rows;
     //XXX Should be 16-bit version later
     int nRowsPerRegion = vrpn_IMAGER_MAX_REGIONu8/(num_x*sizeof(vrpn_uint8)) - 1;
     unsigned y;
@@ -581,13 +583,13 @@ bool roper_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrc
     // For these, stride will be 1 and offset will be 0, and the code will use memcpy() to copy the values.
     const int stride = 2;
     const int offset = 1;
-    svr->send_begin_frame(0, _num_columns-1, 0, _num_rows-1);
+    svr->send_begin_frame(0, cols-1, 0, rows-1);
     for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
       svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1,
 	(uns8 *)_memory + offset, stride, num_x * stride);
       svr->mainloop();
     }
-    svr->send_end_frame(0, _num_columns-1, 0, _num_rows-1);
+    svr->send_end_frame(0, cols-1, 0, rows-1);
     svr->mainloop();
 
     // Mainloop the server connection (once per server mainloop, not once per object).

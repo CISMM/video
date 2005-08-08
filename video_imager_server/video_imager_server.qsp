@@ -130,7 +130,7 @@ StartUpChecked=1
 QuickLaunchChecked=1
 SetAllUsers=1
 AddUninstallShortcut=1
-Item-000=*|Video_imager_server for Roper|<Application Folder>\video_imager_server.bat|NSRG\Video Imager Server v02_00|roper|<Application Folder>|Normal Window||0|1||0|
+Item-000=*|Video_imager_server for Roper|<Application Folder>\video_imager_server.bat|NSRG\Video Imager Server v02_00|roper -bin 2|<Application Folder>|Normal Window||0|1||0|
 Item-001=*|video_imager_server for Pulnix|<Application Folder>\video_imager_server.bat|NSRG\Video Imager Server v02_00|edt|<Application Folder>|Normal Window||0|1||0|
 
 [Billboard]
