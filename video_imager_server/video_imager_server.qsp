@@ -5,14 +5,14 @@ ComposerVersion=5.0.0.0
 OperatingSystem=WinXP  5.1  2600 (Service Pack 2)
 
 [Project]
-ProjectName=video_tempimager_server
-ProjectDirectory=F:\taylorr\STM\src\video\cismm_video_optimizer
-NonSFXDirectory=F:\taylorr\STM\src\video\cismm_video_optimizer\NonSFX
-MediaFileName=cismm_video_optimizer_01_01
+ProjectName=video_imager_server
+ProjectDirectory=F:\taylorr\STM\src\video\video_imager_server
+NonSFXDirectory=F:\taylorr\STM\src\video\video_imager_server\NonSFX
+MediaFileName=video_imager_server_v02_00
 CopyMediaToFName=
-ProgramDescriptiveName=CISMM Video Optimizer
-ProgramVersion=01.01
-CompanyName=UNC Nanoscale Science Research Group
+ProgramDescriptiveName=Video Imager Server
+ProgramVersion=02_00
+CompanyName=UNC NSRG
 ProgVerLiveUpdate=0
 RegisterAsApp=1
 LanguageFlag=1
@@ -30,17 +30,17 @@ TopLabel=1
 TopLabelVer=1
 TopLabel2=0
 BottomLabel=0
-TopLabelText="CISMM Video Optimizer"
+TopLabelText="Video Imager Server"
 TopLabel2Text=""
-BottomLabelText="Copyright © 2004"
+BottomLabelText="Copyright © 2005"
 BackgroundDesign=Windmill (Right)
 TopBackgroundColor=16758613
 BottomBackgroundColor=11613445
 AddBottomColor=1
 DlgBmp3DFrame=1
 DialogStyle=Modern
-AddDialogBitmap=1
-DialogBitmapFileName=F:\taylorr\STM\src\video\cismm_video_optimizer\icon64.bmp
+AddDialogBitmap=0
+DialogBitmapFileName=
 AddBackgroundBitmap=0
 BackgroundBitmapFileName=
 BackgroundBitmapLocation=|Top/Left|0|0|
@@ -59,21 +59,21 @@ DialogLocation=|Center|0|0|
 TopLabelFont=|Tahoma|32|16777215|1|0|1|0|
 TopLabel2Font=|Tahoma|16|16777215|1|0|1|0|
 BottomLabelFont=|Tahoma|10|16777215|1|0|1|0|
-CompanyUrl=www.cs.unc.edu/nano
+CompanyUrl=
 
 [TargetExe]
-TargetDirectory=<AbsoluteDir>C:\NSRG\bin\cismm_video_optimizer_v01.01
-CommonDirectory=<AbsoluteDir>C:\NSRG\external
+TargetDirectory=<ProgramFilesDir>NSRG\video_imager_server_02_00
+CommonDirectory=<CommonFilesDir>UNC NSRG
 AuxDirectory=<FontDir>
-TargetExeName=<Application Folder>\cismm_video_optimizer.bat
+TargetExeName=<Application Folder>\video_imager_server.bat
 RunTimeDir_1=|||||||1||||1||1|<ProgramFilesDir>|||||
 RunTimeDir_2=|||||||1||||1||1|<ProgramFilesDir>|||||
 RunTimeDir_3=|||||||1||||1||1|<ProgramFilesDir>|||||
 
 [Dialogs]
-SelectedDialogs=*Welcome,License,*Readme,User Information,*Setup Type,*Custom,*Destination,Associate,*Shortcuts,*Confirm Setup,*Copy Files,*Complete
+SelectedDialogs=Welcome,License,Readme,User Information,Setup Type,Custom,*Destination,Associate,*Shortcuts,*Confirm Setup,*Copy Files,*Complete
 LicenseTextFile=
-ReadmeTextFile=F:\taylorr\STM\src\video\cismm_video_optimizer\Installation_README.txt
+ReadmeTextFile=
 ReadmeTextFile2=
 UseNotepad=0
 SpaceReqOnDriveCheckBox=0
@@ -99,27 +99,27 @@ ProposeLaunch=1
 ProposeRestart=0
 ProposeReadmeChecked=0
 ProposeLaunchChecked=0
-ShowCloseRecommendation=0
+ShowCloseRecommendation=1
 ShowAdwareDisclaimer=0
-ShowCopyrightWarning=0
+ShowCopyrightWarning=1
 
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=NSRG\CISMM Video Optimizer v01_01
-ProgramLinkName=Cismm_video_optimizer
+ProgramLinkFolder=NSRG\Video Imager Server v02_00
+ProgramLinkName=Video_imager_server
 ProgramLinkParam=
-ProgramLinkWorkDir=
-ProgramLinkRun=Minimized
-ProgramLinkIconFile=<Application Folder>\cismm_video_optimizer.ico
+ProgramLinkWorkDir=<Application Folder>
+ProgramLinkRun=Normal Window
+ProgramLinkIconFile=
 ProgramLinkIconNum=0
-StartMenuLinkName=CISMM Video Optimizer
-DesktopLinkName=CISMM Video Optimizer v01.01
-SendToLinkName=CISMM Video Optimizer
-StartUpLinkName=CISMM Video Optimizer
-QuickLaunchLinkName=CISMM Video Optimizer
+StartMenuLinkName=Video Imager Server
+DesktopLinkName=Video Imager Server
+SendToLinkName=Video Imager Server
+StartUpLinkName=Video Imager Server
+QuickLaunchLinkName=Video Imager Server
 StartMenuCheckBox=0
-DesktopCheckBox=1
+DesktopCheckBox=0
 SendToCheckBox=0
 StartUpCheckBox=0
 QuickLaunchCheckBox=0
@@ -130,6 +130,8 @@ StartUpChecked=1
 QuickLaunchChecked=1
 SetAllUsers=1
 AddUninstallShortcut=1
+Item-000=*|Video_imager_server for Roper|<Application Folder>\video_imager_server.bat|NSRG\Video Imager Server v02_00|roper|<Application Folder>|Normal Window||0|1||0|
+Item-001=*|video_imager_server for Pulnix|<Application Folder>\video_imager_server.bat|NSRG\Video Imager Server v02_00|edt|<Application Folder>|Normal Window||0|1||0|
 
 [Billboard]
 AddBillboard=1
@@ -163,14 +165,14 @@ AutoUpdateProbeSpin=1
 AutoUpdateProbeText=Only at Agent Start
 
 [Switches]
-OperatingSystems=98,ME,NT,2000,XP,2003
+OperatingSystems=All,95,98,ME,NT,2000,XP,2003
 OverwriteFlag=1
 CreateUnInstall=1
 ScrambleUnInstallData=0
 HideErrMsgUnInstall=0
 HideLogBtnUnInstall=0
 AddRemoveProgramsUnInstall=1
-AddRemoveButtonButtonInstall=0
+AddRemoveButtonButtonInstall=1
 UnInstallExeStampSwitch=0
 UnInstallExeStamp=
 CreateLogFile=0
@@ -222,25 +224,10 @@ ExecutionDllFileName=
 
 [GroupNames]
 Group-000=Main Group
-Group-001=Documentation
 
 [Group-000]
 TypicalCompactData=15
 Description=This is the main group of files
 Item-000=Fol*<Application Folder>[0]
-Item-001=Fil*C:\nsrg\external\pc_win32\bin\glut32.dll
-Item-002=Fil*F:\taylorr\STM\src\video\cismm_video_optimizer.tcl
-Item-003=Fil*F:\taylorr\STM\src\video\cismm_video_optimizer\cismm_video_optimizer.bat
-Item-004=Fil*F:\taylorr\STM\src\video\cismm_video_optimizer\cismm_video_optimizer.ico
-Item-005=Fil*F:\taylorr\STM\src\video\Release\cismm_video_optimizer.exe
-Item-006=Fil*F:\taylorr\STM\src\video\russ_widgets.tcl
-
-[Group-001]
-TypicalCompactData=5
-Description=
-Item-000=Fol*<Application Folder>[0]
-Item-001=Fil*F:\taylorr\STM\src\video\cismm_video_optimizer\cismm_video_optimizer.html
-Item-002=Fil*F:\taylorr\STM\src\video\cismm_video_optimizer\GUI.jpg
-Item-003=Fil*F:\taylorr\STM\src\video\cismm_video_optimizer\kernel.jpg
-Item-004=Fil*F:\taylorr\STM\src\video\cismm_video_optimizer\log.jpg
-Item-005=Fil*F:\taylorr\STM\src\video\cismm_video_optimizer\red_green_blue.jpg
+Item-001=Fil*F:\taylorr\STM\src\video\Release\video_imager_server.exe
+Item-002=Fil*F:\taylorr\STM\src\video\video_imager_server\video_imager_server.bat
