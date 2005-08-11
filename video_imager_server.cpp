@@ -10,8 +10,8 @@
 #include  "directx_camera_server.h"
 #include  "edt_server.h"
 
-const int MAJOR_VERSION = 1;
-const int MINOR_VERSION = 1;
+const int MAJOR_VERSION = 2;
+const int MINOR_VERSION = 2;
 
 //-----------------------------------------------------------------
 // This section contains code to initialize the camera and read its

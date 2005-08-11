@@ -41,7 +41,7 @@ RSC=rc.exe
 # PROP Intermediate_Dir "Release"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
-# ADD CPP /nologo /MD /W3 /GX /O2 /I "C:\EDT\pdv" /I "..\vrpn" /I "C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include" /I "..\external\pc_win32\include" /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
+# ADD CPP /nologo /MD /W3 /GX /O2 /I "$(SYSTEMDRIVE)\EDT\pdv" /I "..\vrpn" /I "C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include" /I "..\external\pc_win32\include" /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -64,7 +64,7 @@ LIB32=link.exe -lib
 # PROP Intermediate_Dir "Debug"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
-# ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "C:\EDT\pdv" /I "..\vrpn" /I "C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include" /I "..\external\pc_win32\include" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
+# ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "$(SYSTEMDRIVE)\EDT\pdv" /I "..\vrpn" /I "C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include" /I "..\external\pc_win32\include" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe
@@ -85,11 +85,11 @@ LIB32=link.exe -lib
 # PROP Default_Filter "cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 # Begin Source File
 
-SOURCE=C:\EDT\pdv\edt_bitload.c
+SOURCE="$(SYSTEMDRIVE)\EDT\pdv\edt_bitload.c"
 # End Source File
 # Begin Source File
 
-SOURCE=C:\EDT\pdv\edt_error.c
+SOURCE="$(SYSTEMDRIVE)\EDT\pdv\edt_error.c"
 # End Source File
 # Begin Source File
 
@@ -97,27 +97,27 @@ SOURCE=.\edt_server.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=C:\EDT\pdv\edt_vco.c
+SOURCE="$(SYSTEMDRIVE)\EDT\pdv\edt_vco.c"
 # End Source File
 # Begin Source File
 
-SOURCE=C:\EDT\pdv\edt_xilinx.c
+SOURCE="$(SYSTEMDRIVE)\EDT\pdv\edt_xilinx.c"
 # End Source File
 # Begin Source File
 
-SOURCE=C:\EDT\pdv\libdvu.c
+SOURCE="$(SYSTEMDRIVE)\EDT\pdv\libdvu.c"
 # End Source File
 # Begin Source File
 
-SOURCE=C:\EDT\pdv\libedt.c
+SOURCE="$(SYSTEMDRIVE)\EDT\pdv\libedt.c"
 # End Source File
 # Begin Source File
 
-SOURCE=C:\EDT\pdv\libpdv.c
+SOURCE="$(SYSTEMDRIVE)\EDT\pdv\libpdv.c"
 # End Source File
 # Begin Source File
 
-SOURCE=C:\EDT\pdv\pdv_interlace.c
+SOURCE="$(SYSTEMDRIVE)\EDT\pdv\pdv_interlace.c"
 # End Source File
 # End Group
 # Begin Group "Header Files"

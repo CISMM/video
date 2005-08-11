@@ -1,3 +1,11 @@
+2005-08-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* edt_library.dsp : Modified to look on the system drive for
+		libraries, not the C: drive.
+	* video_imager_server.cpp : Changed the version number to 2.2
+	* video_spot_tracker.dsp : Set it to look in system drive for
+		include files rather than C:
+
 2005-08-08  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* roper_server.cpp : Modified to handle binning with VRPN Imager.
