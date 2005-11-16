@@ -60,7 +60,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.08";
+const char *Version_string = "01.09";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -639,24 +639,25 @@ void myDisplayFunc(void)
 #ifdef DEBUG
       // If we're debugging, fill the border pixels with green
       if ( (r == *g_minY) || (r == *g_maxY) || (c == *g_minX) || (c == *g_maxX) ) {
-	g_glut_image[0 + 4 * (c + g_image_to_display->get_num_columns() * r)] = 0;
-	g_glut_image[1 + 4 * (c + g_image_to_display->get_num_columns() * r)] = 255;
-	g_glut_image[2 + 4 * (c + g_image_to_display->get_num_columns() * r)] = 0;
-	g_glut_image[3 + 4 * (c + g_image_to_display->get_num_columns() * r)] = 255;
+        g_glut_image[0 + 4 * (c + g_image_to_display->get_num_columns() * r)] = 0;
+        g_glut_image[1 + 4 * (c + g_image_to_display->get_num_columns() * r)] = 255;
+        g_glut_image[2 + 4 * (c + g_image_to_display->get_num_columns() * r)] = 0;
+        g_glut_image[3 + 4 * (c + g_image_to_display->get_num_columns() * r)] = 255;
       }
 #endif
-    }
 
-    // Store the pixels from the image into the frame buffer
-    // so that they cover the entire image (starting from lower-left
-    // corner, which is at (-1,-1)).
-    glRasterPos2f(-1, -1);
-#ifdef DEBUG
-    printf("Drawing %dx%d pixels\n", g_image_to_display->get_num_columns(), g_image_to_display->get_num_rows());
-#endif
-    glDrawPixels(g_image_to_display->get_num_columns(),g_image_to_display->get_num_rows(),
-      GL_RGBA, GL_UNSIGNED_BYTE, g_glut_image);
+    }
   }
+
+  // Store the pixels from the image into the frame buffer
+  // so that they cover the entire image (starting from lower-left
+  // corner, which is at (-1,-1)).
+  glRasterPos2f(-1, -1);
+#ifdef DEBUG
+  printf("Drawing %dx%d pixels\n", g_image_to_display->get_num_columns(), g_image_to_display->get_num_rows());
+#endif
+  glDrawPixels(g_image_to_display->get_num_columns(),g_image_to_display->get_num_rows(),
+    GL_RGBA, GL_UNSIGNED_BYTE, g_glut_image);
 
   // If we have been asked to show the tracking markers, draw them.
   // The active one is drawn in red and the others are drawn in blue.

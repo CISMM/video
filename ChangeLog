@@ -1,3 +1,14 @@
+2005-11-16  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* cismm_video_optimizer.cpp : Moved the display code out of the
+		loop-in-Y code, making it a lot faster.  What a stupid bug.
+		Updated version number to 1.09.
+	* average_videos.cpp : New application to compute the average frame
+		from a video or series of TIFF files.  It isn't quite done in
+		this version.
+	* average_videos.dsp : Project file to build the above.
+	* video.dsw : Added the above project.
+
 2005-08-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* edt_library.dsp : Modified to look on the system drive for
