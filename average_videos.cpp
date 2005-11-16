@@ -1,3 +1,6 @@
+// XXX Why is there a red line along the right border of the averaged image?
+//     This only seems to happen in the Cilia video, not when doing AVIs...
+
 #pragma comment(lib,"D:\\Program Files\\Roper Scientific\\PVCAM\\pvcam32.lib")
 
 #include <math.h>
@@ -101,17 +104,15 @@ static void  cleanup(void);
 
 char  *g_device_name = NULL;			  //< Name of the device to open
 base_camera_server  *g_camera = NULL;		  //< Camera used to get an image
-image_wrapper	    *g_image_to_display = NULL;	  //< Image that we're supposed to display
 image_metric	    *g_mean_image = NULL;	  //< Accumulates mean of images
 Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
-bool                g_sixteenbits = true;         //< Log in 16-bit file?
 int                 g_bitdepth = 8;               //< Bit depth of the input image
 
 int                 g_exposure = 0;               //< Exposure for live camera
 
 bool g_video_valid = false; // Do we have a valid video frame in memory?
-
-double  *g_sum_image = NULL;                      //< Stores the sum image
+unsigned            g_num_frames = 0;             //< How many frames have we read?
+int                 g_max_frames = 0;             //< How many frames to average over at most?
 
 /// Open the wrapped camera we want to use depending on the name of the
 //  camera we're trying to open.
@@ -197,37 +198,39 @@ bool  get_camera(const char *type, base_camera_server **camera,
   return true;
 }
 
-
 static	bool  store_summed_image(void)
 {
-  // XXX
-    // Store the cropped and adjusted image.
-    char  *filename = new char[strlen(g_device_name) + 15];
-    if (filename == NULL) {
-      fprintf(stderr, "Out of memory!\n");
-      return false;
-    }
-    sprintf(filename, "%s.avg.tif", g_device_name);
+  if (!g_mean_image) {
+    fprintf(stderr, "store_summed_image(): No mean image available\n");
+    return false;
+  }
 
-    // Figure out whether the image will be sixteen bits, and also
-    // the gain to apply (256 if 8-bit, 1 if 16-bit).  If it is 8-bit
-    // output, also apply a shift related to the global bit-shift,
-    // so that what ends up in the file is the same as what ends up
-    // on the screen.
-    bool do_sixteen = (g_sixteenbits == 1);
-    int bitshift_gain = 1;
-    if (!do_sixteen) {
-      bitshift_gain = 256;
-      bitshift_gain /= pow(2,g_bitdepth - 8);
-    }
+  char  *filename = new char[strlen(g_device_name) + 15];
+  if (filename == NULL) {
+    fprintf(stderr, "Out of memory!\n");
+    return false;
+  }
+  sprintf(filename, "%s.avg.tif", g_device_name);
 
-    if (!g_mean_image->write_to_tiff_file(filename, bitshift_gain, 0, do_sixteen)) {
-      delete [] filename;
-      return false;
-    }
+  // Figure out whether the image will be sixteen bits, and also
+  // the gain to apply (256 if 8-bit, 1 if 16-bit).  If it is 8-bit
+  // output, also apply a shift related to the global bit-shift,
+  // so that what ends up in the file is the same as what ends up
+  // on the screen.
+  bool do_sixteen = (g_bitdepth != 8);
+  int bitshift_gain = 1;
+  if (!do_sixteen) {
+    bitshift_gain = 256;
+    bitshift_gain /= pow(2,g_bitdepth - 8);
+  }
 
+  if (!g_mean_image->write_to_tiff_file(filename, bitshift_gain, 0, do_sixteen)) {
     delete [] filename;
-    return true;
+    return false;
+  }
+
+  delete [] filename;
+  return true;
 }
 
 // This is called when someone kills the task by closing Glut or some
@@ -252,6 +255,7 @@ static void  dirtyexit(void)
   printf("Exiting\n");
 
   if (g_camera) { delete g_camera; g_camera = NULL; }
+  if (g_mean_image) { delete g_mean_image; g_mean_image = NULL; }
 }
 
 static void  cleanup(void)
@@ -270,6 +274,8 @@ static void  cleanup(void)
   dirtyexit();
 }
 
+// Returns true if there are more frames to do, false (and saves
+// the mean image) if not.
 bool do_next_frame(void)
 {
   // Read an image from the camera into memory, within a structure that
@@ -294,37 +300,28 @@ bool do_next_frame(void)
   }
   (*g_mean_image) += *g_camera;
 
+  // If we've done enough frames, we're done.
+  g_num_frames++;
+  if ( (g_max_frames) && (g_num_frames >= g_max_frames) ) {
+    store_summed_image();
+    return false;
+  }
+
   return true;
 }
 
+void Usage(const char *s)
+{
+    fprintf(stderr, "Usage: %s [-f num] [roper|diaginc|directx|directx640x480|filename]\n", s);
+    fprintf(stderr, "       -f: Number of frames to average over (0 means all, and is the default)\n");
+    exit(-1);
+}
 
 //--------------------------------------------------------------------------
 
 int main(int argc, char *argv[])
 {
-  //------------------------------------------------------------------
-  // If there is a command-line argument, treat it as the name of a
-  // file that is to be loaded.
-  switch (argc) {
-  case 1:
-    // No arguments, so ask the user for a file name
-    g_device_name = NULL;
-    break;
-  case 2:
-    // Filename argument: open the file specified.
-    g_device_name = argv[1];
-    break;
-
-  default:
-    fprintf(stderr, "Usage: %s [roper|diaginc|directx|directx640x480|filename]\n", argv[0]);
-    exit(-1);
-  };
-
-  if (!g_device_name) {
-    fprintf(stderr, "Usage: %s [roper|diaginc|directx|directx640x480|filename]\n", argv[0]);
-    exit(-1);
-  }
-  
+  //---------------------------------------------------------------
   // Set up exit handler to make sure we clean things up no matter
   // how we are quit.  We hope that we exit in a good way and so
   // cleanup() gets called, but if not then we do a dirty exit.
@@ -337,26 +334,64 @@ int main(int argc, char *argv[])
   vrpn_FILE_CONNECTIONS_SHOULD_PRELOAD = false;
   vrpn_FILE_CONNECTIONS_SHOULD_ACCUMULATE = false;
 
-  //------------------------------------------------------------------
-  // Open the camera and image wrapper.  If we have a video file, then
-  // press play.
-  if (!get_camera(g_device_name, &g_camera, &g_video)) {
-    fprintf(stderr,"Cannot open camera/imager\n");
-    if (g_camera) { delete g_camera; g_camera = NULL; }
-    exit(-1);
-  }
-  // Verify that the camera is working.
-  if (!g_camera->working()) {
-    fprintf(stderr,"Could not establish connection to camera\n");
-    if (g_camera) { delete g_camera; g_camera = NULL; }
-    exit(-1);
-  }
+  //---------------------------------------------------------------
+  // Parse the command line, handling video files as we go.
+  int	i, realparams;		  // How many non-flag command-line arguments
+  realparams = 0;
+  for (i = 1; i < argc; i++) {
+    if (!strncmp(argv[i], "-f", strlen("-f"))) {
+      if (++i > argc) { Usage(argv[0]); }
+      g_max_frames = atoi(argv[i]);
+      if (g_max_frames < 0) {
+	fprintf(stderr,"Invalid maximum frames (0+ allowed, %d entered)\n", g_max_frames);
+	exit(-1);
+      }
+      if (g_max_frames) {
+        printf("Using at most %d frames per file\n", g_max_frames);
+      } else {
+        printf("Using all frames in each file\n");
+      }
+    } else if (argv[i][0] == '-') {
+      Usage(argv[0]);
+    } else {
+      switch (++realparams) {
+      case 1: // In case we later care about how many
+      default:
+        //-----------------------------------------------------------------
+        // Get the name of the next file to handle
+        g_device_name = argv[i];
 
-  if (g_video) {
-    g_video->play();
+        //------------------------------------------------------------------
+        // Clean up our state for the beginning of a new file.
+        if (g_camera) { delete g_camera; g_camera = NULL; }
+        if (g_mean_image) { delete g_mean_image; g_mean_image = NULL; }
+        g_num_frames = 0;
+
+        //------------------------------------------------------------------
+        // Open the camera and image wrapper.  If we have a video file, then
+        // press play.
+        if (!get_camera(g_device_name, &g_camera, &g_video)) {
+          fprintf(stderr,"Cannot open camera/imager\n");
+          if (g_camera) { delete g_camera; g_camera = NULL; }
+          exit(-1);
+        }
+        // Verify that the camera is working.
+        if (!g_camera->working()) {
+          fprintf(stderr,"Could not establish connection to camera\n");
+          if (g_camera) { delete g_camera; g_camera = NULL; }
+          exit(-1);
+        }
+
+        if (g_video) {
+          g_video->play();
+        }
+
+        while (do_next_frame()) {}
+
+        break;
+      }
+    }
   }
-
-  while (do_next_frame()) {}
-
+  
   return 0;
 }

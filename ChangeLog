@@ -1,5 +1,13 @@
 2005-11-16  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* average_videos.cpp : This version works, with multiple files
+		named on the command line.  It also has an option (not
+		exposed in the installed shortcut) that lets you say
+		how many frames to average from each of the following
+		files on the command line.
+
+2005-11-16  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* cismm_video_optimizer.cpp : Moved the display code out of the
 		loop-in-Y code, making it a lot faster.  What a stupid bug.
 		Updated version number to 1.09.
