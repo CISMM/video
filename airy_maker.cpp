@@ -19,15 +19,12 @@
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.00";
+const char *Version_string = "01.01";
 
 //--------------------------------------------------------------------------
 // Constants needed by the rest of the program
 
-const unsigned	Window_Size_X = 512;
-const unsigned	Window_Size_Y = Window_Size_X;
-const float	Window_Units_X = 1e9;
-const float	Window_Units_Y = Window_Units_X;
+const float	g_Window_Units = 1e9;
 
 enum { M_NOTHING, M_X_ONLY, M_Y_ONLY, M_X_AND_Y };
 
@@ -40,15 +37,22 @@ int	g_mousePressX, g_mousePressY;	  //< Where the mouse was when the button was 
 int	g_whichDragAction;		  //< What action to take for mouse drag
 
 //--------------------------------------------------------------------------
+// Global variables
+int	g_Window_Size_X = 512;
+int	g_Window_Size_Y = g_Window_Size_X;
+
+//--------------------------------------------------------------------------
 // Tcl controls and displays
 void  logfilename_changed(char *newvalue, void *);
 Tclvar_float_with_scale	g_Wavelength("wavelength_nm", ".kernel.wavelength", 300, 750, 550);
-Tclvar_float_with_scale	g_PixelSpacing("pixelSpacing_nm", ".kernel.pixel", 20, Window_Size_X/4, 50);
+Tclvar_float_with_scale	g_PixelSpacing("pixelSpacing_nm", ".kernel.pixel", 20, g_Window_Size_X/4, 50);
 Tclvar_float_with_scale	g_PixelHidden("pixelFracHidden", ".kernel.pixelhide", 0, 0.5, 0.1);
 Tclvar_float_with_scale	g_Radius("aperture_nm", "", 1000, 3000, 1000);
 Tclvar_float_with_scale	g_PixelXOffset("x_offset_pix", "", -1, 1, 0);
 Tclvar_float_with_scale	g_PixelYOffset("y_offset_pix", "", -1, 1, 0);
 Tclvar_float_with_scale	g_SampleCount("samples", "", 64, 256, 64);
+Tclvar_float_with_scale	g_UniformNoise("uniform_noise", "", 0, 1, 0.1);
+Tclvar_float_with_scale	g_PhotonNoise("photon_noise", "", 0, 1, 0.3);
 Tclvar_int_with_button	g_ShowSqrt("show_sqrt","", 1);
 Tclvar_int_with_button	g_quit("quit","");
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
@@ -82,7 +86,7 @@ void drawSideViewVsPixels(
   double airyOffsetMatchingPixelOffset = -offset / width * pixelSpacing * 2;
   for (loop = -1; loop <= 1.0; loop += 1/(width/2.0)) {
     glVertex3f( loop,
-		FraunhoferIntensity(g_Radius/1e9, loop + airyOffsetMatchingPixelOffset, g_Wavelength/1e9,1.0) / valAtZero,
+		FraunhoferIntensity(g_Radius/1e9, fabs(loop + airyOffsetMatchingPixelOffset), g_Wavelength/1e9,1.0) / valAtZero,
 		0.0 );
     glVertex3f( loop,
 		0.0,
@@ -120,7 +124,7 @@ void drawSideViewVsPixels(
   glBegin(GL_LINE_STRIP);
   for (loop = -1; loop <= 1.0; loop += 1/(width/2.0)) {
     glVertex3f( loop,
-		FraunhoferIntensity(g_Radius/1e9, loop + airyOffsetMatchingPixelOffset, g_Wavelength/1e9,1.0) / valAtZero,
+		FraunhoferIntensity(g_Radius/1e9, fabs(loop + airyOffsetMatchingPixelOffset), g_Wavelength/1e9,1.0) / valAtZero,
 		0.0 );
   }
   glEnd();
@@ -135,7 +139,7 @@ void drawSideViewVsPixels(
     glBegin(GL_LINE_STRIP);
     for (loop = -1; loop <= 1.0; loop += 1/(width/2.0)) {
       glVertex3f( loop,
-		  sqrt(FraunhoferIntensity(g_Radius/1e9, loop + airyOffsetMatchingPixelOffset, g_Wavelength/1e9,1.0) / valAtZero),
+		  sqrt(FraunhoferIntensity(g_Radius/1e9, fabs(loop + airyOffsetMatchingPixelOffset), g_Wavelength/1e9,1.0) / valAtZero),
 		  0.0 );
     }
     glEnd();
@@ -156,6 +160,9 @@ void drawSideViewVsPixels(
   }
   glEnd();
 }
+
+//----------------------------------------------------------------------------
+// Draws a 2D grid with the specified spacing.
 
 void drawPixelGrid(
   double width,		//< Width in pixels of the screen.  We draw from -1 to 1 in X and Y
@@ -211,7 +218,7 @@ double	computeAiryVolume(
 }
 
 void drawPixelBarGraphs(
-  double width,		//< Width in pixels of the screen (assumed isotropic in X and Y
+  double width,		//< Width in pixels of the screen (assumed isotropic in X and Y)
   double units,		//< Converts from Pixel units to screen-space units
   double pixelSpacing,	//< How far in screen pixels between imager pixels
   double pixelFrac,	//< What fraction of imager pixels are not active
@@ -278,6 +285,93 @@ void drawPixelBarGraphs(
   }
 }
 
+// XXX This copies lots of code from drawPixelBarGraphs, which may cause
+// code drift and which also causes twice as much calculation.  Better way
+// would be to calculate an array of pixel values and fill them in, then
+// have each routine just read from these values.
+void drawPixelIntensities(
+  double width,		//< Width in pixels of the screen (assumed isotropic in X and Y)
+  double units,		//< Converts from Pixel units to screen-space units
+  double pixelSpacing,	//< How far in screen pixels between imager pixels
+  double pixelFrac,	//< What fraction of imager pixels are not active
+  double xOffset,	//< How far from the center (and which direction) to offset Airy pattern in X in capture device units
+  double yOffset)	//< How far from the center (and which direction) to offset Airy pattern in Y in capture device units
+{
+  // Find the volume of the whole Airy disk by going way out past its
+  // border.
+  double totVol = computeAiryVolume(-1,1, -1,1, g_SampleCount);
+
+  // Compute how far to step between pixel centers in the screen, then
+  // how far down you can go without getting below -1 when taking these
+  // steps.  Then take one more step than this to get started.
+  // XXX Adjust for offsets.
+  double airyOffsetMatchingPixelOffsetX = -xOffset / width * pixelSpacing * 2;
+  double airyOffsetMatchingPixelOffsetY = yOffset / width * pixelSpacing * 2;
+  double pixelStepInScreen = 1/(width/2.0) * (pixelSpacing/1e9) * units;
+  double halfStepInScreen = 0.5 * pixelStepInScreen;
+  int numsteps = floor(1/pixelStepInScreen);
+  double start = - (numsteps+1) * pixelStepInScreen;
+  double x, y;
+  for (x = start; x < 1.0; x += pixelStepInScreen) {
+    for (y = start; y < 1.0; y += pixelStepInScreen) {
+
+      // Find the four corners of the pixel where we are going to draw the
+      // bar graph.  These include the whole pixel area.  These are found in
+      // the screen space, from -1..1 in X and Y.
+      double xs0 = x - halfStepInScreen;
+      double xs1 = x + halfStepInScreen;
+      double ys0 = y - halfStepInScreen;
+      double ys1 = y + halfStepInScreen;
+
+      // Find the four corners of the pixel that actually has area to receive
+      // photons.  This removes the area clipped by the pixelFrac parameter.
+      // These are also found in screen space.
+      double xc0 = xs0 + halfStepInScreen*pixelFrac;
+      double xc1 = xs1 - halfStepInScreen*pixelFrac;
+      double yc0 = ys0 + halfStepInScreen*pixelFrac;
+      double yc1 = ys1 - halfStepInScreen*pixelFrac;
+
+      // Convert the pixel coordinates from screen space space to
+      // Airy-disk space.  XXX This will need scaling as well as offset
+      // when we get a more formal unit description.
+      double xa0 = xc0 + airyOffsetMatchingPixelOffsetX;
+      double xa1 = xc1 + airyOffsetMatchingPixelOffsetX;
+      double ya0 = yc0 + airyOffsetMatchingPixelOffsetY;
+      double ya1 = yc1 + airyOffsetMatchingPixelOffsetY;
+
+      // Compute the fraction of volume falling within the receiving area by
+      // dividing the volume within it to the volume covered by the whole Airy disk
+      // computed above.  This is the fraction of the pixel to fill.
+      double frac = computeAiryVolume(xa0, xa1, ya0, ya1, g_SampleCount * pixelStepInScreen / 2) / totVol;
+
+      // Add noise to the fraction.
+      // PhotonNoise is the fraction additional photons that may be generated.  It
+      // scales the number of photons actually seen in a pixel.  It is applied first
+      // because it depends on the original pixel intensity.
+      // Uniform noise is what fraction of the total Airy volume each pixel adds or
+      // subtracts (range is -0.5 to 0.5 scaled by the UniformNoise parameter.  It
+      // is added second, because it does not depend on the original intensity.
+      double r1 = (static_cast<double>( rand() )) / RAND_MAX;
+      double r2 = (static_cast<double>( rand() )) / RAND_MAX;
+      frac *= 1.0 + r1 * g_PhotonNoise;
+      frac += r2 * g_UniformNoise;
+
+      // XXX Colors are clipped at 0 and 1, so no need to clip frac.  Otherwise, there
+      // would be.
+
+      // Draw a filled-in square that covers the whole pixel with a color
+      // scaled to the fraction of the Airy disk volume computed above.
+      glColor3f(frac, frac, frac);
+      glBegin(GL_QUADS);
+	glVertex3f( xs0, ys0, 0.0 );
+	glVertex3f( xs1, ys0, 0.0 );
+	glVertex3f( xs1, ys1, 0.0 );
+	glVertex3f( xs0, ys1, 0.0 );
+      glEnd();
+    }
+  }
+}
+
 void drawCrossHairs(
   double width,		//< Width in pixels of the screen (assumed isotropic in X and Y
   double units,		//< Converts from Pixel units to screen-space units
@@ -308,26 +402,38 @@ void myDisplayFunc(void)
   glLoadIdentity();
   glScalef(0.5,1.0,1.0);
   glTranslatef(-1.0, 0.0, 0.0);
-  drawSideViewVsPixels(Window_Size_X, Window_Units_X, g_PixelSpacing, g_PixelHidden, g_PixelXOffset);
+  drawSideViewVsPixels(g_Window_Size_X, g_Window_Units, g_PixelSpacing, g_PixelHidden, g_PixelXOffset);
 
   // Draw the curve vs. the Y axis.
   glLoadIdentity();
   glScalef(1.0,0.5,1.0);
   glTranslatef(0.0, -1.0, 0.0);
   glRotatef(-90, 0,0,1);
-  drawSideViewVsPixels(Window_Size_X, Window_Units_X, g_PixelSpacing, g_PixelHidden, g_PixelYOffset);
+  drawSideViewVsPixels(g_Window_Size_X, g_Window_Units, g_PixelSpacing, g_PixelHidden, g_PixelYOffset);
+
+  // We adjust the viewport here rather than the viewing matrix because it
+  // causes the drawing to be clipped to the boundaries of the viewport and
+  // not spill over to the rest of the display.
 
   // Draw the pixel grid in the lower-left portion of the screen.
   glLoadIdentity();
-  glScalef(0.5,0.5,1.0);
-  glTranslatef(-1.0, -1.0, 0.0);
-  drawPixelGrid(Window_Size_X, Window_Units_X, g_PixelSpacing);
+  glViewport(0, 0, g_Window_Size_X/2, g_Window_Size_Y/2);
+  drawPixelGrid(g_Window_Size_X, g_Window_Units, g_PixelSpacing);
 
   // Draw the bar graphs for the lower-left portion of the screen.
-  drawPixelBarGraphs(Window_Size_X, Window_Units_X, g_PixelSpacing, g_PixelHidden, g_PixelXOffset, g_PixelYOffset);
+  drawPixelBarGraphs(g_Window_Size_X, g_Window_Units, g_PixelSpacing, g_PixelHidden, g_PixelXOffset, g_PixelYOffset);
 
   // Draw the cross-hairs to show the pixel center in the lower-left portion of the screen.
-  drawCrossHairs(Window_Size_X, Window_Units_X, g_PixelSpacing, g_PixelXOffset, g_PixelYOffset);
+  drawCrossHairs(g_Window_Size_X, g_Window_Units, g_PixelSpacing, g_PixelXOffset, g_PixelYOffset);
+
+  // Draw the pixel intensities in the upper-right portion of the screen.
+  glLoadIdentity();
+  glViewport(g_Window_Size_X/2, g_Window_Size_Y/2, g_Window_Size_X/2, g_Window_Size_Y/2);
+  drawPixelIntensities(g_Window_Size_X, g_Window_Units, g_PixelSpacing, g_PixelHidden, g_PixelXOffset, g_PixelYOffset);
+  drawPixelGrid(g_Window_Size_X, g_Window_Units, g_PixelSpacing);
+
+  // Set the viewport back to the whole window.
+  glViewport(0,0, g_Window_Size_X, g_Window_Size_Y);
 
   // Swap buffers so we can see it.
   glutSwapBuffers();
@@ -372,6 +478,16 @@ void myIdleFunc(void)
   vrpn_SleepMsecs(5);
 }
 
+//------------------------------------------------------------------------
+// Make note of the new size so that our mouse and drawing
+// code continues to work.
+void myReshapeFunc(int width, int height)
+{
+  glViewport(0,0, width, height);
+  g_Window_Size_X = width;
+  g_Window_Size_Y = height;
+}
+
 // Computes offset based on the location of the mouse within
 // the lower-left quadrant of the display, where the grid is
 // shown bracketed by the Airy patterns.  Computes the offset
@@ -383,10 +499,10 @@ void  compute_x_offset_based_on_mouse(int x)
   // Compute the location of the mouse within the quadrant
   // in the range -1..+1 for each of X and Y.  +X is to the
   // right and +Y is up.
-  double xNorm = x*2.0/Window_Size_X - 0.5;
+  double xNorm = x*2.0/g_Window_Size_X - 0.5;
 
   // Convert this to offset in display pixel units.
-  double xOffset = xNorm * Window_Size_X / (g_PixelSpacing);
+  double xOffset = xNorm * g_Window_Size_X / (g_PixelSpacing);
 
   // Clamp this offset to (-1,1) and store in the globals.
   if (xOffset < -1) { xOffset = -1; }
@@ -405,10 +521,10 @@ void  compute_y_offset_based_on_mouse(int y)
   // Compute the location of the mouse within the quadrant
   // in the range -1..+1 for each of X and Y.  +X is to the
   // right and +Y is up.
-  double yNorm = y*2.0/Window_Size_Y - 1.5;
+  double yNorm = y*2.0/g_Window_Size_Y - 1.5;
 
   // Convert this to offset in display pixel units.
-  double yOffset = yNorm * Window_Size_Y / (g_PixelSpacing);
+  double yOffset = yNorm * g_Window_Size_Y / (g_PixelSpacing);
 
   // Clamp this offset to (-1,1) and store in the globals.
   if (yOffset < -1) { yOffset = -1; }
@@ -437,6 +553,8 @@ void mouseCallbackForGLUT(int button, int state, int x, int y)
 	if (state == GLUT_DOWN) {
 	  printf("XXX Pressed middle button\n");
 	  g_whichDragAction = M_NOTHING;
+	} else {
+	  printf("XXX Released middle button\n");
 	}
 	break;
 
@@ -447,7 +565,7 @@ void mouseCallbackForGLUT(int button, int state, int x, int y)
 	  // the offsets to be set to the point where the mouse is.
 	  // Dragging here continues to reset this offset.  There is
 	  // a limit of +/- 1 on the offset.
-	  if ( (x <= Window_Size_X/2) && (y >= Window_Size_Y/2) ) {
+	  if ( (x <= g_Window_Size_X/2) && (y >= g_Window_Size_Y/2) ) {
     	    compute_x_offset_based_on_mouse(x);
     	    compute_y_offset_based_on_mouse(y);
 	    g_whichDragAction = M_X_AND_Y;
@@ -455,14 +573,14 @@ void mouseCallbackForGLUT(int button, int state, int x, int y)
 
 	  // Left mouse button clicked in the upper-left quadrant
 	  // causes motion of only the X offet.
-	  if ( (x <= Window_Size_X/2) && (y < Window_Size_Y/2) ) {
+	  if ( (x <= g_Window_Size_X/2) && (y < g_Window_Size_Y/2) ) {
     	    compute_x_offset_based_on_mouse(x);
 	    g_whichDragAction = M_X_ONLY;
 	  }
 
 	  // Left mouse button clicked in the lower-right quadrant
 	  // causes motion of only the X offet.
-	  if ( (x > Window_Size_X/2) && (y >= Window_Size_Y/2) ) {
+	  if ( (x > g_Window_Size_X/2) && (y >= g_Window_Size_Y/2) ) {
     	    compute_y_offset_based_on_mouse(y);
 	    g_whichDragAction = M_Y_ONLY;
 	  }
@@ -626,13 +744,14 @@ int main(int argc, char *argv[])
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
   glutInitWindowPosition(190, 140);
-  glutInitWindowSize(Window_Size_X, Window_Size_Y);
+  glutInitWindowSize(g_Window_Size_X, g_Window_Size_Y);
 #ifdef DEBUG
   printf("XXX initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());
 #endif
   glutCreateWindow("airy_vs_pixels");
   glutMotionFunc(motionCallbackForGLUT);
   glutMouseFunc(mouseCallbackForGLUT);
+  glutReshapeFunc(myReshapeFunc);
 
   // Set the display function and idle function for GLUT (they
   // will do all the work) and then give control over to GLUT.

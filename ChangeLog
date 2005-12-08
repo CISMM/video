@@ -1,3 +1,12 @@
+2005-12-08  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* airy_maker.cpp : Adds a display of the brightness image,
+		including the addition of noise to the image -- both
+		uniform noise and noise scaled by the brightness of
+		each pixel.
+	* spot_math.h : Modified to do a better job at handling
+		cases near the center of the sample space.
+
 2005-11-16  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* average_videos.cpp : This version works, with multiple files
