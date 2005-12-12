@@ -66,8 +66,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c
-# ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include" /I "C:\nsrg\external\pc_win32\include" /I "C:\Program Files\Roper Scientific\PVCAM" /I "..\vrpn" /I "..\quat" /I "C:\DXSDK\include" /I "C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses" /I "..\nano\src\app\nano\lib\nmSEM" /I "..\nano\src\lib\nmBase" /I "..\nano\src\lib\nmMP" /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c /Tp
-# SUBTRACT CPP /Fr
+# ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include" /I "C:\nsrg\external\pc_win32\include" /I "C:\Program Files\Roper Scientific\PVCAM" /I "..\vrpn" /I "..\quat" /I "C:\DXSDK\include" /I "C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses" /I "..\nano\src\app\nano\lib\nmSEM" /I "..\nano\src\lib\nmBase" /I "..\nano\src\lib\nmMP" /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /Fr /YX /FD /GZ /c /Tp
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe

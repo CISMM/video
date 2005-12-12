@@ -189,6 +189,8 @@ checkbutton .log.psf -text "Log Point-spread" -variable pointspread_log -anchor 
 pack .log.psf -side right -fill x
 checkbutton .log.sixteenbits -text "Log 16 bits" -variable sixteenbit_log -anchor w
 pack .log.sixteenbits -side right -fill x
+checkbutton .log.monochrome -text "Monochrome" -variable monochrome_log -anchor w
+pack .log.monochrome -side right -fill x
 
 # Quit the program if this window is destroyed
 bind .log <Destroy> {global quit ; set quit 1} 

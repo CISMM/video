@@ -219,6 +219,7 @@ Tclvar_float_with_scale	*g_minY;
 Tclvar_float_with_scale	*g_maxY;
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
 Tclvar_int_with_button	g_sixteenbits("sixteenbit_log",NULL,1);
+Tclvar_int_with_button	g_monochrome("monochrome_log",NULL,0);
 Tclvar_int_with_button	g_log_pointspread("pointspread_log",NULL,0);
 Tclvar_float_with_scale	g_colorIndex("red_green_blue", NULL, 0, 2, 0);
 Tclvar_float_with_scale	g_bitdepth("bit_depth", "", 8, 12, 8);
@@ -477,10 +478,18 @@ static	bool  save_log_frame(unsigned frame_number)
     intensity_offset = - g_clip_low * clamp;
 
     cropped_image crop(*shifted, (int)(*g_minX), (int)(*g_minY), (int)(*g_maxX), (int)(*g_maxY));
-    if (!crop.write_to_tiff_file(filename, bitshift_gain*intensity_gain, intensity_offset, do_sixteen)) {
-      delete [] filename;
-      delete shifted;
-      return false;
+    if (g_monochrome) {
+      if (!crop.write_to_grayscale_tiff_file(filename, g_colorIndex, bitshift_gain*intensity_gain, intensity_offset, do_sixteen)) {
+        delete [] filename;
+        delete shifted;
+        return false;
+      }
+    } else {
+      if (!crop.write_to_tiff_file(filename, bitshift_gain*intensity_gain, intensity_offset, do_sixteen)) {
+        delete [] filename;
+        delete shifted;
+        return false;
+      }
     }
 
     (*g_log_last_image) = *g_image_to_display;

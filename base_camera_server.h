@@ -118,6 +118,11 @@ public:
   virtual bool  write_to_tiff_file(const char *filename, double scale = 1.0, double offset = 0.0, bool sixteen_bits = false,
     const char *magick_files_dir = "C:/nsrg/external/pc_win32/bin/ImageMagick-5.5.7-Q16/MAGIC_DIR_PATH") const;
 
+  /// Store the specified channel of the portion of image in memory to a grayscale TIFF file (subclasses may override
+  // this to make it more efficient, but we provide an instance in the C file).
+  virtual bool  write_to_grayscale_tiff_file(const char *filename, unsigned channel, double scale = 1.0, double offset = 0.0,
+    bool sixteen_bits = false, const char *magick_files_dir = "C:/nsrg/external/pc_win32/bin/ImageMagick-5.5.7-Q16/MAGIC_DIR_PATH") const;
+
   /// Send whole image over a vrpn connection.  Number of channels is 3 for RGB cameras, but 1 for scientific cameras.
   // The channels to be used must have been pre-allocated by the application; three contiguous named "red" "green" "blue"
   // for an RGB (or BGR) camera.

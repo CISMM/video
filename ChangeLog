@@ -1,5 +1,12 @@
 2005-12-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* base_camera_server.h : Allows saving monochrome TIFF images.
+	* base_camera_server.cpp : Same.
+	* cismm_video_optimzer.cpp : Same.
+	* cismm_video_optimizer.tcl : Same.
+
+2005-12-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* video_spot_tracker.cpp : Turned the RGB slider into a set of
 		radiobuttons, moved the description of them into the
 		Tcl file.

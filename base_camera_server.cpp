@@ -25,7 +25,7 @@ static	vrpn_uint16 offset_scale_and_clamp(const double value, const double gain,
 
 /// Store the portion of the image that is in memory to a TIFF file.
 bool  image_wrapper::write_to_tiff_file(const char *filename, double scale, double offset, bool sixteen_bits,
-						    const char *magick_files_dir) const
+				        const char *magick_files_dir) const
 {
   // Make a pointer to the image data adjusted by the scale and offset.
   vrpn_uint16	  *gain_buffer = NULL;
@@ -36,7 +36,7 @@ bool  image_wrapper::write_to_tiff_file(const char *filename, double scale, doub
   numrows = maxy-miny+1;
   gain_buffer = new vrpn_uint16[numcols * numrows * 3];
   if (gain_buffer == NULL) {
-      fprintf(stderr, "base_camera_server::write_memory_to_tiff_file(): Out of memory\n");
+      fprintf(stderr, "image_wrapper::write_memory_to_tiff_file(): Out of memory\n");
       return false;
   }
   // Flip the row values around so that the orientation matches the order expected by ImageMagick.
@@ -57,7 +57,11 @@ bool  image_wrapper::write_to_tiff_file(const char *filename, double scale, doub
   }
 
 #ifdef	_WIN32
-  InitializeMagick(magick_files_dir);
+  static bool initialized = false;
+  if (!initialized) {
+    InitializeMagick(magick_files_dir);
+    initialized = true;
+  }
 #endif
 
   ExceptionInfo	  exception;
@@ -90,6 +94,87 @@ bool  image_wrapper::write_to_tiff_file(const char *filename, double scale, doub
       // delegates.mgk or whatever if that is the problem instead of just
       // saying the file can't be written later
       fprintf(stderr, "image_wrapper::write_memory_to_tiff_file(): WriteImage failed: %s: %s\n",
+             exception.reason,exception.description);
+      return false;
+  }
+  DestroyImageInfo(out_image_info);
+  DestroyImage(out_image);
+  delete [] gain_buffer;
+  return true;
+}
+
+/// Store the specified channel of the portion of the image that is in memory to a TIFF file.
+bool  image_wrapper::write_to_grayscale_tiff_file(const char *filename, unsigned channel, double scale, double offset,
+				                  bool sixteen_bits, const char *magick_files_dir) const
+{
+  if (channel > 2) {
+      fprintf(stderr, "image_wrapper::write_to_grayscale_tiff_file(): Invalid channel (%d)\n", channel);
+      return false;
+  }
+
+  // Make a pointer to the image data adjusted by the scale and offset.
+  vrpn_uint16	  *gain_buffer = NULL;
+  int		  r,c;
+  int minx, maxx, miny, maxy, numcols, numrows;
+  read_range(minx, maxx, miny, maxy);
+  numcols = maxx-minx+1;
+  numrows = maxy-miny+1;
+  gain_buffer = new vrpn_uint16[numcols * numrows];
+  if (gain_buffer == NULL) {
+      fprintf(stderr, "image_wrapper::write_to_grayscale_tiff_file(): Out of memory\n");
+      return false;
+  }
+  // Flip the row values around so that the orientation matches the order expected by ImageMagick.
+  // Go ahead and let it sample outside the image, filling in black there.
+  // Make sure to flip on the output, not on the pixel read, because the pixel read
+  // may have other hidden transforms in there.
+  for (r = 0; r < numrows; r++) {
+    for (c = 0; c < numcols; c++) {
+      int flip_r = (numrows - 1) - r;
+      double  value;
+      read_pixel(minx + c, miny + r, value, channel);
+      gain_buffer[c + flip_r * numcols] = offset_scale_and_clamp(value, scale, offset);
+    }
+  }
+
+#ifdef	_WIN32
+  static bool initialized = false;
+  if (!initialized) {
+    InitializeMagick(magick_files_dir);
+    initialized = true;
+  }
+#endif
+
+  ExceptionInfo	  exception;
+  Image		  *out_image;
+  ImageInfo       *out_image_info;
+
+  //Initialize the image info structure.
+  GetExceptionInfo(&exception);
+  out_image=ConstituteImage(numcols, numrows, "I", ShortPixel, gain_buffer, &exception);
+  if (out_image == (Image *) NULL) {
+      // print out something to let us know we are missing the 
+      // delegates.mgk or whatever if that is the problem instead of just
+      // saying the file can't be written later
+      fprintf(stderr, "image_wrapper::write_to_grayscale_tiff_file(): Can't make out image: %s: %s\n",
+             exception.reason,exception.description);
+      return false;
+  }
+  out_image_info=CloneImageInfo((ImageInfo *) NULL);
+  if (sixteen_bits) {
+    out_image_info->depth = 16;
+    out_image->depth = 16;
+  } else {
+    out_image_info->depth = 8;
+    out_image->depth = 8;
+  }
+  strcpy(out_image_info->filename, filename);
+  strcpy(out_image->filename, filename);
+  if (WriteImage(out_image_info, out_image) == 0) {
+      // print out something to let us know we are missing the 
+      // delegates.mgk or whatever if that is the problem instead of just
+      // saying the file can't be written later
+      fprintf(stderr, "image_wrapper::write_to_grayscale_tiff_file(): WriteImage failed: %s: %s\n",
              exception.reason,exception.description);
       return false;
   }
