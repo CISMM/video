@@ -1,5 +1,14 @@
 2005-12-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* video_spot_tracker.cpp : Turned the RGB slider into a set of
+		radiobuttons, moved the description of them into the
+		Tcl file.
+	* video_spot_tracker.tcl : Same.
+	* cismm_video_optimizer.cpp : Same.
+	* cismm_video_optimizer.tcl : Same.
+
+2005-12-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* airy_maker.cpp : Now calculates an image based on the current
 		parameter settings and then uses that image for display
 		purposes both in the bar graph and in the simulated image.

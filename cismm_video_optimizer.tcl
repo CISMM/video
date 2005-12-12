@@ -11,6 +11,18 @@ button .quit -text "Quit" -command { set quit 1 }
 pack .quit -side top -fill x
 
 ###########################################################
+# Put in a radiobutton to select the color channel
+
+frame .colorpick -relief raised -borderwidth 1
+radiobutton .colorpick.r -variable red_green_blue -text R -value 0
+radiobutton .colorpick.g -variable red_green_blue -text G -value 1
+radiobutton .colorpick.b -variable red_green_blue -text B -value 2
+pack .colorpick
+pack .colorpick.r -side left
+pack .colorpick.g -side left
+pack .colorpick.b -side left
+
+###########################################################
 # Put the places for the controls to let the user pick a kernel.
 
 toplevel .kernel

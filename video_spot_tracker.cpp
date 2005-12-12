@@ -249,7 +249,7 @@ Tclvar_float_with_scale	*g_maxX;
 Tclvar_float_with_scale	*g_minY;
 Tclvar_float_with_scale	*g_maxY;
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
-Tclvar_float_with_scale	g_colorIndex("red_green_blue", "", 0, 2, 0);
+Tclvar_float_with_scale	g_colorIndex("red_green_blue", NULL, 0, 2, 0);
 Tclvar_float_with_scale	g_bitdepth("bit_depth", "", 8, 12, 8);
 Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_trackers);
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
