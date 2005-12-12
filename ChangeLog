@@ -1,3 +1,12 @@
+2005-12-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* airy_maker.cpp : Now calculates an image based on the current
+		parameter settings and then uses that image for display
+		purposes both in the bar graph and in the simulated image.
+	* airy_maker.tcl : Made a big "Quit" button.
+	* spot_math.h : Moved an Airy integration function into this
+		file, so that it can be shared by other programs.
+
 2005-12-08  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* airy_maker.cpp : Adds a display of the brightness image,

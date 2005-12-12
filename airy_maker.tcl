@@ -2,15 +2,22 @@
 # Sets up the control panel for the Video Spot Tracker program.
 # XXX Eventually, it should handle all of the controls.
 
-
 # Global variable to remember where they are saving files.
 set fileinfo(open_dir) "C:\\"
+
+###########################################################
+# Put in a big "Quit" button at the top of the main window.
+
+button .quit -text "Quit" -command { set quit 1 }
+pack .quit -side top -fill x
 
 ###########################################################
 # Put the places for the controls to let the user pick a kernel.
 
 toplevel .kernel
 wm geometry .kernel +190+10
+frame .kernel.aperture
+pack .kernel.aperture -side left
 frame .kernel.wavelength
 pack .kernel.wavelength -side left
 frame .kernel.pixel
@@ -29,7 +36,7 @@ pack .kernel.pixelhide -side left
 set logging 0
 set logfilename ""
 toplevel .log
-wm geometry .log +690+10
+wm geometry .log +10+550
 checkbutton .log.button -text Logging -variable logging -anchor w
 pack .log.button -side top -fill x
 label .log.label -textvariable logfilename

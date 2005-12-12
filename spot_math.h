@@ -57,4 +57,36 @@ inline double	FraunhoferIntensity(double R, double x, double y, double lambda, d
   return C*C * fwf*fwf;
 }
 
+// Compute the volume under part of the Airy disk.  Do this by
+// sampling the disk densely, finding the average value within the area,
+// and then multiplying by the area.
+
+inline double	ComputeAiryVolume(
+  double radius_meters, //< Aperture radius of the Airy disk
+  double wavelength_meters, //< Wavelength of the light in meters
+  double x0,		//< Low end of X integration range in Airy-disk coordinates
+  double x1,		//< High end of X integration range
+  double y0,		//< Low end of Y integration range
+  double y1,		//< High end of Y integration range
+  int samples)		//< How many samples to take in each of X and Y
+{
+  int count = 0;	//< How many pixels we have summed up
+  double x;		//< Steps through X
+  double y;		//< Steps through Y
+  double sx = (x1 - x0) / (samples + 1);
+  double sy = (y1 - y0) / (samples + 1);
+  double sum = 0;
+
+  for (x = x0 + sx/2; x < x1; x += sx) {
+    for (y = y0 + sy/2; y < y1; y += sy) {
+      count++;
+      sum += FraunhoferIntensity(radius_meters, x, y, wavelength_meters, 1.0);
+    }
+  }
+
+  return (sum / count) * (x1-x0) * (y1-y0);
+}
+
+
+
 #endif

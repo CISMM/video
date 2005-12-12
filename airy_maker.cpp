@@ -1,4 +1,5 @@
 //XXX Make all of the units match in the program.  For now, they are half baked.
+//XXX What to do when the focal plane isn't at the emitter?
 
 #include <math.h>
 #include <stdio.h>
@@ -41,20 +42,60 @@ int	g_whichDragAction;		  //< What action to take for mouse drag
 int	g_Window_Size_X = 512;
 int	g_Window_Size_Y = g_Window_Size_X;
 
+// Image array to hold the fraction of total Airy energy landing in
+// each pixel.  NOTE: The (0,0) pixel is in the middle of the array,
+// as indexed by the CX and CY parameters
+const unsigned g_NX = 511;
+const unsigned g_NY = g_NX;
+const unsigned g_CX = g_NX/2;
+const unsigned g_CY = g_CX;
+class ImageArray {
+public:
+  void clear(void) {
+    unsigned x,y;
+    for (x = 0; x < g_NX; x++) {
+      for (y = 0; y < g_NY; y++) {
+        d_values[x][y] = 0;
+      }
+    }
+  };
+
+  double value(int x, int y) const {
+    return d_values[x+g_CX][y+g_CY];
+  };
+
+  void value(int x, int y, double val) {
+    d_values[x+g_CX][y+g_CY] = val;
+  };
+
+  // "ita" means "imager-to-airy-space".
+  //  ita_scale: Multiples integer pixel coordinates in imager space to get Airy-space coordinates.
+  //  itx_offset_x: Added to the scaled value; Airy-space offset of its center.
+  void fillFromAiryFunction(int radius_from_center,
+                            double ita_scale,
+                            double ita_offset_x, double ita_offset_y,
+                            double pixel_fraction_hidden,
+                            int samples_per_pixel);
+
+protected:
+  double  d_values[g_NX][g_NY];
+} g_Image;
+
 //--------------------------------------------------------------------------
 // Tcl controls and displays
 void  logfilename_changed(char *newvalue, void *);
 Tclvar_float_with_scale	g_Wavelength("wavelength_nm", ".kernel.wavelength", 300, 750, 550);
 Tclvar_float_with_scale	g_PixelSpacing("pixelSpacing_nm", ".kernel.pixel", 20, g_Window_Size_X/4, 50);
 Tclvar_float_with_scale	g_PixelHidden("pixelFracHidden", ".kernel.pixelhide", 0, 0.5, 0.1);
-Tclvar_float_with_scale	g_Radius("aperture_nm", "", 1000, 3000, 1000);
+Tclvar_float_with_scale	g_Radius("aperture_nm", ".kernel.aperture", 1000, 3000, 1000);
 Tclvar_float_with_scale	g_PixelXOffset("x_offset_pix", "", -1, 1, 0);
 Tclvar_float_with_scale	g_PixelYOffset("y_offset_pix", "", -1, 1, 0);
 Tclvar_float_with_scale	g_SampleCount("samples", "", 64, 256, 64);
-Tclvar_float_with_scale	g_UniformNoise("uniform_noise", "", 0, 1, 0.1);
-Tclvar_float_with_scale	g_PhotonNoise("photon_noise", "", 0, 1, 0.3);
+Tclvar_float_with_scale	g_UniformNoise("uniform_noise", "", 0, 1, 0.03);
+Tclvar_float_with_scale	g_PhotonNoise("photon_noise", "", 0, 1, 0.03);
+Tclvar_float_with_scale	g_DisplayGain("display_gain", "", 1,5, 1);
 Tclvar_int_with_button	g_ShowSqrt("show_sqrt","", 1);
-Tclvar_int_with_button	g_quit("quit","");
+Tclvar_int_with_button	g_quit("quit",NULL);
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
 
 //--------------------------------------------------------------------------
@@ -189,32 +230,49 @@ void drawPixelGrid(
   glEnd();
 }
 
-// Compute the volume under part of the Airy disk.  Do this by
-// sampling the disk densely, finding the average value within the area,
-// and then multiplying by the area.
+// This function fills in the global image with values that represent
+// the sum of the Airy energy falling in each pixel.
+// It presumes that the (0,0) entry is at the center of the image, and
+// fills in around the center to a range specified in the "radius"
+// parameter.
 
-double	computeAiryVolume(
-  double x0,		//< Low end of X integration range in Airy-disk coordinates
-  double x1,		//< High end of X integration range
-  double y0,		//< Low end of Y integration range
-  double y1,		//< High end of Y integration range
-  int samples)		//< How many samples to take in each of X and Y
+void ImageArray::fillFromAiryFunction(int radius_from_center,
+                            double ita_scale,
+                            double ita_offset_x, double ita_offset_y,
+                            double pixel_fraction_hidden,
+                            int samples_per_pixel)
 {
-  int count = 0;	//< How many pixels we have summed up
-  double x;		//< Steps through X
-  double y;		//< Steps through Y
-  double sx = (x1 - x0) / (samples + 1);
-  double sy = (y1 - y0) / (samples + 1);
-  double sum = 0;
+  int i, j; // Imager-pixel coordinates of the centers of the pixels to compute the values for
+  for (i = -radius_from_center; i <= radius_from_center; i++) {
+    for (j = -radius_from_center; j <= radius_from_center; j++) {
 
-  for (x = x0 + sx/2; x < x1; x += sx) {
-    for (y = y0 + sy/2; y < y1; y += sy) {
-      count++;
-      sum += FraunhoferIntensity(g_Radius/1e9, x, y, g_Wavelength/1e9, 1.0);
+      // The coordinates of the center of the current pixel in Airy space.
+      double x = i * ita_scale + ita_offset_x;
+      double y = j * ita_scale + ita_offset_y;
+
+      // Find the four corners of the Airy-space box that surround this pixel.
+      double halfpixel_step = ita_scale/2;
+      double xs0 = x - halfpixel_step;
+      double xs1 = x + halfpixel_step;
+      double ys0 = y - halfpixel_step;
+      double ys1 = y + halfpixel_step;
+
+      // Find the four corners of the pixel that actually has area to receive
+      // photons.  This removes the area clipped by the pixelFrac parameter.
+      // These are also found in screen space.
+      double fraction_covered_step = halfpixel_step * pixel_fraction_hidden;
+      double xc0 = xs0 + fraction_covered_step;
+      double xc1 = xs1 - fraction_covered_step;
+      double yc0 = ys0 + fraction_covered_step;
+      double yc1 = ys1 - fraction_covered_step;
+
+      // Compute the sum of Airy energy volume falling within the receiving area.
+      double frac = ComputeAiryVolume(g_Radius/1e9, g_Wavelength/1e9, xc0, xc1, yc0, yc1, samples_per_pixel);
+
+      // Fill in the value here.
+      value(i,j, frac);
     }
   }
-
-  return (sum / count) * (x1-x0) * (y1-y0);
 }
 
 void drawPixelBarGraphs(
@@ -223,25 +281,20 @@ void drawPixelBarGraphs(
   double pixelSpacing,	//< How far in screen pixels between imager pixels
   double pixelFrac,	//< What fraction of imager pixels are not active
   double xOffset,	//< How far from the center (and which direction) to offset Airy pattern in X in capture device units
-  double yOffset)	//< How far from the center (and which direction) to offset Airy pattern in Y in capture device units
+  double yOffset,       //< How far from the center (and which direction) to offset Airy pattern in Y in capture device units
+  double totVol)	//< Total volume under the Airy disk.
 {
-  // Find the volume of the whole Airy disk by going way out past its
-  // border.
-  double totVol = computeAiryVolume(-1,1, -1,1, g_SampleCount);
-
   // Compute how far to step between pixel centers in the screen, then
   // how far down you can go without getting below -1 when taking these
   // steps.  Then take one more step than this to get started.
-  // XXX Adjust for offsets.
-  double airyOffsetMatchingPixelOffsetX = -xOffset / width * pixelSpacing * 2;
-  double airyOffsetMatchingPixelOffsetY = yOffset / width * pixelSpacing * 2;
   double pixelStepInScreen = 1/(width/2.0) * (pixelSpacing/1e9) * units;
   double halfStepInScreen = 0.5 * pixelStepInScreen;
-  int numsteps = floor(1/pixelStepInScreen);
-  double start = - (numsteps+1) * pixelStepInScreen;
-  double x, y;
-  for (x = start; x < 1.0; x += pixelStepInScreen) {
-    for (y = start; y < 1.0; y += pixelStepInScreen) {
+  int numsteps = floor(1/pixelStepInScreen) + 1;
+  int i,j;
+  for (i = -numsteps; i <= numsteps; i++) {
+    for (j = -numsteps; j <= numsteps; j++) {
+      double x = i * pixelStepInScreen;
+      double y = j * pixelStepInScreen;
 
       // Find the four corners of the pixel where we are going to draw the
       // bar graph.  These include the whole pixel area.  These are found in
@@ -251,26 +304,10 @@ void drawPixelBarGraphs(
       double ys0 = y - halfStepInScreen;
       double ys1 = y + halfStepInScreen;
 
-      // Find the four corners of the pixel that actually has area to receive
-      // photons.  This removes the area clipped by the pixelFrac parameter.
-      // These are also found in screen space.
-      double xc0 = xs0 + halfStepInScreen*pixelFrac;
-      double xc1 = xs1 - halfStepInScreen*pixelFrac;
-      double yc0 = ys0 + halfStepInScreen*pixelFrac;
-      double yc1 = ys1 - halfStepInScreen*pixelFrac;
-
-      // Convert the pixel coordinates from screen space space to
-      // Airy-disk space.  XXX This will need scaling as well as offset
-      // when we get a more formal unit description.
-      double xa0 = xc0 + airyOffsetMatchingPixelOffsetX;
-      double xa1 = xc1 + airyOffsetMatchingPixelOffsetX;
-      double ya0 = yc0 + airyOffsetMatchingPixelOffsetY;
-      double ya1 = yc1 + airyOffsetMatchingPixelOffsetY;
-
       // Compute the fraction of volume falling within the receiving area by
       // dividing the volume within it to the volume covered by the whole Airy disk
       // computed above.  This is the fraction of the pixel to fill.
-      double frac = computeAiryVolume(xa0, xa1, ya0, ya1, g_SampleCount * pixelStepInScreen / 2) / totVol;
+      double frac = g_Image.value(i,j) / totVol;
 
       // Draw a filled-in graph that covers the fraction of the whole pixel
       // that equals the fraction of the Airy disk volume computed above.
@@ -285,64 +322,41 @@ void drawPixelBarGraphs(
   }
 }
 
-// XXX This copies lots of code from drawPixelBarGraphs, which may cause
-// code drift and which also causes twice as much calculation.  Better way
-// would be to calculate an array of pixel values and fill them in, then
-// have each routine just read from these values.
 void drawPixelIntensities(
   double width,		//< Width in pixels of the screen (assumed isotropic in X and Y)
   double units,		//< Converts from Pixel units to screen-space units
   double pixelSpacing,	//< How far in screen pixels between imager pixels
   double pixelFrac,	//< What fraction of imager pixels are not active
   double xOffset,	//< How far from the center (and which direction) to offset Airy pattern in X in capture device units
-  double yOffset)	//< How far from the center (and which direction) to offset Airy pattern in Y in capture device units
+  double yOffset,       //< How far from the center (and which direction) to offset Airy pattern in Y in capture device units
+  double totVol)	//< Total volume under the Airy disk.
 {
-  // Find the volume of the whole Airy disk by going way out past its
-  // border.
-  double totVol = computeAiryVolume(-1,1, -1,1, g_SampleCount);
-
   // Compute how far to step between pixel centers in the screen, then
   // how far down you can go without getting below -1 when taking these
   // steps.  Then take one more step than this to get started.
-  // XXX Adjust for offsets.
-  double airyOffsetMatchingPixelOffsetX = -xOffset / width * pixelSpacing * 2;
-  double airyOffsetMatchingPixelOffsetY = yOffset / width * pixelSpacing * 2;
   double pixelStepInScreen = 1/(width/2.0) * (pixelSpacing/1e9) * units;
   double halfStepInScreen = 0.5 * pixelStepInScreen;
-  int numsteps = floor(1/pixelStepInScreen);
-  double start = - (numsteps+1) * pixelStepInScreen;
-  double x, y;
-  for (x = start; x < 1.0; x += pixelStepInScreen) {
-    for (y = start; y < 1.0; y += pixelStepInScreen) {
+  int numsteps = floor(1/pixelStepInScreen) + 1;
+  int i,j;
+
+  // Actually draw the pixels
+  for (i = -numsteps; i <= numsteps; i++) {
+    for (j = -numsteps; j <= numsteps; j++) {
+      double x = i * pixelStepInScreen;
+      double y = j * pixelStepInScreen;
 
       // Find the four corners of the pixel where we are going to draw the
-      // bar graph.  These include the whole pixel area.  These are found in
+      // values.  These include the whole pixel area.  These are found in
       // the screen space, from -1..1 in X and Y.
       double xs0 = x - halfStepInScreen;
       double xs1 = x + halfStepInScreen;
       double ys0 = y - halfStepInScreen;
       double ys1 = y + halfStepInScreen;
 
-      // Find the four corners of the pixel that actually has area to receive
-      // photons.  This removes the area clipped by the pixelFrac parameter.
-      // These are also found in screen space.
-      double xc0 = xs0 + halfStepInScreen*pixelFrac;
-      double xc1 = xs1 - halfStepInScreen*pixelFrac;
-      double yc0 = ys0 + halfStepInScreen*pixelFrac;
-      double yc1 = ys1 - halfStepInScreen*pixelFrac;
-
-      // Convert the pixel coordinates from screen space space to
-      // Airy-disk space.  XXX This will need scaling as well as offset
-      // when we get a more formal unit description.
-      double xa0 = xc0 + airyOffsetMatchingPixelOffsetX;
-      double xa1 = xc1 + airyOffsetMatchingPixelOffsetX;
-      double ya0 = yc0 + airyOffsetMatchingPixelOffsetY;
-      double ya1 = yc1 + airyOffsetMatchingPixelOffsetY;
-
       // Compute the fraction of volume falling within the receiving area by
       // dividing the volume within it to the volume covered by the whole Airy disk
       // computed above.  This is the fraction of the pixel to fill.
-      double frac = computeAiryVolume(xa0, xa1, ya0, ya1, g_SampleCount * pixelStepInScreen / 2) / totVol;
+      double frac = g_Image.value(i,j) / totVol;
 
       // Add noise to the fraction.
       // PhotonNoise is the fraction additional photons that may be generated.  It
@@ -356,8 +370,10 @@ void drawPixelIntensities(
       frac *= 1.0 + r1 * g_PhotonNoise;
       frac += r2 * g_UniformNoise;
 
-      // XXX Colors are clipped at 0 and 1, so no need to clip frac.  Otherwise, there
-      // would be.
+      // Multiply by the display gain.
+      // XXX If OpenGL didn't clip this value from 0-1, we'd need to check
+      // to make sure it did not go over one here.
+      frac *= g_DisplayGain;
 
       // Draw a filled-in square that covers the whole pixel with a color
       // scaled to the fraction of the Airy disk volume computed above.
@@ -420,8 +436,36 @@ void myDisplayFunc(void)
   glViewport(0, 0, g_Window_Size_X/2, g_Window_Size_Y/2);
   drawPixelGrid(g_Window_Size_X, g_Window_Units, g_PixelSpacing);
 
+  // Compute the values needed to figure out how to convert from imager
+  // pixels to Airy-space pixels (scales and offsets).  Also figure out how
+  // far to go from the center.
+  // The Airy coordinates are the same as the Screen-space coordinates
+  //    (see the loop in drawSideViewVsPixels(), where the area tracing
+  //     is done).
+  // Therefore Airy/Imager = ScreenSpace/Imager.
+  // ScreenSpace goes from -1 to 1, so has a distance of 2, during which
+  // the number of pixels on the whole screen is g_Window_Size_X in the
+  // whole display), making the mapping from ScreenSpace/Pixel = 2/g_Window_Size_X.
+  // The number of pixels/Imager step = g_PixelSpacing.
+  double display_pixel_per_imager_pixel = g_PixelSpacing;
+  double airy_pixel_per_display_pixel = (2.0/g_Window_Size_X);//XXX; // XXX Fix later when we have units
+  double airy_pixel_per_imager_pixel = airy_pixel_per_display_pixel * display_pixel_per_imager_pixel;
+  // The g_Pixel[XY]Offset is in imager pixels, not screen pixels.
+  double airy_offset_matching_pixel_offset_X = -g_PixelXOffset * airy_pixel_per_imager_pixel;
+  double airy_offset_matching_pixel_offset_Y = g_PixelYOffset * airy_pixel_per_imager_pixel;
+  int radius = ceil( (g_Window_Size_X/2.0) / display_pixel_per_imager_pixel );
+  int numsamples = g_SampleCount / (radius*2);
+
+  // Compute the values in the Airy image buffer.
+  g_Image.fillFromAiryFunction(radius, airy_pixel_per_imager_pixel,
+    airy_offset_matching_pixel_offset_X, airy_offset_matching_pixel_offset_Y,
+    g_PixelHidden, numsamples);
+
+  // Compute the total volume under the Airy disk.
+  double totVol = ComputeAiryVolume(g_Radius/1e9, g_Wavelength/1e9, -1,1, -1,1, g_SampleCount);
+
   // Draw the bar graphs for the lower-left portion of the screen.
-  drawPixelBarGraphs(g_Window_Size_X, g_Window_Units, g_PixelSpacing, g_PixelHidden, g_PixelXOffset, g_PixelYOffset);
+  drawPixelBarGraphs(g_Window_Size_X, g_Window_Units, g_PixelSpacing, g_PixelHidden, g_PixelXOffset, g_PixelYOffset, totVol);
 
   // Draw the cross-hairs to show the pixel center in the lower-left portion of the screen.
   drawCrossHairs(g_Window_Size_X, g_Window_Units, g_PixelSpacing, g_PixelXOffset, g_PixelYOffset);
@@ -429,7 +473,7 @@ void myDisplayFunc(void)
   // Draw the pixel intensities in the upper-right portion of the screen.
   glLoadIdentity();
   glViewport(g_Window_Size_X/2, g_Window_Size_Y/2, g_Window_Size_X/2, g_Window_Size_Y/2);
-  drawPixelIntensities(g_Window_Size_X, g_Window_Units, g_PixelSpacing, g_PixelHidden, g_PixelXOffset, g_PixelYOffset);
+  drawPixelIntensities(g_Window_Size_X, g_Window_Units, g_PixelSpacing, g_PixelHidden, g_PixelXOffset, g_PixelYOffset, totVol);
   drawPixelGrid(g_Window_Size_X, g_Window_Units, g_PixelSpacing);
 
   // Set the viewport back to the whole window.
