@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v04.03</title>
+<title>Video Spot Tracker v04.04</title>
 
-<h1>Video Spot Tracker version 04.03</h1>
+<h1>Video Spot Tracker version 04.04</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -22,13 +22,13 @@
   icon that was created when the program was installed. To select a stack of image 
   files that are numbered consecutively, drag any one of the files onto the icon. 
   It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
-  Menu/All Programs/NSRG/Video Spot Tracker v04.03</b></i>. If you run the program 
+  Menu/All Programs/NSRG/Video Spot Tracker v04.04</b></i>. If you run the program 
   directly by double-clicking on the icon, it will ask for a video or image file 
   (AVI, TIF, or BMP) that it should open.</p>
 
 <p><b><i>NOTE:</i></b> With Windows XP service pack 2 and with other firewall software, running the program causes a dialog box to appear asking whether to block the program; the program needs to be unblocked only if the program is to be connected to a local or remote feedback system that relies on the tracking data. This happens when the program opens the Internet port assigned to it (3883) by the Internet Domain Naming Authority to export the data through the standard VRPN protocol (<a href="http://www.vrpn.org">www.vrpn.org</a>).</p> 
 
-<h2><img src="GUI.jpg" width="161" height="770" align="right">Using the program</h2>
+<h2><img src="GUI.jpg" width="161" height="797" align="right">Using the program</h2>
 
 <p>When the program is run and a file is selected, four windows will appear. The image window that appears on the lower right contains the first image within the video file or a continually-updating image from a live camera feed. The control panel named <b><i>tk</i></b> that appears on the left when the program is run (shown here to the right) contains a number of interaction widgets that control the operation of the program. The <b><i>kernel</i></b> control panel that appears above the image window (described later) controls the type of tracking kernel being used. The <b><i>log</i></b> control panel is described later.</p>
 
@@ -63,7 +63,7 @@
 
 <p><img src="kernel.jpg" width="688" height="117"></p>
 
-<p>There are three types of tracking kernels available in version 4.03: disc, 
+<p>There are three types of tracking kernels available in version 4.04: disc, 
   cone, and symmetric. Their properties are controlled using interface widgets 
   in the <cite>kernel</cite> control panel.</p>
 
@@ -174,7 +174,7 @@
   program was. You convert the &quot;.vrpn&quot; file into a Matlab file by dragging 
   it onto a shortcut that points to the program (or by dragging it onto the program 
   itself). The vrpnLogToMatlab program will have been installed in the directory: 
-  <b><i>C:\Program Files\NSRG\Video Spot Tracker v04.03\VrpnLogToMatlib</i></b> 
+  <b><i>C:\Program Files\NSRG\Video Spot Tracker v04.04\VrpnLogToMatlib</i></b> 
   and it will also be located on the desktop.</p>
 
 <p><strong>Data description:</strong> Positions and radii are reported in units of pixels, with the origin at the upper-right corner of the screen. +X is towards the right on the displayed window and +Y is towards the bottom.</p>
@@ -185,6 +185,12 @@
 
 <p>Whether logging is turned on or not, the video can be played by checking the <b><i>play_video</i></b> checkbox, and paused by unchecking it. The <b><i>single_step_video</i></b> checkbox will step forwards one video frame each time it is pressed. The <b><i>rewind</i></b> checkbox causes the video to rewind to the beginning, play the first frame of the video, and then pause. The <cite>FrameNum</cite> display shows which frame of a video file is currently being displayed.</p> 
 
+<h3>Background removal</h3>
+<p>When the <i>background_subtract</i> checkbox is selected, the program will 
+  compute a running average of the video frame and subtract the current frame 
+  from the running average. After 50 frames have been added, no more are used 
+  to form the average. This is intended to help separate moving objects from a 
+  stationery background that confuses the tracking.</p>
 <h3>Kymograph function</h3>
 
 <p>Clicking on the <i><b>kymograph</b></i> button in the main control panel brings up two more windows and modifies the behavior of the first four tracked spots in the image. This function is aimed at the study of cellular mitosis, and it provides a &quot;spingle-centered&quot; trace through the image. The two centromeres define the ends of the spindle. The point halfway between the two centromeres is defined as the spindle center, which moves from frame to frame. The line through the two centromeres is defined as the spindle axis, which rotates from frame to frame.</p> 
@@ -207,6 +213,14 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 4.04:</h3>
+<ul>
+  <li>Includes <i>background_subtract</i> feature that will subtract up to 50 
+    frames of averaged background data.</li>
+  <li>Displays the video much faster.</li>
+  <li>Switches the RGB slider to a radiobutton.</li>
+</ul>
+<h3></h3>
 <h3>Version 4.03:</h3>
 <ul>
   <li>No longer requires separate installation of ImageMagick libraries.</li>

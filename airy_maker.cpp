@@ -84,16 +84,16 @@ protected:
 //--------------------------------------------------------------------------
 // Tcl controls and displays
 void  logfilename_changed(char *newvalue, void *);
-Tclvar_float_with_scale	g_Wavelength("wavelength_nm", ".kernel.wavelength", 300, 750, 550);
-Tclvar_float_with_scale	g_PixelSpacing("pixelSpacing_nm", ".kernel.pixel", 20, g_Window_Size_X/4, 50);
+Tclvar_float_with_scale	g_Wavelength("wavelength_nm", ".kernel.wavelength", 300, 750, 475);
+Tclvar_float_with_scale	g_PixelSpacing("pixelSpacing_nm", ".kernel.pixel", 15, g_Window_Size_X/4, 15);
 Tclvar_float_with_scale	g_PixelHidden("pixelFracHidden", ".kernel.pixelhide", 0, 0.5, 0.1);
 Tclvar_float_with_scale	g_Radius("aperture_nm", ".kernel.aperture", 1000, 3000, 1000);
 Tclvar_float_with_scale	g_PixelXOffset("x_offset_pix", "", -1, 1, 0);
 Tclvar_float_with_scale	g_PixelYOffset("y_offset_pix", "", -1, 1, 0);
 Tclvar_float_with_scale	g_SampleCount("samples", "", 64, 256, 64);
-Tclvar_float_with_scale	g_UniformNoise("uniform_noise", "", 0, 1, 0.03);
-Tclvar_float_with_scale	g_PhotonNoise("photon_noise", "", 0, 1, 0.03);
-Tclvar_float_with_scale	g_DisplayGain("display_gain", "", 1,5, 1);
+Tclvar_float_with_scale	g_UniformNoise("uniform_noise", "", 0, 0.1, 0.005);
+Tclvar_float_with_scale	g_PhotonNoise("photon_noise", "", 0, 0.1, 0.03);
+Tclvar_float_with_scale	g_DisplayGain("display_gain", "", 1,30, 20);
 Tclvar_int_with_button	g_ShowSqrt("show_sqrt","", 1);
 Tclvar_int_with_button	g_quit("quit",NULL);
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
@@ -474,7 +474,7 @@ void myDisplayFunc(void)
   glLoadIdentity();
   glViewport(g_Window_Size_X/2, g_Window_Size_Y/2, g_Window_Size_X/2, g_Window_Size_Y/2);
   drawPixelIntensities(g_Window_Size_X, g_Window_Units, g_PixelSpacing, g_PixelHidden, g_PixelXOffset, g_PixelYOffset, totVol);
-  drawPixelGrid(g_Window_Size_X, g_Window_Units, g_PixelSpacing);
+  //drawPixelGrid(g_Window_Size_X, g_Window_Units, g_PixelSpacing);
 
   // Set the viewport back to the whole window.
   glViewport(0,0, g_Window_Size_X, g_Window_Size_Y);

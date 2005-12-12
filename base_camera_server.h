@@ -41,6 +41,20 @@ public:
   // was in the image, false if it was not.
   virtual bool	read_pixel(int x, int y, double	&result, unsigned rgb = 0) const = 0;
 
+  // Overloaded by result type to enable optimization later but use by any.
+  virtual bool  read_pixel(int x, int y, vrpn_uint8 &result, unsigned rgb = 0) const
+  { double double_pix;
+    bool err = read_pixel(x,y, double_pix, rgb);
+    result = static_cast<vrpn_uint8>(double_pix);
+    return err;
+  }
+  virtual bool  read_pixel(int x, int y, vrpn_uint16 &result, unsigned rgb = 0) const
+  { double double_pix;
+    bool err = read_pixel(x,y, double_pix, rgb);
+    result = static_cast<vrpn_uint16>(double_pix);
+    return err;
+  }
+
   /// Read a pixel from the image into a double; Don't check boundaries.
   virtual double read_pixel_nocheck(int x, int y, unsigned rgb = 0) const = 0;
 
@@ -561,6 +575,16 @@ public:
   /// Get pixels out of the memory buffer, RGB indexes the colors
   virtual bool	get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint8 &val, int RGB = 0) const = 0;
   virtual bool	get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &val, int RGB = 0) const = 0;
+
+  // Makes the read routines in the base class faster by calling the above methods.
+  virtual bool  read_pixel(int x, int y, vrpn_uint8 &result, unsigned rgb = 0) const
+  {
+    return get_pixel_from_memory(x,y, result, rgb);
+  }
+  virtual bool  read_pixel(int x, int y, vrpn_uint16 &result, unsigned rgb = 0) const
+  {
+    return get_pixel_from_memory(x,y, result, rgb);
+  }
 
   /// Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.

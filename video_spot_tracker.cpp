@@ -62,7 +62,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "04.02";
+const char *Version_string = "04.04";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -190,7 +190,13 @@ Tcl_Interp	    *g_tk_control_interp;
 
 char		    *g_device_name = NULL;	  //< Name of the camera/video/file device to open
 base_camera_server  *g_camera;			  //< Camera used to get an image
+
+const image_wrapper *g_image;                     //< Image, possibly from camera and possibly computed
+image_metric	    *g_mean_image = NULL;	  //< Accumulates mean of images, if we're doing background subtract
+image_wrapper	    *g_calculated_image = NULL;	  //< Image calculated from the camera image and other parameters
+unsigned            g_background_count = 0;       //< Number of frames we've already averaged over
 copy_of_image	    *g_last_image = NULL;	  //< Copy of the last image we had, if any
+
 float		    g_search_radius = 0;	  //< Search radius for doing local max in before optimizing.
 Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
 Tclvar_int_with_button	g_frame_number("frame_number",NULL,-1);  //< Keeps track of video frame number
@@ -236,6 +242,7 @@ void  logfilename_changed(char *newvalue, void *);
 void  device_filename_changed(char *newvalue, void *);
 void  rebuild_trackers(int newvalue, void *);
 void  rebuild_trackers(float newvalue, void *);
+void  reset_background_image(int newvalue, void *);
 void  set_debug_visibility(int newvalue, void *);
 void  set_kymograph_visibility(int newvalue, void *);
 void  set_maximum_search_radius(int newvalue, void *);
@@ -273,6 +280,7 @@ Tclvar_int_with_button	g_mark("show_tracker","",1);
 Tclvar_int_with_button	g_show_video("show_video","",1);
 Tclvar_int_with_button	g_show_debug("show_debug","",0, set_debug_visibility);
 Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
+Tclvar_int_with_button	g_background_subtract("background_subtract","",0, reset_background_image);
 Tclvar_int_with_button	g_kymograph("kymograph","",0, set_kymograph_visibility);
 Tclvar_int_with_button	g_quit("quit",NULL);
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
@@ -287,7 +295,7 @@ int		        g_log_frame_number_last_logged = -1;
 // space and openGL space.
 double	flip_y(double y)
 {
-  return g_camera->get_num_rows() - 1 - y;
+  return g_image->get_num_rows() - 1 - y;
 }
 
 
@@ -609,8 +617,10 @@ void myDisplayFunc(void)
 #endif
     int shift = g_bitdepth - 8;
     for (r = *g_minY; r <= *g_maxY; r++) {
-      for (c = *g_minX; c <= *g_maxX; c++) {
-	if (!g_camera->get_pixel_from_memory(c, r, uns_pix, g_colorIndex)) {
+      unsigned lowc = *g_minX, hic = *g_maxX; //< Speeds things up.
+      unsigned char *pixel_base = &g_glut_image[ 4*(lowc + g_image->get_num_columns() * r) ]; //< Speeds things up
+      for (c = lowc; c <= hic; c++) {
+	if (!g_image->read_pixel(c, r, uns_pix, g_colorIndex)) {
 	  fprintf(stderr, "Cannot read pixel from region\n");
 	  cleanup();
       	  exit(-1);
@@ -621,18 +631,18 @@ void myDisplayFunc(void)
 	// from the first channel into all colors of the image.  It uses
 	// RGBA so that we don't have to worry about byte-alignment problems
 	// that plagued us when using RGB pixels.
-	g_glut_image[0 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> shift;
-	g_glut_image[1 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> shift;
-	g_glut_image[2 + 4 * (c + g_camera->get_num_columns() * r)] = uns_pix >> shift;
-	g_glut_image[3 + 4 * (c + g_camera->get_num_columns() * r)] = 255;
+        *(pixel_base++) = uns_pix >> shift;     // Stored in red
+        *(pixel_base++) = uns_pix >> shift;     // Stored in green
+        *(pixel_base++) = uns_pix >> shift;     // Stored in blue
+        pixel_base++;   // Skip alpha, it doesn't matter. //*(pixel_base++) = 255;                  // Stored in alpha
 
 #ifdef DEBUG
 	// If we're debugging, fill the border pixels with green
 	if ( (r == *g_minY) || (r == *g_maxY) || (c == *g_minX) || (c == *g_maxX) ) {
-	  g_glut_image[0 + 4 * (c + g_camera->get_num_columns() * r)] = 0;
-	  g_glut_image[1 + 4 * (c + g_camera->get_num_columns() * r)] = 255;
-	  g_glut_image[2 + 4 * (c + g_camera->get_num_columns() * r)] = 0;
-	  g_glut_image[3 + 4 * (c + g_camera->get_num_columns() * r)] = 255;
+	  g_glut_image[0 + 4 * (c + g_image->get_num_columns() * r)] = 0;
+	  g_glut_image[1 + 4 * (c + g_image->get_num_columns() * r)] = 255;
+	  g_glut_image[2 + 4 * (c + g_image->get_num_columns() * r)] = 0;
+	  g_glut_image[3 + 4 * (c + g_image->get_num_columns() * r)] = 255;
 	}
 #endif
       }
@@ -643,9 +653,9 @@ void myDisplayFunc(void)
     // corner, which is at (-1,-1)).
     glRasterPos2f(-1, -1);
 #ifdef DEBUG
-    printf("Drawing %dx%d pixels\n", g_camera->get_num_columns(), g_camera->get_num_rows());
+    printf("Drawing %dx%d pixels\n", g_image->get_num_columns(), g_image->get_num_rows());
 #endif
-    glDrawPixels(g_camera->get_num_columns(),g_camera->get_num_rows(),
+    glDrawPixels(g_image->get_num_columns(),g_image->get_num_rows(),
       GL_RGBA, GL_UNSIGNED_BYTE, g_glut_image);
   }
 
@@ -660,10 +670,10 @@ void myDisplayFunc(void)
     for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
       // Normalize center and radius so that they match the coordinates
       // (-1..1) in X and Y.
-      double  x = -1.0 + (*loop)->xytracker()->get_x() * (2.0/g_camera->get_num_columns());
-      double  y = -1.0 + ((*loop)->xytracker()->get_y()) * (2.0/g_camera->get_num_rows());
-      double  dx = (*loop)->xytracker()->get_radius() * (2.0/g_camera->get_num_columns());
-      double  dy = (*loop)->xytracker()->get_radius() * (2.0/g_camera->get_num_rows());
+      double  x = -1.0 + (*loop)->xytracker()->get_x() * (2.0/g_image->get_num_columns());
+      double  y = -1.0 + ((*loop)->xytracker()->get_y()) * (2.0/g_image->get_num_rows());
+      double  dx = (*loop)->xytracker()->get_radius() * (2.0/g_image->get_num_columns());
+      double  dy = (*loop)->xytracker()->get_radius() * (2.0/g_image->get_num_rows());
 
       if (*loop == g_active_tracker) {
 	glColor3f(1,0,0);
@@ -674,8 +684,8 @@ void myDisplayFunc(void)
 	// Horrible hack to make this work with rod type
 	double orient = static_cast<rod3_spot_tracker_interp*>((*loop)->xytracker())->get_orientation();
 	double length = static_cast<rod3_spot_tracker_interp*>((*loop)->xytracker())->get_length();
-	double dx = (length/2 * cos(orient * M_PI/180)) * (2.0/g_camera->get_num_columns());
-	double dy = (length/2 * sin(orient * M_PI/180)) * (2.0/g_camera->get_num_rows());
+	double dx = (length/2 * cos(orient * M_PI/180)) * (2.0/g_image->get_num_columns());
+	double dy = (length/2 * sin(orient * M_PI/180)) * (2.0/g_image->get_num_rows());
 	glBegin(GL_LINES);
 	  glVertex2f(x-dx,y-dy);
 	  glVertex2f(x+dx,y+dy);
@@ -727,27 +737,27 @@ void myDisplayFunc(void)
   glDisable(GL_LINE_SMOOTH);
   glColor3f(0,1,0);
   glBegin(GL_LINE_STRIP);
-  glVertex3f( -1 + 2*((*g_minX-1) / (g_camera->get_num_columns()-1)),
-	      -1 + 2*((*g_minY-1) / (g_camera->get_num_rows()-1)) , 0.0 );
-  glVertex3f( -1 + 2*((*g_maxX+1) / (g_camera->get_num_columns()-1)),
-	      -1 + 2*((*g_minY-1) / (g_camera->get_num_rows()-1)) , 0.0 );
-  glVertex3f( -1 + 2*((*g_maxX+1) / (g_camera->get_num_columns()-1)),
-	      -1 + 2*((*g_maxY+1) / (g_camera->get_num_rows()-1)) , 0.0 );
-  glVertex3f( -1 + 2*((*g_minX-1) / (g_camera->get_num_columns()-1)),
-	      -1 + 2*((*g_maxY+1) / (g_camera->get_num_rows()-1)) , 0.0 );
-  glVertex3f( -1 + 2*((*g_minX-1) / (g_camera->get_num_columns()-1)),
-	      -1 + 2*((*g_minY-1) / (g_camera->get_num_rows()-1)) , 0.0 );
+  glVertex3f( -1 + 2*((*g_minX-1) / (g_image->get_num_columns()-1)),
+	      -1 + 2*((*g_minY-1) / (g_image->get_num_rows()-1)) , 0.0 );
+  glVertex3f( -1 + 2*((*g_maxX+1) / (g_image->get_num_columns()-1)),
+	      -1 + 2*((*g_minY-1) / (g_image->get_num_rows()-1)) , 0.0 );
+  glVertex3f( -1 + 2*((*g_maxX+1) / (g_image->get_num_columns()-1)),
+	      -1 + 2*((*g_maxY+1) / (g_image->get_num_rows()-1)) , 0.0 );
+  glVertex3f( -1 + 2*((*g_minX-1) / (g_image->get_num_columns()-1)),
+	      -1 + 2*((*g_maxY+1) / (g_image->get_num_rows()-1)) , 0.0 );
+  glVertex3f( -1 + 2*((*g_minX-1) / (g_image->get_num_columns()-1)),
+	      -1 + 2*((*g_minY-1) / (g_image->get_num_rows()-1)) , 0.0 );
   glEnd();
 
   // If we are running a kymograph, draw a green line through the first two
   // trackers to show where we're collecting it from
   if (g_kymograph && (g_trackers.size() >= 2)) {
     list<Spot_Information *>::iterator  loop = g_trackers.begin();
-    double x0 = -1.0 + (*loop)->xytracker()->get_x() * (2.0/g_camera->get_num_columns());
-    double y0 = -1.0 + ((*loop)->xytracker()->get_y()) * (2.0/g_camera->get_num_rows());
+    double x0 = -1.0 + (*loop)->xytracker()->get_x() * (2.0/g_image->get_num_columns());
+    double y0 = -1.0 + ((*loop)->xytracker()->get_y()) * (2.0/g_image->get_num_rows());
     loop++;
-    double x1 = -1.0 + (*loop)->xytracker()->get_x() * (2.0/g_camera->get_num_columns());
-    double y1 = -1.0 + ((*loop)->xytracker()->get_y()) * (2.0/g_camera->get_num_rows());
+    double x1 = -1.0 + (*loop)->xytracker()->get_x() * (2.0/g_image->get_num_columns());
+    double y1 = -1.0 + ((*loop)->xytracker()->get_y()) * (2.0/g_image->get_num_rows());
 
     // Draw the line between them
     glColor3f(0.5,0.9,0.5);
@@ -766,8 +776,8 @@ void myDisplayFunc(void)
     double dy = (y1 - y0) / dist;
 
     // Find the perpendicular to the line between them
-    double px = dy  * g_camera->get_num_rows() / g_camera->get_num_columns();
-    double py = -dx * g_camera->get_num_columns() / g_camera->get_num_rows();
+    double px = dy  * g_image->get_num_rows() / g_image->get_num_columns();
+    double py = -dx * g_image->get_num_columns() / g_image->get_num_rows();
 
     // Draw the perpendicular line
     glColor3f(0.5,0.9,0.5);
@@ -781,11 +791,11 @@ void myDisplayFunc(void)
     if (g_trackers.size() >= 4) {
       // Find the two tracked points to use.
       loop++; // Skip to the third point.
-      double cx0 = -1.0 + (*loop)->xytracker()->get_x() * (2.0/g_camera->get_num_columns());
-      double cy0 = -1.0 + ((*loop)->xytracker()->get_y()) * (2.0/g_camera->get_num_rows());
+      double cx0 = -1.0 + (*loop)->xytracker()->get_x() * (2.0/g_image->get_num_columns());
+      double cy0 = -1.0 + ((*loop)->xytracker()->get_y()) * (2.0/g_image->get_num_rows());
       loop++;
-      double cx1 = -1.0 + (*loop)->xytracker()->get_x() * (2.0/g_camera->get_num_columns());
-      double cy1 = -1.0 + ((*loop)->xytracker()->get_y()) * (2.0/g_camera->get_num_rows());
+      double cx1 = -1.0 + (*loop)->xytracker()->get_x() * (2.0/g_image->get_num_columns());
+      double cy1 = -1.0 + ((*loop)->xytracker()->get_y()) * (2.0/g_image->get_num_rows());
 
       // Find the center of the two (origin of cell coordinates) and the unit vector (dx,dy)
       // going towards the second from the first.
@@ -797,8 +807,8 @@ void myDisplayFunc(void)
       double cdy = (cy1 - cy0) / cdist;
 
       // Find the perpendicular to the line between them
-      double cpx = cdy  * g_camera->get_num_rows() / g_camera->get_num_columns();
-      double cpy = -cdx * g_camera->get_num_columns() / g_camera->get_num_rows();
+      double cpx = cdy  * g_image->get_num_rows() / g_image->get_num_columns();
+      double cpy = -cdx * g_image->get_num_columns() / g_image->get_num_rows();
 
       // Draw the line
       glBegin(GL_LINES);
@@ -889,7 +899,7 @@ void myBeadDisplayFunc(void)
     int shift = g_bitdepth - 8;
     for (x = min_x; x < max_x; x++) {
       for (y = min_y; y < max_y; y++) {
-	if (!g_camera->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix)) {
+	if (!g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix)) {
 	  g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = 0;
 	  g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = 0;
 	  g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = 0;
@@ -943,7 +953,7 @@ void myLandscapeDisplayFunc(void)
     for (x = 0; x < g_landscape_size; x++) {
       for (y = 0; y < g_landscape_size; y++) {
 	g_active_tracker->xytracker()->set_location(x + xImageOffset, y + yImageOffset);
-	this_val = g_active_tracker->xytracker()->check_fitness(*g_camera);
+	this_val = g_active_tracker->xytracker()->check_fitness(*g_image);
 	g_landscape_floats[x + g_landscape_size * y] = this_val;
 	if (this_val < min_val) { min_val = this_val; }
 	if (this_val > max_val) { max_val = this_val; }
@@ -994,7 +1004,7 @@ void myLandscapeDisplayFunc(void)
       } else {
 	g_active_tracker->xytracker()->set_location(x + xImageOffset, start_y);
       }
-      this_val = g_active_tracker->xytracker()->check_fitness(*g_camera);
+      this_val = g_active_tracker->xytracker()->check_fitness(*g_image);
       glVertex3f( strip_start_x + x * strip_step_x, this_val * scale - offset,0);
     }
     glEnd();
@@ -1162,8 +1172,8 @@ void myIdleFunc(void)
     g_small_area = 0;
     *g_minX = 0;
     *g_minY = 0;
-    *g_maxX = g_camera->get_num_columns() - 1;
-    *g_maxY = g_camera->get_num_rows() - 1;
+    *g_maxX = g_image->get_num_columns() - 1;
+    *g_maxY = g_image->get_num_rows() - 1;
     g_full_area = 0;
   }
 
@@ -1202,8 +1212,8 @@ void myIdleFunc(void)
     // Make sure not to push them off the screen
     if ((*g_minX) < 0) { (*g_minX) = 0; }
     if ((*g_minY) < 0) { (*g_minY) = 0; }
-    if ((*g_maxX) >= g_camera->get_num_columns()) { (*g_maxX) = g_camera->get_num_columns() - 1; }
-    if ((*g_maxY) >= g_camera->get_num_rows()) { (*g_maxY) = g_camera->get_num_rows() - 1; }
+    if ((*g_maxX) >= g_image->get_num_columns()) { (*g_maxX) = g_image->get_num_columns() - 1; }
+    if ((*g_maxY) >= g_image->get_num_rows()) { (*g_maxY) = g_image->get_num_rows() - 1; }
   }
 
   // If we're doing a search for local maximum during optimization, then make a
@@ -1211,9 +1221,9 @@ void myIdleFunc(void)
 
   if (g_search_radius > 0) {
     if (g_last_image == NULL) {
-      g_last_image = new copy_of_image(*g_camera);
+      g_last_image = new copy_of_image(*g_image);
     } else {
-      *g_last_image = *g_camera;
+      *g_last_image = *g_image;
     }
   }
 
@@ -1258,6 +1268,49 @@ void myIdleFunc(void)
       g_frame_number++;
     }
   }
+  // Point the image to use at the camera's image.
+  g_image = g_camera;
+
+  // If we're doing background subtraction, then we set things up to accumulate
+  // an average image and do a subtraction between the current image and the
+  // background image, and then we point the g_image at this computed image.
+  if (g_background_subtract) {
+
+    // Create the mean image if it does not exist.  When we create it,
+    // we include the current image no matter what.
+    if (!g_mean_image) {
+      g_mean_image = new mean_image(*g_image);
+      (*g_mean_image) += *g_image;
+      g_background_count = 0;
+    } else {
+      // Otherwise, only add in a new image when we get a new frame.
+      if (g_video_valid) {
+
+        // Actually, only average over at most 50 frames and then just re-use the image
+        if (g_background_count < 50) {
+          (*g_mean_image) += *g_image;
+          g_background_count++;
+        }
+      }
+    }
+
+    // Get rid of the old calculated image, if we have one
+    if (g_calculated_image) { delete g_calculated_image; g_calculated_image = NULL; }
+    // Calculate the new image and then point the image to display at it.
+    // The offset is determined by the maximum value that can be displayed in an
+    // image with half as many values as the present image.
+    double offset = (1 << (((unsigned)(g_bitdepth))-1) ) - 1;
+    g_calculated_image = new subtracted_image(*g_image, *g_mean_image, offset);
+    if (g_calculated_image == NULL) {
+      fprintf(stderr, "Out of memory when calculating image\n");
+      cleanup();
+      exit(-1);
+    }
+
+    g_image = g_calculated_image;
+  }
+
+  // We're ready to display an image.
   g_ready_to_display = true;
 
   if (g_active_tracker) { 
@@ -1365,12 +1418,12 @@ void myIdleFunc(void)
 	int x_offset, y_offset;
 	int best_x_offset = 0;
 	int best_y_offset = 0;
-	double best_value = max_find.check_fitness(*g_camera);
+	double best_value = max_find.check_fitness(*g_image);
 	for (x_offset = -floor(used_search_radius); x_offset <= floor(used_search_radius); x_offset++) {
 	  for (y_offset = -floor(used_search_radius); y_offset <= floor(used_search_radius); y_offset++) {
 	    if ( (x_offset * x_offset) + (y_offset * y_offset) <= radsq) {
 	      max_find.set_location(x_base + x_offset, y_base + y_offset);
-	      double val = max_find.check_fitness(*g_camera);
+	      double val = max_find.check_fitness(*g_image);
 	      if (val > best_value) {
 		best_x_offset = x_offset;
 		best_y_offset = y_offset;
@@ -1387,9 +1440,9 @@ void myIdleFunc(void)
 
       // Here's where the tracker is optimized to its new location
       if (g_parabolafit) {
-	(*loop)->xytracker()->optimize_xy_parabolafit(*g_camera, x, y, (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y() );
+	(*loop)->xytracker()->optimize_xy_parabolafit(*g_image, x, y, (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y() );
       } else {
-	(*loop)->xytracker()->optimize_xy(*g_camera, x, y, (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y() );
+	(*loop)->xytracker()->optimize_xy(*g_image, x, y, (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y() );
       }
 
       // If we are doing prediction, update the estimated velocity based on the
@@ -1450,7 +1503,7 @@ void myIdleFunc(void)
             x = r * cos(theta);
             y = r * sin(theta);
 	    (*loop)->xytracker()->set_location(x + start_x, y + start_y);
-	    this_val = (*loop)->xytracker()->check_fitness(*g_camera);
+	    this_val = (*loop)->xytracker()->check_fitness(*g_image);
 	    if (this_val > max_val) { max_val = this_val; }
           }
 	  if (max_val < min_val) { min_val = max_val; }
@@ -1462,7 +1515,7 @@ void myIdleFunc(void)
         // on the type of kernel we are using.  It also depends on the setting of
         // the "lost sensitivity" parameter, which varies from 0 (not sensitive at
         // all) to 1 (most sensitive).
-        double starting_value = (*loop)->xytracker()->check_fitness(*g_camera);
+        double starting_value = (*loop)->xytracker()->check_fitness(*g_image);
         //printf("XXX Center = %lg, min of maxes = %lg, scale = %lg\n", starting_value, min_val, min_val/starting_value);
         if (g_kernel_type == KERNEL_SYMMETRIC) {
           // The symmetric kernel reports values that are strictly non-positive for
@@ -1518,8 +1571,8 @@ void myIdleFunc(void)
       // If we are optimizing in Z, then do it here.
       if (g_opt_z) {
         double  z = 0;
-        (*loop)->ztracker()->locate_close_fit_in_depth(*g_camera, (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y(), z);
-        (*loop)->ztracker()->optimize(*g_camera, (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y(), z);
+        (*loop)->ztracker()->locate_close_fit_in_depth(*g_image, (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y(), z);
+        (*loop)->ztracker()->optimize(*g_image, (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y(), z);
       }
 
       // If we are running a kymograph, then we don't optimize any trackers
@@ -1577,7 +1630,7 @@ void myIdleFunc(void)
 	int ky = g_kymograph_filled;
 
 	// Look up the pixel in the image and put it into the kymograph if we get a reading.
-	if (!g_camera->read_pixel_bilerp(x, y, double_pix)) {
+	if (!g_image->read_pixel_bilerp(x, y, double_pix)) {
 	  g_kymograph_image[0 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
 	  g_kymograph_image[1 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
 	  g_kymograph_image[2 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
@@ -1876,8 +1929,8 @@ void motionCallbackForGLUT(int x, int y) {
       // Clip the motion to stay within the window boundaries.
       if (x < 0) { x = 0; };
       if (y < 0) { y = 0; };
-      if (x >= (int)g_camera->get_num_columns()) { x = g_camera->get_num_columns() - 1; }
-      if (y >= (int)g_camera->get_num_rows()) { y = g_camera->get_num_rows() - 1; };
+      if (x >= (int)g_image->get_num_columns()) { x = g_image->get_num_columns() - 1; }
+      if (y >= (int)g_image->get_num_rows()) { y = g_image->get_num_rows() - 1; };
 
       // Set the radius based on how far the user has moved from click
       double radius = sqrt( (x - g_mousePressX) * (x - g_mousePressX) + (y - g_mousePressY) * (y - g_mousePressY) );
@@ -2015,6 +2068,14 @@ void  device_filename_changed(char *newvalue, void *)
   if (strlen(newvalue) > 0) {
     g_device_name = new char[strlen(newvalue)+1];
     strcpy(g_device_name, newvalue);
+  }
+}
+
+void  reset_background_image(int newvalue, void *)
+{
+  if (g_mean_image) {
+    delete g_mean_image;
+    g_mean_image = NULL;
   }
 }
 
