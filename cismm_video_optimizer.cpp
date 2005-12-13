@@ -60,7 +60,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.09";
+const char *Version_string = "01.10";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -628,22 +628,25 @@ void myDisplayFunc(void)
 #endif
   int shift = g_bitdepth - 8;
   for (r = *g_minY; r <= *g_maxY; r++) {
-    for (c = *g_minX; c <= *g_maxX; c++) {
+    unsigned lowc = *g_minX, hic = *g_maxX; //< Speeds things up.
+    unsigned char *pixel_base = &g_glut_image[ 4*(lowc + g_image_to_display->get_num_columns() * r) ]; //< Speeds things up
+    for (c = lowc; c <= hic; c++) {
       if (!g_image_to_display->read_pixel(c, r, pixel_val, g_colorIndex)) {
 	fprintf(stderr, "Cannot read pixel from region\n");
 	cleanup();
       	exit(-1);
       }
+      vrpn_uint16 val = offset_scale_clamp(pixel_val) >> shift;
 
       // This assumes that the pixels are actually 8-bit values
       // and will clip if they go above this.  It also writes pixels
       // from the first channel into all colors of the image.  It uses
       // RGBA so that we don't have to worry about byte-alignment problems
       // that plagued us when using RGB pixels.
-      g_glut_image[0 + 4 * (c + g_image_to_display->get_num_columns() * r)] = offset_scale_clamp(pixel_val) >> shift;
-      g_glut_image[1 + 4 * (c + g_image_to_display->get_num_columns() * r)] = offset_scale_clamp(pixel_val) >> shift;
-      g_glut_image[2 + 4 * (c + g_image_to_display->get_num_columns() * r)] = offset_scale_clamp(pixel_val) >> shift;
-      g_glut_image[3 + 4 * (c + g_image_to_display->get_num_columns() * r)] = 255;
+      *(pixel_base++) = val;     // Stored in red
+      *(pixel_base++) = val;     // Stored in green
+      *(pixel_base++) = val;     // Stored in blue
+      pixel_base++;   // Skip alpha, it doesn't matter. //*(pixel_base++) = 255;                  // Stored in alpha
 
 #ifdef DEBUG
       // If we're debugging, fill the border pixels with green

@@ -8,10 +8,10 @@ OperatingSystem=WinXP  5.1  2600 (Service Pack 2)
 ProjectName=cismm_video_optimizer
 ProjectDirectory=F:\taylorr\STM\src\video\cismm_video_optimizer
 NonSFXDirectory=F:\taylorr\STM\src\video\cismm_video_optimizer\NonSFX
-MediaFileName=cismm_video_optimizer_01_09
+MediaFileName=cismm_video_optimizer_01_10
 CopyMediaToFName=
 ProgramDescriptiveName=CISMM Video Optimizer
-ProgramVersion=01.09
+ProgramVersion=01.10
 CompanyName=UNC Nanoscale Science Research Group
 ProgVerLiveUpdate=0
 RegisterAsApp=1
@@ -62,7 +62,7 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|1|0|
 CompanyUrl=www.cs.unc.edu/nano
 
 [TargetExe]
-TargetDirectory=<AbsoluteDir>C:\NSRG\bin\cismm_video_optimizer_v01.09
+TargetDirectory=<AbsoluteDir>C:\NSRG\bin\cismm_video_optimizer_v01.10
 CommonDirectory=<AbsoluteDir>C:\NSRG\external
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\cismm_video_optimizer.bat
@@ -71,7 +71,7 @@ RunTimeDir_2=|||||||1||||1||1|<ProgramFilesDir>|||||
 RunTimeDir_3=|||||||1||||1||1|<ProgramFilesDir>|||||
 
 [Dialogs]
-SelectedDialogs=Welcome,License,*Readme,User Information,*Destination,*Setup Type,*Custom,Associate,*Shortcuts,*Confirm Setup,*Copy Files,*Complete
+SelectedDialogs=Welcome,License,*Readme,User Information,Destination,*Setup Type,*Custom,Associate,*Shortcuts,*Confirm Setup,Copy Files,*Complete
 LicenseTextFile=
 ReadmeTextFile=F:\taylorr\STM\src\video\cismm_video_optimizer\Installation_README.txt
 ReadmeTextFile2=
@@ -106,7 +106,7 @@ ShowCopyrightWarning=0
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=NSRG\CISMM Video Optimizer v01.09
+ProgramLinkFolder=NSRG\CISMM Video Optimizer v01.10
 ProgramLinkName=Cismm_video_optimizer
 ProgramLinkParam=
 ProgramLinkWorkDir=<Application Folder>
@@ -114,7 +114,7 @@ ProgramLinkRun=Minimized
 ProgramLinkIconFile=<Application Folder>\cismm_video_optimizer.ico
 ProgramLinkIconNum=0
 StartMenuLinkName=CISMM Video Optimizer
-DesktopLinkName=CISMM Video Optimizer v01.08
+DesktopLinkName=CISMM Video Optimizer v01.10
 SendToLinkName=CISMM Video Optimizer
 StartUpLinkName=CISMM Video Optimizer
 QuickLaunchLinkName=CISMM Video Optimizer
