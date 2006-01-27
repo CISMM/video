@@ -1,5 +1,9 @@
 2006-01-27  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* cismm_video_optimizer.cpp : Adds "Thank-you Ware" button.
+
+2006-01-27  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* video_spot_tracker.cpp : Adds "Thank-You Ware" button.
 
 2005-12-13  Russell M. Taylor II  <taylorr@cs.unc.edu>

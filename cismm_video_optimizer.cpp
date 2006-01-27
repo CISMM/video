@@ -60,7 +60,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.10";
+const char *Version_string = "01.11";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -1633,6 +1633,33 @@ int main(int argc, char *argv[])
           return(-1);
   }
   sprintf(command, "pack .versionlabel");
+  if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
+          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+                  tk_control_interp->result);
+          return(-1);
+  }
+
+  //------------------------------------------------------------------
+  // Put the "Thank-you Ware" button into the main window.
+  sprintf(command, "package require http");
+  if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
+          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+                  tk_control_interp->result);
+          return(-1);
+  }
+  sprintf(command, "set thanks_text \"Say Thank You!\"");
+  if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
+          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+                  tk_control_interp->result);
+          return(-1);
+  }
+  sprintf(command, "button .thankyouware -textvariable thanks_text -command { ::http::geturl \"http://www.cs.unc.edu/Research/nano/cismm/thankyou/yourewelcome.htm?program=video_spot_tracker&Version=%s\" ; set thanks_text \"Paid for by NIH/NIBIB\" }", Version_string);
+  if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
+          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+                  tk_control_interp->result);
+          return(-1);
+  }
+  sprintf(command, "pack .thankyouware");
   if (Tcl_Eval(tk_control_interp, command) != TCL_OK) {
           fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
                   tk_control_interp->result);
