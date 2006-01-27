@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v04.04</title>
+<title>Video Spot Tracker v04.05</title>
 
-<h1>Video Spot Tracker version 04.04</h1>
+<h1>Video Spot Tracker version 04.05</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -16,19 +16,34 @@
   control, and the portable <a href="http://www.imagemagic.org">ImageMagick</a> 
   package for reading images.</p>
 
+<h2>Thank-You Ware</h2>
+<p>This program is distributed as &quot;Thank-You Ware.&quot; As a National Research 
+  Resource, we are funded by the NIH National Institute of Biomedical Imaging 
+  and Bioengineering to develop tools for scientists. Part of our mission is to 
+  distribute these tools broadly to help biomedical researchers do their work.</p>
+<p>Rather than making you register to download our software or join a mailing 
+  list or provide other personally-identifying material to use our code, we've 
+  come up with the following easy and anonymous way for you to let us know we're 
+  helping the community. When you press the &quot;Say Thank You!&quot; button 
+  to let us know you appreciate having the tool, the application sends a web query 
+  to our server and logs your response (not your name or your phone number, just 
+  a web hit count). We add up these counts and report them to the reviewers for 
+  our renewal applications when we ask NIBIB to continue funding us to maintain 
+  our existing tools and to build new ones. Please press the button whenever you 
+  feel like the tool has been helpful to you.</p>
 <h2>Running the program</h2>
 
 <p>The program is run by dragging a video file or image file onto the desktop 
   icon that was created when the program was installed. To select a stack of image 
   files that are numbered consecutively, drag any one of the files onto the icon. 
   It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
-  Menu/All Programs/NSRG/Video Spot Tracker v04.04</b></i>. If you run the program 
+  Menu/All Programs/NSRG/Video Spot Tracker v04.05</b></i>. If you run the program 
   directly by double-clicking on the icon, it will ask for a video or image file 
   (AVI, TIF, or BMP) that it should open.</p>
 
 <p><b><i>NOTE:</i></b> With Windows XP service pack 2 and with other firewall software, running the program causes a dialog box to appear asking whether to block the program; the program needs to be unblocked only if the program is to be connected to a local or remote feedback system that relies on the tracking data. This happens when the program opens the Internet port assigned to it (3883) by the Internet Domain Naming Authority to export the data through the standard VRPN protocol (<a href="http://www.vrpn.org">www.vrpn.org</a>).</p> 
 
-<h2><img src="GUI.jpg" width="161" height="797" align="right">Using the program</h2>
+<h2><img src="GUI.jpg" width="161" height="825" align="right">Using the program</h2>
 
 <p>When the program is run and a file is selected, four windows will appear. The image window that appears on the lower right contains the first image within the video file or a continually-updating image from a live camera feed. The control panel named <b><i>tk</i></b> that appears on the left when the program is run (shown here to the right) contains a number of interaction widgets that control the operation of the program. The <b><i>kernel</i></b> control panel that appears above the image window (described later) controls the type of tracking kernel being used. The <b><i>log</i></b> control panel is described later.</p>
 
@@ -174,7 +189,7 @@
   program was. You convert the &quot;.vrpn&quot; file into a Matlab file by dragging 
   it onto a shortcut that points to the program (or by dragging it onto the program 
   itself). The vrpnLogToMatlab program will have been installed in the directory: 
-  <b><i>C:\Program Files\NSRG\Video Spot Tracker v04.04\VrpnLogToMatlib</i></b> 
+  <b><i>C:\Program Files\NSRG\Video Spot Tracker v04.05\VrpnLogToMatlib</i></b> 
   and it will also be located on the desktop.</p>
 
 <p><strong>Data description:</strong> Positions and radii are reported in units of pixels, with the origin at the upper-right corner of the screen. +X is towards the right on the displayed window and +Y is towards the bottom.</p>
@@ -213,6 +228,10 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 4.05:</h3>
+<ul>
+  <li>Adds &quot;Thank-you Ware&quot; button to the program.</li>
+</ul>
 <h3>Version 4.04:</h3>
 <ul>
   <li>Includes <i>background_subtract</i> feature that will subtract up to 50 
