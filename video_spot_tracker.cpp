@@ -17,6 +17,10 @@
 // END configuration section.
 //---------------------------------------------------------------------------
 
+// This pragma tells the compiler not to tell us about truncated debugging info
+// due to name expansion within the string, list, and vector classes.
+#pragma warning( disable : 4786 )
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,10 +48,8 @@
 #include <vrpn_Connection.h>
 #include <vrpn_Analog.h>
 #include <vrpn_Tracker.h>
-// This pragma tells the compiler not to tell us about truncated debugging info
-// due to name expansion within the string, list, and vector classes.
-#pragma warning( disable : 4786 )
 #include <list>
+#include <vector>
 using namespace std;
 
 //#define	DEBUG
@@ -62,7 +64,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "04.05";
+const char *Version_string = "04.06";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -182,6 +184,10 @@ public:
   void single_step(void) { SEM_camera_server::single_step(); }
 };
 
+// Used to keep track of the past traces of spots that have been tracked.
+typedef struct { double x; double y; } Position_XY;
+typedef vector<Position_XY> Position_Vector_XY;
+
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
 // global access to the objects we will be using.
@@ -211,6 +217,8 @@ bool		    g_already_posted = false;	  //< Posted redisplay since the last displa
 int		    g_mousePressX, g_mousePressY; //< Where the mouse was when the button was pressed
 int		    g_whichDragAction;		  //< What action to take for mouse drag
 bool                g_tracker_is_lost = false;    //< Is there a lost tracker?
+
+vector<Position_Vector_XY>  g_logged_traces;      //< Stores the trajectories of logged beads
 
 vrpn_Connection	    *g_vrpn_connection = NULL;    //< Connection to send position over
 vrpn_Tracker_Server *g_vrpn_tracker = NULL;	  //< Tracker server to send positions
@@ -280,6 +288,7 @@ Tclvar_int_with_button	g_mark("show_tracker","",1);
 Tclvar_int_with_button	g_show_video("show_video","",1);
 Tclvar_int_with_button	g_show_debug("show_debug","",0, set_debug_visibility);
 Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
+Tclvar_int_with_button	g_show_traces("show_logged_traces","",1);
 Tclvar_int_with_button	g_background_subtract("background_subtract","",0, reset_background_image);
 Tclvar_int_with_button	g_kymograph("kymograph","",0, set_kymograph_visibility);
 Tclvar_int_with_button	g_quit("quit",NULL);
@@ -558,6 +567,7 @@ static	bool  save_log_frame(unsigned frame_number)
   g_vrpn_analog->report(vrpn_CONNECTION_RELIABLE);
 
   list<Spot_Information *>::iterator loop;
+  unsigned last_tracker_number = 0;
   for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
     vrpn_float64  pos[3] = {(*loop)->xytracker()->get_x() - g_log_offset_x,
 			    flip_y((*loop)->xytracker()->get_y()) - g_log_offset_y,
@@ -589,8 +599,20 @@ static	bool  save_log_frame(unsigned frame_number)
       }
       double interval = timediff(now, start);
       fprintf(g_csv_file, "%d, %d, %lf,%lf,%lf, %lf, %lf,%lf\n", frame_number, (*loop)->index(), pos[0], pos[1], pos[2], (*loop)->xytracker()->get_radius(), orient, length);
+
+      // Make sure there are enough vectors to store all available trackers, then
+      // store a new entry for each tracker that currently exists.
+      // We do this only when the CSV file is open so we don't show un-logged locations
+      while ( g_logged_traces.size() < (*loop)->index() + 1 ) {
+        g_logged_traces.push_back(Position_Vector_XY());
+      }
+      Position_XY tracepos;
+      tracepos.x = (*loop)->xytracker()->get_x();
+      tracepos.y = (*loop)->xytracker()->get_y();
+      g_logged_traces[(*loop)->index()].push_back(tracepos);
     }
   }
+
   return true;
 }
 
@@ -748,6 +770,25 @@ void myDisplayFunc(void)
   glVertex3f( -1 + 2*((*g_minX-1) / (g_image->get_num_columns()-1)),
 	      -1 + 2*((*g_minY-1) / (g_image->get_num_rows()-1)) , 0.0 );
   glEnd();
+
+  // If we are showing the past positions that have been logged, draw
+  // them now.
+  if (g_show_traces) {
+    glDisable(GL_LINE_SMOOTH);
+    glColor3f(1,1,0);
+
+    unsigned trace;
+    for (trace = 0; trace < g_logged_traces.size(); trace++) {
+      unsigned point;
+
+      glBegin(GL_LINE_STRIP);
+      for (point = 0; point < g_logged_traces[trace].size(); point++) {
+        glVertex2f( -1 + 2*(g_logged_traces[trace][point].x / (g_image->get_num_columns()-1)),
+	            -1 + 2*(g_logged_traces[trace][point].y / (g_image->get_num_rows()-1)) );
+      }
+      glEnd();
+    }
+  }
 
   // If we are running a kymograph, draw a green line through the first two
   // trackers to show where we're collecting it from
