@@ -11,7 +11,7 @@
 #include  "edt_server.h"
 
 const int MAJOR_VERSION = 2;
-const int MINOR_VERSION = 2;
+const int MINOR_VERSION = 3;
 
 //-----------------------------------------------------------------
 // This section contains code to initialize the camera and read its
@@ -239,6 +239,7 @@ int main(int argc, char *argv[])
 
   while (!g_done) {
     g_camera->send_vrpn_image(svr,svrcon,g_exposure,svrchan, g_numchannels);
+    svrcon->mainloop();
     svrcon->save_log_so_far();
 //    vrpn_SleepMsecs(1);
   }
