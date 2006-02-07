@@ -64,7 +64,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "04.06";
+const char *Version_string = "04.07";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -281,10 +281,10 @@ Tclvar_float_with_scale	g_orientation("orient", ".rod3", 0, 359, 0);
 Tclvar_int_with_button	g_opt("optimize",".kernel.optimize");
 Tclvar_int_with_button	g_opt_z("optimize_z",".kernel.optimize", 0, handle_optimize_z_change);
 Tclvar_selector		g_psf_filename("psf_filename", NULL, NULL, "");
-Tclvar_int_with_button	g_round_cursor("round_cursor","");
-Tclvar_int_with_button	g_small_area("small_area","");
-Tclvar_int_with_button	g_full_area("full_area","");
-Tclvar_int_with_button	g_mark("show_tracker","",1);
+Tclvar_int_with_button	g_round_cursor("round_cursor",NULL,1);
+Tclvar_int_with_button	g_small_area("small_area",NULL);
+Tclvar_int_with_button	g_full_area("full_area",NULL);
+Tclvar_int_with_button	g_mark("show_tracker",NULL,1);
 Tclvar_int_with_button	g_show_video("show_video","",1);
 Tclvar_int_with_button	g_show_debug("show_debug","",0, set_debug_visibility);
 Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
@@ -296,6 +296,7 @@ Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
 Tclvar_int		g_log_relative("logging_relative");
 double			g_log_offset_x, g_log_offset_y, g_log_offset_z;
+Tclvar_int              g_logging("logging"); //< Accessor for the GUI logging button so rewind can turn it off.
 bool g_video_valid = false; // Do we have a valid video frame in memory?
 int		        g_log_frame_number_last_logged = -1;
 
@@ -687,8 +688,13 @@ void myDisplayFunc(void)
   // bead radius or a circle with a radius twice that of the bead; the
   // marker type depends on the g_round_cursor variable.
   if (g_mark) {
+    // Use smooth lines here to avoid aliasing showing spot in wrong place
+    glEnable (GL_BLEND);
+    glEnable(GL_LINE_SMOOTH);
+    glHint (GL_LINE_SMOOTH_HINT, GL_NICEST);
+    glLineWidth(1.5);
+
     list <Spot_Information *>::iterator loop;
-    glEnable(GL_LINE_SMOOTH); //< Use smooth lines here to avoid aliasing showing spot in wrong place
     for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
       // Normalize center and radius so that they match the coordinates
       // (-1..1) in X and Y.
@@ -703,15 +709,67 @@ void myDisplayFunc(void)
 	glColor3f(0,0,1);
       }
       if (g_rod) {
-	// Horrible hack to make this work with rod type
+	// Need to draw something for the Rod3 tracker type.
 	double orient = static_cast<rod3_spot_tracker_interp*>((*loop)->xytracker())->get_orientation();
 	double length = static_cast<rod3_spot_tracker_interp*>((*loop)->xytracker())->get_length();
-	double dx = (length/2 * cos(orient * M_PI/180)) * (2.0/g_image->get_num_columns());
-	double dy = (length/2 * sin(orient * M_PI/180)) * (2.0/g_image->get_num_rows());
-	glBegin(GL_LINES);
-	  glVertex2f(x-dx,y-dy);
-	  glVertex2f(x+dx,y+dy);
-	glEnd();
+	double dxx = (cos(orient * M_PI/180)) * (2.0/g_image->get_num_columns());
+	double dyx = (sin(orient * M_PI/180)) * (2.0/g_image->get_num_rows());
+	double dxy = (sin(orient * M_PI/180)) * (2.0/g_image->get_num_columns());
+	double dyy = -(cos(orient * M_PI/180)) * (2.0/g_image->get_num_rows());
+        if (g_round_cursor) { // Draw a box around, with lines coming into edges of trackers
+          double radius = static_cast<rod3_spot_tracker_interp*>((*loop)->xytracker())->get_radius();
+
+          // Draw a box around that is two tracker radius past the ends and
+          // two tracker radii away from the center on each side.  We'll be bringing
+          // lines in from this by one radius next.
+	  glBegin(GL_LINES);
+            // +Y side
+	    glVertex2f( x - dxx*(length/2 + 2*radius) + dxy*(2*radius),
+                        y - dyx*(length/2 + 2*radius) + dyy*(2*radius));
+	    glVertex2f( x + dxx*(length/2 + 2*radius) + dxy*(2*radius),
+                        y + dyx*(length/2 + 2*radius) + dyy*(2*radius));
+            // -Y side
+	    glVertex2f( x - dxx*(length/2 + 2*radius) - dxy*(2*radius),
+                        y - dyx*(length/2 + 2*radius) - dyy*(2*radius));
+	    glVertex2f( x + dxx*(length/2 + 2*radius) - dxy*(2*radius),
+                        y + dyx*(length/2 + 2*radius) - dyy*(2*radius));
+            // +X side
+	    glVertex2f( x + dxx*(length/2 + 2*radius) + dxy*(2*radius),
+                        y + dyx*(length/2 + 2*radius) + dyy*(2*radius));
+	    glVertex2f( x + dxx*(length/2 + 2*radius) - dxy*(2*radius),
+                        y + dyx*(length/2 + 2*radius) - dyy*(2*radius));
+            // -X side
+	    glVertex2f( x - dxx*(length/2 + 2*radius) + dxy*(2*radius),
+                        y - dyx*(length/2 + 2*radius) + dyy*(2*radius));
+	    glVertex2f( x - dxx*(length/2 + 2*radius) - dxy*(2*radius),
+                        y - dyx*(length/2 + 2*radius) - dyy*(2*radius));
+	  glEnd();
+
+          // Draw lines coming in from the ends of the box to touch the
+          // outer radius of tracking.
+	  glBegin(GL_LINES);
+	    glVertex2f(x + dxx*(length/2 + 2*radius),y + dyx*(length/2 + 2*radius));
+	    glVertex2f(x + dxx*(length/2 + radius),y + dyx*(length/2 + radius));
+	    glVertex2f(x - dxx*(length/2 + 2*radius),y - dyx*(length/2 + 2*radius));
+	    glVertex2f(x - dxx*(length/2 + radius),y - dyx*(length/2 + radius));
+	  glEnd();
+
+          // Draw lines coming in from the middle sides of the box to touch the
+          // outer radius of tracking.
+	  glBegin(GL_LINES);
+	    glVertex2f( x + dxy*(2*radius), y + dyy*(2*radius));
+	    glVertex2f( x + dxy*(radius),   y + dyy*(radius));
+	    
+            glVertex2f( x - dxy*(2*radius), y - dyy*(2*radius));
+	    glVertex2f( x - dxy*(radius),   y - dyy*(radius));
+	  glEnd();
+
+        } else {  // Single-line cursor for rods if we aren't using the round cursor.
+	  glBegin(GL_LINES);
+	    glVertex2f(x - dxx*length/2,y - dyx*length/2);
+	    glVertex2f(x + dxx*length/2,y + dyx*length/2);
+	  glEnd();
+        }
       } else if (g_round_cursor) {
         // First, make a ring that is twice the radius so that it does not obscure the border.
 	double stepsize = M_PI / (*loop)->xytracker()->get_radius();
@@ -1198,12 +1256,17 @@ void myIdleFunc(void)
     // the stream and then pause (by clearing play).  This has
     // to come after the checking for stop play above so that the
     // video doesn't get paused.  Also, reset the frame count
-    // when we rewind.
+    // when we rewind.  Also, turn off logging when we rewind
+    // (if it was on).  Also clear any logged traces.
     if (*g_rewind) {
       *g_play = 0;
       *g_rewind = 0;
       g_video->rewind();
       g_frame_number = -1;
+      g_logging = 0;
+      g_logfilename = "";
+      logfilename_changed("", NULL);
+      g_logged_traces.clear();
     }
   }
 
@@ -2096,7 +2159,9 @@ void  logfilename_changed(char *newvalue, void *)
   if (g_log_relative && g_active_tracker) {
     g_log_offset_x = g_active_tracker->xytracker()->get_x();
     g_log_offset_y = flip_y(g_active_tracker->xytracker()->get_y());
-    g_log_offset_z = g_active_tracker->ztracker()->get_z();
+    if (g_active_tracker->ztracker()) {
+      g_log_offset_z = g_active_tracker->ztracker()->get_z();
+    }
   }
 }
 
@@ -2479,25 +2544,37 @@ int main(int argc, char *argv[])
     g_play = new Tclvar_int_with_button("play_video","",0);
     g_rewind = new Tclvar_int_with_button("rewind_video","",1);
     g_step = new Tclvar_int_with_button("single_step_video","");
-    sprintf(command, "label .frametitle -text FrameNum");
+    sprintf(command, "frame .frame");
     if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
 	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
 		    g_tk_control_interp->result);
 	    return(-1);
     }
-    sprintf(command, "pack .frametitle");
+    sprintf(command, "pack .frame");
     if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
 	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
 		    g_tk_control_interp->result);
 	    return(-1);
     }
-    sprintf(command, "label .framevalue -textvariable frame_number");
+    sprintf(command, "label .frame.frametitle -text FrameNum");
     if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
 	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
 		    g_tk_control_interp->result);
 	    return(-1);
     }
-    sprintf(command, "pack .framevalue");
+    sprintf(command, "pack .frame.frametitle -side left");
+    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
+	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+		    g_tk_control_interp->result);
+	    return(-1);
+    }
+    sprintf(command, "label .frame.framevalue -textvariable frame_number");
+    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
+	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+		    g_tk_control_interp->result);
+	    return(-1);
+    }
+    sprintf(command, "pack .frame.framevalue -side right");
     if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
 	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
 		    g_tk_control_interp->result);
@@ -2534,7 +2611,7 @@ int main(int argc, char *argv[])
   // opened in VRPN.  Also set mouse callbacks.
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(175, 220);
+  glutInitWindowPosition(175, 210);
   glutInitWindowSize(g_camera->get_num_columns(), g_camera->get_num_rows());
 #ifdef DEBUG
   printf("initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());

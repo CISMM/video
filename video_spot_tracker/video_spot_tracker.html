@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v04.06</title>
+<title>Video Spot Tracker v04.07</title>
 
-<h1>Video Spot Tracker version 04.06</h1>
+<h1>Video Spot Tracker version 04.07</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -16,6 +16,19 @@
   control, and the portable <a href="http://www.imagemagic.org">ImageMagick</a> 
   package for reading images.</p>
 
+<h2>Downloading and installing the program</h2>
+<p>This program is brought to you courtesy of the National Institutes of Health 
+  <a href="http://www.nibib.nih.gov/">National Institute for Biomedical Imaging 
+  and Bioengineering</a> through its National Research Resource in <a href="http://www.cs.unc.edu/nano/cismm">Computer-Integrated 
+  Systems for Microscopy and Manipulation</a> at the University of North Carolina 
+  at Chapel Hill.</p>
+<p>An installer for the program and manual can be downloaded from the <a href="http://www.cs.unc.edu/Research/nano/cismm/download/index.html">CISMM 
+  software download page</a>. To run it, you must also download and install <b><u>version 
+  01.05 or higher</u> </b>of the <i>NSRG Runtime</i> package, which is also available 
+  on that page. It also requires <a href="http://www.microsoft.com/directx">Microsoft 
+  <i>Direct X</i></a> version 9.0a or higher. To convert the VRPN output files 
+  to Matlab format requires the VRPNLogToMatlab program, also available from the 
+  CISMM download page. These packages can be installed in any order.</p>
 <h2>Thank-You Ware</h2>
 <p>This program is distributed as &quot;Thank-You Ware.&quot; As a National Research 
   Resource, we are funded by the NIH National Institute of Biomedical Imaging 
@@ -37,13 +50,13 @@
   icon that was created when the program was installed. To select a stack of image 
   files that are numbered consecutively, drag any one of the files onto the icon. 
   It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
-  Menu/All Programs/NSRG/Video Spot Tracker v04.06</b></i>. If you run the program 
+  Menu/All Programs/NSRG/Video Spot Tracker v04.07</b></i>. If you run the program 
   directly by double-clicking on the icon, it will ask for a video or image file 
   (AVI, TIF, or BMP) that it should open.</p>
 
 <p><b><i>NOTE:</i></b> With Windows XP service pack 2 and with other firewall software, running the program causes a dialog box to appear asking whether to block the program; the program needs to be unblocked only if the program is to be connected to a local or remote feedback system that relies on the tracking data. This happens when the program opens the Internet port assigned to it (3883) by the Internet Domain Naming Authority to export the data through the standard VRPN protocol (<a href="http://www.vrpn.org">www.vrpn.org</a>).</p> 
 
-<h2><img src="GUI.jpg" width="161" height="825" align="right">Using the program</h2>
+<h2><img src="GUI.jpg" width="161" height="725" align="right">Using the program</h2>
 
 <p>When the program is run and a file is selected, four windows will appear. The image window that appears on the lower right contains the first image within the video file or a continually-updating image from a live camera feed. The control panel named <b><i>tk</i></b> that appears on the left when the program is run (shown here to the right) contains a number of interaction widgets that control the operation of the program. The <b><i>kernel</i></b> control panel that appears above the image window (described later) controls the type of tracking kernel being used. The <b><i>log</i></b> control panel is described later.</p>
 
@@ -74,9 +87,9 @@
 
 <p>If you prefer to not have the centers of the tracked objects obscured by the tracking markers, select the <b><i>round_cursor</i></b> checkbox from the <b><i>tk</i></b> control panel. This will replace the plus signs with a circle around the center at twice the radius that the kernel is set to use.</p>
 
-<h3>Selecting the type of tracker</h3>
+<h3>Selecting the type of tracker and tracking/logging parameters</h3>
 
-<p><img src="kernel.jpg" width="688" height="117"></p>
+<p><img src="kernel.jpg" width="688" height="173"></p>
 
 <p>There are three types of tracking kernels available in version 4.04: disc, 
   cone, and symmetric. Their properties are controlled using interface widgets 
@@ -173,7 +186,19 @@
   the center; the cone and disc trackers have a single sample in the center.</p>
 <h3>Recording the tracker motion</h3>
 
-<p><img src="log.jpg" width="348" height="80" align="right">You can record the motion of the trackers by checking the <b><i>Logging</i></b> checkbox within the <b><i>log</i></b> control panel (shown to the right). This will bring up a dialog box that will let you select a filename. It will automatically add the default extension &quot;.vrpn&quot; to the filename you create. (A second file, with the extension &quot;.csv&quot; will also be created, though the program does not mention it.) Once you have selected a file name, you check the <b><i>play_video</i></b> checkbox to begin going through the video file, or you can use the <b><i>single_step_video</i></b> repeatedly to step through a frame at a time. When you are finished with the section of tracking that you are interested in, uncheck the Logging checkbox to stop the logging. You can then go forward to another section, turn on logging, and save a different file if you like.</p>
+<p><img src="log.jpg" width="348" height="80" align="right">You can record the 
+  motion of the trackers by checking the <b><i>Logging</i></b> checkbox within 
+  the <b><i>log</i></b> control panel (shown to the right). This panel was moved 
+  inside the <b><i>kernel</i></b> control panel in version 04.07. This will bring 
+  up a dialog box that will let you select a filename. It will automatically add 
+  the default extension &quot;.vrpn&quot; to the filename you create. (A second 
+  file, with the extension &quot;.csv&quot; will also be created, though the program 
+  does not mention it.) Once you have selected a file name, you check the <b><i>play_video</i></b> 
+  checkbox to begin going through the video file, or you can use the <b><i>single_step_video</i></b> 
+  repeatedly to step through a frame at a time. When you are finished with the 
+  section of tracking that you are interested in, uncheck the Logging checkbox 
+  to stop the logging. You can then go forward to another section, turn on logging, 
+  and save a different file if you like.</p>
 
 <p>At the time logging is started, the value of the <b><i>Relative to active tracker start</i></b> check box is used to determine the origin of the reported positions (orientation and radius are always absolute). If the box is unchecked, the positions are in pixels with respect to the center of the pixel in the upper-left corner of the screen as the origin. If the box is checked, the positions are in pixels with respect to the location of the active tracker when logging was turned on.</p>
 
@@ -185,12 +210,10 @@
 <p>The second log file is in the <b><i>Virtual-Reality Peripheral Network</i></b> 
   (<a href="http://www.vrpn.org">VRPN</a>) format. This format can be converted 
   into a Matlab data file using the <b><i>vrpnLogToMatlab</i></b> program that 
-  should have been installed at the same time the <i><b>Video Spot Tracker</b></i> 
-  program was. You convert the &quot;.vrpn&quot; file into a Matlab file by dragging 
-  it onto a shortcut that points to the program (or by dragging it onto the program 
-  itself). The vrpnLogToMatlab program will have been installed in the directory: 
-  <b><i>C:\Program Files\NSRG\Video Spot Tracker v04.06\VrpnLogToMatlib</i></b> 
-  and it will also be located on the desktop.</p>
+  is also available for download from the <a href="http://www.cs.unc.edu/Research/nano/cismm/download/index.html">CISMM 
+  software download page</a>. You convert the &quot;.vrpn&quot; file into a Matlab 
+  file by dragging it onto a shortcut that points to the program (or by dragging 
+  it onto the program itself).</p>
 
 <p><strong>Data description:</strong> Positions and radii are reported in units of pixels, with the origin at the upper-right corner of the screen. +X is towards the right on the displayed window and +Y is towards the bottom.</p>
 
@@ -218,16 +241,26 @@
 
 <p><img src="kymo_trace.jpg" width="349" height="130" align="right">The first window is named <b><i>kymograph</i></b> and it will accumulate traces from the image through the first two tracked points (the points labeled &quot;0&quot; and &quot;1&quot;). If there are not at least two tracked points, nothing is shown in this window. As the video is stepped through or played, a new line will be added to the window that is a resampling of the image pixels. The center of this window on each line corresponds to the spindle center and the sampling is done along the spindle axis. A green line is drawn between points 0 and 1 to indicate the spindle axis, and a green cross-line indicates the spindle center.</p>
 
-<p><img src="kymo_graph.jpg" width="268" height="126" align="right">The second window is named <b><i>kymograph_center</i></b>, and it shows how the spindle center moves within the cell. If there are not at least four tracked points, nothing is shown in this window.</p>
-
-<h2>Downloading and installing the program</h2>
-
-<p>This program is brought to you courtesy of the National Institutes of Health <a href="http://www.nibib.nih.gov/">National Institute for Biomedical Imaging and Bioengineering</a> through its National Research Resource in <a href="http://www.cs.unc.edu/nano/cismm">Computer-Integrated Systems for Microscopy and Manipulation</a> at the University of North Carolina at Chapel Hill.</p>
-
-<p>An installer for the program and manual can be downloaded from the <a href="http://www.cs.unc.edu/Research/nano/cismm/download/index.html">CISMM software download page</a>. To run it, you must also download and install <b><u>version 01.05 or higher</u> </b>of the <i>NSRG Runtime</i> package, which is also available on that page. It also requires <a href="http://www.microsoft.com/directx">Microsoft <i>Direct X</i></a> version 9.0a or higher. If you want to open sets of TIFF files or other image file sets, you also need <a href="ftp://ftp.imagemagick.org/pub/ImageMagick/binaries/ImageMagick-5.5.7-Q16-windows-dll.exe">the 16-bit version of ImageMagick version 5.5.7</a>. These packages can be installed in any order.</p> 
+<p><img src="kymo_graph.jpg" width="268" height="126" align="right">The second 
+  window is named <b><i>kymograph_center</i></b>, and it shows how the spindle 
+  center moves within the cell. If there are not at least four tracked points, 
+  nothing is shown in this window.</p>
 
 <h2>Version Information</h2>
 
+<h3>Version 4.07:</h3>
+<ul>
+  <li>Removes VRPNLogToMatlab installer; it is now available as a separate package 
+    with its own version number.</li>
+  <li>Rearranged the GUI elements to keep from making the left panel too long. 
+    Consolidated the logging control panel into the kernel control panel.</li>
+  <li>Made round cursors the default, now that we have such nice ones. :-)</li>
+  <li>Turns off tracking and deletes traces when rewind is pushed. This was requested 
+    by a user to be the behavior, and it certainly seems likely to be the common 
+    case.</li>
+  <li>Made the &quot;round cursor&quot; option for the rod3 tracker display something 
+    useful. In this case, a rectangle with lines coming in.</li>
+</ul>
 <h3>Version 4.06:</h3>
 <ul>
   <li>Adds visible traces of logged positions that show up on the screen.</li>
@@ -420,10 +453,10 @@
 <h3>Version 01.26:</h3>
 
 <ul>
-
-  <li> Added the output of .csv log files in addition to the .vrpn log files.  These are in a text format that can be read by several spreadsheet and analysis programs.</li>
-
-  <li>Added support for a group of three kernels in a line that will track bars in the image.</li>
-
+  <li> Added the output of .csv log files in addition to the .vrpn log files. 
+    These are in a text format that can be read by several spreadsheet and analysis 
+    programs.</li>
+  <li>Added support for a group of three kernels in a line that will track bars 
+    in the image</li>
 </ul>
 

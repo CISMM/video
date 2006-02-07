@@ -8,10 +8,10 @@ OperatingSystem=WinXP  5.1  2600 (Service Pack 2)
 ProjectName=video_spot_tracker
 ProjectDirectory=F:\Temp\video\video_spot_tracker
 NonSFXDirectory=F:\Temp\video\video_spot_tracker\NonSFX
-MediaFileName=video_spot_tracker_v04_06
+MediaFileName=video_spot_tracker_v04_07
 CopyMediaToFName=
-ProgramDescriptiveName=Video Spot Tracker v04.06
-ProgramVersion=04.06
+ProgramDescriptiveName=Video Spot Tracker v04.07
+ProgramVersion=04.07
 CompanyName=UNC Nanoscale Science Research Group
 ProgVerLiveUpdate=0
 RegisterAsApp=1
@@ -30,7 +30,7 @@ TopLabel=1
 TopLabelVer=0
 TopLabel2=0
 BottomLabel=0
-TopLabelText="Video Spot Tracker v04.06"
+TopLabelText="Video Spot Tracker v04.07"
 TopLabel2Text=""
 BottomLabelText="Copyright © 2003"
 BackgroundDesign=Gradient
@@ -59,10 +59,10 @@ DialogLocation=|Center|0|0|
 TopLabelFont=|Tahoma|36|16777215|1|2|
 TopLabel2Font=|Tahoma|18|16777215|1|2|
 BottomLabelFont=|Tahoma|10|16777215|1|0|
-CompanyUrl=www.cs.unc.edu/nano
+CompanyUrl=www.cs.unc.edu/cismm
 
 [TargetExe]
-TargetDirectory=<AbsoluteDir>C:\NSRG\bin\video_spot_tracker_v04.06
+TargetDirectory=<AbsoluteDir>C:\NSRG\bin\video_spot_tracker_v04.07
 CommonDirectory=<AbsoluteDir>C:\NSRG\external
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\video_spot_tracker.bat
@@ -71,7 +71,7 @@ RunTimeDir_2=|||||||1||||1||1|<ProgramFilesDir>|||||
 RunTimeDir_3=|||||||1||||1||1|<ProgramFilesDir>|||||
 
 [Dialogs]
-SelectedDialogs=Welcome,License,*Readme,User Information,Destination,*Setup Type,*Custom,Associate,*Shortcuts,*Confirm Setup,Copy Files,*Complete
+SelectedDialogs=Welcome,License,*Readme,User Information,Destination,Setup Type,Custom,Associate,*Shortcuts,*Confirm Setup,Copy Files,*Complete
 LicenseTextFile=
 ReadmeTextFile=F:\Temp\video\video_spot_tracker\Installation_README.txt
 ReadmeTextFile2=
@@ -106,7 +106,7 @@ ShowCopyrightWarning=1
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=NSRG\Video Spot Tracker v04.06
+ProgramLinkFolder=NSRG\Video Spot Tracker v04.07
 ProgramLinkName=Video_spot_tracker
 ProgramLinkParam=
 ProgramLinkWorkDir=<Application Folder>
@@ -114,7 +114,7 @@ ProgramLinkRun=Minimized
 ProgramLinkIconFile=<Application Folder>\icons.ico
 ProgramLinkIconNum=0
 StartMenuLinkName=Video Spot Tracker v01.03
-DesktopLinkName=Video Spot Tracker v04.06
+DesktopLinkName=Video Spot Tracker v04.07
 SendToLinkName=Video Spot Tracker v01.03
 StartUpLinkName=Video Spot Tracker v01.03
 QuickLaunchLinkName=Video Spot Tracker v01.17
@@ -130,14 +130,12 @@ StartUpChecked=1
 QuickLaunchChecked=0
 SetAllUsers=1
 AddUninstallShortcut=1
-Item-000=*|VRPN to Matlab|<Application Folder>\vrpnLogToMatlab.exe|||<Application Folder>|Minimized||0||||
-Item-001=*|Roper Camera Spot Tracker|<Application Folder>\video_spot_tracker.bat||roper|<Application Folder>|Minimized|<Application Folder>\icons.ico|0||||
-Item-002=*|Video Spot Tracker Documentation|<Application Folder>\video_spot_tracker.html|||<Application Folder>|Normal Window||0||||
-Item-003=*|SPOT Camera Video Tracker|<Application Folder>\video_spot_tracker.bat||diaginc|<Application Folder>|Minimized|<Application Folder>\icons.ico|0||||
-Item-004=*|DirectX Video Camera Tracker 640x480|<Application Folder>\video_spot_tracker.bat||directx640x480|<Application Folder>|Minimized|<Application Folder>\icons.ico|0||||
-Item-005=*|DirectX Video Camera Tracker any res|<Application Folder>\video_spot_tracker.bat||directx|<Application Folder>|Minimized|<Application Folder>\icons.ico|0||||
-Item-006=*|VRPN to Matlab|<Application Folder>\vrpnLogToMatlab.exe|<Desktop>|||Minimized||0||||
-Item-007=*|EDT Camera Video Tracker|<Application Folder>\video_spot_tracker.bat||edt|<Application Folder>|Minimized|<Application Folder>\icons.ico|0|1||0|
+Item-000=*|Roper Camera Spot Tracker|<Application Folder>\video_spot_tracker.bat||roper|<Application Folder>|Minimized|<Application Folder>\icons.ico|0||||
+Item-001=*|Video Spot Tracker Documentation|<Application Folder>\video_spot_tracker.html|||<Application Folder>|Normal Window||0||||
+Item-002=*|SPOT Camera Video Tracker|<Application Folder>\video_spot_tracker.bat||diaginc|<Application Folder>|Minimized|<Application Folder>\icons.ico|0||||
+Item-003=*|DirectX Video Camera Tracker 640x480|<Application Folder>\video_spot_tracker.bat||directx640x480|<Application Folder>|Minimized|<Application Folder>\icons.ico|0||||
+Item-004=*|DirectX Video Camera Tracker any res|<Application Folder>\video_spot_tracker.bat||directx|<Application Folder>|Minimized|<Application Folder>\icons.ico|0||||
+Item-005=*|EDT Camera Video Tracker|<Application Folder>\video_spot_tracker.bat||edt|<Application Folder>|Minimized|<Application Folder>\icons.ico|0|1||0|
 
 [Billboard]
 AddBillboard=1
@@ -230,8 +228,7 @@ ExecutionDllFileName=
 
 [GroupNames]
 Group-000=Main Group
-Group-001=VrpnLogToMatlab
-Group-002=Documentation
+Group-001=Documentation
 
 [Group-000]
 TypicalCompactData=7
@@ -247,12 +244,6 @@ Item-007=Fil*F:\Temp\video\video_spot_tracker.tcl
 Item-008=Fil*F:\Temp\video\video_spot_tracker\icons.ico
 
 [Group-001]
-TypicalCompactData=3
-Description=
-Item-000=Fol*<Application Folder>[0]
-Item-001=Fil*F:\taylorr\STM\src\3DFM\toMatlab\Release\vrpnLogToMatlab.exe
-
-[Group-002]
 TypicalCompactData=5
 Description=
 Item-000=Fol*<Application Folder>[0]

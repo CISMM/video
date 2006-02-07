@@ -29,6 +29,10 @@ pack .colorpick.b -side left
 
 toplevel .kernel
 wm geometry .kernel +170+10
+frame .kernel.bottom
+frame .kernel.bottom.log -relief raised -borderwidth 1
+pack .kernel.bottom -side bottom
+pack .kernel.bottom.log -side left
 frame .kernel.options
 checkbutton .kernel.options.invert -text dark_spot -variable dark_spot
 pack .kernel.options.invert -anchor w
@@ -77,12 +81,13 @@ pack .kernel.optimize -side left
 # Quit the program if this window is destroyed
 bind .kernel <Destroy> {global quit ; set quit 1} 
 
+
 ###########################################################
 # Put the places for the controls for the rod kernels.
 # This window should only be visible when rod3 is turned on.
 
 toplevel .rod3
-wm geometry .rod3 +800+10
+wm geometry .rod3 +860+10
 wm withdraw .rod3
 set rod3 0
 trace variable rod3 w update_rod_window_visibility
@@ -95,6 +100,25 @@ proc update_rod_window_visibility {nm el op} {
 		wm withdraw .rod3
 	}
 }
+
+###########################################################
+# Puts the controls for displaying the tracker and doing
+# small area and such.
+
+frame .kernel.bottom.parms -relief raised -borderwidth 1
+pack .kernel.bottom.parms -side right
+frame .kernel.bottom.parms.left
+pack .kernel.bottom.parms.left -side left
+checkbutton .kernel.bottom.parms.left.show_tracker -text show_trackers -variable show_tracker
+pack .kernel.bottom.parms.left.show_tracker
+checkbutton .kernel.bottom.parms.left.round_cursor -text round_cursor -variable round_cursor
+pack .kernel.bottom.parms.left.round_cursor
+frame .kernel.bottom.parms.right
+pack .kernel.bottom.parms.right -side left
+checkbutton .kernel.bottom.parms.right.small_area -text small_area -variable small_area
+pack .kernel.bottom.parms.right.small_area
+checkbutton .kernel.bottom.parms.right.full_area -text full_area -variable full_area
+pack .kernel.bottom.parms.right.full_area
 
 ###########################################################
 # Put the place for the controls for the clipping.
@@ -117,7 +141,7 @@ proc update_clipping_window_visibility {nm el op} {
 
 ###########################################################
 # Put the controls that will let the user store a log file.
-# It puts a checkbox down at the bottom of the main menu
+# It puts a checkbutton down at the bottom of the main menu
 # that causes a dialog box to come up when it is turned on.
 # The dialog box fills in a non-empty value into the global
 # variable "logfilename" if one is created.  The callback
@@ -125,18 +149,13 @@ proc update_clipping_window_visibility {nm el op} {
 
 set logging 0
 set logfilename ""
-toplevel .log
-wm geometry .log +170+110
-label .log.label -textvariable logfilename
-pack .log.label -side bottom -fill x
+label .kernel.bottom.log.label -textvariable logfilename
+pack .kernel.bottom.log.label -side bottom -fill x
 trace variable logging w logging_changed
-checkbutton .log.button -text "Logging to file named below" -variable logging -anchor w
-pack .log.button -side left -fill x
-checkbutton .log.relative -text "Relative to active tracker start" -variable logging_relative -anchor w
-pack .log.relative -side left -fill x
-
-# Quit the program if this window is destroyed
-bind .log <Destroy> {global quit ; set quit 1} 
+checkbutton .kernel.bottom.log.button -text "Logging to file named below" -variable logging -anchor w
+pack .kernel.bottom.log.button -side left -fill x
+checkbutton .kernel.bottom.log.relative -text "Relative to active tracker start" -variable logging_relative -anchor w
+pack .kernel.bottom.log.relative -side left -fill x
 
 proc logging_changed { varName index op } {
     global logging logfilename fileinfo
