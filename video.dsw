@@ -213,6 +213,21 @@ Package=<4>
 
 ###############################################################################
 
+Project: "cooke_library"=.\cooke_library.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name base_camera_server
+    End Project Dependency
+}}}
+
+###############################################################################
+
 Project: "diaginc_library"=.\diaginc_library.dsp - Package Owner=<4>
 
 Package=<5>
@@ -542,6 +557,9 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name edt_library
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name cooke_library
+    End Project Dependency
 }}}
 
 ###############################################################################
@@ -580,6 +598,9 @@ Package=<4>
     End Project Dependency
     Begin Project Dependency
     Project_Dep_Name base_camera_server
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name cooke_library
     End Project Dependency
 }}}
 

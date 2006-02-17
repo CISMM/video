@@ -1,3 +1,18 @@
+2006-02-17  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* airy_maker.cpp : Added some noise creation into the imaging
+		process.  It isn't done yet, shot noise is not complete.
+	* diaginc_server.cpp : Took out a large commented-out block.
+	* roper_server.cpp : Error message fixed.
+	* cooke_server.h : Added class to drive a Cooke camera using the
+		PCO library.
+	* cooke_server.cpp : Same.
+	* cooke_server.dsp : Same.
+	* video.dsw : Added Cooke camera server.
+	* video_spot_tracker.cpp : Same.
+	* video_imager_server.cpp : Same.
+	* video_imager_server.dsp : Same.
+
 2006-02-06  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Removes VRPNLogToMatlab installer; it
@@ -12,6 +27,13 @@
 		cursor" option for the rod3 tracker display something useful.
 		In this case, a rectangle with lines coming in. 
 	* video_spot_tracker.tcl : Same.
+
+2006-02-03  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_imager_server.cpp : This wasn't calling mainloop()
+		on the connection object.  Now it does.  Version 2.3.
+		Strangely, this only showed up when the remote side
+		requested logging.
 
 2006-02-02  Russell M. Taylor II  <taylorr@cs.unc.edu>
 

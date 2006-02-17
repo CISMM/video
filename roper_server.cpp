@@ -558,7 +558,7 @@ bool roper_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrc
       return false;
     }
     if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
-      fprintf(stderr,"directx_camera_server::get_pixel_from_memory(): No image in memory\n");
+      fprintf(stderr,"roper_camera_server::get_pixel_from_memory(): No image in memory\n");
       return false;
     }
 

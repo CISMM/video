@@ -9,9 +9,10 @@
 #include  "diaginc_server.h"
 #include  "directx_camera_server.h"
 #include  "edt_server.h"
+#include  "cooke_server.h"
 
 const int MAJOR_VERSION = 2;
-const int MINOR_VERSION = 3;
+const int MINOR_VERSION = 4;
 
 //-----------------------------------------------------------------
 // This section contains code to initialize the camera and read its
@@ -25,7 +26,7 @@ unsigned	    g_width = 320, g_height = 240;  //< Resolution for DirectX cameras
 int                 g_numchannels = 1;  //< How many channels to send (3 for RGB cameras, 1 otherwise)
 int                 g_maxval = 4095;       //< Maximum value available in a channel for this device
 
-/// Open the camera we want to use (Roper, DiagInc, or DirectX)
+/// Open the camera we want to use (the type is based on the name passed in)
 bool  init_camera_code(const char *type, int which = 1)
 {
   if (!strcmp(type, "roper")) {
@@ -53,6 +54,15 @@ bool  init_camera_code(const char *type, int which = 1)
     g_maxval = 255;
     if (!g_camera->working()) {
       fprintf(stderr,"init_camera_code(): Can't open EDT camera server\n");
+      return false;
+    }
+  } else if (!strcmp(type, "cooke")) {
+    printf("Opening Cooke Camera\n");
+    g_camera = new cooke_server();
+    g_numchannels = 1;
+    g_maxval = 4095;
+    if (!g_camera->working()) {
+      fprintf(stderr,"init_camera_code(): Can't open Cooke camera server\n");
       return false;
     }
   } else if (!strcmp(type, "directx")) {
@@ -162,7 +172,7 @@ void  Usage(const char *s)
   fprintf(stderr,"       -expose: Exposure time in milliseconds (default 250)\n");
   fprintf(stderr,"       -bin: How many pixels to average in x and y (default 1)\n");
   fprintf(stderr,"       -res: Resolution in x and y (default 320 200)\n");
-  fprintf(stderr,"       devicename: roper, edt, diaginc, or directx (default is directx)\n");
+  fprintf(stderr,"       devicename: roper, edt, cooke, diaginc, or directx (default is directx)\n");
   fprintf(stderr,"       devicenum: Which (starting with 1) if there are multiple (default 1)\n");
   fprintf(stderr,"       logfilename: Name of file to store outgoing log in (default NULL)\n");
   exit(-1);

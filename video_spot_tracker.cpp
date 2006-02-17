@@ -8,6 +8,7 @@
 // as well, depending on where the libraries were installed.
 
 #define	VST_USE_ROPER
+#define	VST_USE_COOKE
 //#define USE_METAMORPH	    // Metamorph reader not completed.
 
 #ifdef	VST_USE_ROPER
@@ -30,6 +31,9 @@
 #include "Tcl_Linkvar.h"
 #ifdef	VST_USE_ROPER
 #include "roper_server.h"
+#endif
+#ifdef	VST_USE_COOKE
+#include "cooke_server.h"
 #endif
 #include "directx_camera_server.h"
 #include "directx_videofile_server.h"
@@ -64,7 +68,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "04.07";
+const char *Version_string = "04.08";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -318,6 +322,15 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     // XXX Starts with binning of 2 to get the image size down so that
     // it fits on the screen.
     roper_server *r = new roper_server(2);
+    *camera = r;
+    g_bitdepth = 12;
+  } else
+#endif  
+#ifdef VST_USE_COOKE
+  if (!strcmp(type, "cooke")) {
+    // XXX Starts with binning of 2 to get the image size down so that
+    // it fits on the screen.
+    cooke_server *r = new cooke_server(2);
     *camera = r;
     g_bitdepth = 12;
   } else
@@ -1375,6 +1388,15 @@ void myIdleFunc(void)
   // Point the image to use at the camera's image.
   g_image = g_camera;
 
+  // XXX Make a double-precision copy of the camera's image and point
+  // our image at that.  This should remove a lot of conversion math that
+  // has to happen for the tracking.
+
+  //XXX_why_does_clipping_cause_badness_and_shifting
+  static copy_of_image double_image(*g_camera);
+  double_image = *g_camera;
+  g_image = &double_image;
+
   // If we're doing background subtraction, then we set things up to accumulate
   // an average image and do a subtraction between the current image and the
   // background image, and then we point the g_image at this computed image.
@@ -2371,7 +2393,7 @@ int main(int argc, char *argv[])
     break;
 
   default:
-    fprintf(stderr, "Usage: %s [roper|edt|diaginc|directx|directx640x480|filename]\n", argv[0]);
+    fprintf(stderr, "Usage: %s [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n", argv[0]);
     exit(-1);
   };
   

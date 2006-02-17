@@ -360,15 +360,31 @@ void drawPixelIntensities(
 
       // Add noise to the fraction.
       // PhotonNoise is the fraction additional photons that may be generated.  It
-      // scales the number of photons actually seen in a pixel.  It is applied first
+      // scales with the number of photons actually seen in a pixel.  It is applied first
       // because it depends on the original pixel intensity.
       // Uniform noise is what fraction of the total Airy volume each pixel adds or
       // subtracts (range is -0.5 to 0.5 scaled by the UniformNoise parameter.  It
-      // is added second, because it does not depend on the original intensity.
+      // is added second, because it does not depend on the original intensity.  This
+      // corresponds to readout noise.
       double r1 = (static_cast<double>( rand() )) / RAND_MAX;
       double r2 = (static_cast<double>( rand() )) / RAND_MAX;
       frac *= 1.0 + r1 * g_PhotonNoise;
       frac += r2 * g_UniformNoise;
+
+      // XXX Noise discussion:
+      // Noise independent of anything:
+      //    Readout noise on the detector.  Ober2003 models this as zero-mean
+      //  Gaussian noise with standard deviations of 7-57 e--/pixel (rms).  Not
+      //  clear to me what the units e-- means.  They didn't say what happens
+      //  if this makes pixel counts negative.
+      // Noise dependent on time:
+      //    Dark current, scattered photons, autofluorescence.  Ober2003 models
+      //  this as Poisson noise with a mean of bt, where "b" is a parameter and
+      //  t is seconds.  They used b from 660 photons/sec to 6600 photons/sec
+      //  for each pixel, when using a total flux of 66,000 photons/sec arriving at the
+      //  entire detector.
+      // Noise dependent on number of photons:
+      //    Mythical "shot noise" that I've heard of but not seen a model for.
 
       // Multiply by the display gain.
       // XXX If OpenGL didn't clip this value from 0-1, we'd need to check
