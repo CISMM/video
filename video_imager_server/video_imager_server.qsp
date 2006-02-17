@@ -6,12 +6,12 @@ OperatingSystem=WinXP  5.1  2600 (Service Pack 2)
 
 [Project]
 ProjectName=video_imager_server
-ProjectDirectory=F:\taylorr\STM\src\video\video_imager_server
-NonSFXDirectory=F:\taylorr\STM\src\video\video_imager_server\NonSFX
-MediaFileName=video_imager_server_v02_03
+ProjectDirectory=F:\Temp\video\video_imager_server
+NonSFXDirectory=F:\Temp\video\video_imager_server\NonSFX
+MediaFileName=video_imager_server_v02_04
 CopyMediaToFName=
 ProgramDescriptiveName=Video Imager Server
-ProgramVersion=02_03
+ProgramVersion=02_04
 CompanyName=UNC NSRG
 ProgVerLiveUpdate=0
 RegisterAsApp=1
@@ -62,7 +62,7 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|1|0|
 CompanyUrl=
 
 [TargetExe]
-TargetDirectory=<ProgramFilesDir>NSRG\video_imager_server_02_03
+TargetDirectory=<ProgramFilesDir>NSRG\video_imager_server_02_04
 CommonDirectory=<CommonFilesDir>UNC NSRG
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\video_imager_server.bat
@@ -106,7 +106,7 @@ ShowCopyrightWarning=1
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=NSRG\Video Imager Server v02_03
+ProgramLinkFolder=NSRG\Video Imager Server v02_04
 ProgramLinkName=Video_imager_server
 ProgramLinkParam=
 ProgramLinkWorkDir=<Application Folder>
@@ -131,7 +131,10 @@ QuickLaunchChecked=1
 SetAllUsers=1
 AddUninstallShortcut=1
 Item-000=*|Video_imager_server for Roper|<Application Folder>\video_imager_server.bat||roper -bin 2|<Application Folder>|Normal Window||0|1||0|
-Item-001=*|video_imager_server for Pulnix|<Application Folder>\video_imager_server.bat||edt|<Application Folder>|Normal Window||0|1||0|
+Item-001=*|Video_imager_server for Cooke|<Application Folder>\video_imager_server.bat||cooke|<Application Folder>|Normal Window||0|1||0|
+Item-002=*|Video_imager_server for Pulnix|<Application Folder>\video_imager_server.bat||edt|<Application Folder>|Normal Window||0|1||0|
+Item-003=*|Video_imager_server for Cooke (bin 2x2)|<Application Folder>\video_imager_server.bat||-bin 2 cooke|<Application Folder>|Normal Window||0|1||0|
+Item-004=*|Video_imager_server for Roper (bin 2x2)|<Application Folder>\video_imager_server.bat||-bin 2 roper|<Application Folder>|Normal Window||0|1||0|
 
 [Billboard]
 AddBillboard=1
@@ -229,5 +232,5 @@ Group-000=Main Group
 TypicalCompactData=15
 Description=This is the main group of files
 Item-000=Fol*<Application Folder>[0]
-Item-001=Fil*F:\taylorr\STM\src\video\Release\video_imager_server.exe
-Item-002=Fil*F:\taylorr\STM\src\video\video_imager_server\video_imager_server.bat
+Item-001=Fil*F:\temp\video\Release\video_imager_server.exe
+Item-002=Fil*F:\Temp\video\video_imager_server\video_imager_server.bat

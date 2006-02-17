@@ -8,6 +8,7 @@
 // as well, depending on where the libraries were installed.
 
 #define	VST_USE_ROPER
+#define	VST_USE_COOKE
 //#define USE_METAMORPH	    // Metamorph reader not completed.
 
 #ifdef	VST_USE_ROPER
@@ -26,6 +27,9 @@
 #include "Tcl_Linkvar.h"
 #ifdef	VST_USE_ROPER
 #include "roper_server.h"
+#endif
+#ifdef	VST_USE_COOKE
+#include "cooke_server.h"
 #endif
 #include "directx_camera_server.h"
 #include "directx_videofile_server.h"
@@ -277,6 +281,14 @@ bool  get_camera(const char *type, base_camera_server **camera,
     // XXX Starts with binning of 2 to get the image size down so that
     // it fits on the screen.
     roper_server *r = new roper_server(2);
+    *camera = r;
+  } else
+#endif  
+#ifdef VST_USE_COOKE
+  if (!strcmp(type, "cooke")) {
+    // XXX Starts with binning of 2 to get the image size down so that
+    // it fits on the screen.
+    cooke_server *r = new cooke_server(2);
     *camera = r;
   } else
 #endif  
@@ -1566,7 +1578,7 @@ int main(int argc, char *argv[])
     break;
 
   default:
-    fprintf(stderr, "Usage: %s [roper|diaginc|directx|directx640x480|filename]\n", argv[0]);
+    fprintf(stderr, "Usage: %s [roper|cooke|diaginc|directx|directx640x480|filename]\n", argv[0]);
     exit(-1);
   };
   

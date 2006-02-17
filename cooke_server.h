@@ -61,9 +61,7 @@ protected:
   vrpn_uint16*    d_cameraImageBuffer;
 
   // Settings for the camera as of the last image taken.
-  int             d_last_min_x, d_last_min_y;
-  int             d_last_max_x, d_last_max_y;
-  int             d_last_binning;
+  // (Note: min and max x and y and binning are stored in the base class)
   int             d_last_exposure_ms;
 
   void printCookeValues( );

@@ -1,5 +1,16 @@
 2006-02-17  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* cismm_video_optimizer.cpp : Added Cooke camera.
+	* cooke_server.cpp : Bug fixes; this version has consistent
+		behavior when binning and also avoids crashing at
+		exit.
+	* cooke_server.h : Same.
+	* video.dsw : Added Cooke server.
+	* video_imager_server.cpp : Same.
+	* video_spot_tracker.cpp : Same.
+
+2006-02-17  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* airy_maker.cpp : Added some noise creation into the imaging
 		process.  It isn't done yet, shot noise is not complete.
 	* diaginc_server.cpp : Took out a large commented-out block.

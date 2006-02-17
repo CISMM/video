@@ -332,7 +332,7 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     // it fits on the screen.
     cooke_server *r = new cooke_server(2);
     *camera = r;
-    g_bitdepth = 12;
+    g_bitdepth = 16;
   } else
 #endif  
   if (!strcmp(type, "diaginc")) {
@@ -1393,10 +1393,13 @@ void myIdleFunc(void)
   // has to happen for the tracking.
 
   //XXX_why_does_clipping_cause_badness_and_shifting
+  //XXX It also causes crashing when used with the Cooke camera driver!
+/*XXX
+  printf("XXX copying image\n");
   static copy_of_image double_image(*g_camera);
   double_image = *g_camera;
   g_image = &double_image;
-
+*/
   // If we're doing background subtraction, then we set things up to accumulate
   // an average image and do a subtraction between the current image and the
   // background image, and then we point the g_image at this computed image.
@@ -1689,7 +1692,6 @@ void myIdleFunc(void)
             }
           }
 
-          // XXX What to do about video that cannot be paused at the exact instant, like AVI?
           // XXX Do not attempt to pause live video, but do tell that we're lost -- only tell once.
         }
       }
@@ -2740,6 +2742,7 @@ int main(int argc, char *argv[])
   // will do all the work) and then give control over to GLUT.
   glutSetWindow(g_tracking_window);
   glutDisplayFunc(myDisplayFunc);
+  glutShowWindow();
   glutSetWindow(g_beadseye_window);
   glutDisplayFunc(myBeadDisplayFunc);
   glutHideWindow();

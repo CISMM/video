@@ -58,9 +58,9 @@ bool  init_camera_code(const char *type, int which = 1)
     }
   } else if (!strcmp(type, "cooke")) {
     printf("Opening Cooke Camera\n");
-    g_camera = new cooke_server();
+    g_camera = new cooke_server(g_bincount);
     g_numchannels = 1;
-    g_maxval = 4095;
+    g_maxval = 65535;
     if (!g_camera->working()) {
       fprintf(stderr,"init_camera_code(): Can't open Cooke camera server\n");
       return false;

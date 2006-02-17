@@ -209,6 +209,9 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name directx_library
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name cooke_library
+    End Project Dependency
 }}}
 
 ###############################################################################
