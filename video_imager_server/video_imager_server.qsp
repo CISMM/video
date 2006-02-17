@@ -135,6 +135,7 @@ Item-001=*|Video_imager_server for Cooke|<Application Folder>\video_imager_serve
 Item-002=*|Video_imager_server for Pulnix|<Application Folder>\video_imager_server.bat||edt|<Application Folder>|Normal Window||0|1||0|
 Item-003=*|Video_imager_server for Cooke (bin 2x2)|<Application Folder>\video_imager_server.bat||-bin 2 cooke|<Application Folder>|Normal Window||0|1||0|
 Item-004=*|Video_imager_server for Roper (bin 2x2)|<Application Folder>\video_imager_server.bat||-bin 2 roper|<Application Folder>|Normal Window||0|1||0|
+Item-005=*|Video Imager Client|<Application Folder>\testimager_client.exe|||<Application Folder>|Normal Window||0|1||0|
 
 [Billboard]
 AddBillboard=1
@@ -234,3 +235,4 @@ Description=This is the main group of files
 Item-000=Fol*<Application Folder>[0]
 Item-001=Fil*F:\temp\video\Release\video_imager_server.exe
 Item-002=Fil*F:\Temp\video\video_imager_server\video_imager_server.bat
+Item-003=Fil*F:\Temp\vrpn\pc_win32\client_src\testimager_client\Release\testimager_client.exe
