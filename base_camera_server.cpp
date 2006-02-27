@@ -2,6 +2,7 @@
 // that is compiled with -DQuantumDepth=16.  Then, we need to #define QuantumLeap
 // before includeing magick/api.h.
 
+#include <math.h>
 #include <stdio.h>
 #include "base_camera_server.h"
 #define QuantumLeap
@@ -592,5 +593,139 @@ bool  PSF_File::append_line(const image_wrapper &image, const double x, const do
     }
     new_line[i] /= count;
   }
+  return true;
+}
+
+
+/// Write the in-memory image into an OpenGL texture and then texture-map it onto a quad.  The scale and offset are used to set OpenGL transfer settings.
+// The quad will have its vertex coordinates going from -1 to 1 in X and Y and lie at Z=0.  Its texture coordinates will be
+// whatever is needed to map all of the pixels into the quad.
+// The scale and offset are applied directly to the values themselves, which requires the caller to
+// know some magic about the camera for 12-in-16 cameras.
+// The type of texture (Luminance or RBG) can be determined by the particular camera driver
+// based on the type of the camera.  The pixel type (8-bit, float, 16-bit) can also be determined
+// by the camera to produce the most efficient copy of the data to the graphics card.
+// The quad is rendered upside-down to make the images the normal orientation in OpenGL;
+// this is because images are left-handed while OpenGL is right-handed.
+// Not const because we need to set _opengl_texture_size_x and _y.
+bool image_wrapper::write_to_opengl_quad(double scale, double offset)
+{
+  // Check for any OpenGL errors to date, so we don't get tagged for them.
+  GLenum errcode;
+  if ( (errcode = glGetError()) != GL_NO_ERROR) {
+    fprintf(stderr,"image_wrapper::write_to_opengl_quad(): Warning, OpenGL error %d had occured before I was called (ignoring)\n", errcode);
+  }
+
+  // Store away our state so that we can return it to normal when
+  // we're done and not mess up other rendering.
+  glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT | GL_CURRENT_BIT | GL_PIXEL_MODE_BIT);
+
+  // Enable 2D texture-mapping so that we can do our thing.
+  glEnable(GL_TEXTURE_2D);
+
+  // Generate the texture ID to use, if we don't have one
+  if (_opengl_texture_size_x == 0) {
+    glGenTextures(1, &_tex_id);
+  }
+
+  // Bind the appropriate texture
+  glBindTexture(GL_TEXTURE_2D, _tex_id);
+
+  // Set the clamping behavior and such, which should not have any
+  // effect because we should always be at the right scale
+  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+
+  // Set the offset and scale parameters for the transfer.  Set all of the RGB ones to
+  // the requested one even for GL_LUMINANCE textures, because they get used.  Set the
+  // Alpha ones to pass through unmodified because they eventually get used in the
+  // pixel math for some cases.
+  glPixelTransferf(GL_RED_SCALE, scale);
+  glPixelTransferf(GL_GREEN_SCALE, scale);
+  glPixelTransferf(GL_BLUE_SCALE, scale);
+  glPixelTransferf(GL_ALPHA_SCALE, 1.0);
+  glPixelTransferf(GL_RED_BIAS, offset);
+  glPixelTransferf(GL_GREEN_BIAS, offset);
+  glPixelTransferf(GL_BLUE_BIAS, offset);
+  glPixelTransferf(GL_ALPHA_BIAS, 0.0);
+
+  // Figure out the next power-of-two size up based on the current texture size.
+  // This is because textures must be an even power of two size on each axis.
+  _opengl_texture_size_x = static_cast<unsigned>( pow(2, ceil( log( get_num_columns() ) / log(2.0) ) ) );
+  _opengl_texture_size_y = static_cast<unsigned>( pow(2, ceil( log( get_num_rows() ) / log(2.0) ) ) );
+
+  // Write the texture, using a virtual method call appropriate to the particular
+  // camera type.  NOTE: At least the first time this function is called,
+  // we must write a complete texture, which may be larger than the actual bytes
+  // allocated for the image.  After the first time, and if we don't change the
+  // image size to be larger, we can use the subimage call to only write the
+  // pixels we have.
+  if (!write_to_opengl_texture(_tex_id)) {
+    fprintf(stderr,"image_wrapper::write_to_opengl_quad(): write_to_opengl_texture() failed!\n");
+    return false;
+  }
+
+  // Write the texture into an OpenGL quad, inverting as needed by the particular
+  // camera or imager.
+  double xfrac = static_cast<double>(get_num_columns()) / _opengl_texture_size_x;
+  double yfrac = static_cast<double>(get_num_rows()) / _opengl_texture_size_y;
+  glColor3d(1.0, 1.0, 1.0);
+  if (!write_opengl_texture_to_quad(xfrac, yfrac)) {
+    fprintf(stderr,"image_wrapper::write_to_opengl_quad(): write_opengl_texture_to_quad() failed!\n");
+    return false;
+  }
+
+  // Put the state back the way it was
+  glPopAttrib();
+
+  // Check for OpenGL errors during our action here.
+  if ( (errcode = glGetError()) != GL_NO_ERROR) {
+    switch (errcode) {
+        case GL_INVALID_ENUM:
+            fprintf(stderr,"image_wrapper::write_to_opengl_quad():Warning: GL error GL_INVALID_ENUM occurred\n");
+            break;
+        case GL_INVALID_VALUE:
+            fprintf(stderr,"image_wrapper::write_to_opengl_quad():Warning: GL error GL_INVALID_VALUE occurred\n");
+            break;
+        case GL_INVALID_OPERATION:
+            fprintf(stderr,"image_wrapper::write_to_opengl_quad():Warning: GL error GL_INVALID_OPERATION occurred\n");
+            break;
+        case GL_STACK_OVERFLOW:
+            fprintf(stderr,"image_wrapper::write_to_opengl_quad():Warning: GL error GL_STACK_OVERFLOW occurred\n");
+            break;
+        case GL_STACK_UNDERFLOW:
+            fprintf(stderr,"image_wrapper::write_to_opengl_quad():Warning: GL error GL_STACK_UNDERFLOW occurred\n");
+            break;
+        case GL_OUT_OF_MEMORY:
+            fprintf(stderr,"image_wrapper::write_to_opengl_quad():Warning: GL error GL_OUT_OF_MEMORY occurred\n");
+            break;
+        default:
+            fprintf(stderr,"image_wrapper::write_to_opengl_quad():Warning: GL error (code 0x%x) occurred\n", errcode);
+    }
+    return false;
+  }
+
+  return true;
+}
+
+bool image_wrapper::write_opengl_texture_to_quad(double xfrac, double yfrac)
+{
+  // Set the texture and vertex coordinates and write the quad to OpenGL.
+  glBegin(GL_QUADS);
+    glTexCoord2d(0.0, 0.0);
+    glVertex2d(-1.0, -1.0);
+
+    glTexCoord2d(xfrac, 0.0);
+    glVertex2d(1.0, -1.0);
+
+    glTexCoord2d(xfrac, yfrac);
+    glVertex2d(1.0, 1.0);
+
+    glTexCoord2d(0.0, yfrac);
+    glVertex2d(-1.0, 1.0);
+  glEnd();
+
   return true;
 }

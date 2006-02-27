@@ -52,8 +52,8 @@ public:
   /// Store the memory image to a PPM file.
   virtual bool  write_memory_to_ppm_file(const char *filename, bool sixteen_bits = false) const;
 
-  /// Send whole image over a vrpn connection
-  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1);
+  /// Send in-memory image over a vrpn connection
+  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1) const;
 
 protected:
   /// Construct but do not open camera (used by derived classes)
@@ -83,6 +83,14 @@ protected:
   virtual bool	read_one_frame(unsigned minX, unsigned maxX,
 			unsigned minY, unsigned maxY,
 			unsigned exposure_millisecs);
+
+  // Write the texture, using a virtual method call appropriate to the particular
+  // camera type.  NOTE: At least the first time this function is called,
+  // we must write a complete texture, which may be larger than the actual bytes
+  // allocated for the image.  After the first time, and if we don't change the
+  // image size to be larger, we can use the subimage call to only write the
+  // pixels we have.
+  virtual bool write_to_opengl_texture(GLuint tex_id);
 };
 
 // This class is used to handle callbacks from the SampleGrabber filter.  It

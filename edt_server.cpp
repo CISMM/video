@@ -223,19 +223,13 @@ bool  edt_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &val
   return true;
 }
 
-/// Send whole image over a vrpn connection
-bool  edt_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int)
+/// Send in-memory image over a vrpn connection
+bool  edt_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int) const
 {
   // Make sure we have a valid, open device
   if (!_status) { return false; };
 
   unsigned y;
-
-  // Get a new image into the buffer.
-  _minX=_minY=0;
-  _maxX=_num_columns - 1;
-  _maxY=_num_rows - 1;
-  read_image_to_memory(_minX, _maxX, _minY, _maxY, (int)g_exposure);
 
   // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION).
   int nRowsPerRegion=vrpn_IMAGER_MAX_REGIONu8/_num_columns;
@@ -250,6 +244,77 @@ bool  edt_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrco
 
   // Mainloop the server connection (once per server mainloop, not once per object).
   svrcon->mainloop();
+  return true;
+}
+
+
+// Write the texture, using a virtual method call appropriate to the particular
+// camera type.  NOTE: At least the first time this function is called,
+// we must write a complete texture, which may be larger than the actual bytes
+// allocated for the image.  After the first time, and if we don't change the
+// image size to be larger, we can use the subimage call to only write the
+// pixels we have.
+bool edt_server::write_to_opengl_texture(GLuint tex_id)
+{
+  // Note: Check the GLubyte or GLushort or whatever in the temporary buffer!
+  const GLint   NUM_COMPONENTS = 1;
+  const GLenum  FORMAT = GL_LUMINANCE;
+  const GLenum  TYPE = GL_UNSIGNED_BYTE;
+
+  // We need to write an image to the texture at least once that includes all of
+  // the pixels, before we can call the subimage write method below.  We need to
+  // allocate a buffer large enough to send, and of the appropriate type, for this.
+  if (!_opengl_texture_have_written) {
+    GLubyte *tempimage = new GLubyte[NUM_COMPONENTS * _opengl_texture_size_x * _opengl_texture_size_y];
+    if (tempimage == NULL) {
+      fprintf(stderr,"edt_pulnix_raw_file_server::write_to_opengl_texture(): Out of memory allocating temporary buffer\n");
+      return false;
+    }
+    memset(tempimage, 0, _opengl_texture_size_x * _opengl_texture_size_y);
+
+    // Set the pixel storage parameters and store the total blank image.
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, _opengl_texture_size_x);
+    glTexImage2D(GL_TEXTURE_2D, 0, NUM_COMPONENTS, _opengl_texture_size_x, _opengl_texture_size_y,
+      0, FORMAT, TYPE, tempimage);
+
+    delete [] tempimage;
+    _opengl_texture_have_written = true;
+  }
+
+  // Set the pixel storage parameters.
+  // In this case, we need to invert the image in Y to make the display match
+  // that of the capture program.  We are not allowed a negative row length,
+  // so we have to find another trick.
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glPixelStorei(GL_UNPACK_ROW_LENGTH, get_num_columns());
+
+  // Send the subset of the image that we actually have active to OpenGL.
+  // For the EDT_Pulnix, we use an 8-bit unsigned, GL_LUMINANCE texture.
+  glTexSubImage2D(GL_TEXTURE_2D, 0,
+    _minX,_minY, _maxX-_minX+1,_maxY-_minY+1,
+    FORMAT, TYPE, &d_buffer[NUM_COMPONENTS * ( _minX + get_num_columns()*_minY )]);
+  return true;
+}
+
+bool edt_server::write_opengl_texture_to_quad(double xfrac, double yfrac)
+{
+  // Flip over while writing.
+  // Set the texture and vertex coordinates and write the quad to OpenGL.
+  glBegin(GL_QUADS);
+    glTexCoord2d(0.0, yfrac);
+    glVertex2d(-1.0, -1.0);
+
+    glTexCoord2d(xfrac, yfrac);
+    glVertex2d(1.0, -1.0);
+
+    glTexCoord2d(xfrac, 0.0);
+    glVertex2d(1.0, 1.0);
+
+    glTexCoord2d(0.0, 0.0);
+    glVertex2d(-1.0, 1.0);
+  glEnd();
+
   return true;
 }
 
@@ -407,22 +472,8 @@ bool  edt_pulnix_raw_file_server::write_memory_to_ppm_file(const char *filename,
 }
 
 /// Send whole image over a vrpn connection
-// XXX This needs to be tested
-bool  edt_pulnix_raw_file_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int)
+bool  edt_pulnix_raw_file_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int) const
 {
-    _minX=_minY=0;
-    _maxX=_num_columns - 1;
-    _maxY=_num_rows - 1;
-    read_image_to_memory(_minX, _maxX, _minY, _maxY, (int)g_exposure);
-
-    if (!_status) {
-      return false;
-    }
-    if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
-      fprintf(stderr,"edt_pulnix_raw_file_server::get_pixel_from_memory(): No image in memory\n");
-      return false;
-    }
-
     // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION)
     unsigned  num_x = get_num_columns();
     unsigned  num_y = get_num_rows();
@@ -440,4 +491,75 @@ bool  edt_pulnix_raw_file_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_C
     // Mainloop the server connection (once per server mainloop, not once per object).
     svrcon->mainloop();
     return true;
+}
+
+
+// Write the texture, using a virtual method call appropriate to the particular
+// camera type.  NOTE: At least the first time this function is called,
+// we must write a complete texture, which may be larger than the actual bytes
+// allocated for the image.  After the first time, and if we don't change the
+// image size to be larger, we can use the subimage call to only write the
+// pixels we have.
+bool edt_pulnix_raw_file_server::write_to_opengl_texture(GLuint tex_id)
+{
+  // Note: Check the GLubyte or GLushort or whatever in the temporary buffer!
+  const GLint   NUM_COMPONENTS = 1;
+  const GLenum  FORMAT = GL_LUMINANCE;
+  const GLenum  TYPE = GL_UNSIGNED_BYTE;
+
+  // We need to write an image to the texture at least once that includes all of
+  // the pixels, before we can call the subimage write method below.  We need to
+  // allocate a buffer large enough to send, and of the appropriate type, for this.
+  if (!_opengl_texture_have_written) {
+    GLubyte *tempimage = new GLubyte[NUM_COMPONENTS * _opengl_texture_size_x * _opengl_texture_size_y];
+    if (tempimage == NULL) {
+      fprintf(stderr,"edt_pulnix_raw_file_server::write_to_opengl_texture(): Out of memory allocating temporary buffer\n");
+      return false;
+    }
+    memset(tempimage, 0, _opengl_texture_size_x * _opengl_texture_size_y);
+
+    // Set the pixel storage parameters and store the total blank image.
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, _opengl_texture_size_x);
+    glTexImage2D(GL_TEXTURE_2D, 0, NUM_COMPONENTS, _opengl_texture_size_x, _opengl_texture_size_y,
+      0, FORMAT, TYPE, tempimage);
+
+    delete [] tempimage;
+    _opengl_texture_have_written = true;
+  }
+
+  // Set the pixel storage parameters.
+  // In this case, we need to invert the image in Y to make the display match
+  // that of the capture program.  We are not allowed a negative row length,
+  // so we have to find another trick.
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glPixelStorei(GL_UNPACK_ROW_LENGTH, get_num_columns());
+
+  // Send the subset of the image that we actually have active to OpenGL.
+  // For the EDT_Pulnix, we use an 8-bit unsigned, GL_LUMINANCE texture.
+  glTexSubImage2D(GL_TEXTURE_2D, 0,
+    _minX,_minY, _maxX-_minX+1,_maxY-_minY+1,
+    FORMAT, TYPE, &d_buffer[NUM_COMPONENTS * ( _minX + get_num_columns()*_minY )]);
+  return true;
+}
+
+bool edt_pulnix_raw_file_server::write_opengl_texture_to_quad(double xfrac, double yfrac)
+{
+  // Flip over while writing.
+  // Set the texture and vertex coordinates and write the quad to OpenGL.
+  glBegin(GL_QUADS);
+    glTexCoord2d(0.0, yfrac);
+    glVertex2d(-1.0, -1.0);
+
+    glTexCoord2d(xfrac, yfrac);
+    glVertex2d(1.0, -1.0);
+
+    glTexCoord2d(xfrac, 0.0);
+    glVertex2d(1.0, 1.0);
+
+    glTexCoord2d(0.0, 0.0);
+    glVertex2d(-1.0, 1.0);
+  glEnd();
+
+  return true;
 }

@@ -21,9 +21,9 @@ public:
   /// How many colors are in the image.
   virtual unsigned  get_num_colors() const { return 1; }
 
-  /// Send whole image over a vrpn connection
+  /// Send in-memory image over a vrpn connection
   virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,
-    vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1);
+    vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1) const;
 
 protected:
   vrpn_uint8  *d_buffer;	  //< Points to current frame of data
@@ -36,6 +36,20 @@ protected:
   unsigned    d_first_timeouts;	  //< How many timeouts when we opened the device?
 
   virtual bool open_and_find_parameters(void);
+
+  // Write the texture, using a virtual method call appropriate to the particular
+  // camera type.  NOTE: At least the first time this function is called,
+  // we must write a complete texture, which may be larger than the actual bytes
+  // allocated for the image.  After the first time, and if we don't change the
+  // image size to be larger, we can use the subimage call to only write the
+  // pixels we have.
+  virtual bool write_to_opengl_texture(GLuint tex_id);
+
+  // Write from the texture to a quad.  Write only the actually-filled
+  // portion of the texture (parameters passed in).  This version does not
+  // flip the quad over.  The EDT version flips the image over, so we
+  // don't use the base-class method.
+  virtual bool write_opengl_texture_to_quad(double xfrac, double yfrac);
 };
 
 class edt_pulnix_raw_file_server : public base_camera_server {
@@ -70,11 +84,25 @@ public:
   /// Store the memory image to a PPM file.
   virtual bool  write_memory_to_ppm_file(const char *filename, int gain = 1, bool sixteen_bits = false) const;
 
-  /// Send whole image over a vrpn connection
-  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1);
+  /// Send in-memory image over a vrpn connection
+  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1) const;
 
 protected:
   FILE *d_infile;		  //< File to read from
   vrpn_uint8  *d_buffer;	  //< Holds one frame of data from the file
   enum {PAUSE, PLAY, SINGLE} d_mode;	  //< What we're doing right now
+
+  // Write the texture, using a virtual method call appropriate to the particular
+  // camera type.  NOTE: At least the first time this function is called,
+  // we must write a complete texture, which may be larger than the actual bytes
+  // allocated for the image.  After the first time, and if we don't change the
+  // image size to be larger, we can use the subimage call to only write the
+  // pixels we have.
+  virtual bool write_to_opengl_texture(GLuint tex_id);
+
+  // Write from the texture to a quad.  Write only the actually-filled
+  // portion of the texture (parameters passed in).  This version does not
+  // flip the quad over.  The EDT version flips the image over, so we
+  // don't use the base-class method.
+  virtual bool write_opengl_texture_to_quad(double xfrac, double yfrac);
 };

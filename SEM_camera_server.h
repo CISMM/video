@@ -37,8 +37,8 @@ public:
   /// Store the memory image to a PPM file.
   virtual bool  write_memory_to_ppm_file(const char *filename, int gain = 1, bool sixteen_bits = false) const;
 
-  /// Send whole image over a vrpn connection
-  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1);
+  /// Send in-memory image over a vrpn connection
+  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1) const;
 
 protected:
   nmm_Microscope_SEM_Remote *_myScope;	  //< Scope that we're using
@@ -58,4 +58,12 @@ protected:
   // binning.  That is, they should be in the full-resolution device coordinates.
   virtual bool read_one_frame(unsigned short minX, unsigned short maxX, unsigned short minY, unsigned short maxY, unsigned exposure_time_millisecs);
   static void handle_SEM_update(void *ud, const nmm_Microscope_SEM_ChangeHandlerData &info);
+
+  // Write the texture, using a virtual method call appropriate to the particular
+  // camera type.  NOTE: At least the first time this function is called,
+  // we must write a complete texture, which may be larger than the actual bytes
+  // allocated for the image.  After the first time, and if we don't change the
+  // image size to be larger, we can use the subimage call to only write the
+  // pixels we have.
+  virtual bool write_to_opengl_texture(GLuint tex_id);
 };

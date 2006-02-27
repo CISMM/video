@@ -98,13 +98,6 @@ void  teardown_camera_code(void)
   if (g_camera) { delete g_camera; };
 }
 
-/// Cause the camera to read one frame.
-// XXX Later, would like to put it into continuous mode, most likely
-void  mainloop_camera_code(void)
-{
-  g_camera->read_image_to_memory(0,0,0,0,g_exposure);
-}
-
 //-----------------------------------------------------------------
 // This section contains code that does what the server should do
 
@@ -248,6 +241,7 @@ int main(int argc, char *argv[])
   if (!init_server_code(logfilename)) { return -1; }
 
   while (!g_done) {
+    g_camera->read_image_to_memory(0,0,0,0,g_exposure);
     g_camera->send_vrpn_image(svr,svrcon,g_exposure,svrchan, g_numchannels);
     svrcon->mainloop();
     svrcon->save_log_so_far();

@@ -1,3 +1,13 @@
+//XXX Switch out the double in image_wrapper and derived classes and
+// use a float buffer instead.  Push this all the way through the calls
+// in all programs.  Then we can put an OpenGL renderer in that sends
+// GLfloats down, and optimize the derived classes that already have
+// a buffer so that they use texture writes to put them to the screen.
+//XXX Add the new shifting policy and OpenGL renderer to Video Optimizer.
+//XXX Need to think about how to do a single color to RGB on the writing to OpenGL, for
+// VST and optimizer we may sometimes want just one channel to be
+// displayed (the one that is being tracked).
+
 #ifndef	BASE_CAMERA_SERVER_H
 #define	BASE_CAMERA_SERVER_H
 
@@ -6,6 +16,7 @@
 #include  <vrpn_Types.h>
 #include  <vrpn_Connection.h>
 #include  <vrpn_Imager.h>
+#include  <GL/gl.h>
 #include  <string>
 #include  <vector>
 
@@ -14,9 +25,15 @@
 // which can support requests on the number of pixels in an image and can
 // perform queries by pixel coordinate in that image.  It is a set of functions
 // that are needed by the spot_tracker applications.
+// XXX If we template this class based on the type of pixel it has, we may be
+// able to speed things up quite a bit for particular cases of interest.  Even
+// better may be to implement functions that wrap the functions we need to
+// have be fast (like writing to a GL_LUMINANCE OpenGL texture).
 
 class image_wrapper {
 public:
+
+  image_wrapper() : _opengl_texture_size_x(0), _opengl_texture_size_y(0), _opengl_texture_have_written(false) {};
 
   // Virtual destructor to let children de-allocate space as needed.
   virtual ~image_wrapper() {};
@@ -26,6 +43,8 @@ public:
 
   /// Return the number of colors that the image has
   virtual unsigned  get_num_colors() const = 0;
+  //XXX These should return the maximum number of possible rows/columns,
+  // like the ones in the camera server do.
   virtual unsigned  get_num_rows(void) const { 
     int	_minx, _maxx, _miny, _maxy;
     read_range(_minx, _maxx, _miny, _maxy);
@@ -137,10 +156,44 @@ public:
   virtual bool  write_to_grayscale_tiff_file(const char *filename, unsigned channel, double scale = 1.0, double offset = 0.0,
     bool sixteen_bits = false, const char *magick_files_dir = "C:/nsrg/external/pc_win32/bin/ImageMagick-5.5.7-Q16/MAGIC_DIR_PATH") const;
 
-  /// Send whole image over a vrpn connection.  Number of channels is 3 for RGB cameras, but 1 for scientific cameras.
+  /// Send in-memory image over a vrpn connection.  Number of channels is 3 for RGB cameras, but 1 for scientific cameras.
   // The channels to be used must have been pre-allocated by the application; three contiguous named "red" "green" "blue"
   // for an RGB (or BGR) camera.
-  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1) {return false;};
+  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1) const {return false;};
+
+  /// Write the in-memory image into an OpenGL texture and then texture-map it onto a quad.  The scale and offset are used to set OpenGL transfer settings.
+  // The quad will have its vertex coordinates going from -1 to 1 in X and Y and lie at Z=0.  Its texture coordinates will be
+  // whatever is needed to map all of the pixels into the quad.
+  // The scale and offset are applied directly to the values themselves, which requires the caller to
+  // know some magic about the camera for 12-in-16 cameras.
+  // The type of texture (Luminance or RBG) can be determined by the particular camera driver
+  // based on the type of the camera.  The pixel type (8-bit, float, 16-bit) can also be determined
+  // by the camera to produce the most efficient copy of the data to the graphics card.
+  // The quad is rendered upside-down to make the images the normal orientation in OpenGL;
+  // this is because images are left-handed while OpenGL is right-handed.
+  // Not const because we need to set _opengl_texture_size_x and _y.
+  virtual bool write_to_opengl_quad(double scale = 1.0, double offset = 0.0);
+
+protected:
+  // These are used to keep track of the actual OpenGL texture size,
+  // which must be an even power of two in each dimension.
+  GLuint    _tex_id;
+  unsigned  _opengl_texture_size_x;
+  unsigned  _opengl_texture_size_y;
+  unsigned  _opengl_texture_have_written;
+
+  // Write the texture, using a virtual method call appropriate to the particular
+  // camera type.  NOTE: At least the first time this function is called,
+  // we must write a complete texture, which may be larger than the actual bytes
+  // allocated for the image.  After the first time, and if we don't change the
+  // image size to be larger, we can use the subimage call to only write the
+  // pixels we have.
+  virtual bool write_to_opengl_texture(GLuint tex_id) {return false;};
+
+  // Write from the texture to a quad.  Write only the actually-filled
+  // portion of the texture (parameters passed in).  This version does not
+  // flip the quad over.  A derived class can flip as needed.
+  virtual bool write_opengl_texture_to_quad(double xfrac, double yfrac);
 };
 
 //----------------------------------------------------------------------------
@@ -620,6 +673,9 @@ protected:
     _binning = binning;
     if (_binning < 1) { _binning = 1; }
   };
+
+  // Require all cameras to implement this function.
+  virtual bool write_to_opengl_texture(GLuint tex_id) = 0;
 };
 
 // This class will compute an object's spread function (for a point, this

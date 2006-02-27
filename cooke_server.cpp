@@ -13,7 +13,7 @@
 #define PCO_ERRT_H_CREATE_OBJECT
 #include <PCO_errt.h>
 
-const unsigned g_verbosity = 0;
+const unsigned g_verbosity = 10;
 
 static	unsigned long	duration(struct timeval t1, struct timeval t2)
 {
@@ -360,6 +360,7 @@ bool  cooke_server::set_current_camera_parameters(int newminX, int newminY,
                                              int newbinning,
                                              vrpn_uint32 newexposure_time_millisecs)
 {
+  if (g_verbosity) { printf("cooke_server::set_current_camera_parameters() entered\n"); };
   // If none of the parameters have changed, we exit without interrupting
   // the imaging process.
   if ( (newminX == _minX) && (newminY == _minY) &&
@@ -520,6 +521,7 @@ bool  cooke_server::set_current_camera_parameters(int newminX, int newminY,
     return false;
   }
 
+  if (g_verbosity) { printf("cooke_server::set_current_camera_parameters() exited\n"); };
   return true;
 }
 
@@ -584,7 +586,10 @@ bool  cooke_server::read_one_frame(HANDLE camera_handle,
 bool  cooke_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned minY, unsigned maxY,
 					 double exposure_time_millisecs)
 {
-  if (g_verbosity > 9) { printf(" cooke_server::read_image_to_memory() entered (exits with read_one_frame)\n"); };
+  if (g_verbosity) {
+    printf("cooke_server::read_image_to_memory() entered\n");
+    printf("  minX %d, maxX %d, minY %d, maxY %d, exposure %lfms\n",minX, maxX, minY, maxY, exposure_time_millisecs);
+  };
   //---------------------------------------------------------------------
   // In case we fail, clear these
 
@@ -764,18 +769,8 @@ bool	cooke_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &va
   return true;
 }
 
-bool cooke_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double exposure,int svrchan, int num_chans)
+bool cooke_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans) const
 {
-    read_image_to_memory(0, get_num_columns(), 0, get_num_rows(), (int)exposure);
-
-    if (!_status) {
-      return false;
-    }
-    if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
-      fprintf(stderr,"cooke_camera_server::get_pixel_from_memory(): No image in memory\n");
-      return false;
-    }
-
     // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION)
     vrpn_uint16 cols = (_maxX - _minX)/_binning + 1;
     vrpn_uint16 rows = (_maxY - _minY)/_binning + 1;
@@ -803,4 +798,54 @@ bool cooke_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrc
     // Mainloop the server connection (once per server mainloop, not once per object).
     svrcon->mainloop();
     return true;
+}
+
+
+// Write the texture, using a virtual method call appropriate to the particular
+// camera type.  NOTE: At least the first time this function is called,
+// we must write a complete texture, which may be larger than the actual bytes
+// allocated for the image.  After the first time, and if we don't change the
+// image size to be larger, we can use the subimage call to only write the
+// pixels we have.
+bool cooke_server::write_to_opengl_texture(GLuint tex_id)
+{
+  // Note: Check the GLubyte or GLushort or whatever in the temporary buffer!
+  const GLint   NUM_COMPONENTS = 1;
+  const GLenum  FORMAT = GL_LUMINANCE;
+  const GLenum  TYPE = GL_UNSIGNED_SHORT;
+
+  // We need to write an image to the texture at least once that includes all of
+  // the pixels, before we can call the subimage write method below.  We need to
+  // allocate a buffer large enough to send, and of the appropriate type, for this.
+  if (!_opengl_texture_have_written) {
+    GLushort *tempimage = new GLushort[NUM_COMPONENTS * _opengl_texture_size_x * _opengl_texture_size_y];
+    if (tempimage == NULL) {
+      fprintf(stderr,"cooke_server::write_to_opengl_texture(): Out of memory allocating temporary buffer\n");
+      return false;
+    }
+    memset(tempimage, 0, _opengl_texture_size_x * _opengl_texture_size_y);
+
+    // Set the pixel storage parameters and store the total blank image.
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, _opengl_texture_size_x);
+    glTexImage2D(GL_TEXTURE_2D, 0, NUM_COMPONENTS, _opengl_texture_size_x, _opengl_texture_size_y,
+      0, FORMAT, TYPE, tempimage);
+
+    delete [] tempimage;
+    _opengl_texture_have_written = true;
+  }
+
+  // Set the pixel storage parameters.
+  // In this case, we need to invert the image in Y to make the display match
+  // that of the capture program.  We are not allowed a negative row length,
+  // so we have to find another trick.
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glPixelStorei(GL_UNPACK_ROW_LENGTH, get_num_columns());
+
+  // Send the subset of the image that we actually have active to OpenGL.
+  // For the EDT_Pulnix, we use an 8-bit unsigned, GL_LUMINANCE texture.
+  glTexSubImage2D(GL_TEXTURE_2D, 0,
+    _minX,_minY, _maxX-_minX+1,_maxY-_minY+1,
+    FORMAT, TYPE, &d_myImageBuffer[NUM_COMPONENTS * ( _minX + get_num_columns()*_minY )]);
+  return true;
 }

@@ -68,7 +68,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "04.08";
+const char *Version_string = "05.00";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -200,8 +200,9 @@ Tcl_Interp	    *g_tk_control_interp;
 
 char		    *g_device_name = NULL;	  //< Name of the camera/video/file device to open
 base_camera_server  *g_camera;			  //< Camera used to get an image
+unsigned            g_camera_bit_depth = 8;       //< Bit depth of the particular camera
 
-const image_wrapper *g_image;                     //< Image, possibly from camera and possibly computed
+image_wrapper       *g_image;                     //< Image, possibly from camera and possibly computed
 image_metric	    *g_mean_image = NULL;	  //< Accumulates mean of images, if we're doing background subtract
 image_wrapper	    *g_calculated_image = NULL;	  //< Image calculated from the camera image and other parameters
 unsigned            g_background_count = 0;       //< Number of frames we've already averaged over
@@ -269,7 +270,7 @@ Tclvar_float_with_scale	*g_minY;
 Tclvar_float_with_scale	*g_maxY;
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
 Tclvar_float_with_scale	g_colorIndex("red_green_blue", NULL, 0, 2, 0);
-Tclvar_float_with_scale	g_bitdepth("bit_depth", "", 8, 12, 8);
+Tclvar_float_with_scale	g_brighten("brighten", "", 0, 8, 0);
 Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_trackers);
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
 Tclvar_float_with_scale g_lossSensitivity("lost_tracking_sensitivity", "", 0.0, 1.0, 0.0);
@@ -290,6 +291,7 @@ Tclvar_int_with_button	g_small_area("small_area",NULL);
 Tclvar_int_with_button	g_full_area("full_area",NULL);
 Tclvar_int_with_button	g_mark("show_tracker",NULL,1);
 Tclvar_int_with_button	g_show_video("show_video","",1);
+Tclvar_int_with_button	g_opengl_video("use_opengl_video","",1);
 Tclvar_int_with_button	g_show_debug("show_debug","",0, set_debug_visibility);
 Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
 Tclvar_int_with_button	g_show_traces("show_logged_traces","",1);
@@ -323,7 +325,7 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     // it fits on the screen.
     roper_server *r = new roper_server(2);
     *camera = r;
-    g_bitdepth = 12;
+    g_camera_bit_depth = 12;
   } else
 #endif  
 #ifdef VST_USE_COOKE
@@ -332,7 +334,7 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     // it fits on the screen.
     cooke_server *r = new cooke_server(2);
     *camera = r;
-    g_bitdepth = 16;
+    g_camera_bit_depth = 16;
   } else
 #endif  
   if (!strcmp(type, "diaginc")) {
@@ -341,7 +343,7 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     diaginc_server *r = new diaginc_server(2);
     *camera = r;
     g_exposure = 80;	// Seems to be the minimum exposure for the one we have
-    g_bitdepth = 12;
+    g_camera_bit_depth = 12;
   } else if (!strcmp(type, "edt")) {
     edt_server *r = new edt_server();
     *camera = r;
@@ -359,6 +361,7 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     SEM_Controllable_Video  *s = new SEM_Controllable_Video (type);
     *camera = s;
     *video = s;
+    g_camera_bit_depth = 16;
 
   // Unknown type, so we presume that it is a file.  Now we figure out what
   // kind of file based on the extension and open the appropriate type of
@@ -381,7 +384,7 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
       SPE_Controllable_Video *f = new SPE_Controllable_Video(type);
       *camera = f;
       *video = f;
-      g_bitdepth = 12;
+      g_camera_bit_depth = 12;
 
     // If the extension is ".sem" then we assume it is a VRPN-format file
     // with an SEM device in it, so we form the name of the device and open
@@ -412,6 +415,7 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
       FileStack_Controllable_Video *s = new FileStack_Controllable_Video(type);
       *camera = s;
       *video = s;
+      g_camera_bit_depth = 16;
 
     // If the extension is ".stk"  then we assume it is a Metamorph file
     // to be opened by the Metamorph reader.
@@ -630,7 +634,6 @@ static	bool  save_log_frame(unsigned frame_number)
   return true;
 }
 
-
 void myDisplayFunc(void)
 {
   unsigned  r,c;
@@ -651,7 +654,21 @@ void myDisplayFunc(void)
 #ifdef DEBUG
     printf("Filling pixels %d,%d through %d,%d\n", (int)(*g_minX),(int)(*g_minY), (int)(*g_maxX), (int)(*g_maxY));
 #endif
-    int shift = g_bitdepth - 8;
+
+    // Figure out how many bits we need to shift to the right.
+    // This depends on how many bits the camera has above zero minus
+    // the number of bits we want to shift to brighten the image.
+    // If this number is negative, clamp to zero.
+    int shift_due_to_camera = g_camera_bit_depth - 8;
+    int total_shift = shift_due_to_camera - g_brighten;
+    if (total_shift < 0) { total_shift = 0; }
+  if (g_opengl_video) {
+    // If we can't write using OpenGL, turn off the feature.
+    if (!g_image->write_to_opengl_quad(pow(2.0,g_brighten))) {
+      g_opengl_video = false;
+    }
+  } else {
+    int shift = total_shift;
     for (r = *g_minY; r <= *g_maxY; r++) {
       unsigned lowc = *g_minX, hic = *g_maxX; //< Speeds things up.
       unsigned char *pixel_base = &g_glut_image[ 4*(lowc + g_image->get_num_columns() * r) ]; //< Speeds things up
@@ -667,6 +684,10 @@ void myDisplayFunc(void)
 	// from the first channel into all colors of the image.  It uses
 	// RGBA so that we don't have to worry about byte-alignment problems
 	// that plagued us when using RGB pixels.
+
+        // Storing the uns_pix >> shift into an unsigned char and then storing
+        // it into all three is actually SLOWER than just storing it into all
+        // three directly.  Argh!
         *(pixel_base++) = uns_pix >> shift;     // Stored in red
         *(pixel_base++) = uns_pix >> shift;     // Stored in green
         *(pixel_base++) = uns_pix >> shift;     // Stored in blue
@@ -691,8 +712,23 @@ void myDisplayFunc(void)
 #ifdef DEBUG
     printf("Drawing %dx%d pixels\n", g_image->get_num_columns(), g_image->get_num_rows());
 #endif
+    // At one point, I changed this to GL_LUMINANCE and then we had to do
+    // only 1/4 of the pixel moving in the loop above and we have only 1/4
+    // of the memory use, so I figured things would render much more rapidly.
+    // In fact, the program ran more slowly (5.0 fps vs. 5.2 fps) with the
+    // LUMINANCE than with the RGBA.  Dunno how this could be, but it was.
+    // This happened again when I tried it with a raw file, got slightly slower
+    // with GL_LUMINANCE.  It must be that the glDrawPixels routine is not
+    // optimized to do that function as well as mine, perhaps because it has
+    // to write to the alpha channel as well.  Sure enough -- If I switch and
+    // write into the Alpha channel, it goes the same speed as when I use
+    // the GL_LUMINANCE call here.  Drat!  XXX How about if we make it an
+    // RGB rendering window and deal with the alignment issues and then make
+    // it a LUMINANCE DrawPixels... probably won't make anything faster but
+    // it may make it more confusing.
     glDrawPixels(g_image->get_num_columns(),g_image->get_num_rows(),
       GL_RGBA, GL_UNSIGNED_BYTE, g_glut_image);
+  }
   }
 
   // If we have been asked to show the tracking markers, draw them.
@@ -1008,7 +1044,14 @@ void myBeadDisplayFunc(void)
     if (max_x > g_beadseye_size-1) { max_x = g_beadseye_size-1; }
     if (max_y > g_beadseye_size-1) { max_y = g_beadseye_size-1; }
 
-    int shift = g_bitdepth - 8;
+    // Figure out how many bits we need to shift to the right.
+    // This depends on how many bits the camera has above zero minus
+    // the number of bits we want to shift to brighten the image.
+    // If this number is negative, clamp to zero.
+    int shift_due_to_camera = g_camera_bit_depth - 8;
+    int total_shift = shift_due_to_camera - g_brighten;
+    if (total_shift < 0) { total_shift = 0; }
+    int shift = total_shift;
     for (x = min_x; x < max_x; x++) {
       for (y = min_y; y < max_y; y++) {
 	if (!g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix)) {
@@ -1294,7 +1337,7 @@ void myIdleFunc(void)
     g_full_area = 0;
   }
 
-  // If we are asking for a small region around the tracked dot,
+  // If we are asking for a small region to be used around the tracked dot,
   // set the borders to be around the set of trackers.
   // This will be a min/max over all of the
   // bounding boxes.  Do not do this if the tracker is lost, mainly
@@ -1394,6 +1437,7 @@ void myIdleFunc(void)
 
   //XXX_why_does_clipping_cause_badness_and_shifting
   //XXX It also causes crashing when used with the Cooke camera driver!
+  //XXX It will also remove the ability to do OpenGL-accelerated rendering.
 /*XXX
   printf("XXX copying image\n");
   static copy_of_image double_image(*g_camera);
@@ -1428,7 +1472,7 @@ void myIdleFunc(void)
     // Calculate the new image and then point the image to display at it.
     // The offset is determined by the maximum value that can be displayed in an
     // image with half as many values as the present image.
-    double offset = (1 << (((unsigned)(g_bitdepth))-1) ) - 1;
+    double offset = (1 << (((unsigned)(g_camera_bit_depth))-1) ) - 1;
     g_calculated_image = new subtracted_image(*g_image, *g_mean_image, offset);
     if (g_calculated_image == NULL) {
       fprintf(stderr, "Out of memory when calculating image\n");
@@ -1746,7 +1790,14 @@ void myIdleFunc(void)
       // and fill in the samples image values at these locations.
       double step;
       double double_pix;
-      int shift = g_bitdepth - 8;
+      // Figure out how many bits we need to shift to the right.
+      // This depends on how many bits the camera has above zero minus
+      // the number of bits we want to shift to brighten the image.
+      // If this number is negative, clamp to zero.
+      int shift_due_to_camera = g_camera_bit_depth - 8;
+      int total_shift = shift_due_to_camera - g_brighten;
+      if (total_shift < 0) { total_shift = 0; }
+      int shift = total_shift;
       for (step = -g_kymograph_width/2.0; step <= g_kymograph_width / 2.0; step++) {
 
 	// Figure out where to look in the image

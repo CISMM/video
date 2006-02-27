@@ -1,3 +1,39 @@
+2006-02-26  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* base_camera_server.cpp : Added several methods to enable direct
+		rendering from cameras into an OpenGL Quad through a texture,
+		which enables much faster rendering.  This lets us send a
+		single channel to the graphics card for one-color cameras,
+		using the OpenGL offset and scale built-in hardware and
+		duplication to all three channels.  Also works for RGB
+		cameras, and is faster.  Also changed the semantics of the
+		send_vrpn_image so that it requires a separate read call to
+		the camera.
+	* base_camera_server.h : Same.
+	* cooke_server.h : Same.
+	* cooke_server.cpp : Same.
+	* diaginc_server.h : Same.
+	* diaginc_server.cpp : Same.
+	* directx_camera_server.h : Same.
+	* directx_camera_server.cpp : Same.
+	* edt_server.h : Same.
+	* edt_server.cpp : Same.
+	* file_stack_server.h : Same.
+	* file_stack_server.cpp : Same.
+	* nikon_server.h : Same.
+	* nikon_server.cpp : Same.
+	* roper_server.h : Same.
+	* roper_server.cpp : Same.
+	* SEM_camera_server.h : Same.
+	* SEM_camera_server.cpp : Same.
+	* video_spot_tracker.cpp : Makes use of the faster OpenGL rendering,
+		and modified the bit-shifting code to be consistent between
+		different bit-depth cameras.
+	* video_imager_server.cpp : Modified to read from the camera before
+		sending its image via the VRPN imager server.
+	* cismm_video_optimizer.cpp : Modified to still work with the changes
+		made.  Not yet optimized to use them.
+
 2006-02-17  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* cismm_video_optimizer.cpp : Added Cooke camera.

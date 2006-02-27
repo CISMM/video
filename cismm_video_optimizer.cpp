@@ -226,7 +226,7 @@ Tclvar_int_with_button	g_sixteenbits("sixteenbit_log",NULL,1);
 Tclvar_int_with_button	g_monochrome("monochrome_log",NULL,0);
 Tclvar_int_with_button	g_log_pointspread("pointspread_log",NULL,0);
 Tclvar_float_with_scale	g_colorIndex("red_green_blue", NULL, 0, 2, 0);
-Tclvar_float_with_scale	g_bitdepth("bit_depth", "", 8, 12, 8);
+Tclvar_float_with_scale	g_bitdepth("bit_depth", "", 8, 16, 8);
 Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_trackers);
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
 Tclvar_int_with_button	g_invert("dark_spot",NULL,1, rebuild_trackers);
@@ -282,6 +282,7 @@ bool  get_camera(const char *type, base_camera_server **camera,
     // it fits on the screen.
     roper_server *r = new roper_server(2);
     *camera = r;
+    g_bitdepth = 12;
   } else
 #endif  
 #ifdef VST_USE_COOKE
@@ -298,6 +299,7 @@ bool  get_camera(const char *type, base_camera_server **camera,
     diaginc_server *r = new diaginc_server(2);
     *camera = r;
     g_exposure = 80;	// Seems to be the minimum exposure for the one we have
+    g_bitdepth = 12;
   } else if (!strcmp(type, "directx")) {
     // Passing width and height as zero leaves it open to whatever the camera has
     directx_camera_server *d = new directx_camera_server(1,0,0);	// Use camera #1 (first one found)
@@ -312,6 +314,7 @@ bool  get_camera(const char *type, base_camera_server **camera,
     SEM_Controllable_Video  *s = new SEM_Controllable_Video (type);
     *camera = s;
     *video = s;
+    g_bitdepth = 16;
 
   // Unknown type, so we presume that it is a file.  Now we figure out what
   // kind of file based on the extension and open the appropriate type of
@@ -355,6 +358,7 @@ bool  get_camera(const char *type, base_camera_server **camera,
       FileStack_Controllable_Video *s = new FileStack_Controllable_Video(type);
       *camera = s;
       *video = s;
+    g_bitdepth = 16;
 
     // If the extension is ".stk"  then we assume it is a Metamorph file
     // to be opened by the Metamorph reader.

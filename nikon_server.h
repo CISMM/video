@@ -23,8 +23,8 @@ public:
   /// How many colors are in the image.
   virtual unsigned  get_num_colors() const { return 1; }
 
-  /// Send whole image over a vrpn connection
-  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1);
+  /// Send in-memory image over a vrpn connection
+  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1) const;
 
 protected:
 

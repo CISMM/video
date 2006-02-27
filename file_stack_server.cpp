@@ -154,27 +154,15 @@ bool  file_stack_server::read_image_from_file(const string filename)
   }
 
   // Copy the pixels from the image into the buffer. Flip the image over in Y
-  // to match the orientation we expect.
-  // If the image depth is only 8, then we need to treat the pixels as 8-bit
-  // values to undo the left-shift done by ImageMagick.
+  // to match the orientation we expect.  Note that if we have an 8-bit image,
+  // ImagemMagick will have shifted it left to the most-significant-byte.
   unsigned x, y, flip_y;
-  if (image->depth == 16) {
-    for (y = 0; y < d_yFileSize; y++) {
-      flip_y = (d_yFileSize - 1) - y;
-      for (x = 0; x < d_xFileSize; x++) {
-	d_buffer[ (x + flip_y * d_xFileSize) * 3 + 0 ] = pixels[x + image->columns*y].red;
-	d_buffer[ (x + flip_y * d_xFileSize) * 3 + 1 ] = pixels[x + image->columns*y].green;
-	d_buffer[ (x + flip_y * d_xFileSize) * 3 + 2 ] = pixels[x + image->columns*y].blue;
-      }
-    }
-  } else {
-    for (y = 0; y < d_yFileSize; y++) {
-      flip_y = (d_yFileSize - 1) - y;
-      for (x = 0; x < d_xFileSize; x++) {
-	d_buffer[ (x + flip_y * d_xFileSize) * 3 + 0 ] = (unsigned char)(pixels[x + image->columns*y].red);
-	d_buffer[ (x + flip_y * d_xFileSize) * 3 + 1 ] = (unsigned char)(pixels[x + image->columns*y].green);
-	d_buffer[ (x + flip_y * d_xFileSize) * 3 + 2 ] = (unsigned char)(pixels[x + image->columns*y].blue);
-      }
+  for (y = 0; y < d_yFileSize; y++) {
+    flip_y = (d_yFileSize - 1) - y;
+    for (x = 0; x < d_xFileSize; x++) {
+      d_buffer[ (x + flip_y * d_xFileSize) * 3 + 0 ] = pixels[x + image->columns*y].red;
+      d_buffer[ (x + flip_y * d_xFileSize) * 3 + 1 ] = pixels[x + image->columns*y].green;
+      d_buffer[ (x + flip_y * d_xFileSize) * 3 + 2 ] = pixels[x + image->columns*y].blue;
     }
   }
 
@@ -253,6 +241,7 @@ bool  file_stack_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint
   // Fill in the pixel value, assuming pixels vary in X fastest in the file.
   // We don't shift right here; that was already done if we read an 8-bit image.
   // If we get a 16-bit image, we'll just send the lower-order bits.
+  // XXX Endian-ness assumption here.
   val = (vrpn_uint8)(d_buffer[ (X + Y * d_xFileSize) * 3 + color ]);
 
   return true;
@@ -281,8 +270,8 @@ bool  file_stack_server::write_memory_to_ppm_file(const char *filename, int gain
   return true;
 }
 
-/// Send whole image over a vrpn connection
-bool  file_stack_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int)
+/// Send in-memory image over a vrpn connection
+bool  file_stack_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int) const
 {
   ///XXX;
   fprintf(stderr,"file_stack_server::send_vrpn_image(): Not yet implemented\n");
@@ -290,6 +279,53 @@ bool  file_stack_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection
 
   return true;
 }
+
+// Write the texture, using a virtual method call appropriate to the particular
+// camera type.  NOTE: At least the first time this function is called,
+// we must write a complete texture, which may be larger than the actual bytes
+// allocated for the image.  After the first time, and if we don't change the
+// image size to be larger, we can use the subimage call to only write the
+// pixels we have.
+bool file_stack_server::write_to_opengl_texture(GLuint tex_id)
+{
+  // Note: Check the GLubyte or GLushort or whatever in the temporary buffer!
+  const GLint   NUM_COMPONENTS = 3;
+  const GLenum  FORMAT = GL_RGB;
+  const GLenum  TYPE = GL_UNSIGNED_SHORT;
+
+  // We need to write an image to the texture at least once that includes all of
+  // the pixels, before we can call the subimage write method below.  We need to
+  // allocate a buffer large enough to send, and of the appropriate type, for this.
+  if (!_opengl_texture_have_written) {
+    GLushort *tempimage = new GLushort[NUM_COMPONENTS * _opengl_texture_size_x * _opengl_texture_size_y];
+    if (tempimage == NULL) {
+      fprintf(stderr,"file_stack_server::write_to_opengl_texture(): Out of memory allocating temporary buffer\n");
+      return false;
+    }
+    memset(tempimage, 0, _opengl_texture_size_x * _opengl_texture_size_y);
+
+    // Set the pixel storage parameters and store the total blank image.
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, _opengl_texture_size_x);
+    glTexImage2D(GL_TEXTURE_2D, 0, NUM_COMPONENTS, _opengl_texture_size_x, _opengl_texture_size_y,
+      0, FORMAT, TYPE, tempimage);
+
+    delete [] tempimage;
+    _opengl_texture_have_written = true;
+  }
+
+  // Set the pixel storage parameters.
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glPixelStorei(GL_UNPACK_ROW_LENGTH, get_num_columns());
+
+  // Send the subset of the image that we actually have active to OpenGL.
+  // For the file_stack-server, we use a 16-bit unsigned, GL_RGB texture.
+  glTexSubImage2D(GL_TEXTURE_2D, 0,
+    _minX,_minY, _maxX-_minX+1,_maxY-_minY+1,
+    FORMAT, TYPE, &d_buffer[NUM_COMPONENTS * ( _minX + get_num_columns()*_minY )]);
+  return true;
+}
+
 
 #ifdef	USE_METAMORPH
 #include "tiffio.h"
@@ -510,27 +546,14 @@ bool  Metamorph_stack_server::read_image_from_file(void)
 
   // Copy the pixels from the image into the buffer. Flip the image over in Y
   // to match the orientation we expect.
-  // If the image depth is only 8, then we need to treat the pixels as 8-bit
-  // values to undo the left-shift done by ImageMagick.
 /*XXX
   unsigned x, y, flip_y;
-  if (image->depth == 16) {
-    for (y = 0; y < d_yFileSize; y++) {
-      flip_y = (d_yFileSize - 1) - y;
-      for (x = 0; x < d_xFileSize; x++) {
-	d_buffer[ (x + flip_y * d_xFileSize) * 3 + 0 ] = pixels[x + image->columns*y].red;
-	d_buffer[ (x + flip_y * d_xFileSize) * 3 + 1 ] = pixels[x + image->columns*y].green;
-	d_buffer[ (x + flip_y * d_xFileSize) * 3 + 2 ] = pixels[x + image->columns*y].blue;
-      }
-    }
-  } else {
-    for (y = 0; y < d_yFileSize; y++) {
-      flip_y = (d_yFileSize - 1) - y;
-      for (x = 0; x < d_xFileSize; x++) {
-	d_buffer[ (x + flip_y * d_xFileSize) * 3 + 0 ] = (unsigned char)(pixels[x + image->columns*y].red);
-	d_buffer[ (x + flip_y * d_xFileSize) * 3 + 1 ] = (unsigned char)(pixels[x + image->columns*y].green);
-	d_buffer[ (x + flip_y * d_xFileSize) * 3 + 2 ] = (unsigned char)(pixels[x + image->columns*y].blue);
-      }
+  for (y = 0; y < d_yFileSize; y++) {
+    flip_y = (d_yFileSize - 1) - y;
+    for (x = 0; x < d_xFileSize; x++) {
+      d_buffer[ (x + flip_y * d_xFileSize) * 3 + 0 ] = pixels[x + image->columns*y].red;
+      d_buffer[ (x + flip_y * d_xFileSize) * 3 + 1 ] = pixels[x + image->columns*y].green;
+      d_buffer[ (x + flip_y * d_xFileSize) * 3 + 2 ] = pixels[x + image->columns*y].blue;
     }
   }
 */
@@ -582,6 +605,7 @@ bool  Metamorph_stack_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn
   // Fill in the pixel value, assuming pixels vary in X fastest in the file.
   // We don't shift right here; that was already done if we read an 8-bit image.
   // If we get a 16-bit image, we'll just send the lower-order bits.
+  //XXX Endianness assumption here.
   val = (vrpn_uint8)(d_buffer[ (X + Y * d_xFileSize) * 3 + color ]);
 
   return true;
@@ -610,8 +634,8 @@ bool  Metamorph_stack_server::write_memory_to_ppm_file(const char *filename, int
   return true;
 }
 
-/// Send whole image over a vrpn connection
-bool  Metamorph_stack_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan, int)
+/// Send in-memory image over a vrpn connection
+bool  Metamorph_stack_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan, int) const
 {
   ///XXX;
   fprintf(stderr,"Metamorph_stack_server::send_vrpn_image(): Not yet implemented\n");

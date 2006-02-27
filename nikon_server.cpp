@@ -467,21 +467,8 @@ bool	roper_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &va
   return true;
 }
 
-bool roper_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans)
+bool roper_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans) const
 {
-    _minX=_minY=0;
-    _maxX=_num_columns - 1;
-    _maxY=_num_rows - 1;
-    read_image_to_memory(_minX, _maxX, _minY, _maxY, (int)g_exposure);
-
-    if (!_status) {
-      return false;
-    }
-    if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
-      fprintf(stderr,"directx_camera_server::get_pixel_from_memory(): No image in memory\n");
-      return false;
-    }
-
     // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION)
     unsigned  num_x = get_num_columns();
     unsigned  num_y = get_num_rows();
