@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v04.08</title>
+<title>Video Spot Tracker v05.00</title>
 
-<h1>Video Spot Tracker version 04.08</h1>
+<h1>Video Spot Tracker version 05.00</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -50,13 +50,13 @@
   icon that was created when the program was installed. To select a stack of image 
   files that are numbered consecutively, drag any one of the files onto the icon. 
   It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
-  Menu/All Programs/NSRG/Video Spot Tracker v04.08</b></i>. If you run the program 
+  Menu/All Programs/NSRG/Video Spot Tracker v05.00</b></i>. If you run the program 
   directly by double-clicking on the icon, it will ask for a video or image file 
   (AVI, TIF, or BMP) that it should open.</p>
 
 <p><b><i>NOTE:</i></b> With Windows XP service pack 2 and with other firewall software, running the program causes a dialog box to appear asking whether to block the program; the program needs to be unblocked only if the program is to be connected to a local or remote feedback system that relies on the tracking data. This happens when the program opens the Internet port assigned to it (3883) by the Internet Domain Naming Authority to export the data through the standard VRPN protocol (<a href="http://www.vrpn.org">www.vrpn.org</a>).</p> 
 
-<h2><img src="GUI.jpg" width="161" height="725" align="right">Using the program</h2>
+<h2><img src="GUI.jpg" width="161" height="752" align="right">Using the program</h2>
 
 <p>When the program is run and a file is selected, four windows will appear. The image window that appears on the lower right contains the first image within the video file or a continually-updating image from a live camera feed. The control panel named <b><i>tk</i></b> that appears on the left when the program is run (shown here to the right) contains a number of interaction widgets that control the operation of the program. The <b><i>kernel</i></b> control panel that appears above the image window (described later) controls the type of tracking kernel being used. The <b><i>log</i></b> control panel is described later.</p>
 
@@ -69,9 +69,14 @@
   video window should change to display the selected channel.</p>
 <h3></h3>
 
-<h3>Selecting the Image bit depth</h3>
-
-<p>A <i>bit</i> is a computer term for an entity that can take on two values, stored as zero and one. Using several bits in parallel enables the encoding of integers: binary notations is like decimal notation but each digit can only have the value zero or one before wrapping around. Counting proceeds as follows: 000, 001, 010, 011, 100 corresponds to decimal 0,1,2,3,4. Stacking 8 bits together (a bit depth of 8) covers the range 0-255. Stacking 12 bits covers the range 0-4095. The default bit depth in <i>Video Spot Tracker</i> is 8 bits per pixel.  This is correct for AVI files and many common file formats. Most scientific cameras, however, operate at 12 bits per pixel. When such an image is loaded into Video Spot Tracker, it produces a strange-looking image with dark spots where there should be bright spots, or bands of dark and light. While this will not interfere with the tracking (it is only a problem of mapping 12 bits of color to 8 bits of displayable color on the screen), it looks unappealing. By adjusting the bit depth to exceed the number of bits that are used in the image, these colors can be brought into range. If you load a 16-bit image, this can be handled by clicking on the number below the slider and typing in 16; even though it exceeds the maximum slider value, it can be set in this manner. To repeat, <b><i>this setting has no effect on tracking, only on the images shown on the screen</i></b>.</p> 
+<h3>Making images display brighter</h3>
+<p>There is a <i>brighten</i> slider that will let you increase the displayed 
+  intensity of images that don't use their whole range (if the integration time 
+  on the camera was very low, for example). Sliding it to the right will make 
+  images that are too dark visible so you can see where to put the tracker. Setting 
+  it too high will cause a white image (when <i>use_opengl_video</i> is set) or 
+  a wrap-around strange-looking image (when it is not). <b><i>This setting has 
+  no effect on tracking, only on the images shown on the screen</i></b>.</p>
 
 <h3>Selecting spots to track</h3>
 
@@ -189,7 +194,7 @@
 <p><img src="log.jpg" width="348" height="80" align="right">You can record the 
   motion of the trackers by checking the <b><i>Logging</i></b> checkbox within 
   the <b><i>log</i></b> control panel (shown to the right). This panel was moved 
-  inside the <b><i>kernel</i></b> control panel in version 04.08. This will bring 
+  inside the <b><i>kernel</i></b> control panel in version 04.07. This will bring 
   up a dialog box that will let you select a filename. It will automatically add 
   the default extension &quot;.vrpn&quot; to the filename you create. (A second 
   file, with the extension &quot;.csv&quot; will also be created, though the program 
@@ -248,6 +253,17 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 5.00:</h3>
+<ul>
+  <li>Adds OpenGL-accelerated transfer of the video to the display using texture 
+    memory. This makes the display much faster and leaves the CPU free to do tracking.</li>
+  <li>Replaced the <i>bit_depth</i> slider with a <i>brighten</i> slider to make 
+    the internal code more consistent. This will have no effect on non-OpenGL-accelerated 
+    8-bit images but will still function for 12- and 16-bit cameras and for loaded 
+    image stacks (which internally use a 16-bit format even if they are 8-bit 
+    images).</li>
+  <li>Fixed a bug that prevented display of UNC SEM image files.</li>
+</ul>
 <h3>Version 4.08:</h3>
 <ul>
   <li>Adds a Cooke camera driver.</li>
