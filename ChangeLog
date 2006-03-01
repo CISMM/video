@@ -1,3 +1,8 @@
+2006-03-01  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* stack_collector.cpp : Added Cooke driver.
+	* video.dsw : Same.
+
 2006-02-26  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* base_camera_server.cpp : Added several methods to enable direct

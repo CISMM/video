@@ -25,6 +25,7 @@
 #include "directx_videofile_server.h"
 #include "diaginc_server.h"
 #include "edt_server.h"
+#include "cooke_server.h"
 #include <tcl.h>
 #include <tk.h>
 #include "Tcl_Linkvar.h"
@@ -40,7 +41,7 @@ const unsigned FAKE_CAMERA_SIZE = 256;
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "02.03";
+const char *Version_string = "02.04";
 char  *g_device_name = NULL;			  //< Name of the device to open
 bool	g_focus_changed = false;
 base_camera_server  *g_camera = NULL;
@@ -93,7 +94,7 @@ Tclvar_int_with_button	g_take_stack("logging",NULL);
 Tclvar_selector		g_base_filename("logfilename", NULL, NULL, "", logfilename_changed);
 char *                  g_base_filename_char = NULL;
 Tclvar_int_with_button	g_sixteenbits("save_sixteen_bits",NULL);
-Tclvar_float_with_scale	g_pixelcount("pixels_from_camera","", 8,12, 8);
+Tclvar_float_with_scale	g_pixelcount("pixels_from_camera","", 8,16, 8);
 Tclvar_int_with_button	g_step_past_bottom("step_past_bottom","",1);
 Tclvar_int_with_button	g_preview("preview_video","", 1, handle_preview_change);
 
@@ -118,7 +119,11 @@ void  cleanup(void)
 //  camera we're trying to open.
 bool  get_camera(const char *type, base_camera_server **camera)
 {
-  if (!strcmp(type, "roper")) {
+  if (!strcmp(type, "cooke")) {
+    cooke_server *r = new cooke_server();
+    *camera = r;
+    g_pixelcount = 16;
+  } else if (!strcmp(type, "roper")) {
     roper_server *r = new roper_server();
     *camera = r;
     g_pixelcount = 12;
@@ -712,7 +717,7 @@ int main(int argc, char *argv[])
     break;
 
   default:
-    fprintf(stderr, "Usage: %s [edt|roper|diaginc|directx|directx640x480 [nikon|mcl|Stage_server_name@hostname]]\n", argv[0]);
+    fprintf(stderr, "Usage: %s [edt|roper|cooke|diaginc|directx|directx640x480 [nikon|mcl|Stage_server_name@hostname]]\n", argv[0]);
     fprintf(stderr, "       default camera is directx\n");
     fprintf(stderr, "       default stage control is nikon\n");
     exit(-1);

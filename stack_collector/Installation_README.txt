@@ -1,4 +1,4 @@
 Notes:
 	The CISMM Stack Collector program requires DirectX version 9.0a or later(www.microsoft.com/directx).  It requires the camera drivers for any attached Roper or SPOT camera to be installed.
-	For the CISMM Stack Collector program to work correctly, you must also install the NSRG Runtime Environment version 01.05 or later, which is a large download that includes all of the DLLs and other files needed to run applications from the NSRG.  It installs itself in C:\NSRG\external\pc_win32.
+	For the CISMM Stack Collector program to work correctly, you must also install the NSRG Runtime Environment version 01.11 or later, which is a large download that includes all of the DLLs and other files needed to run applications from the NSRG.  It installs itself in C:\NSRG\external\pc_win32.
 	This program is supplied AS IT, without any express or implied warranty of effectiveness or usefulness for any purpose.
