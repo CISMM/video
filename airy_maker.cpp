@@ -1,5 +1,10 @@
 //XXX Make all of the units match in the program.  For now, they are half baked.
 //XXX What to do when the focal plane isn't at the emitter?
+//XXX Note that we have quantized images, but we're computing continuous
+//    Airy functions.  We should probably bin the expected values (or the
+//    distributions) if we want to not count error that we couldn't see
+//    in the image.  On the other hand, this may be okay so long as we have
+//    zero-mean error (we may not).
 
 #include <math.h>
 #include <stdio.h>

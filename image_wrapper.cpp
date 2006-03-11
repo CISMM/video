@@ -237,3 +237,107 @@ double cone_image::read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) 
 
 }
 
+Gaussian_image::Gaussian_image(int minx, int maxx, int miny, int maxy,
+	     double background, double noise,
+	     double centerx, double centery, double std_dev,
+	     double summedvolume, int oversample) :
+  _minx(minx), _maxx(maxx), _miny(miny), _maxy(maxy),
+  _image(NULL), _oversample(oversample)
+{
+  // Make sure the parameters are meaningful
+  if ( (_minx >= _maxx) || (_miny >= _maxy) ) {
+    fprintf(stderr,"Gaussian_image::Gaussian_image(): Bad min/max coordinates\n");
+    _minx = _maxy = _minx = _maxx = 0;
+    return;
+  }
+
+  // Try to allocate a large enough array to hold all of the values.
+  if ( (_image = new double[(_maxx-_minx+1) * (_maxy-_miny+1)]) == NULL) {
+    fprintf(stderr,"Gaussian_image::Gaussian_image(): Out of memory\n");
+    _minx = _maxy = _minx = _maxx = 0;
+    return;
+  }
+
+  recompute(background, noise, centerx, centery, std_dev, summedvolume, oversample);
+}
+
+Gaussian_image::recompute(double background, double noise,
+	     double centerx, double centery, double std_dev,
+	     double summedvolume, int oversample)
+{
+  _oversample = oversample;
+  int i,j, index;
+
+//  XXX Verify that this centers the pixel like it should
+  // Compute where the samples should be taken.  These need to be taken
+  // symmetrically around the pixel center and cover all samples within
+  // the pixel exactly once.  First, compute the step size between the
+  // samples, then the one with the smallest value that lies within a
+  // half-pixel-width of the center of the pixel as the starting offset.
+  // Proceeed until we exceed a half-pixel-radius on the high side of
+  // the pixel.
+
+  // Fill in the Gaussian intensity plus background plus noise (if any).
+  // Note that the area under the curve for the unit Gaussian is 1; we
+  // multiply by the summedvolume (which needs to be the sum above or
+  // below the background) to produce an overall volume matching the
+  // one requested.
+#ifdef	DEBUG
+  printf("Gaussian_image::recompute(): Making Gaussian of standard deviation %lg, background %lg, volume %lg\n", std_dev, background, summedvolume);
+#endif
+  for (i = _minx; i <= _maxx; i++) {
+    for (j = _miny; j <= _maxy; j++) {
+      double x0 = (i - centerx) - 0.5;    // The left edge of the pixel in Gaussian space
+      double x1 = x0 + 1;                 // The right edge of the pixel in Gaussian space
+      double y0 = (j - centery) - 0.5;    // The bottom edge of the pixel in Gaussian space
+      double y1 = y0 + 1;                 // The top edge of the pixel in Gaussian space
+      if (find_index(i,j,index)) {
+        // For this call to ComputeGaussianVolume, we assume 1-meter pixels.
+        // This makes std dev and other be in pixel units without conversion.
+	_image[index] = background + ComputeGaussianVolume(summedvolume, std_dev,
+                        x0,x1, y0,y1, _oversample);
+        
+        // Add zero-mean uniform noise to the image, with the specified width
+        if (noise > 0.0) {
+	  double  unit_rand = (double)(rand()) / RAND_MAX;
+	  _image[index] += (unit_rand - 0.5) * 2 * noise;
+        }
+      }
+    }
+  }
+}
+
+Gaussian_image::~Gaussian_image()
+{
+  delete [] _image;
+}
+
+void Gaussian_image::read_range(int &minx, int &maxx, int &miny, int &maxy) const
+{
+  minx = _minx; maxx = _maxx; miny = _miny; maxy = _maxy;
+};
+
+// Read a pixel from the image into a double; return true if the pixel
+// was in the image, false if it was not.
+bool Gaussian_image::read_pixel(int x, int y, double &result, unsigned /* RGB ignored */) const
+{
+  int index;
+  if (find_index(x,y, index)) {
+    result = _image[index];
+    return true;
+  } else {
+    return false;
+  }
+}
+
+double Gaussian_image::read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) const
+{
+  int index;
+  if (find_index(x,y, index)) {
+    return _image[index];
+  } else {
+    return 0.0;
+  }
+
+}
+

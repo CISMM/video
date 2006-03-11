@@ -1,7 +1,16 @@
-2006-03-01  Russell M. Taylor II  <taylorr@cs.unc.edu>
+2006-03-10  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
-	* stack_collector.cpp : Added Cooke driver.
-	* video.dsw : Same.
+	* airy_maker.cpp : Cosmetic changes.
+	* image_wrapper.cpp : Added Gaussian function estimator
+	* image_wrapper.h : same.
+	* spot_math.cpp : Same.
+	* spot_math.h : Same.
+	* spot_tracker.cpp : Added FIONA Gaussian-fit tracker
+	* spot_tracker.dsp : Added OpenGL linking.
+	* test_spot_tracker.cpp : Added FIONA tracker.
+	* test_spot_tracker.dsp : Added OpenGL linking.
+	* video_spot_tracker.cpp : Added FIONA Gaussian-fit tracker
+	* video_spot_tracker.tcl : Same.
 
 2006-02-26  Russell M. Taylor II  <taylorr@cs.unc.edu>
 

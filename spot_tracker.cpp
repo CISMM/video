@@ -4,7 +4,10 @@
 
 //#define DEBUG
 #ifndef	M_PI
-const double M_PI = 2*asin(1);
+#ifndef M_PI_DEFINED
+const double M_PI = 2*asin(1.0);
+#define M_PI_DEFINED
+#endif
 #endif
 
 spot_tracker_XY::spot_tracker_XY(double radius, bool inverted, double pixelaccuracy, double radiusaccuracy,
@@ -935,6 +938,127 @@ double	twolines_image_spot_tracker_interp::check_fitness(const image_wrapper &im
   // We never invert the fitness: we don't care whether it is a dark
   // or bright spot.
   return fitness;
+}
+
+Gaussian_spot_tracker::Gaussian_spot_tracker(double radius, bool inverted, double pixelaccuracy,
+				     double radiusaccuracy, double sample_separation_in_pixels,
+                                     double background, double summedvalue) :
+    spot_tracker_XY(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels),
+    _testimage(NULL), _background(background), _summedvalue(summedvalue)
+{
+  // Make sure the parameters make sense
+  if (_rad <= 0) {
+    fprintf(stderr, "Gaussian_spot_tracker::Gaussian_spot_tracker(): Invalid radius, using 1.0\n");
+    _rad = 1.0;
+  }
+  if (_pixelacc <= 0) {
+    fprintf(stderr, "Gaussian_spot_tracker::Gaussian_spot_tracker(): Invalid pixel accuracy, using 0.25\n");
+    _pixelacc = 0.25;
+  }
+  if (_radacc <= 0) {
+    fprintf(stderr, "Gaussian_spot_tracker::Gaussian_spot_tracker(): Invalid radius accuracy, using 0.25\n");
+    _radacc = 0.25;
+  }
+  if (_samplesep <= 0) {
+    fprintf(stderr, "Gaussian_spot_tracker::Gaussian_spot_tracker(): Invalid sample spacing, using 1.00\n");
+    _samplesep = 1.0;
+  }
+
+  // Set the initial step sizes for radius and pixels
+  _pixelstep = 2.0; if (_pixelstep < 4*_pixelacc) { _pixelstep = 4*_pixelacc; };
+  _radstep = 2.0; if (_radstep < 4*_radacc) { _radstep = 4*_radacc; };
+
+  // Store and invalid last width so we allocate the testimage the first time.
+  _lastwidth = -1;
+}
+
+Gaussian_spot_tracker::~Gaussian_spot_tracker()
+{
+  if (_testimage != NULL) {
+    delete _testimage;
+    _testimage = NULL;
+  }
+}
+
+// Check the fitness of the stored image against another image, at the current parameter settings.
+// Return the fitness value there.
+
+// This is an image-to-image least-squares match.  We do not interpolate between pixels
+// in the image we're fitting, but rather shift the Gaussian within the pixels of our
+// test image.  We then sum the per-pixel squared error between the test image and
+// the image we're optimizing to.
+
+double	Gaussian_spot_tracker::check_fitness(const image_wrapper &image)
+{
+  // If we're inverting the Gaussian, do so by negating the summed value.
+  double summed_value = _summedvalue;
+  if (_invert) { summed_value *= -1; }
+
+  // Make sure that the sample separation in pixels is at most 1 so we get a
+  // sample per pixel at least, and also make sure that it is nonzero to avoid
+  // divide-by-zero problems.
+  double sample_separation_in_pixels = _samplesep;
+  if (sample_separation_in_pixels > 1) { sample_separation_in_pixels = 1; }
+  if (sample_separation_in_pixels < 0.01) { sample_separation_in_pixels = 0.01; }
+
+  // Figure out the offset for the Gaussian image we want to compute.  This is
+  // the floor of the translation, so it will always be between 0 and 1 in X and Y.
+  // We will translate the center pixel (0,0) of the Gaussian image so that
+  // it lies at the floor location when we do our pixel-by-pixel calculations
+  // below.
+  int x_int = static_cast<int>(floor(get_x()));
+  int y_int = static_cast<int>(floor(get_y()));
+  double x_frac = get_x() - x_int;
+  double y_frac = get_y() - y_int;
+
+  // If we have changed the width since before, deallocate the last
+  // image (if any).
+  double new_width = get_radius() * 4 + 1;
+  if (_lastwidth != new_width) {
+    if (_testimage) { delete _testimage; _testimage = NULL; }
+    _lastwidth = new_width;
+  }
+
+  // If we don't have an image allocated, then create a new one with the appropriate
+  // parameters.  Otherwise, just fill in the existing image with new values.  Allocate
+  // out to twice the radius on each side (two standard deviations).
+  if (!_testimage) {
+    //printf("XXX Gaussian_spot_tracker::check_fitness(): Creating tracker (r = %lg)\n",get_radius());
+    _testimage = new Gaussian_image(-2*get_radius(), 2*get_radius(), -2*get_radius(), 2*get_radius(),
+      _background, 0.0, x_frac,y_frac, get_radius(), summed_value, 1/sample_separation_in_pixels);
+  } else {
+    _testimage->recompute(_background, 0.0, x_frac,y_frac, get_radius(), summed_value, 1/sample_separation_in_pixels);
+  }
+
+  // Compute the sum of the squared errors between the test image and the image
+  // we're optimizing against.  The Gaussian image will have been shifted by
+  // the fractional part of the offset between the Gaussian and the test image, so
+  // we shift by the integral part when we do our pixel comparisons.
+  // We go out to twice the standard deviation (which is how large the Gaussian
+  // image is).  WE DO NOT BILERP either image, we read its pixels directly
+  // because we've shifted the Gaussian within the _testimage and resampled
+  // at the same resolution as the image we're optimizing against.
+  int x,y;
+  int pixels = 0;
+  double val, myval;
+  double fitness = 0.0;
+  for (x = -2*_rad; x <= 2*_rad; x++) {
+    for (y = -2*_rad; y <= 2*_rad; y++) {
+      if (image.read_pixel(x_int+x,y_int+y,val)) {
+        _testimage->read_pixel(x, y, myval, 0);
+	double squarediff = (val-myval) * (val-myval);
+	fitness -= squarediff;
+	pixels++;
+      }
+    }
+  }
+
+  if (pixels == 0) {
+    return 0.0;
+  } else {
+    //printf("XXX Gaussian_spot_tracker::check_fitness(): Found %lg at (%lg,%lg)\n", fitness/pixels, get_x(), get_y());
+    return fitness / pixels;
+  }
 }
 
 rod3_spot_tracker_interp::rod3_spot_tracker_interp(const disk_spot_tracker *,

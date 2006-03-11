@@ -202,7 +202,7 @@ protected:
 
 class cone_spot_tracker_interp : public spot_tracker_XY {
 public:
-  // Set initial parameters of the disk search routine
+  // Set initial parameters of the search routine
   cone_spot_tracker_interp(double radius,
 		    bool inverted = false,
 		    double pixelaccuracy = 0.25,
@@ -232,7 +232,7 @@ protected:
 
 class symmetric_spot_tracker_interp : public spot_tracker_XY {
 public:
-  // Set initial parameters of the disk search routine
+  // Set initial parameters of the search routine
   symmetric_spot_tracker_interp(double radius,
 		    bool inverted = false,
 		    double pixelaccuracy = 0.25,
@@ -268,13 +268,13 @@ protected:
 
 class image_spot_tracker_interp : public spot_tracker_XY {
 public:
-  // Set initial parameters of the disk search routine
+  // Set initial parameters of the search routine
   image_spot_tracker_interp(double radius,
 		    bool inverted = false,
 		    double pixelaccuracy = 0.25,
 		    double radiusaccuracy = 0.25,
 		    double sample_separation_in_pixels = 1.0);
-  image_spot_tracker_interp::~image_spot_tracker_interp();
+  virtual ~image_spot_tracker_interp();
 
   // Initialize with the image that we are trying to match and the
   // position in the image we are to check.  The image is resampled
@@ -304,7 +304,7 @@ protected:
 
 class twolines_image_spot_tracker_interp : public image_spot_tracker_interp {
 public:
-  // Set initial parameters of the disk search routine
+  // Set initial parameters of the search routine
   twolines_image_spot_tracker_interp(double radius,
 		    bool inverted = false,
 		    double pixelaccuracy = 0.25,
@@ -321,6 +321,46 @@ protected:
 };
 
 //----------------------------------------------------------------------------
+// This class is initialized with a description of a Gaussian profile that it
+// should track, and then it will optimize against this initial image by shifting
+// over a specified range to find the image whose pixel-wise least-squares
+// difference is minimized.
+
+class Gaussian_spot_tracker : public spot_tracker_XY {
+public:
+  // Set initial parameters of the search routine
+  Gaussian_spot_tracker(double radius,
+		    bool inverted = false,
+		    double pixelaccuracy = 0.25,
+		    double radiusaccuracy = 0.25,
+		    double sample_separation_in_pixels = 1.0,
+                    double background = 127,
+                    double summedvalue = 11689);
+  virtual ~Gaussian_spot_tracker();
+
+  /// Check the fitness against an image, at the current parameter settings.
+  // Return the fitness value there.
+  virtual double  check_fitness(const image_wrapper &image);
+
+  // Debugging method.  Remember that the check_fitness() function has to
+  // be called before it can be used, so that an image is created.
+  bool read_pixel(double x, double y, double &result) const {
+    if (_testimage == NULL) {
+      result = 0.0;
+      return false;
+    } else {
+      return _testimage->read_pixel(x,y,result, 0);
+    }
+  };
+
+protected:
+  Gaussian_image  *_testimage;  //< The image to test for fitness against
+  double          _lastwidth;   //< Last width we built the tracker for (should be twice the diameter (4x radius)) plus 1.
+  double          _background;  //< The background value to use in the image (added to the Gaussian)
+  double          _summedvalue; //< The summed value under the entire Gaussian (will be negative if inverted
+};
+
+//----------------------------------------------------------------------------
 // This class will optimize the response of three collinear kernels on an image.
 // It uses three subordinate trackers of the same type to attempt to track the
 // center and each endpoint of the rod.  It keeps track of the center location
@@ -332,7 +372,7 @@ protected:
 
 class rod3_spot_tracker_interp : public spot_tracker_XY {
 public:
-  // Set initial parameters of the disk search routine.
+  // Set initial parameters of the search routine.
   // Different constructors used for different subordinate tracker types.
   // You can pass a NULL pointer, so long as it is of the correct type.
   rod3_spot_tracker_interp(const disk_spot_tracker *type,
@@ -458,7 +498,7 @@ protected:
 
 class radial_average_tracker_Z : public spot_tracker_Z {
 public:
-  // Set initial parameters of the disk search routine
+  // Set initial parameters of the search routine
   radial_average_tracker_Z(const char *in_filename, double depth_accuracy = 0.25);
   ~radial_average_tracker_Z() { if (d_radial_image) { delete d_radial_image; }; }
 

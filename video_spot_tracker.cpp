@@ -63,7 +63,10 @@ static void dirtyexit();
 
 const int MAX_TRACKERS = 100; // How many trackers can exist (for VRPN's tracker object)
 #ifndef	M_PI
+#ifndef M_PI_DEFINED
 const double M_PI = 2*asin(1.0);
+#define M_PI_DEFINED
+#endif
 #endif
 
 //--------------------------------------------------------------------------
@@ -76,6 +79,7 @@ const char *Version_string = "05.00";
 const int KERNEL_DISK = 0;	  //< These must match the values used in video_spot_tracker.tcl.
 const int KERNEL_CONE = 1;
 const int KERNEL_SYMMETRIC = 2;
+const int KERNEL_FIONA = 3;
 
 //--------------------------------------------------------------------------
 // Some classes needed for use in the rest of the program.
@@ -263,6 +267,7 @@ void  handle_optimize_z_change(int newvalue, void *);
 Tclvar_float		g_X("x");
 Tclvar_float		g_Y("y");
 Tclvar_float		g_Z("z");
+Tclvar_float		g_Error("error");
 Tclvar_float_with_scale	g_Radius("radius", ".kernel.radius", 1, 30, 5);
 Tclvar_float_with_scale	*g_minX;
 Tclvar_float_with_scale	*g_maxX;
@@ -442,41 +447,75 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
 // given the global settings for interpolation and inversion.
 // Return NULL on failure.
 
-spot_tracker_XY  *create_appropriate_xytracker(void)
+spot_tracker_XY  *create_appropriate_xytracker(double x, double y, double r)
 {
+  spot_tracker_XY *tracker = NULL;
   // If we are using the oriented-rod kernel, we create a new one depending on the type
   // of subordinate spot tracker that is being used.
   if (g_rod) {
+    // If we asked for a FIONA rod tracker, use symmetric instead
+    if (g_kernel_type == KERNEL_FIONA) {
+      g_kernel_type = KERNEL_SYMMETRIC;
+    }
+
     if (g_kernel_type == KERNEL_SYMMETRIC) {
       symmetric_spot_tracker_interp *notused = NULL;
       g_interpolate = 1;
-      return new rod3_spot_tracker_interp(notused, g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing, g_length, 0.0);
+      tracker = new rod3_spot_tracker_interp(notused, r,(g_invert != 0), g_precision, 0.1, g_sampleSpacing, g_length, 0.0);
     } else if (g_kernel_type == KERNEL_CONE) {
       cone_spot_tracker_interp *notused = NULL;
       g_interpolate = 1;
-      return new rod3_spot_tracker_interp(notused, g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing, g_length, 0.0);
+      tracker = new rod3_spot_tracker_interp(notused, r,(g_invert != 0), g_precision, 0.1, g_sampleSpacing, g_length, 0.0);
     } else if (g_interpolate) {
       disk_spot_tracker_interp *notused = NULL;
-      return new rod3_spot_tracker_interp(notused, g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing, g_length, 0.0);
+      tracker = new rod3_spot_tracker_interp(notused, r,(g_invert != 0), g_precision, 0.1, g_sampleSpacing, g_length, 0.0);
     } else {
       disk_spot_tracker *notused = NULL;
-      return new rod3_spot_tracker_interp(notused, g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing, g_length, 0.0);
+      tracker = new rod3_spot_tracker_interp(notused, r,(g_invert != 0), g_precision, 0.1, g_sampleSpacing, g_length, 0.0);
     }
 
   // Not building a compound kernel, so just make a simple kernel of the appropriate type.
   } else {
-    if (g_kernel_type == KERNEL_SYMMETRIC) {
+    if (g_kernel_type == KERNEL_FIONA) {
+      // Estimate the background value as the minimum pixel value within a square that is 2*diameter (4*radius)
+      // on a side.  Estimate the total volume as the sum over this same region with the background subtracted
+      // from it.
+      double background = 1e50;
+      double volume = 0.0;
+      unsigned count = 0;
+      int i,j;
+      for (i = x - 2*r; i <= x + 2*r; i++) {
+        for (j = y - 2*r; j <= y + 2*r; j++) {
+          double value;
+	  if (g_image->read_pixel(i, j, value, g_colorIndex)) {
+            volume += value;
+            if (value < background) { background = value; }
+            count++;
+          }
+        }
+      }
+      if (count == 0) {
+        background = 0.0;
+      } else {
+        volume -= count*background;
+      }
+      tracker = new Gaussian_spot_tracker(r, (g_invert != 0), g_precision, 0.1, g_sampleSpacing, background, volume);
+    } else if (g_kernel_type == KERNEL_SYMMETRIC) {
       g_interpolate = 1;
-      return new symmetric_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
+      tracker = new symmetric_spot_tracker_interp(r,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
     } else if (g_kernel_type == KERNEL_CONE) {
       g_interpolate = 1;
-      return new cone_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
+      tracker = new cone_spot_tracker_interp(r,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
     } else if (g_interpolate) {
-      return new disk_spot_tracker_interp(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
+      tracker = new disk_spot_tracker_interp(r,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
     } else {
-      return new disk_spot_tracker(g_Radius,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
+      tracker = new disk_spot_tracker(r,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
     }
   }
+
+  tracker->set_location(x,y);
+  tracker->set_radius(r);
+  return tracker;
 }
 
 /// Create a pointer to a new tracker of the appropriate type,
@@ -1020,7 +1059,7 @@ void myBeadDisplayFunc(void)
     // If we are outside 2 radii, then leave it blank to avoid having a
     // moving border that will make us think the spot is moving when it
     // is not.
-    for (x = 0; x < x; x++) {
+    for (x = 0; x < g_beadseye_size; x++) {
       for (y = 0; y < g_beadseye_size; y++) {
 	g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = 0;
 	g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = 0;
@@ -1868,6 +1907,7 @@ void myIdleFunc(void)
       g_Z = g_active_tracker->ztracker()->get_z();
     }
     g_Radius = (float)g_active_tracker->xytracker()->get_radius();
+    g_Error = (float)g_active_tracker->xytracker()->get_fitness();
     if (g_rod) {
       // Horrible hack to make this work with rod type
       g_orientation = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_orientation();
@@ -2056,9 +2096,8 @@ void mouseCallbackForGLUT(int button, int state, int x, int y)
 	  }
 
 	  g_whichDragAction = 1;
-	  g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(),create_appropriate_ztracker()));
+	  g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(x,y,g_Radius),create_appropriate_ztracker()));
 	  g_active_tracker = g_trackers.back();
-	  g_active_tracker->xytracker()->set_location(x, y);
 	  if (g_active_tracker->ztracker()) { g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
 
 	  // Move the pointer to where the user clicked.
@@ -2282,17 +2321,15 @@ void  rebuild_trackers(int newvalue, void *)
     if (g_active_tracker == *loop) {
       delete (*loop)->xytracker();
       if ( (*loop)->ztracker() ) { delete (*loop)->ztracker(); }
-      (*loop)->set_xytracker(create_appropriate_xytracker());
+      (*loop)->set_xytracker(create_appropriate_xytracker(x,y,r));
       (*loop)->set_ztracker(create_appropriate_ztracker());
       g_active_tracker = *loop;
     } else {
       delete (*loop)->xytracker();
       if ( (*loop)->ztracker() ) { delete (*loop)->ztracker(); }
-      (*loop)->set_xytracker(create_appropriate_xytracker());
+      (*loop)->set_xytracker(create_appropriate_xytracker(x,y,r));
       (*loop)->set_ztracker(create_appropriate_ztracker());
     }
-    (*loop)->xytracker()->set_location(x,y);
-    (*loop)->xytracker()->set_radius(r);
     if ((*loop)->ztracker()) { (*loop)->ztracker()->set_depth_accuracy(g_precision); }
   }
 }

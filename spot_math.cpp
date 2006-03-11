@@ -23,7 +23,7 @@ double	BesselFirstKind(
   const double	count = 137.0;
   const	double	countDivide = 1.0 / count;
   const	double	increment = M_PI / count;
-  const	double	end = M_PI + increment*0.9; //< step when go past the end, avoids requiring exact floating-point equals from sum
+  const	double	end = M_PI + increment*0.9; //< stop when go past the end, avoids requiring exact floating-point equals from sum
   double  loop;		//< Goes from 0 to PI
   double  sum = 0.0;	//< Keep track of the sum
 

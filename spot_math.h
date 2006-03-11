@@ -3,7 +3,10 @@
 
 #include <math.h>
 #ifndef	M_PI
+#ifndef M_PI_DEFINED
 const double M_PI = 2*asin(1.0);
+#define M_PI_DEFINED
+#endif
 #endif
 const double TWOPI = 2 * M_PI;
 
@@ -87,6 +90,59 @@ inline double	ComputeAiryVolume(
   return (sum / count) * (x1-x0) * (y1-y0);
 }
 
+// Compute the volume under part of a Gaussian.  Do this by
+// sampling the function densely, finding the average value within the area,
+// and then multiplying by the area.  The function is 2D, centered at the
+// origin.  The "standard normal distribution" Gaussian has an integrated
+// volume of 1 over all space and a variance of 1.  It is defined as:
+//               1           -(R^2)/2
+//   G(x) = ------------ * e
+//             2*PI
+// where R is the radius of the sample point from the origin.
+// We let the user set the magnitude under the curve m (multiplies the first
+// term) and the standard deviation s, changing the function to:
+//                  m           -(R^2)/(2*s^2)
+//   G(x) = --------------- * e
+//           s^2 * 2*PI
+// For computational effeciency, we refactor this into A * e ^ (B * R^2).
+
+inline double	ComputeGaussianVolume(
+  double m,             //< Magnitude (summed volume under curve over all space)
+  double s_meters,      //< standard deviation (square root of variance)
+  double x0,		//< Low end of X integration range in Airy-disk coordinates
+  double x1,		//< High end of X integration range
+  double y0,		//< Low end of Y integration range
+  double y1,		//< High end of Y integration range
+  int samples)		//< How many samples to take in each of X and Y
+{
+  double variance = s_meters * s_meters;
+  int count = 0;	//< How many pixels we have summed up
+  double x;		//< Steps through X
+  double y;		//< Steps through Y
+  double sx = (x1 - x0) / (samples + 1);
+  double sy = (y1 - y0) / (samples + 1);
+  double sum = 0;
+
+  const double twoPI = 2*M_PI;
+  double A = m / ( variance * twoPI );
+  double B = -1 / (2 * variance);
+  double R_squared;
+
+  for (x = x0 + sx/2; x < x1; x += sx) {
+    for (y = y0 + sy/2; y < y1; y += sy) {
+      R_squared = x*x + y*y;
+      count++;
+      sum += exp(B * R_squared);
+    }
+  }
+
+  // HACK HACK HACK.  We're only going out to 2 standard deviations, but
+  // in a box configuration.  Empirically, this seems to capture only
+  // most of the volume; we multiply by a hack factor as an estimate of how much
+  // inflation eneds to be done to match the requested volume.
+  const double volume_hack_ratio = 1.0765;
+  return volume_hack_ratio * A * (sum / count) * (x1-x0) * (y1-y0);
+}
 
 
 #endif

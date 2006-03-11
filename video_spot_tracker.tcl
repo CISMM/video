@@ -40,12 +40,18 @@ checkbutton .kernel.options.interp -text interpolate -variable interpolate
 pack .kernel.options.interp -anchor w
 pack .kernel.options -side left
 frame .kernel.type -relief raised -borderwidth 1
-radiobutton .kernel.type.disc -variable kerneltype -text disc -value 0
-radiobutton .kernel.type.cone -variable kerneltype -text cone -value 1
-radiobutton .kernel.type.symmetric -variable kerneltype -text symmetric -value 2
-pack .kernel.type.disc -anchor w
-pack .kernel.type.cone -anchor w
-pack .kernel.type.symmetric -anchor w
+frame .kernel.type.left
+frame .kernel.type.right
+radiobutton .kernel.type.left.disc -variable kerneltype -text disc -value 0
+radiobutton .kernel.type.left.cone -variable kerneltype -text cone -value 1
+radiobutton .kernel.type.right.symmetric -variable kerneltype -text symmetric -value 2
+radiobutton .kernel.type.right.fiona -variable kerneltype -text FIONA -value 3
+pack .kernel.type.left.disc -anchor w
+pack .kernel.type.left.cone -anchor w
+pack .kernel.type.right.symmetric -anchor w
+pack .kernel.type.right.fiona -anchor w
+pack .kernel.type.left -side left
+pack .kernel.type.right -side left
 pack .kernel.type -side left
 frame .kernel.options2
 checkbutton .kernel.options2.areamax -text follow_jumps -variable areamax
@@ -57,24 +63,34 @@ pack .kernel.options2.rod3 -anchor w
 pack .kernel.options2 -side left
 frame .kernel.radius
 pack .kernel.radius -side left
-frame .kernel.x -relief raised -borderwidth 1
-pack .kernel.x -side left
-label .kernel.x.label -text X
-label .kernel.x.value -width 10 -textvariable x
-pack .kernel.x.label
-pack .kernel.x.value
-frame .kernel.y -relief raised -borderwidth 1
-pack .kernel.y -side left
-label .kernel.y.label -text Y
-label .kernel.y.value -width 10 -textvariable y
-pack .kernel.y.label
-pack .kernel.y.value
-frame .kernel.z -relief raised -borderwidth 1
-pack .kernel.z -side left
-label .kernel.z.label -text Z
-label .kernel.z.value -width 10 -textvariable z
-pack .kernel.z.label
-pack .kernel.z.value
+frame .kernel.track
+frame .kernel.track.top
+frame .kernel.track.bottom
+frame .kernel.track.top.x -relief raised -borderwidth 1
+pack .kernel.track.top.x -side left
+label .kernel.track.top.x.label -text X
+label .kernel.track.top.x.value -width 10 -textvariable x
+pack .kernel.track.top.x.label
+pack .kernel.track.top.x.value
+frame .kernel.track.top.y -relief raised -borderwidth 1
+pack .kernel.track.top.y -side left
+label .kernel.track.top.y.label -text Y
+label .kernel.track.top.y.value -width 10 -textvariable y
+pack .kernel.track.top.y.label
+pack .kernel.track.top.y.value
+frame .kernel.track.top.z -relief raised -borderwidth 1
+pack .kernel.track.top.z -side left
+label .kernel.track.top.z.label -text Z
+label .kernel.track.top.z.value -width 10 -textvariable z
+pack .kernel.track.top.z.label
+pack .kernel.track.top.z.value
+pack .kernel.track.top -side top
+label .kernel.track.bottom.errlabel -text Fitness
+pack .kernel.track.bottom.errlabel -side left
+label .kernel.track.bottom.err -width 10 -textvariable error
+pack .kernel.track.bottom.err -side left
+pack .kernel.track.bottom -side top
+pack .kernel.track -side left
 frame .kernel.optimize
 pack .kernel.optimize -side left
 
