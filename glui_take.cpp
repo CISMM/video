@@ -22,7 +22,7 @@
 #include "edtinc.h"
 #include "vrpn_shared.h"
 
-const char VERSION_STRING[] = "0.12";
+const char VERSION_STRING[] = "0.20";
 #define NUM_THREADS 2
 #define COLLECT 1
 #define DISPLAY 2
@@ -30,6 +30,7 @@ const char VERSION_STRING[] = "0.12";
 
 // function prototypes
 void start_collection();
+void abort_collection();
 void collect(void *);
 void display(void *);
 void printLastError();
@@ -47,6 +48,7 @@ int   unit       = 0;
 int   channel    = 0;
 int   numbufs    = 300;
 int   loops      = 1200;
+int   gain = 128;
 int   duration   = 5; // seconds
 int   fps_idx = 0;
 int   fpsid = 0;
@@ -62,17 +64,19 @@ char  devname[128];
 /*** other global variables.  Maybe I'll fix that soon.  ***/
 bool collecting = false;
 bool showing = false;
+bool abort_acquisition = false;
+bool camera_open = false;
+bool display_frames = true;
+
 int i = 0;
 char   *cameratype;
 PdvDev *pdv_p;
-bool camera_open = false;
 struct timeval start_time;
 
 int width = 648;
 int height= 484;
 int depth = 8;
 int showframe = 4; // Display every i % showframe in GL window
-bool display_frames = true;
 char *fps_list[] = {"120", "60", "40","30","24","20","15", "12", "10", "8", "5", "1"};
 int  skip_list[] = {   1,    2,    3,   4,   5,   6,   8,   10,   12,  15,  24,  120};
 unsigned char *dispbuf = new unsigned char[height*width];
@@ -106,6 +110,9 @@ void myGlutIdle( void )
   
   // update the current desired framerate by changing value of skipframes via fps_idx
   skipframes = skip_list[fps_idx];
+
+  // set camera parameters when idle runs
+  pdv_set_gain(pdv_p, (255 - gain));
 }
 
 
@@ -140,9 +147,9 @@ void myGlutDisplay( void )
   for(int r=height; r>=0; r--) {
     for(int c=0; c<width; c++) {
         GLdispbuf[0 + 4 * (c + width * r)] = dispbuf[(c + width * r)]; //red
-	GLdispbuf[1 + 4 * (c + width * r)] = dispbuf[(c + width * r)];//green
-	GLdispbuf[2 + 4 * (c + width * r)] = dispbuf[(c + width * r)];//blue
-	GLdispbuf[3 + 4 * (c + width * r)] = 255;//alpha
+		GLdispbuf[1 + 4 * (c + width * r)] = dispbuf[(c + width * r)];//green
+		GLdispbuf[2 + 4 * (c + width * r)] = dispbuf[(c + width * r)];//blue
+		GLdispbuf[3 + 4 * (c + width * r)] = 255;//alpha
     }
   }
   
@@ -212,6 +219,10 @@ void main(int argc, char* argv[])
   GLUI_Spinner *channel_spinner = 
     glui->add_spinner( "Channel:", GLUI_SPINNER_INT, &channel );
     channel_spinner->set_int_limits( 0, 9 ); 
+
+  GLUI_Spinner *gain_spinner = 
+    glui->add_spinner( "Gain:", GLUI_SPINNER_INT, &gain );
+    gain_spinner->set_int_limits( 0, 255 ); 
     
   GLUI_Spinner *numbufs_spinner = 
     glui->add_spinner( "Buffers:", GLUI_SPINNER_INT, &numbufs );
@@ -226,15 +237,14 @@ void main(int argc, char* argv[])
     for(int idx=0; idx<12; idx++ )
       fps_listbox->add_item( idx, fps_list[idx] );	
 
-/*GLUI_Spinner *skipframes_spinner = 
-    glui->add_spinner( "Skip Frames:", GLUI_SPINNER_INT, &skipframes );
-    skipframes_spinner->set_int_limits( 1, 120 ); 
-*/
   GLUI_EditText *filename_EditText =
     glui->add_edittext( "filename:", GLUI_EDITTEXT_TEXT, filename);
 
   GLUI_Button *start_capture =
     glui->add_button( "Start Capture", 0, (GLUI_Update_CB) start_collection);
+
+  GLUI_Button *cancel_capture =
+    glui->add_button( "Abort Capture", 0, (GLUI_Update_CB) abort_collection);
 
   GLUI_Button *quit =
     glui->add_button( "Quit", 0, (GLUI_Update_CB) close_and_exit);
@@ -253,8 +263,15 @@ void start_collection()
 {
   collecting = true;
   showing = false;
+  abort_acquisition = false;
   hThread[COLLECT] = (HANDLE) _beginthread(collect, 0, NULL);
   close_camera();
+}
+
+void abort_collection()
+{
+	abort_acquisition = true;
+	fprintf(stderr, "\n** ACQUISITION ABORTED! **\n\n", VERSION_STRING);
 }
 
 ////////////////////
@@ -380,6 +397,10 @@ void collect(void *)
 
      //  EnterCriticalSection(&hUpdateMutex); // threading
 
+		// Check if the user wants to cancel current data collection
+		if (abort_acquisition)
+			break;
+		
 		if (timestamps)  {
 	       image_p = pdv_wait_image_timed(pdv_p, timestamp);
            curtime = (double) timestamp[0] * 1000000000L + timestamp[1];
@@ -474,7 +495,7 @@ void collect(void *)
 		long GLUItake_sec = 0L;
 		long GLUItake_usec= 0L;
 		double GLUItake_time = 0;
-		struct timeval our_time;
+		//struct timeval our_time;
 
 		strcpy(buff,filename);
 		tfilename = strcat(buff, ".tstamp.txt");		

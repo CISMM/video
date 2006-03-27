@@ -1,3 +1,11 @@
+2006-03-27  Jeremy Cribb <jcribb@email.unc.edu>
+	* glui_take.cpp:
+		- Increased version number to 0.20
+		- Added gain control.  Now you can adjust the gain of the camera within glui_take instead of going into pdvshow to do it.
+		- Added "abort acquisition" button to interrupt data collection.
+	* glui_take.qsp: updated installer file.
+	* glui_take.bat: removed batch variables and replaced them with environ var.
+
 2006-03-10  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* airy_maker.cpp : Cosmetic changes.

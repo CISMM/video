@@ -6,12 +6,12 @@ OperatingSystem=WinXP  5.1  2600 (Service Pack 2)
 
 [Project]
 ProjectName=GLUI_take
-ProjectDirectory=D:\jcribb\src\video\GLUI_take
-NonSFXDirectory=D:\jcribb\src\video\GLUI_take\NonSFX
-MediaFileName=GLUI_take_v0_11
+ProjectDirectory=D:\jcribb\video\GLUI_take
+NonSFXDirectory=D:\jcribb\video\GLUI_take\NonSFX
+MediaFileName=GLUI_take_v0_20
 CopyMediaToFName=
 ProgramDescriptiveName=GLUI_take Pulnix Frame Grabber
-ProgramVersion=0.11
+ProgramVersion=0.20
 CompanyName=UNC NSRG
 ProgVerLiveUpdate=0
 RegisterAsApp=1
@@ -33,9 +33,9 @@ BottomLabel=0
 TopLabelText="GLUI_take Pulnix Frame Grabber"
 TopLabel2Text=""
 BottomLabelText="Copyright © 2005"
-BackgroundDesign=Windmill (Right)
-TopBackgroundColor=16758613
-BottomBackgroundColor=11613445
+BackgroundDesign=XP Background
+TopBackgroundColor=8421504
+BottomBackgroundColor=12632256
 AddBottomColor=1
 DlgBmp3DFrame=1
 DialogStyle=Modern
@@ -62,7 +62,7 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|1|0|
 CompanyUrl=www.cs.unc.edu/nano
 
 [TargetExe]
-TargetDirectory=<ProgramFilesDir>NSRG\GLUI_take_v00.11
+TargetDirectory=<ProgramFilesDir>NSRG\GLUI_take_v00.20
 CommonDirectory=<CommonFilesDir>NSRG
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\GLUItake.bat
@@ -71,7 +71,7 @@ RunTimeDir_2=|||||||1||||1||1|<ProgramFilesDir>|||||
 RunTimeDir_3=|||||||1||||1||1|<ProgramFilesDir>|||||
 
 [Dialogs]
-SelectedDialogs=*Welcome,License,Readme,User Information,Setup Type,Custom,*Destination,Associate,*Shortcuts,*Confirm Setup,*Copy Files,*Complete
+SelectedDialogs=*Welcome,License,Readme,User Information,Setup Type,Custom,*Destination,*Shortcuts,Associate,*Confirm Setup,*Copy Files,*Complete
 LicenseTextFile=
 ReadmeTextFile=
 ReadmeTextFile2=
@@ -95,7 +95,7 @@ ForcePartialSetup=0
 ShowProgBar2=0
 SilentSetup=0
 ProposeReadme=0
-ProposeLaunch=1
+ProposeLaunch=0
 ProposeRestart=0
 ProposeReadmeChecked=0
 ProposeLaunchChecked=0
@@ -106,10 +106,10 @@ ShowCopyrightWarning=1
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=NSRG\GLUI_take Pulnix Frame Grabber v0.11
-ProgramLinkName=GLUItake
+ProgramLinkFolder=NSRG\GLUI_take Pulnix Frame Grabber v0.20
+ProgramLinkName=GLUItake v0.20
 ProgramLinkParam=
-ProgramLinkWorkDir=<Application Folder>
+ProgramLinkWorkDir=E:\Data\video
 ProgramLinkRun=Minimized
 ProgramLinkIconFile=
 ProgramLinkIconNum=0
@@ -130,7 +130,7 @@ StartUpChecked=1
 QuickLaunchChecked=1
 SetAllUsers=1
 AddUninstallShortcut=1
-Item-000=*|GLUI_take v0.11|<Application Folder>\GLUItake.bat|<Desktop>||<Application Folder>|Minimized||0|1||0|
+Item-000=*|GLUI_take v0.20|<Application Folder>\GLUItake.bat|<Desktop>||<Application Folder>|Minimized||0|1||0|
 
 [Billboard]
 AddBillboard=1
@@ -164,7 +164,7 @@ AutoUpdateProbeSpin=1
 AutoUpdateProbeText=Only at Agent Start
 
 [Switches]
-OperatingSystems=98,ME,NT,2000,XP,2003
+OperatingSystems=NT,2000,XP,2003
 OverwriteFlag=1
 CreateUnInstall=1
 ScrambleUnInstallData=0
@@ -191,6 +191,8 @@ AutorunStartApp=0
 [IniFile]
 
 [Environment]
+Env-000=*|EDTPATH|C:\EDT\pdv|Create|Remove|System|
+Env-001=*|GLUITAKEPATH|C:\Program Files\NSRG\GLUI_take_v00.20|Create|Remove|System|
 
 [Association]
 OpenWith=0
@@ -229,5 +231,5 @@ TypicalCompactData=15
 Description=This is the main group of files
 Item-000=Fol*<Application Folder>[0]
 Item-001=Fil*C:\NSRG\external\pc_win32\bin\glut32.dll
-Item-002=Fil*d:\jcribb\src\video\GLUI_take\GLUItake.bat
-Item-003=Fil*d:\jcribb\src\video\Release\GLUItake.exe
+Item-002=Fil*D:\jcribb\video\GLUI_take\GLUI_take_v0_20.exe
+Item-003=Fil*D:\jcribb\video\GLUI_take\GLUItake.bat
