@@ -1,3 +1,9 @@
+2006-03-29  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Increased the number of available
+		trackers in VRPN from 100 to 500.  FIONA tracker has not
+		yet been debugged completely.
+
 2006-03-27  Jeremy Cribb <jcribb@email.unc.edu>
 	* glui_take.cpp:
 		- Increased version number to 0.20

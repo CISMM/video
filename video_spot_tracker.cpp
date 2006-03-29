@@ -61,7 +61,7 @@ using namespace std;
 static void cleanup();
 static void dirtyexit();
 
-const int MAX_TRACKERS = 100; // How many trackers can exist (for VRPN's tracker object)
+const int MAX_TRACKERS = 500; // How many trackers can exist (for VRPN's tracker object)
 #ifndef	M_PI
 #ifndef M_PI_DEFINED
 const double M_PI = 2*asin(1.0);
@@ -71,7 +71,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.00";
+const char *Version_string = "05.01";
 
 //--------------------------------------------------------------------------
 // Global constants
