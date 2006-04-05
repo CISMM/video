@@ -1,3 +1,9 @@
+2006-04-04  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Multi-threaded the trackers, so that
+		it will make as many threads as there are processors.  This
+		speeds up the tracking of more than one spot at a time.
+
 2006-03-29  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Increased the number of available

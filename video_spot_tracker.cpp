@@ -48,10 +48,15 @@
 #endif
 #include <GL/gl.h>
 #include <GL/glut.h>
+
 #include <quat.h>
 #include <vrpn_Connection.h>
 #include <vrpn_Analog.h>
 #include <vrpn_Tracker.h>
+
+//NMmp source files (nanoManipulator project).
+#include <thread.h>
+
 #include <list>
 #include <vector>
 using namespace std;
@@ -71,7 +76,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.01";
+const char *Version_string = "05.02";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -216,6 +221,11 @@ float		    g_search_radius = 0;	  //< Search radius for doing local max in befor
 Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
 Tclvar_int_with_button	g_frame_number("frame_number",NULL,-1);  //< Keeps track of video frame number
 
+// This variable is used to determine if we should consider doing maximum fits,
+// by determining if the frame number has changed since last time.
+int                 g_last_optimized_frame_number = -1000;
+
+
 int		    g_tracking_window;		  //< Glut window displaying tracking
 unsigned char	    *g_glut_image = NULL;	  //< Pointer to the storage for the image
 
@@ -252,6 +262,29 @@ float		    g_kymograph_centers[g_kymograph_height];  //< Where the cell-coordina
 int		    g_kymograph_window;		  //< Glut window showing kymograph lines stacked into an image
 int		    g_kymograph_center_window;	  //< Glut window showing kymograph center-tracking
 int		    g_kymograph_filled = 0;	  //< How many lines of data are in there now.
+
+//-----------------------------------------------------------------
+// This section deals with providing multiple threads for tracking.
+unsigned            g_num_tracking_processors = 1; //< Number of processors to use for tracking
+Semaphore           *g_ready_tracker_semaphore = NULL;
+    //< Lets us know if there is a tracker ready to run.  This is created with the number of
+    //< slots equal to the number of tracking processors.  It is decremented by each tracking
+    //< thread as it enters the ready state and is incremented by the application whenever it
+    //< wants a new thread to use for tracking.  This keeps the application from having to
+    //< busy-wait on the list of trackers waiting for one to free up.
+class ThreadUserData {
+public:
+  Semaphore *d_run_semaphore;   //< Thread calls P() on this when it wants to run, app calls V() to let it.
+  bool      d_ready;            //< Thread is ready to run; app checks for this before calling V().
+  Spot_Information  *d_tracker; //< The tracker to optimize.  App fills this in before calling V() to run thread.
+};
+class ThreadInfo {
+public:
+  Thread      *d_thread;            //< The thread to run
+  ThreadData  d_thread_data;        //< The data structure to pass it including a pointer to...
+  ThreadUserData  *d_thread_user_data; //< The user data to pass to the thread, protected by the semaphore in d_thread_data.
+};
+vector<ThreadInfo *>    g_tracking_threads;           //< The threads to use for tracking
 
 //--------------------------------------------------------------------------
 // Tcl controls and displays
@@ -564,8 +597,18 @@ static void  dirtyexit(void)
   // Done with the camera and other objects.
   printf("Exiting\n");
 
-  list<Spot_Information *>::iterator  loop;
+  // Get rid of any tracking threads and their associated data
+  unsigned i;
+  for (i = 0; i < g_tracking_threads.size(); i++) {
+    delete g_tracking_threads[i]->d_thread;
+    delete g_tracking_threads[i]->d_thread_user_data;
+    delete g_tracking_threads[i]->d_thread_data.ps;
+    delete g_tracking_threads[i];
+  }
+  g_tracking_threads.clear();
 
+  // Get rid of any trackers.
+  list<Spot_Information *>::iterator  loop;
   for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
     delete *loop;
   }
@@ -1301,6 +1344,236 @@ void mykymographDisplayFunc(void)
   glutSwapBuffers();
 }
 
+// Optimize to find the best fit starting from last position for a tracker.
+// Invert the Y values on the way in and out.
+// Don't let it adjust the radius here (otherwise it gets too
+// jumpy).
+static void optimize_tracker(Spot_Information *tracker)
+{
+  double  x, y;
+  double last_pos[2];
+  last_pos[0] = tracker->xytracker()->get_x();
+  last_pos[1] = tracker->xytracker()->get_y();
+  double last_vel[2];
+  tracker->get_velocity(last_vel);
+
+  // If we are doing prediction, apply the estimated last velocity to
+  // move the estimated position to a new location
+  if ( g_predict && (g_last_optimized_frame_number != g_frame_number) ) {
+    double new_pos[2];
+    new_pos[0] = last_pos[0] + last_vel[0];
+    new_pos[1] = last_pos[1] + last_vel[1];
+    tracker->xytracker()->set_location(new_pos[0], new_pos[1]);
+  }
+
+  // If the frame-number has changed, and we are doing global searches
+  // within a radius, then create an image-based tracker at the last
+  // location for the current tracker on the last frame; scan all locations
+  // within radius and find the maximum fit on this frame; move the tracker
+  // location to that maximum before doing the optimization.  We use the
+  // image-based tracker for this because other trackers may have maximum
+  // fits outside the region where the bead is -- the symmetric tracker often
+  // has a local maximum at best fit and global maxima elsewhere.
+  if ( g_last_image && (g_search_radius > 0) && (g_last_optimized_frame_number != g_frame_number) ) {
+
+    double x_base = tracker->xytracker()->get_x();
+    double y_base = tracker->xytracker()->get_y();
+
+    // If we are doing prediction, reduce the search radius to 3 because we rely
+    // on the prediction to get us close to the global maximum.  If we make it 2.5,
+    // it starts to lose track with an accuracy of 1 pixel for a bead on cilia in
+    // pulnix video (acquired at 120 frames/second).
+    double used_search_radius = g_search_radius;
+    if ( g_predict && (g_search_radius > 3) ) {
+      used_search_radius = 3;
+    }
+
+    // Create an image spot tracker and initize it at the location where the current
+    // tracker started this frame (before prediction), but in the last image.  Grab enough
+    // of the image that we will be able to check over the used_search_radius for a match.
+    // Use the faster twolines version of the image-based tracker.
+    twolines_image_spot_tracker_interp max_find(tracker->xytracker()->get_radius(), (g_invert != 0), g_precision,
+      0.1, g_sampleSpacing);
+    max_find.set_location(last_pos[0], last_pos[1]);
+    max_find.set_image(*g_last_image, last_pos[0], last_pos[1], tracker->xytracker()->get_radius() + used_search_radius);
+
+    // Loop over the pixels within used_search_radius of the initial location and find the
+    // location with the best match over all of these points.  Do this in the current image,
+    // at the (possibly-predicted) starting location and find the offset from the (possibly
+    // predicted) current location to get to the right place.
+    double radsq = used_search_radius * used_search_radius;
+    int x_offset, y_offset;
+    int best_x_offset = 0;
+    int best_y_offset = 0;
+    double best_value = max_find.check_fitness(*g_image);
+    for (x_offset = -floor(used_search_radius); x_offset <= floor(used_search_radius); x_offset++) {
+      for (y_offset = -floor(used_search_radius); y_offset <= floor(used_search_radius); y_offset++) {
+	if ( (x_offset * x_offset) + (y_offset * y_offset) <= radsq) {
+	  max_find.set_location(x_base + x_offset, y_base + y_offset);
+	  double val = max_find.check_fitness(*g_image);
+	  if (val > best_value) {
+	    best_x_offset = x_offset;
+	    best_y_offset = y_offset;
+	    best_value = val;
+	  }
+	}
+      }
+    }
+
+    // Put the tracker at the location of the maximum, so that it will find the
+    // total maximum when it finds the local maximum.
+    tracker->xytracker()->set_location(x_base + best_x_offset, y_base + best_y_offset);
+  }
+
+  // Here's where the tracker is optimized to its new location
+  if (g_parabolafit) {
+    tracker->xytracker()->optimize_xy_parabolafit(*g_image, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
+  } else {
+    tracker->xytracker()->optimize_xy(*g_image, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
+  }
+
+  // If we are doing prediction, update the estimated velocity based on the
+  // step taken.
+  if ( g_predict && (g_last_optimized_frame_number != g_frame_number) ) {
+    const double vel_frac_to_use = 0.9; //< 0.85-0.95 seems optimal for cilia in pulnix; 1 is too much, 0.83 is too little
+    const double acc_frac_to_use = 0.0; //< Due to the noise, acceleration estimation makes things worse
+
+    // Compute the new velocity estimate as the subtraction of the
+    // last position from the current position.
+    double new_vel[2];
+    new_vel[0] = (tracker->xytracker()->get_x() - last_pos[0]) * vel_frac_to_use;
+    new_vel[1] = (tracker->xytracker()->get_y() - last_pos[1]) * vel_frac_to_use;
+
+    // Compute the new acceleration estimate as the subtraction of the new
+    // estimate from the old.
+    double new_acc[2];
+    new_acc[0] = (new_vel[0] - last_vel[0]) * acc_frac_to_use;
+    new_acc[1] = (new_vel[1] - last_vel[1]) * acc_frac_to_use;
+
+    // Re-estimate the new velocity by taking into account the acceleration.
+    new_vel[0] += new_acc[0];
+    new_vel[1] += new_acc[1];
+
+    // Store the quantities for use next time around.
+    tracker->set_velocity(new_vel);
+    tracker->set_acceleration(new_acc);
+  }
+
+  // If we have a non-zero threshold for determining if we are lost,
+  // check and see if we are.  This is done by finding the value of
+  // the fitness function at the actual tracker location and comparing
+  // it to the maximum values located on concentric rings around the
+  // tracker.  We look for the minimum of these maximum values (the
+  // deepest moat around the peak in the center) and determine if we're
+  // lost based on the type of kernel we are using.
+  // Some ideas for determining goodness of tracking for a bead...
+  //   (It looks like different metrics are needed for symmetric and cone and disk.)
+  // For symmetric:
+  //    Value compared to initial value when tracking that bead: When in a flat area, it can be better.
+  //    Minimum over area vs. center value: get low-valued lobes in certain directions, but other directions bad.
+  //    Maximum of all minima as you travel in different directions from center: dunno.
+  //    Maximum at radius from center: How do you know what radius to select?
+  //      Max at radius of the minimum value from center?
+  //      Minimum of the maxima over a number of radii? -- Yep, we're trying this one.
+  if (g_lossSensitivity > 0.0) {
+    double min_val = 1e100; //< Min over all circles
+    double start_x = tracker->xytracker()->get_x();
+    double start_y = tracker->xytracker()->get_y();
+    double this_val;
+    double r, theta;
+    double x, y;
+    // Only look every two-pixel radius from three out to the radius of the tracker.
+    for (r = 3; r <= tracker->xytracker()->get_radius(); r += 2) {
+      double max_val = -1e100;  //< Max over this particular circle
+      // Look at every pixel around the circle.
+      for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
+        x = r * cos(theta);
+        y = r * sin(theta);
+	tracker->xytracker()->set_location(x + start_x, y + start_y);
+	this_val = tracker->xytracker()->check_fitness(*g_image);
+	if (this_val > max_val) { max_val = this_val; }
+      }
+      if (max_val < min_val) { min_val = max_val; }
+    }
+    //Put the tracker back where it started.
+    tracker->xytracker()->set_location(start_x, start_y);
+
+    // See if we are lost.  The way we tell if we are lost or not depends
+    // on the type of kernel we are using.  It also depends on the setting of
+    // the "lost sensitivity" parameter, which varies from 0 (not sensitive at
+    // all) to 1 (most sensitive).
+    double starting_value = tracker->xytracker()->check_fitness(*g_image);
+    //printf("XXX Center = %lg, min of maxes = %lg, scale = %lg\n", starting_value, min_val, min_val/starting_value);
+    if (g_kernel_type == KERNEL_SYMMETRIC) {
+      // The symmetric kernel reports values that are strictly non-positive for
+      // its fitness function.  Some observation of values reveals that the key factor
+      // seems to be how many more times negative the "moat" is than the central peak.
+      // Based on a few observations of different bead tracks, it looks like a factor
+      // of 2 is almost always too small, and a factor of 4-10 is almost always fine.
+      // So, we'll set the "scale factor" to be between 1 (when sensitivity is just
+      // above zero) and 10 (when the scale factor is just at one).  If a tracker gets
+      // lost, set it to be the active tracker so the user can tell which one is
+      // causing trouble.
+      double scale_factor = 1 + 9*g_lossSensitivity;
+      if (starting_value * scale_factor < min_val) {
+        g_tracker_is_lost = true;
+        g_active_tracker = tracker;
+      }
+    } else if (g_kernel_type == KERNEL_CONE) {
+      // Differences (not factors) of 0-5 seem more appropriate for a quick test of the cone kernel.
+      double difference = 5*g_lossSensitivity;
+      if (starting_value - min_val < difference) {
+        g_tracker_is_lost = true;
+        g_active_tracker = tracker;
+      }
+    } else {  // Must be a disk kernel
+      // Differences (not factors) of 0-5 seem more appropriate for a quick test of the disk kernel.
+      double difference = 5*g_lossSensitivity;
+      if (starting_value - min_val < difference) {
+        g_tracker_is_lost = true;
+        g_active_tracker = tracker;
+      }
+    }
+  }
+
+  // If we are optimizing in Z, then do it here.
+  if (g_opt_z) {
+    double  z = 0;
+    tracker->ztracker()->locate_close_fit_in_depth(*g_image, tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), z);
+    tracker->ztracker()->optimize(*g_image, tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), z);
+  }
+}
+
+void tracking_thread_function(void *pvThreadData)
+{
+  struct ThreadData  *td = (struct ThreadData *)pvThreadData;
+  ThreadUserData *tud = static_cast<ThreadUserData *>(td->pvUD);
+
+  while (1) {
+    // Grab the semaphore for the thread data and then set the "ready" flag.
+    // This lets the application know that we're ready to do a tracking
+    // optimization.
+    td->ps->p();
+    tud->d_ready = true;
+    td->ps->v();
+
+    // Report that there is another free tracker using the global "number of active trackers"
+    // semaphore, which is used by the application to keep from having to
+    // busy-wait on the tracking threads to see when one is ready for a new task.
+    g_ready_tracker_semaphore->v();
+    
+    // Grab the run semaphore from the user data (which is accessed without
+    // grabbing the lock on the user data) and then run the associated tracking
+    // job.
+    tud->d_run_semaphore->p();
+    if (tud->d_tracker == NULL) {
+      fprintf(stderr,"tracking_thread_function(): Called with NULL tracker pointer!\n");
+      dirtyexit();
+    }
+    optimize_tracker(tud->d_tracker);
+  }
+}
+
 void myIdleFunc(void)
 {
   list<Spot_Information *>::iterator loop;
@@ -1564,226 +1837,39 @@ void myIdleFunc(void)
 
   // Optimize all trackers and see if they are lost.
   if (g_opt && g_active_tracker) {
-    double  x, y;
 
-    // This variable is used to determine if we should consider doing maximum fits,
-    // by determining if the frame number has changed since last time.
-    static int last_optimized_frame_number = -1000;
-
-    // Optimize to find the best fit starting from last position for each tracker.
-    // Invert the Y values on the way in and out.
-    // Don't let it adjust the radius here (otherwise it gets too
-    // jumpy).
     int kymocount = 0;
     for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-      double last_pos[2];
-      last_pos[0] = (*loop)->xytracker()->get_x();
-      last_pos[1] = (*loop)->xytracker()->get_y();
-      double last_vel[2];
-      (*loop)->get_velocity(last_vel);
 
-      // If we are doing prediction, apply the estimated last velocity to
-      // move the estimated position to a new location
-      if ( g_predict && (last_optimized_frame_number != g_frame_number) ) {
-	double new_pos[2];
-	new_pos[0] = last_pos[0] + last_vel[0];
-	new_pos[1] = last_pos[1] + last_vel[1];
-	(*loop)->xytracker()->set_location(new_pos[0], new_pos[1]);
-      }
-
-      // If the frame-number has changed, and we are doing global searches
-      // within a radius, then create an image-based tracker at the last
-      // location for the current tracker on the last frame; scan all locations
-      // within radius and find the maximum fit on this frame; move the tracker
-      // location to that maximum before doing the optimization.  We use the
-      // image-based tracker for this because other trackers may have maximum
-      // fits outside the region where the bead is -- the symmetric tracker often
-      // has a local maximum at best fit and global maxima elsewhere.
-      if ( g_last_image && (g_search_radius > 0) && (last_optimized_frame_number != g_frame_number) ) {
-
-	double x_base = (*loop)->xytracker()->get_x();
-	double y_base = (*loop)->xytracker()->get_y();
-
-	// If we are doing prediction, reduce the search radius to 3 because we rely
-	// on the prediction to get us close to the global maximum.  If we make it 2.5,
-	// it starts to lose track with an accuracy of 1 pixel for a bead on cilia in
-	// pulnix video (acquired at 120 frames/second).
-	double used_search_radius = g_search_radius;
-	if ( g_predict && (g_search_radius > 3) ) {
-	  used_search_radius = 3;
-	}
-
-	// Create an image spot tracker and initize it at the location where the current
-	// tracker started this frame (before prediction), but in the last image.  Grab enough
-	// of the image that we will be able to check over the used_search_radius for a match.
-	// Use the faster twolines version of the image-based tracker.
-	twolines_image_spot_tracker_interp max_find((*loop)->xytracker()->get_radius(), (g_invert != 0), g_precision,
-	  0.1, g_sampleSpacing);
-	max_find.set_location(last_pos[0], last_pos[1]);
-	max_find.set_image(*g_last_image, last_pos[0], last_pos[1], (*loop)->xytracker()->get_radius() + used_search_radius);
-
-	// Loop over the pixels within used_search_radius of the initial location and find the
-	// location with the best match over all of these points.  Do this in the current image,
-	// at the (possibly-predicted) starting location and find the offset from the (possibly
-	// predicted) current location to get to the right place.
-	double radsq = used_search_radius * used_search_radius;
-	int x_offset, y_offset;
-	int best_x_offset = 0;
-	int best_y_offset = 0;
-	double best_value = max_find.check_fitness(*g_image);
-	for (x_offset = -floor(used_search_radius); x_offset <= floor(used_search_radius); x_offset++) {
-	  for (y_offset = -floor(used_search_radius); y_offset <= floor(used_search_radius); y_offset++) {
-	    if ( (x_offset * x_offset) + (y_offset * y_offset) <= radsq) {
-	      max_find.set_location(x_base + x_offset, y_base + y_offset);
-	      double val = max_find.check_fitness(*g_image);
-	      if (val > best_value) {
-		best_x_offset = x_offset;
-		best_y_offset = y_offset;
-		best_value = val;
-	      }
-	    }
-	  }
-	}
-
-	// Put the tracker at the location of the maximum, so that it will find the
-	// total maximum when it finds the local maximum.
-	(*loop)->xytracker()->set_location(x_base + best_x_offset, y_base + best_y_offset);
-      }
-
-      // Here's where the tracker is optimized to its new location
-      if (g_parabolafit) {
-	(*loop)->xytracker()->optimize_xy_parabolafit(*g_image, x, y, (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y() );
+      // If we're single-threaded, then call the tracker optimization loop
+      // directly.  If we're multi-threaded, then wait for a ready tracking
+      // thread and use it to do the tracking.
+      if (g_tracking_threads.size() == 0) {
+        optimize_tracker(*loop);
       } else {
-	(*loop)->xytracker()->optimize_xy(*g_image, x, y, (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y() );
-      }
+        // Wait until at least one tracker has entered the ready state
+        // and indicated this using the active tracking semaphore.
+        g_ready_tracker_semaphore->p();
 
-      // If we are doing prediction, update the estimated velocity based on the
-      // step taken.
-      if ( g_predict && (last_optimized_frame_number != g_frame_number) ) {
-	const double vel_frac_to_use = 0.9; //< 0.85-0.95 seems optimal for cilia in pulnix; 1 is too much, 0.83 is too little
-	const double acc_frac_to_use = 0.0; //< Due to the noise, acceleration estimation makes things worse
-
-	// Compute the new velocity estimate as the subtraction of the
-	// last position from the current position.
-	double new_vel[2];
-	new_vel[0] = ((*loop)->xytracker()->get_x() - last_pos[0]) * vel_frac_to_use;
-	new_vel[1] = ((*loop)->xytracker()->get_y() - last_pos[1]) * vel_frac_to_use;
-
-	// Compute the new acceleration estimate as the subtraction of the new
-	// estimate from the old.
-	double new_acc[2];
-	new_acc[0] = (new_vel[0] - last_vel[0]) * acc_frac_to_use;
-	new_acc[1] = (new_vel[1] - last_vel[1]) * acc_frac_to_use;
-
-	// Re-estimate the new velocity by taking into account the acceleration.
-	new_vel[0] += new_acc[0];
-	new_vel[1] += new_acc[1];
-
-	// Store the quantities for use next time around.
-	(*loop)->set_velocity(new_vel);
-	(*loop)->set_acceleration(new_acc);
-      }
-
-      // If we have a non-zero threshold for determining if we are lost,
-      // check and see if we are.  This is done by finding the value of
-      // the fitness function at the actual tracker location and comparing
-      // it to the maximum values located on concentric rings around the
-      // tracker.  We look for the minimum of these maximum values (the
-      // deepest moat around the peak in the center) and determine if we're
-      // lost based on the type of kernel we are using.
-      // Some ideas for determining goodness of tracking for a bead...
-      //   (It looks like different metrics are needed for symmetric and cone and disk.)
-      // For symmetric:
-      //    Value compared to initial value when tracking that bead: When in a flat area, it can be better.
-      //    Minimum over area vs. center value: get low-valued lobes in certain directions, but other directions bad.
-      //    Maximum of all minima as you travel in different directions from center: dunno.
-      //    Maximum at radius from center: How do you know what radius to select?
-      //      Max at radius of the minimum value from center?
-      //      Minimum of the maxima over a number of radii? -- Yep, we're trying this one.
-      if (g_lossSensitivity > 0.0) {
-        double min_val = 1e100; //< Min over all circles
-        double start_x = (*loop)->xytracker()->get_x();
-        double start_y = (*loop)->xytracker()->get_y();
-        double this_val;
-        double r, theta;
-        double x, y;
-        // Only look every two-pixel radius from three out to the radius of the tracker.
-        for (r = 3; r <= (*loop)->xytracker()->get_radius(); r += 2) {
-          double max_val = -1e100;  //< Max over this particular circle
-          // Look at every pixel around the circle.
-          for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
-            x = r * cos(theta);
-            y = r * sin(theta);
-	    (*loop)->xytracker()->set_location(x + start_x, y + start_y);
-	    this_val = (*loop)->xytracker()->check_fitness(*g_image);
-	    if (this_val > max_val) { max_val = this_val; }
-          }
-	  if (max_val < min_val) { min_val = max_val; }
-        }
-        //Put the tracker back where it started.
-        (*loop)->xytracker()->set_location(start_x, start_y);
-
-        // See if we are lost.  The way we tell if we are lost or not depends
-        // on the type of kernel we are using.  It also depends on the setting of
-        // the "lost sensitivity" parameter, which varies from 0 (not sensitive at
-        // all) to 1 (most sensitive).
-        double starting_value = (*loop)->xytracker()->check_fitness(*g_image);
-        //printf("XXX Center = %lg, min of maxes = %lg, scale = %lg\n", starting_value, min_val, min_val/starting_value);
-        if (g_kernel_type == KERNEL_SYMMETRIC) {
-          // The symmetric kernel reports values that are strictly non-positive for
-          // its fitness function.  Some observation of values reveals that the key factor
-          // seems to be how many more times negative the "moat" is than the central peak.
-          // Based on a few observations of different bead tracks, it looks like a factor
-          // of 2 is almost always too small, and a factor of 4-10 is almost always fine.
-          // So, we'll set the "scale factor" to be between 1 (when sensitivity is just
-          // above zero) and 10 (when the scale factor is just at one).  If a tracker gets
-          // lost, set it to be the active tracker so the user can tell which one is
-          // causing trouble.
-          double scale_factor = 1 + 9*g_lossSensitivity;
-          if (starting_value * scale_factor < min_val) {
-            g_tracker_is_lost = true;
-            g_active_tracker = *loop;
-          }
-        } else if (g_kernel_type == KERNEL_CONE) {
-          // Differences (not factors) of 0-5 seem more appropriate for a quick test of the cone kernel.
-          double difference = 5*g_lossSensitivity;
-          if (starting_value - min_val < difference) {
-            g_tracker_is_lost = true;
-            g_active_tracker = *loop;
-          }
-        } else {  // Must be a disk kernel
-          // Differences (not factors) of 0-5 seem more appropriate for a quick test of the disk kernel.
-          double difference = 5*g_lossSensitivity;
-          if (starting_value - min_val < difference) {
-            g_tracker_is_lost = true;
-            g_active_tracker = *loop;
+        // Find a ready tracker (there may be more than one, just pick the
+        // first).
+        unsigned i;
+        for (i = 0; i < g_tracking_threads.size(); i++) {
+          if (g_tracking_threads[i]->d_thread_user_data->d_ready) {
+            break;
           }
         }
-
-        if (g_tracker_is_lost) {
-          // If we have a playable video and the video is not paused, then say we're lost and pause it.
-          if (g_play != NULL) {
-            if (*g_play) {
-              fprintf(stderr, "Lost in frame %d\n", (int)(float)(g_frame_number));
-              if (g_video) { g_video->pause(); }
-              *g_play = 0;
-#ifdef	_WIN32
-	      if (!PlaySound("lost.wav", NULL, SND_FILENAME | SND_ASYNC)) {
-	        fprintf(stderr,"Cannot play sound %s\n", "lost.wav");
-	      }
-#endif
-            }
-          }
-
-          // XXX Do not attempt to pause live video, but do tell that we're lost -- only tell once.
+        if (i >= g_tracking_threads.size()) {
+          fprintf(stderr,"The active tracking semaphore indicated a free tracker but none found in list\n");
+          exit(-1);
         }
-      }
 
-      // If we are optimizing in Z, then do it here.
-      if (g_opt_z) {
-        double  z = 0;
-        (*loop)->ztracker()->locate_close_fit_in_depth(*g_image, (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y(), z);
-        (*loop)->ztracker()->optimize(*g_image, (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y(), z);
+        // Fill in the tracker pointer in the user data and then use the run
+        // semaphore to cause the tracking thread to run.  Tell ourselves that
+        // the tracker is busy, so we don't try to re-use it until it is done.
+        g_tracking_threads[i]->d_thread_user_data->d_tracker = *loop;
+        g_tracking_threads[i]->d_thread_user_data->d_ready = false;
+        g_tracking_threads[i]->d_thread_user_data->d_run_semaphore->v();
       }
 
       // If we are running a kymograph, then we don't optimize any trackers
@@ -1796,7 +1882,39 @@ void myIdleFunc(void)
       }
     }
 
-    last_optimized_frame_number = g_frame_number;
+    // If we're using multiple tracking threads, then we need to wait until all
+    // threads have finished tracking before going on, to avoid getting ahead of
+    // ourselves while one or more of them are finishing.  To avoid busy-waiting,
+    // we do this by grabbing as many extra entries in the active-tracking semaphore
+    // as there are threads and then freeing them up once we have them all.
+    // If we're not using threads, then there are no entries in the g_tracking_threads vector.
+    unsigned i;
+    for (i = 0; i < g_tracking_threads.size(); i++) {
+      g_ready_tracker_semaphore->p();
+    }
+    for (i = 0; i < g_tracking_threads.size(); i++) {
+      g_ready_tracker_semaphore->v();
+    }
+
+    if (g_tracker_is_lost) {
+      // If we have a playable video and the video is not paused, then say we're lost and pause it.
+      if (g_play != NULL) {
+        if (*g_play) {
+          fprintf(stderr, "Lost in frame %d\n", (int)(float)(g_frame_number));
+          if (g_video) { g_video->pause(); }
+          *g_play = 0;
+#ifdef	_WIN32
+	  if (!PlaySound("lost.wav", NULL, SND_FILENAME | SND_ASYNC)) {
+	    fprintf(stderr,"Cannot play sound %s\n", "lost.wav");
+	  }
+#endif
+        }
+      }
+
+      // XXX Do not attempt to pause live video, but do tell that we're lost -- only tell once.
+    }
+
+    g_last_optimized_frame_number = g_frame_number;
   }
 
   // Update the kymograph if it is active and if we have a new video frame.
@@ -2491,6 +2609,60 @@ int main(int argc, char *argv[])
   // how we are quit.  We hope that we exit in a good way and so
   // cleanup() gets called, but if not then we do a dirty exit.
   atexit(dirtyexit);
+
+  //------------------------------------------------------------------
+  // Set up the threads used for tracking, if we have more than one
+  // processor to use for tracking.  Try to use all of the available
+  // processors for tracking.
+  g_num_tracking_processors = Thread::number_of_processors();
+  if (g_num_tracking_processors > 1) {
+    // Create the "Number of active tracking thread" semaphore that is used
+    // to determine when a tracker has finished and is ready to go.
+    g_ready_tracker_semaphore = new Semaphore(g_num_tracking_processors);
+    if (g_ready_tracker_semaphore == NULL) {
+      fprintf(stderr,"Could not create semaphore for number of active tracking threads\n");
+      exit(-1);
+    }
+
+    // Create the tracking threads.
+    printf("Creating %d tracking threads\n", g_num_tracking_processors);
+    unsigned i;
+    for (i = 0; i < g_num_tracking_processors; i++) {
+
+      // Create the semaphore that will be used to control access to the UserData object
+      Semaphore *tds = new Semaphore();
+
+      // Build the thread UserData object that will be passed to the thread function
+      ThreadUserData *tud = new ThreadUserData();
+      tud->d_ready = false;
+      tud->d_tracker = NULL;
+      tud->d_run_semaphore = new Semaphore();
+
+      // Fill in the ThreadInfo structure.  First the user data, then the thread
+      // data (which includes a pointer to the user data) and finally the thread
+      // itself.
+      ThreadInfo *ti = new ThreadInfo;
+      ti->d_thread_user_data = tud;
+      ti->d_thread_data.pvUD = tud;
+      ti->d_thread_data.ps = tds;
+      ti->d_thread = new Thread(tracking_thread_function, ti->d_thread_data);
+
+      // Add this to the thread list, and increment the semaphore so we
+      // won't try to run one of the threads until at least one has become
+      // ready.
+      g_tracking_threads.push_back(ti);
+      g_ready_tracker_semaphore->p();
+
+      // Call P() on the run semaphore so that the thread will not be able to run
+      // until we call V() on it later.  Then run the thread itself to get it into
+      // the ready state.
+      tud->d_run_semaphore->p();
+      if (ti->d_thread->go() != 0) {
+        fprintf(stderr,"Could not run tracking thread number %d\n", i+1);
+        exit(-1);
+      }
+    }
+  }
 
   //------------------------------------------------------------------
   // VRPN state setting so that we don't try to preload a video file
