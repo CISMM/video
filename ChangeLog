@@ -1,3 +1,9 @@
+2006-04-17  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_imager_server.cpp : Added back in a command-line argument
+		for swapping lines on the EDT/Pulnix, because that bug seems
+		to be back in the driver sometimes.
+
 2006-04-04  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Multi-threaded the trackers, so that

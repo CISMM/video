@@ -12,7 +12,7 @@
 #include  "cooke_server.h"
 
 const int MAJOR_VERSION = 2;
-const int MINOR_VERSION = 4;
+const int MINOR_VERSION = 5;
 
 //-----------------------------------------------------------------
 // This section contains code to initialize the camera and read its
@@ -24,7 +24,8 @@ int		    g_bincount = 1; //< How many pixels to average into one bin in X and Y
 double		    g_exposure = 250.0;	//< How long to expose in milliseconds
 unsigned	    g_width = 320, g_height = 240;  //< Resolution for DirectX cameras
 int                 g_numchannels = 1;  //< How many channels to send (3 for RGB cameras, 1 otherwise)
-int                 g_maxval = 4095;       //< Maximum value available in a channel for this device
+int                 g_maxval = 4095;    //< Maximum value available in a channel for this device
+bool                g_swap_edt = false; //< Swap lines in EDT to fix bug in driver
 
 /// Open the camera we want to use (the type is based on the name passed in)
 bool  init_camera_code(const char *type, int which = 1)
@@ -49,7 +50,7 @@ bool  init_camera_code(const char *type, int which = 1)
     }
   } else if (!strcmp(type, "edt")) {
     printf("Opening ETD Camera\n");
-    g_camera = new edt_server();
+    g_camera = new edt_server(g_swap_edt);
     g_numchannels = 1;
     g_maxval = 255;
     if (!g_camera->working()) {
@@ -161,10 +162,11 @@ void handle_cntl_c(int) {
 
 void  Usage(const char *s)
 {
-  fprintf(stderr,"Usage: %s [-expose msecs] [-bin count] [-res x y] [devicename [devicenum]]\n",s);
+  fprintf(stderr,"Usage: %s [-expose msecs] [-bin count] [-res x y] [-swap_edt] [devicename [devicenum]]\n",s);
   fprintf(stderr,"       -expose: Exposure time in milliseconds (default 250)\n");
   fprintf(stderr,"       -bin: How many pixels to average in x and y (default 1)\n");
   fprintf(stderr,"       -res: Resolution in x and y (default 320 200)\n");
+  fprintf(stderr,"       -swap_edt: Swap lines to fix a bug in the EDT camera\n");
   fprintf(stderr,"       devicename: roper, edt, cooke, diaginc, or directx (default is directx)\n");
   fprintf(stderr,"       devicenum: Which (starting with 1) if there are multiple (default 1)\n");
   fprintf(stderr,"       logfilename: Name of file to store outgoing log in (default NULL)\n");
@@ -214,6 +216,8 @@ int main(int argc, char *argv[])
 	fprintf(stderr,"Invalid height (1-1200 allowed, %f entered)\n", g_height);
 	exit(-1);
       }
+    } else if (!strncmp(argv[i], "-swap_edt", strlen("-swap_edt"))) {
+      g_swap_edt = true;
     } else {
       switch (++realparams) {
       case 1:
