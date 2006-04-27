@@ -1,12 +1,12 @@
+//XXX Need to think about how to do a single color to RGB on the writing to OpenGL, for
+// VST and optimizer we may sometimes want just one channel to be
+// displayed (the one that is being tracked).
 //XXX Switch out the double in image_wrapper and derived classes and
 // use a float buffer instead.  Push this all the way through the calls
 // in all programs.  Then we can put an OpenGL renderer in that sends
 // GLfloats down, and optimize the derived classes that already have
 // a buffer so that they use texture writes to put them to the screen.
 //XXX Add the new shifting policy and OpenGL renderer to Video Optimizer.
-//XXX Need to think about how to do a single color to RGB on the writing to OpenGL, for
-// VST and optimizer we may sometimes want just one channel to be
-// displayed (the one that is being tracked).
 
 #ifndef	BASE_CAMERA_SERVER_H
 #define	BASE_CAMERA_SERVER_H

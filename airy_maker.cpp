@@ -20,12 +20,13 @@
 #include <GL/glut.h>
 #include <vrpn_Shared.h>
 #include "spot_math.h"
+#include "base_camera_server.h"
 
 //#define	DEBUG
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.01";
+const char *Version_string = "01.02";
 
 //--------------------------------------------------------------------------
 // Constants needed by the rest of the program
@@ -41,6 +42,8 @@ enum { M_NOTHING, M_X_ONLY, M_Y_ONLY, M_X_AND_Y };
 bool	g_already_posted = false;	  //< Posted redisplay since the last display?
 int	g_mousePressX, g_mousePressY;	  //< Where the mouse was when the button was pressed
 int	g_whichDragAction;		  //< What action to take for mouse drag
+char    *g_basename = NULL;               //< Base name for saving files
+int     g_basenum = 0;                    //< Number to append to the next-saved file
 
 //--------------------------------------------------------------------------
 // Global variables
@@ -54,8 +57,11 @@ const unsigned g_NX = 511;
 const unsigned g_NY = g_NX;
 const unsigned g_CX = g_NX/2;
 const unsigned g_CY = g_CX;
-class ImageArray {
+class ImageArray : public image_wrapper {
 public:
+
+  ImageArray(void) { clear(); };
+
   void clear(void) {
     unsigned x,y;
     for (x = 0; x < g_NX; x++) {
@@ -63,6 +69,14 @@ public:
         d_values[x][y] = 0;
       }
     }
+
+    // Clear the range so that they are at the far boundaries
+    // (this will mean no data filled in yet).  Note that these
+    // assume that (0,0) is the center.
+    d_minx = g_CX;
+    d_miny = g_CY;
+    d_maxx = -d_minx;
+    d_maxy = -d_miny;
   };
 
   double value(int x, int y) const {
@@ -70,7 +84,15 @@ public:
   };
 
   void value(int x, int y, double val) {
-    d_values[x+g_CX][y+g_CY] = val;
+    // See if we are filling in a new region (center is [0,0])
+    if (x < d_minx) { d_minx = x; }
+    if (x > d_maxx) { d_maxx = x; }
+    if (y < d_miny) { d_miny = y; }
+    if (y > d_maxy) { d_maxy = y; }
+
+    // Write to the actual memory location (offset to center).
+    //printf("XXX X range = %d,%d; Y range = %d,%d\n", d_minx, d_maxx, d_miny, d_maxy);
+    d_values[x + g_CX][y + g_CY] = val;
   };
 
   // "ita" means "imager-to-airy-space".
@@ -82,9 +104,28 @@ public:
                             double pixel_fraction_hidden,
                             int samples_per_pixel);
 
+  // Methods needed for image_wrapper base class (which we use to write the TIFF file).
+  void read_range(int &minx, int &maxx, int &miny, int &maxy) const {
+    minx = d_minx; maxx = d_maxx; miny = d_miny; maxy = d_maxy;
+  };
+  unsigned get_num_colors(void) const { return 1; };
+  double read_pixel_nocheck(int x, int y, unsigned rgb = 0) const {
+    return value(x,y);
+  };
+  bool read_pixel(int x, int y, double &val, unsigned rgb = 0) const {
+    if ( (x < d_minx) || (x > d_maxx) || (y < d_miny) || (y > d_maxy) ) {
+      val = 0.0;
+      return false;
+    } else {
+      val = read_pixel_nocheck(x,y, rgb);
+      return true;
+    }
+  }
+
 protected:
   double  d_values[g_NX][g_NY];
-} g_Image;
+  int     d_minx, d_maxx, d_miny, d_maxy;  //< Range of pixels that have had something filled in, (0,0) is the center.
+} g_Image, g_NoiseImage;
 
 //--------------------------------------------------------------------------
 // Tcl controls and displays
@@ -96,9 +137,9 @@ Tclvar_float_with_scale	g_Radius("aperture_nm", ".kernel.aperture", 1000, 3000, 
 Tclvar_float_with_scale	g_PixelXOffset("x_offset_pix", "", -1, 1, 0);
 Tclvar_float_with_scale	g_PixelYOffset("y_offset_pix", "", -1, 1, 0);
 Tclvar_float_with_scale	g_SampleCount("samples", "", 64, 256, 64);
-Tclvar_float_with_scale	g_UniformNoise("uniform_noise", "", 0, 0.1, 0.005);
-Tclvar_float_with_scale	g_PhotonNoise("photon_noise", "", 0, 0.1, 0.03);
-Tclvar_float_with_scale	g_DisplayGain("display_gain", "", 1,30, 20);
+Tclvar_float_with_scale	g_UniformNoise("uniform_noise", "", 0, 0.1, 0.0077);
+Tclvar_float_with_scale	g_PhotonNoise("photon_noise", "", 0, 0.1, 0.0137);
+Tclvar_float_with_scale	g_DisplayGain("display_gain", "", 1,30, 17.7);
 Tclvar_int_with_button	g_ShowSqrt("show_sqrt","", 1);
 Tclvar_int_with_button	g_quit("quit",NULL);
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
@@ -327,7 +368,7 @@ void drawPixelBarGraphs(
   }
 }
 
-void drawPixelIntensities(
+void drawPixelIntensitiesAndComputeNoiseImage(
   double width,		//< Width in pixels of the screen (assumed isotropic in X and Y)
   double units,		//< Converts from Pixel units to screen-space units
   double pixelSpacing,	//< How far in screen pixels between imager pixels
@@ -339,6 +380,7 @@ void drawPixelIntensities(
   // Compute how far to step between pixel centers in the screen, then
   // how far down you can go without getting below -1 when taking these
   // steps.  Then take one more step than this to get started.
+  // THIS CODE MUST MATCH that found in saveNoiseImage
   double pixelStepInScreen = 1/(width/2.0) * (pixelSpacing/1e9) * units;
   double halfStepInScreen = 0.5 * pixelStepInScreen;
   int numsteps = floor(1/pixelStepInScreen) + 1;
@@ -365,16 +407,19 @@ void drawPixelIntensities(
 
       // Add noise to the fraction.
       // PhotonNoise is the fraction additional photons that may be generated.  It
-      // scales with the number of photons actually seen in a pixel.  It is applied first
-      // because it depends on the original pixel intensity.
+      // scales with the square root of the number of photons actually seen in a pixel.
+      // XXX Note that the number of photons needs to be way above 1 for this to work.
+      // XXX This should use a Poisson distribution, not a uniform distribution.
+      // It is applied first because it depends on the original pixel intensity.
       // Uniform noise is what fraction of the total Airy volume each pixel adds or
       // subtracts (range is -0.5 to 0.5 scaled by the UniformNoise parameter.  It
       // is added second, because it does not depend on the original intensity.  This
       // corresponds to readout noise.
+      // XXX What distribution should readout noise have?
       double r1 = (static_cast<double>( rand() )) / RAND_MAX;
       double r2 = (static_cast<double>( rand() )) / RAND_MAX;
       frac *= 1.0 + r1 * g_PhotonNoise;
-      frac += r2 * g_UniformNoise;
+      frac += (r2 - 0.5) * g_UniformNoise;
 
       // XXX Noise discussion:
       // Noise independent of anything:
@@ -395,6 +440,9 @@ void drawPixelIntensities(
       // XXX If OpenGL didn't clip this value from 0-1, we'd need to check
       // to make sure it did not go over one here.
       frac *= g_DisplayGain;
+
+      // Copy the resulting value into the noise image
+      g_NoiseImage.value(i,j,frac);
 
       // Draw a filled-in square that covers the whole pixel with a color
       // scaled to the fraction of the Airy disk volume computed above.
@@ -494,7 +542,7 @@ void myDisplayFunc(void)
   // Draw the pixel intensities in the upper-right portion of the screen.
   glLoadIdentity();
   glViewport(g_Window_Size_X/2, g_Window_Size_Y/2, g_Window_Size_X/2, g_Window_Size_Y/2);
-  drawPixelIntensities(g_Window_Size_X, g_Window_Units, g_PixelSpacing, g_PixelHidden, g_PixelXOffset, g_PixelYOffset, totVol);
+  drawPixelIntensitiesAndComputeNoiseImage(g_Window_Size_X, g_Window_Units, g_PixelSpacing, g_PixelHidden, g_PixelXOffset, g_PixelYOffset, totVol);
   //drawPixelGrid(g_Window_Size_X, g_Window_Units, g_PixelSpacing);
 
   // Set the viewport back to the whole window.
@@ -502,6 +550,22 @@ void myDisplayFunc(void)
 
   // Swap buffers so we can see it.
   glutSwapBuffers();
+
+  // If we're supposed to be saving images, then do so
+  if (g_basename != NULL) {
+    if (strlen(g_basename) > 2000) {
+      fprintf(stderr,"Cannot save to file, name too long\n");
+    } else {
+      char filename[2048];
+      sprintf(filename, "%s.%03d.tif", g_basename, g_basenum);
+
+      printf("Saving frame to %s\n", filename);
+      // Write to the file, scaled so that 65535 is the max (openGL had 1 as the max)
+      g_NoiseImage.write_to_tiff_file(filename, 65535.0);
+
+      g_basenum++;
+    }
+  }
 
   // Have no longer posted redisplay since the last display.
   g_already_posted = false;
@@ -693,7 +757,30 @@ void motionCallbackForGLUT(int x, int y) {
 
 void  logfilename_changed(char *newvalue, void *)
 {
-  printf("XXX Logfile name changed to %s\n", newvalue);
+  // Clear everything that was set before.
+  g_basenum = 0;
+  if (g_basename) { delete [] g_basename; g_basename = NULL; }
+
+  // If the basename has been set to empty, then we're done saving,
+  // so just leave things un-set.
+  if ( (newvalue == NULL) || (strlen(newvalue) == 0) ) {
+    return;
+  }
+
+  // Form the base name by stripping off any file extension (probably
+  // .tif) from the file name and putting it into g_basename.
+  g_basename = new char[strlen(newvalue)+1];
+  if (g_basename == NULL) {
+    fprintf(stderr, "logfilename_changed(): Out of memory\n");
+    cleanup();
+    exit(-1);
+  }
+  strcpy(g_basename, newvalue);
+  char *last_dot = strrchr(g_basename, '.');
+  if (last_dot != NULL) {
+    *last_dot = '\0';
+  }
+  printf("Saving to a sequence of images named %s.NNN.tif\n", g_basename);
 }
 
 //--------------------------------------------------------------------------

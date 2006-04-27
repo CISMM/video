@@ -47,11 +47,11 @@ proc logging_changed { varName index op } {
     global logging logfilename fileinfo
 
     if {$logging == 1} {
-	set types { {"VRPN tracker log files" "*.vrpn"} }
+	set types { {"TIFF files" "*.tif"} }
 	set filename [tk_getSaveFile -filetypes $types \
-		-defaultextension ".vrpn" \
+		-defaultextension ".tif" \
 		-initialdir $fileinfo(open_dir) \
-		-title "Name for log file"]
+		-title "Name for file sequence"]
 	if {$filename != ""} {
 	    # setting this variable triggers a callback in C code
 	    # which opens the file.
