@@ -486,7 +486,7 @@ spot_tracker_XY  *create_appropriate_xytracker(double x, double y, double r)
   // If we are using the oriented-rod kernel, we create a new one depending on the type
   // of subordinate spot tracker that is being used.
   if (g_rod) {
-    // If we asked for a FIONA rod tracker, use symmetric instead
+    // If we asked for a FIONA rod tracker, use symmetric instead.
     if (g_kernel_type == KERNEL_FIONA) {
       g_kernel_type = KERNEL_SYMMETRIC;
     }
@@ -532,6 +532,7 @@ spot_tracker_XY  *create_appropriate_xytracker(double x, double y, double r)
       } else {
         volume -= count*background;
       }
+      printf("XXX FIONA kernel: background = %lg, volume = %lg\n", background, volume);
       tracker = new Gaussian_spot_tracker(r, (g_invert != 0), g_precision, 0.1, g_sampleSpacing, background, volume);
     } else if (g_kernel_type == KERNEL_SYMMETRIC) {
       g_interpolate = 1;
@@ -1429,7 +1430,14 @@ static void optimize_tracker(Spot_Information *tracker)
   if (g_parabolafit) {
     tracker->xytracker()->optimize_xy_parabolafit(*g_image, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
   } else {
-    tracker->xytracker()->optimize_xy(*g_image, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
+    // For FIONA trackers, we optimize the radius.  Other types of trackers seem to
+    // just blow up or shrink the radius, but the Gaussian fit done by FIONA should be best at some
+    // particular radius and worse at all others, so we let it optimize.
+    if (g_kernel_type == KERNEL_FIONA) {
+      tracker->xytracker()->optimize(*g_image, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
+    } else {
+      tracker->xytracker()->optimize_xy(*g_image, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
+    }
   }
 
   // If we are doing prediction, update the estimated velocity based on the

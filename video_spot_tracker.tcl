@@ -87,7 +87,7 @@ pack .kernel.track.top.z.value
 pack .kernel.track.top -side top
 label .kernel.track.bottom.errlabel -text Fitness
 pack .kernel.track.bottom.errlabel -side left
-label .kernel.track.bottom.err -width 10 -textvariable error
+label .kernel.track.bottom.err -width 15 -textvariable error
 pack .kernel.track.bottom.err -side left
 pack .kernel.track.bottom -side top
 pack .kernel.track -side left

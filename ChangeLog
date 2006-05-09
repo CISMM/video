@@ -1,5 +1,15 @@
 2006-05-09  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* spot_tracker.cpp : Fixed a bug in the radius-optimization
+		code that was causing the radius always to squash down
+		to size 1.
+	* video_spot_tracker.tcl : Increased the size of the textbox
+		for the error value.
+	* video_spot_tracker.cpp : Made FIONA tracker optimize the
+		radius as well as the position.
+
+2006-05-09  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* airy_maker.cpp : Lets it take steps between saving frames
 		when it is logging.  Bumped version number to 01.03.
 

@@ -85,7 +85,7 @@ bool  spot_tracker_XY::take_single_optimization_step(const image_wrapper &image,
 	_fitness = new_fitness;
 	betterrad = true;
       } else {
-	set_radius(starting_rad - _radstep);	// Back where we started in radius
+	set_radius(starting_rad);	// Back where we started in radius
       }
     }
   }
