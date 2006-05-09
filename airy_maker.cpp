@@ -26,7 +26,7 @@
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.02";
+const char *Version_string = "01.03";
 
 //--------------------------------------------------------------------------
 // Constants needed by the rest of the program
@@ -44,6 +44,7 @@ int	g_mousePressX, g_mousePressY;	  //< Where the mouse was when the button was 
 int	g_whichDragAction;		  //< What action to take for mouse drag
 char    *g_basename = NULL;               //< Base name for saving files
 int     g_basenum = 0;                    //< Number to append to the next-saved file
+int     g_logrepeatcount = 0;             //< Keeps track of how many frames at this location have been logged
 
 //--------------------------------------------------------------------------
 // Global variables
@@ -143,6 +144,9 @@ Tclvar_float_with_scale	g_DisplayGain("display_gain", "", 1,30, 17.7);
 Tclvar_int_with_button	g_ShowSqrt("show_sqrt","", 1);
 Tclvar_int_with_button	g_quit("quit",NULL);
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
+Tclvar_float_with_scale	g_LogRepeatLocation("repeat_position", ".log", 1, 10, 1);
+Tclvar_float_with_scale	g_LogDX("move_in_x", ".log", 0, 1, 0.1);
+Tclvar_float_with_scale	g_LogDY("move_in_y", ".log", 0, 1, 0.1);
 
 //--------------------------------------------------------------------------
 // Glut callback routines.
@@ -564,6 +568,13 @@ void myDisplayFunc(void)
       g_NoiseImage.write_to_tiff_file(filename, 65535.0);
 
       g_basenum++;
+
+      // If we saved as many frames here as we should, then increment the location
+      if (++g_logrepeatcount >= g_LogRepeatLocation) {
+        g_PixelXOffset = g_PixelXOffset + g_LogDX;
+        g_PixelYOffset = g_PixelYOffset + g_LogDY;
+        g_logrepeatcount = 0;
+      }
     }
   }
 
@@ -759,6 +770,7 @@ void  logfilename_changed(char *newvalue, void *)
 {
   // Clear everything that was set before.
   g_basenum = 0;
+  g_logrepeatcount = 0;
   if (g_basename) { delete [] g_basename; g_basename = NULL; }
 
   // If the basename has been set to empty, then we're done saving,

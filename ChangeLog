@@ -1,3 +1,8 @@
+2006-05-09  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* airy_maker.cpp : Lets it take steps between saving frames
+		when it is logging.  Bumped version number to 01.03.
+
 2006-04-27  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* airy_maker.cpp : Made it write out TIFF stacks.  Still not

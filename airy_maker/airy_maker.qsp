@@ -1,16 +1,17 @@
 [General]
 FileVersion=1.1
 FileType=QSetupIniFile
-ComposerVersion=4.0.0.4
+ComposerVersion=5.0.0.0
+OperatingSystem=WinXP  5.1  2600 (Service Pack 2)
 
 [Project]
 ProjectName=airy_maker
 ProjectDirectory=F:\taylorr\STM\src\video\airy_maker
 NonSFXDirectory=F:\taylorr\STM\src\video\airy_maker\NonSFX
-MediaFileName=airy_disk_installer_00_09
+MediaFileName=airy_disk_installer_01_03
 CopyMediaToFName=
 ProgramDescriptiveName=Airy disk maker
-ProgramVersion=00.09
+ProgramVersion=01.03
 CompanyName=UNC Nanoscale Science Research Group
 ProgVerLiveUpdate=0
 RegisterAsApp=1
@@ -20,22 +21,25 @@ UseNonSFXDir=0
 ClrNonSFXDir=0
 CompressNonSFXFiles=0
 ForceCopyNonSFXFiles=0
+CompressionLevel=0
 
 [Display]
 AddSetupBackground=1
+SetupBackground3D=1
 TopLabel=1
 TopLabelVer=0
 TopLabel2=0
 BottomLabel=0
-TopLabelText="Airy disk constructor 00.09"
+TopLabelText="Airy disk constructor 01.03"
 TopLabel2Text=""
 BottomLabelText="Copyright © 2003"
+BackgroundDesign=Gradient
 TopBackgroundColor=16711680
 BottomBackgroundColor=0
 AddBottomColor=1
 DlgBmp3DFrame=1
 DialogStyle=Modern
-AddDialogBitmap=1
+AddDialogBitmap=0
 DialogBitmapFileName=F:\taylorr\STM\src\video\airy_maker\icon64.bmp
 AddBackgroundBitmap=0
 BackgroundBitmapFileName=
@@ -58,7 +62,7 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|
 CompanyUrl=www.cs.unc.edu/nano
 
 [TargetExe]
-TargetDirectory=<AbsoluteDir>C:\NSRG\bin\airy_disk_maker_00.09
+TargetDirectory=<AbsoluteDir>C:\NSRG\bin\airy_disk_maker_01.03
 CommonDirectory=<CommonFilesDir>UNC Nanoscale Science Research Group
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\airy_maker.bat
@@ -77,6 +81,9 @@ SpaceReqOnDrive=
 RequestUserName=1
 RequestCompanyName=1
 RequestSerialNumberAlso=0
+MandatoryUserName=1
+MandatoryCompanyName=1
+MandatorySerialNumber=1
 RequestSerialCheckDLL=0
 SerialCheckDll=
 RequestPredefinedSerial=0
@@ -99,7 +106,7 @@ ShowCopyrightWarning=1
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=NSRG\airy_maker_00.09
+ProgramLinkFolder=NSRG\airy_maker_01.03
 ProgramLinkName=Airy_maker
 ProgramLinkParam=
 ProgramLinkWorkDir=<Application Folder>
@@ -145,7 +152,7 @@ BackgroundUpdate=0
 RestartProcess=0
 InformFinish=0
 UpdateProjectFName=
-DownloadURL_UPDATE=http://
+DownloadURL_UPDATE=http:
 NameOfUpdateFile=
 RunningProcess=
 VersionOriginal=1
@@ -162,15 +169,21 @@ CreateUnInstall=1
 ScrambleUnInstallData=1
 HideErrMsgUnInstall=0
 HideLogBtnUnInstall=0
+AddRemoveProgramsUnInstall=1
+AddRemoveButtonButtonInstall=1
 UnInstallExeStampSwitch=0
 UnInstallExeStamp=
 CreateLogFile=0
 ConfirmExtract=0
 TestAdminRights=1
 TestAdminRightsUnInstall=1
+SetAllowFullAccess=0
 TestDotNetFramework=0
 TestExeBeforeInstall=0
 TestExeBeforeUnInstall=0
+AutorunCreateInfFile=1
+AutorunTest=0
+AutorunStartApp=0
 
 [Registry]
 
