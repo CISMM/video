@@ -1,3 +1,8 @@
+2006-05-18  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.tcl : Removing FIONA control from display.
+	* video_spot_tracker.cpp : Changing version number.
+
 2006-05-09  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* spot_tracker.cpp : Fixed a bug in the radius-optimization

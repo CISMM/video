@@ -49,7 +49,7 @@ radiobutton .kernel.type.right.fiona -variable kerneltype -text FIONA -value 3
 pack .kernel.type.left.disc -anchor w
 pack .kernel.type.left.cone -anchor w
 pack .kernel.type.right.symmetric -anchor w
-pack .kernel.type.right.fiona -anchor w
+#XXX pack .kernel.type.right.fiona -anchor w
 pack .kernel.type.left -side left
 pack .kernel.type.right -side left
 pack .kernel.type -side left
