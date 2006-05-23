@@ -1,3 +1,11 @@
+2006-05-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* SEM_camera_server.cpp : Fixed problems that caused it to miss
+		frames and also to hang up at the end of the file.
+	* SEM_camera_server.h : Same.
+	* video_spot_tracker.cpp : Added 3D translucent surface display
+		for debugging FIONA.
+
 2006-05-18  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.tcl : Removing FIONA control from display.

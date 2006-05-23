@@ -1089,74 +1089,188 @@ void myDisplayFunc(void)
 void myBeadDisplayFunc(void)
 {
   // Clear the window and prepare to draw in the back buffer
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
   glDrawBuffer(GL_BACK);
   glClearColor(0.0, 0.0, 0.0, 0.0);
-  glClear(GL_COLOR_BUFFER_BIT);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   if (g_show_video && g_active_tracker) {
-    // Copy pixels into the image buffer.
-    int x,y;
-    float xImageOffset = g_active_tracker->xytracker()->get_x() - (g_beadseye_size+1)/2.0;
-    float yImageOffset = g_active_tracker->xytracker()->get_y() - (g_beadseye_size+1)/2.0;
-    double  double_pix;
+    if (g_kernel_type == KERNEL_FIONA) {
+      // For FIONA, we want to draw the shape of the Gaussian kernel against
+      // the shape of the underlying image, rather than just the image resampled
+      // at the appropriate centering.  We do this as a pair of wire-frame images
+      // so that we can see through one into the other.
 
-    // If we are outside 2 radii, then leave it blank to avoid having a
-    // moving border that will make us think the spot is moving when it
-    // is not.
-    for (x = 0; x < g_beadseye_size; x++) {
-      for (y = 0; y < g_beadseye_size; y++) {
-	g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = 0;
-	g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = 0;
-	g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = 0;
-	g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
+      // Determine the scale needed to make the maximum Z value equal
+      // to 1.
+      double radius = g_active_tracker->xytracker()->get_radius();
+      double xImageOffset = g_active_tracker->xytracker()->get_x();
+      double yImageOffset = g_active_tracker->xytracker()->get_y();
+      double max = -1e10;
+      double x,y;
+      double double_pix;
+      for (x = - 2*radius; x <= 2*radius; x++) {
+        for (y = - 2*radius; y <= 2*radius; y++) {
+	  g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix);
+          if (double_pix > max) { max = double_pix; }
+        }
       }
-    }
-    double radius = g_active_tracker->xytracker()->get_radius();
-    if (g_rod) {
-      // Horrible hack to make this work with rod type
-      radius = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_length() / 2;
-    }
-    int min_x = (g_beadseye_size+1)/2 - 2 * radius;
-    int max_x = (g_beadseye_size+1)/2 + 2 * radius;
-    int min_y = (g_beadseye_size+1)/2 - 2 * radius;
-    int max_y = (g_beadseye_size+1)/2 + 2 * radius;
+      double max_to_draw = (2 * radius) + 5;  // Draw a bit past the edge
+      double scale = 1 / max_to_draw;
+      double zScale = 1/max;
 
-    // Make sure we don't try to draw outside the allocated buffer
-    if (min_x < 0) { min_x = 0; }
-    if (min_y < 0) { min_y = 0; }
-    if (max_x > g_beadseye_size-1) { max_x = g_beadseye_size-1; }
-    if (max_y > g_beadseye_size-1) { max_y = g_beadseye_size-1; }
+      // Set the projection matrix to let us see the whole thing.  Be sure to put
+      // this back at the far end.
+      glMatrixMode(GL_PROJECTION);
+      glLoadIdentity();
+      glFrustum(-0.5,0.5, -0.5,0.5, 7,15);
+      glMatrixMode(GL_MODELVIEW);
+      glLoadIdentity();
 
-    // Figure out how many bits we need to shift to the right.
-    // This depends on how many bits the camera has above zero minus
-    // the number of bits we want to shift to brighten the image.
-    // If this number is negative, clamp to zero.
-    int shift_due_to_camera = g_camera_bit_depth - 8;
-    int total_shift = shift_due_to_camera - g_brighten;
-    if (total_shift < 0) { total_shift = 0; }
-    int shift = total_shift;
-    for (x = min_x; x < max_x; x++) {
-      for (y = min_y; y < max_y; y++) {
-	if (!g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix)) {
+      // Set the viewpoint to something useful, so that we can see the
+      // relative heights of the image and the kernel.  Set it to spinning
+      // so that we can get a good idea of the relative shapes.
+      glTranslated(0,-scale/2, -10);
+      glRotated(-30, 1,0,0 );
+      static double spin = 15.0;
+      spin += 2;
+      if (spin > 360) { spin -= 360; }
+      glRotated( spin, 0,0,1 );
+
+      // Draw a ground plane with a grid on it so that we can see which
+      // of the line drawings are moving above/below the plane.  Make
+      // the lines a little above the surface, so they don't Z fight.
+      glColor3f(0.3,0.3,0.3);
+      glBegin(GL_TRIANGLES);
+        glVertex3d(-1,-1,0);
+        glVertex3d( 1,-1,0);
+        glVertex3d( 1, 1,0);
+
+        glVertex3d( 1, 1,0);
+        glVertex3d(-1, 1,0);
+        glVertex3d(-1,-1,0);
+      glEnd();
+
+      glColor3f(0.1, 0.1, 0.1);
+      glBegin(GL_LINES);
+      for (x = - max_to_draw; x <= max_to_draw; x++) {
+          glVertex3d(x, -1, 0.1);
+          glVertex3d(x,  1, 0.1);
+      }
+      for (y = - max_to_draw; y <= max_to_draw; y++) {
+          glVertex3d(-1, y, 0.1);
+          glVertex3d( 1, y, 0.1);
+      }
+      glEnd();
+
+      // Draw a graph of the image data in red, along Y direction.
+      // Draw it again along the X direction, to produce a complete mesh.
+      glColor3f(1,0.2,0.2);
+      for (x = - max_to_draw; x <= max_to_draw; x++) {
+        glBegin(GL_LINE_STRIP);
+        for (y = - max_to_draw; y <= max_to_draw; y++) {
+	  g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix);
+          glVertex3d(x*scale, y*scale, double_pix*zScale);
+        }
+        glEnd();
+      }
+      for (y = - max_to_draw; y <= max_to_draw; y++) {
+        glBegin(GL_LINE_STRIP);
+        for (x = - max_to_draw; x <= max_to_draw; x++) {
+	  g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix);
+          glVertex3d(x*scale, y*scale, double_pix*zScale);
+        }
+        glEnd();
+      }
+
+      // Draw a graph of the kernel data in green, along X direction.
+      // Draw it again along the Y direction, to produce a complete mesh.
+      glColor3f(0.0,1.0,0.6);
+      for (x = - max_to_draw; x <= max_to_draw; x++) {
+        glBegin(GL_LINE_STRIP);
+        for (y = - max_to_draw; y <= max_to_draw; y++) {
+	  static_cast<Gaussian_spot_tracker *>(g_active_tracker->xytracker())->read_pixel(x, y, double_pix);
+          glVertex3d(x*scale, y*scale, double_pix*zScale);
+        }
+        glEnd();
+      }
+      for (y = - max_to_draw; y <= max_to_draw; y++) {
+        glBegin(GL_LINE_STRIP);
+        for (x = - max_to_draw; x <= max_to_draw; x++) {
+	  static_cast<Gaussian_spot_tracker *>(g_active_tracker->xytracker())->read_pixel(x, y, double_pix);
+          glVertex3d(x*scale, y*scale, double_pix*zScale);
+        }
+        glEnd();
+      }
+
+    } else {
+      // Copy pixels into the image buffer.
+      int x,y;
+      float xImageOffset = g_active_tracker->xytracker()->get_x() - (g_beadseye_size+1)/2.0;
+      float yImageOffset = g_active_tracker->xytracker()->get_y() - (g_beadseye_size+1)/2.0;
+      double  double_pix;
+
+      // If we are outside 2 radii, then leave it blank to avoid having a
+      // moving border that will make us think the spot is moving when it
+      // is not.
+      for (x = 0; x < g_beadseye_size; x++) {
+        for (y = 0; y < g_beadseye_size; y++) {
 	  g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = 0;
 	  g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = 0;
 	  g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = 0;
 	  g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
-	} else {
-	  g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = ((uns16)(double_pix)) >> shift;
-	  g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = ((uns16)(double_pix)) >> shift;
-	  g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = ((uns16)(double_pix)) >> shift;
-	  g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
-	}
+        }
       }
-    }
+      double radius = g_active_tracker->xytracker()->get_radius();
+      if (g_rod) {
+        // Horrible hack to make this work with rod type
+        radius = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_length() / 2;
+      }
+      int min_x = (g_beadseye_size+1)/2 - 2 * radius;
+      int max_x = (g_beadseye_size+1)/2 + 2 * radius;
+      int min_y = (g_beadseye_size+1)/2 - 2 * radius;
+      int max_y = (g_beadseye_size+1)/2 + 2 * radius;
 
-    // Store the pixels from the image into the frame buffer
-    // so that they cover the entire image (starting from lower-left
-    // corner, which is at (-1,-1)).
-    glRasterPos2f(-1, -1);
-    glDrawPixels(g_beadseye_size, g_beadseye_size,
-      GL_RGBA, GL_UNSIGNED_BYTE, g_beadseye_image);
+      // Make sure we don't try to draw outside the allocated buffer
+      if (min_x < 0) { min_x = 0; }
+      if (min_y < 0) { min_y = 0; }
+      if (max_x > g_beadseye_size-1) { max_x = g_beadseye_size-1; }
+      if (max_y > g_beadseye_size-1) { max_y = g_beadseye_size-1; }
+
+      // Figure out how many bits we need to shift to the right.
+      // This depends on how many bits the camera has above zero minus
+      // the number of bits we want to shift to brighten the image.
+      // If this number is negative, clamp to zero.
+      int shift_due_to_camera = g_camera_bit_depth - 8;
+      int total_shift = shift_due_to_camera - g_brighten;
+      if (total_shift < 0) { total_shift = 0; }
+      int shift = total_shift;
+      for (x = min_x; x < max_x; x++) {
+        for (y = min_y; y < max_y; y++) {
+	  if (!g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix)) {
+	    g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = 0;
+	    g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = 0;
+	    g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = 0;
+	    g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
+	  } else {
+	    g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = ((uns16)(double_pix)) >> shift;
+	    g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = ((uns16)(double_pix)) >> shift;
+	    g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = ((uns16)(double_pix)) >> shift;
+	    g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
+	  }
+        }
+      }
+
+      // Store the pixels from the image into the frame buffer
+      // so that they cover the entire image (starting from lower-left
+      // corner, which is at (-1,-1)).
+      glRasterPos2f(-1, -1);
+      glDrawPixels(g_beadseye_size, g_beadseye_size,
+        GL_RGBA, GL_UNSIGNED_BYTE, g_beadseye_image);
+    }
   }
 
   // Swap buffers so we can see it.
@@ -1430,14 +1544,7 @@ static void optimize_tracker(Spot_Information *tracker)
   if (g_parabolafit) {
     tracker->xytracker()->optimize_xy_parabolafit(*g_image, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
   } else {
-    // For FIONA trackers, we optimize the radius.  Other types of trackers seem to
-    // just blow up or shrink the radius, but the Gaussian fit done by FIONA should be best at some
-    // particular radius and worse at all others, so we let it optimize.
-    if (g_kernel_type == KERNEL_FIONA) {
-      tracker->xytracker()->optimize(*g_image, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
-    } else {
-      tracker->xytracker()->optimize_xy(*g_image, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
-    }
+    tracker->xytracker()->optimize_xy(*g_image, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
   }
 
   // If we are doing prediction, update the estimated velocity based on the

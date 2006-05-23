@@ -45,8 +45,10 @@ protected:
   vrpn_File_Connection *_fileCon;	  //< File connection, if we have one.
   bool	_gotResolution;			  //< Lets us know we've heard the resolution from the server
   unsigned short _bitDepth;		  //< Bit depth that is set
-  unsigned _frameNum;			  //< How many frames we've read in.
+  int     _frameNum;			  //< How many frames we've read in.
   bool	  _justStepped;			  //< Just took a step to a new location, play out frame.
+  bool    _pause_after_one_frame;         //< Flag to let the callback handler know to pause after we get one
+  bool    _paused;                        //< Keeps track of whether we're paused or not.
 
   // Global Memory Pointers used to get non-virtual memory
   vrpn_uint16 *_memory; //< Pointer to the in-memory buffer read from the SEM

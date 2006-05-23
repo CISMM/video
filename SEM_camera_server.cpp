@@ -123,6 +123,14 @@ void SEM_camera_server::handle_SEM_update(void *ud, const nmm_Microscope_SEM_Cha
           // when we get the end of an image, increment the frame number
           if (info.sem->lastScanMessageCompletesImage()) {
 	    me->_frameNum++;
+            if (me->_pause_after_one_frame) { 
+              // To avoid skipping past the message we just read, find out the current
+              // message time and set the time on the file to it.  This should stop us
+              // "on a dime".  Then pause to set the replay rate to zero so we stay
+              // put.
+              me->_fileCon->jump_to_filetime(info.msg_time);
+              me->pause();
+            }
           }
         }
 
@@ -162,9 +170,6 @@ bool  SEM_camera_server::read_one_frame(unsigned short minX, unsigned short maxX
 				     unsigned short minY, unsigned short maxY,
 				     unsigned exposure_time_millisecs)
 {
-  unsigned lastFrameNum = _frameNum;
-  struct timeval start, now;
-
   // Make sure the frame we've been asked to get is within the bounds of
   // what we are going to get, then go get a full-screen image.
   if ( (minX < 0) || (minY < 0) || (maxX > _num_columns-1) || (maxY > _num_rows-1) ) {
@@ -183,15 +188,31 @@ bool  SEM_camera_server::read_one_frame(unsigned short minX, unsigned short maxX
     return true;
   }
 
+  // If we're paused, then go ahead and bail because we're not going to be
+  // getting any images.
+  if (_paused) {
+    return false;
+  }
+
   // Wait until we either get a new complete scan or else time out waiting for one.
+  // For the SEM server, timeout after two seconds rather than a tenth of a second.
+  // This is because we're also now spoofing an SEM with our optical cameras, which
+  // have much longer integration times.
+  struct timeval start, now;
   gettimeofday(&start, NULL);
+  int lastFrameNum = _frameNum;
   while (lastFrameNum == _frameNum) {
     _myScope->mainloop();
     gettimeofday(&now, NULL);
-    if (duration(now, start) > 100000L) {
+    if (duration(now, start) > 2000000L) {
       return false;
     }
+//    printf(".");
     vrpn_SleepMsecs(1);	// Avoid eating the whole CPU
+  }
+  int frames_moved = _frameNum - lastFrameNum;
+  if (frames_moved != 1) {
+    fprintf(stderr, "SEM_camera_server::read_one_frame(): Skipped %d frames\n", frames_moved-1);
   }
   return true;
 }
@@ -213,7 +234,7 @@ bool SEM_camera_server::open_and_find_parameters(const char *name)
   _gotResolution = false;
   struct timeval start, now;
   _status = true;
-  _frameNum = 0;
+  _frameNum = -1;
   _myScope->mainloop();	  // Do one mainloop to pull in the file from disk
   gettimeofday(&start, NULL);
   while (!_gotResolution) {
@@ -233,14 +254,27 @@ bool SEM_camera_server::open_and_find_parameters(const char *name)
   vrpn_Connection *con = vrpn_get_connection_by_name(name);
   _fileCon = con->get_File_Connection();
 
+  // Set the file connection to only play back one message for each call to
+  // mainloop(), so that we don't skip past frames.
+  if (_fileCon) {
+    _fileCon->limit_messages_played_back(1);
+  }
+
   // Try to read the first frame from the SEM.  If we have a file controller,
   // then speed up the replay rate until we get done with the first frame.
   // If the reading times out, try again a bunch of times.
-  if (_fileCon) { _fileCon->set_replay_rate(100.0); }
+  if (_fileCon) {
+    _fileCon->set_replay_rate(100.0);
+    _paused = false;
+    _pause_after_one_frame = true;
+  }
   for (i = 0; i < 1000; i++) {
     if (read_one_frame(0, _num_columns-1, 0, _num_rows-1, 0)) { break; }
   }
-  if (_fileCon) { _fileCon->set_replay_rate(0.0); }
+  if (_fileCon) {
+    _fileCon->set_replay_rate(0.0);
+    _pause_after_one_frame = false;
+  }
 
   return _status;
 }
@@ -251,8 +285,10 @@ SEM_camera_server::SEM_camera_server(const char *name) :
   _bitDepth(0),
   _myScope(NULL),
   _memory(NULL),
-  _frameNum(0),
-  _justStepped(false)
+  _frameNum(-1),
+  _justStepped(false),
+  _pause_after_one_frame(false),
+  _paused(false)
 {
   //---------------------------------------------------------------------
   // Openthe SEM and find out what its capabilities are.
@@ -492,6 +528,7 @@ void  SEM_camera_server::play()
 {
   if (_fileCon) {
     _fileCon->set_replay_rate(1.0);
+    _paused = false;
   } else {
     fprintf(stderr, "SEM_camera_server: Cannot play a non-file connection.\n");
   }
@@ -501,6 +538,7 @@ void  SEM_camera_server::pause()
 {
   if (_fileCon) {
     _fileCon->set_replay_rate(0.0);
+    _paused = true;
   } else {
     fprintf(stderr, "SEM_camera_server: Cannot pause a non-file connection.\n");
   }
@@ -517,9 +555,12 @@ void  SEM_camera_server::rewind()
     // speed up the replay rate until we get done with the first frame.
     // If the reading times out, then retry the read several times.
     _fileCon->set_replay_rate(100.0);
-    for (i = 0; i < 1000; i++) {
+    _paused = false;
+    _pause_after_one_frame = true;
+    for (i = 0; i < 3; i++) {
       if (read_one_frame(0, _num_columns-1, 0, _num_rows-1, 0)) { break; }
     }
+    _pause_after_one_frame = false;
     pause();
     _justStepped = true;
 
@@ -530,17 +571,18 @@ void  SEM_camera_server::rewind()
 
 void  SEM_camera_server::single_step()
 {
-  int i;
   if (_fileCon) {
     // Try to read the next frame from the SEM.  First,
     // speed up the replay rate until we get done with the first frame.
-    // If the reading times out, then try again a number of times.
+    // If the reading times out, then we get no new image.
     _fileCon->set_replay_rate(100.0);
-    for (i = 0; i < 1000; i++) {
-      if (read_one_frame(0, _num_columns-1, 0, _num_rows-1, 0)) { break; }
+    _paused = false;
+    _pause_after_one_frame = true;
+    if (read_one_frame(0, _num_columns-1, 0, _num_rows-1, 0)) {
+      _justStepped = true;
     }
+    _pause_after_one_frame = false;
     pause();
-    _justStepped = true;
   } else {
     fprintf(stderr, "SEM_camera_server: Cannot single-step a non-file connection.\n");
   }
