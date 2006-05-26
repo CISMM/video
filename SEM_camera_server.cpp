@@ -207,8 +207,10 @@ bool  SEM_camera_server::read_one_frame(unsigned short minX, unsigned short maxX
     if (duration(now, start) > 2000000L) {
       return false;
     }
-//    printf(".");
-    vrpn_SleepMsecs(1);	// Avoid eating the whole CPU
+    // If we do the following, then it doesn't go fast enough on some machines because
+    // it sleeps in between each message (the fileconnection is now set to only do one
+    // message per mainloop).
+    //vrpn_SleepMsecs(0);	// Avoid eating the whole CPU
   }
   int frames_moved = _frameNum - lastFrameNum;
   if (frames_moved != 1) {

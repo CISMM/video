@@ -1,3 +1,10 @@
+2006-05-26  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* SEM_camera_server.cpp : Fixed problem that caused the SEM
+		videos to replay very slowly on some computers (removed
+		sleep call in an inner loop).
+	* video_spot_tracker.cpp : Bumped version number
+
 2006-05-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* SEM_camera_server.cpp : Fixed problems that caused it to miss
