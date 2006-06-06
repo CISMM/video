@@ -58,10 +58,6 @@ using namespace std;
 static void cleanup();
 static void dirtyexit();
 
-#ifndef	M_PI
-const double M_PI = 2*asin(1.0);
-#endif
-
 //--------------------------------------------------------------------------
 // Version string for this program
 const char *Version_string = "01.11";
@@ -1051,7 +1047,7 @@ void myIdleFunc(void)
 	image_spot_tracker_interp max_find((*loop)->tracker()->get_radius(), (g_invert != 0), g_precision,
 	  0.1, g_sampleSpacing);
 	max_find.set_location(x_base, y_base);
-	max_find.set_image(*g_last_image, x_base, y_base, (*loop)->tracker()->get_radius() + g_search_radius);
+	max_find.set_image(*g_last_image, g_colorIndex, x_base, y_base, (*loop)->tracker()->get_radius() + g_search_radius);
 
 	// Loop over the pixels within g_search_radius of the initial location and find the
 	// location with the best match over all of these points.  Do this in the current image.
@@ -1059,12 +1055,12 @@ void myIdleFunc(void)
 	int x_offset, y_offset;
 	int best_x_offset = 0;
 	int best_y_offset = 0;
-	double best_value = max_find.check_fitness(*g_this_image);
+	double best_value = max_find.check_fitness(*g_this_image, g_colorIndex);
 	for (x_offset = -floor(g_search_radius); x_offset <= floor(g_search_radius); x_offset++) {
 	  for (y_offset = -floor(g_search_radius); y_offset <= floor(g_search_radius); y_offset++) {
 	    if ( (x_offset * x_offset) + (y_offset * y_offset) <= radsq) {
 	      max_find.set_location(x_base + x_offset, y_base + y_offset);
-	      double val = max_find.check_fitness(*g_this_image);
+	      double val = max_find.check_fitness(*g_this_image, g_colorIndex);
 	      if (val > best_value) {
 		best_x_offset = x_offset;
 		best_y_offset = y_offset;
@@ -1080,7 +1076,7 @@ void myIdleFunc(void)
       }
 
       // Here's where the tracker is optimized to its new location
-      (*loop)->tracker()->optimize_xy(*g_this_image, x, y, (*loop)->tracker()->get_x(), (*loop)->tracker()->get_y() );
+      (*loop)->tracker()->optimize_xy(*g_this_image, g_colorIndex, x, y, (*loop)->tracker()->get_x(), (*loop)->tracker()->get_y() );
     }
 
     last_optimized_frame_number = g_frame_number;

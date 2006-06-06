@@ -89,7 +89,8 @@ protected:
   // we must write a complete texture, which may be larger than the actual bytes
   // allocated for the image.  After the first time, and if we don't change the
   // image size to be larger, we can use the subimage call to only write the
-  // pixels we have.
+  // pixels we have.  Also note that we need to swap things so that we write
+  // RGB rather then BGR.
   virtual bool write_to_opengl_texture(GLuint tex_id);
 };
 

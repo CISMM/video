@@ -745,73 +745,75 @@ void myDisplayFunc(void)
     int shift_due_to_camera = g_camera_bit_depth - 8;
     int total_shift = shift_due_to_camera - g_brighten;
     if (total_shift < 0) { total_shift = 0; }
-  if (g_opengl_video) {
-    // If we can't write using OpenGL, turn off the feature.
-    if (!g_image->write_to_opengl_quad(pow(2.0,g_brighten))) {
-      g_opengl_video = false;
-    }
-  } else {
-    int shift = total_shift;
-    for (r = *g_minY; r <= *g_maxY; r++) {
-      unsigned lowc = *g_minX, hic = *g_maxX; //< Speeds things up.
-      unsigned char *pixel_base = &g_glut_image[ 4*(lowc + g_image->get_num_columns() * r) ]; //< Speeds things up
-      for (c = lowc; c <= hic; c++) {
-	if (!g_image->read_pixel(c, r, uns_pix, g_colorIndex)) {
-	  fprintf(stderr, "Cannot read pixel from region\n");
-	  cleanup();
-      	  exit(-1);
-	}
 
-	// This assumes that the pixels are actually 8-bit values
-	// and will clip if they go above this.  It also writes pixels
-	// from the first channel into all colors of the image.  It uses
-	// RGBA so that we don't have to worry about byte-alignment problems
-	// that plagued us when using RGB pixels.
-
-        // Storing the uns_pix >> shift into an unsigned char and then storing
-        // it into all three is actually SLOWER than just storing it into all
-        // three directly.  Argh!
-        *(pixel_base++) = uns_pix >> shift;     // Stored in red
-        *(pixel_base++) = uns_pix >> shift;     // Stored in green
-        *(pixel_base++) = uns_pix >> shift;     // Stored in blue
-        pixel_base++;   // Skip alpha, it doesn't matter. //*(pixel_base++) = 255;                  // Stored in alpha
-
-#ifdef DEBUG
-	// If we're debugging, fill the border pixels with green
-	if ( (r == *g_minY) || (r == *g_maxY) || (c == *g_minX) || (c == *g_maxX) ) {
-	  g_glut_image[0 + 4 * (c + g_image->get_num_columns() * r)] = 0;
-	  g_glut_image[1 + 4 * (c + g_image->get_num_columns() * r)] = 255;
-	  g_glut_image[2 + 4 * (c + g_image->get_num_columns() * r)] = 0;
-	  g_glut_image[3 + 4 * (c + g_image->get_num_columns() * r)] = 255;
-	}
-#endif
+    if (g_opengl_video) {
+      // If we can't write using OpenGL, turn off the feature for next frame.
+      if (!g_image->write_to_opengl_quad(pow(2.0,g_brighten))) {
+        g_opengl_video = false;
       }
-    }
+    } else {
+      int shift = total_shift;
+      for (r = *g_minY; r <= *g_maxY; r++) {
+        unsigned lowc = *g_minX, hic = *g_maxX; //< Speeds things up.
+        unsigned char *pixel_base = &g_glut_image[ 4*(lowc + g_image->get_num_columns() * r) ]; //< Speeds things up
+        for (c = lowc; c <= hic; c++) {
+	  if (!g_image->read_pixel(c, r, uns_pix, g_colorIndex)) {
+	    fprintf(stderr, "Cannot read pixel from region\n");
+	    cleanup();
+      	    exit(-1);
+	  }
 
-    // Store the pixels from the image into the frame buffer
-    // so that they cover the entire image (starting from lower-left
-    // corner, which is at (-1,-1)).
-    glRasterPos2f(-1, -1);
+	  // This assumes that the pixels are actually 8-bit values
+	  // and will clip if they go above this.  It also writes pixels
+	  // from the first channel into all colors of the image.  It uses
+	  // RGBA so that we don't have to worry about byte-alignment problems
+	  // that plagued us when using RGB pixels.
+
+          // Storing the uns_pix >> shift into an unsigned char and then storing
+          // it into all three is actually SLOWER than just storing it into all
+          // three directly.  Argh!
+          *(pixel_base++) = uns_pix >> shift;     // Stored in red
+          *(pixel_base++) = uns_pix >> shift;     // Stored in green
+          *(pixel_base++) = uns_pix >> shift;     // Stored in blue
+          pixel_base++;   // Skip alpha, it doesn't matter. //*(pixel_base++) = 255;                  // Stored in alpha
+
 #ifdef DEBUG
-    printf("Drawing %dx%d pixels\n", g_image->get_num_columns(), g_image->get_num_rows());
+	  // If we're debugging, fill the border pixels with green
+	  if ( (r == *g_minY) || (r == *g_maxY) || (c == *g_minX) || (c == *g_maxX) ) {
+	    g_glut_image[0 + 4 * (c + g_image->get_num_columns() * r)] = 0;
+	    g_glut_image[1 + 4 * (c + g_image->get_num_columns() * r)] = 255;
+	    g_glut_image[2 + 4 * (c + g_image->get_num_columns() * r)] = 0;
+	    g_glut_image[3 + 4 * (c + g_image->get_num_columns() * r)] = 255;
+	  }
 #endif
-    // At one point, I changed this to GL_LUMINANCE and then we had to do
-    // only 1/4 of the pixel moving in the loop above and we have only 1/4
-    // of the memory use, so I figured things would render much more rapidly.
-    // In fact, the program ran more slowly (5.0 fps vs. 5.2 fps) with the
-    // LUMINANCE than with the RGBA.  Dunno how this could be, but it was.
-    // This happened again when I tried it with a raw file, got slightly slower
-    // with GL_LUMINANCE.  It must be that the glDrawPixels routine is not
-    // optimized to do that function as well as mine, perhaps because it has
-    // to write to the alpha channel as well.  Sure enough -- If I switch and
-    // write into the Alpha channel, it goes the same speed as when I use
-    // the GL_LUMINANCE call here.  Drat!  XXX How about if we make it an
-    // RGB rendering window and deal with the alignment issues and then make
-    // it a LUMINANCE DrawPixels... probably won't make anything faster but
-    // it may make it more confusing.
-    glDrawPixels(g_image->get_num_columns(),g_image->get_num_rows(),
-      GL_RGBA, GL_UNSIGNED_BYTE, g_glut_image);
-  }
+        }
+      }
+
+      // Store the pixels from the image into the frame buffer
+      // so that they cover the entire image (starting from lower-left
+      // corner, which is at (-1,-1)).
+      glRasterPos2f(-1, -1);
+#ifdef DEBUG
+      printf("Drawing %dx%d pixels\n", g_image->get_num_columns(), g_image->get_num_rows());
+#endif
+      // At one point, I changed this to GL_LUMINANCE and then we had to do
+      // only 1/4 of the pixel moving in the loop above and we have only 1/4
+      // of the memory use, so I figured things would render much more rapidly.
+      // In fact, the program ran more slowly (5.0 fps vs. 5.2 fps) with the
+      // LUMINANCE than with the RGBA.  Dunno how this could be, but it was.
+      // This happened again when I tried it with a raw file, got slightly slower
+      // with GL_LUMINANCE.  It must be that the glDrawPixels routine is not
+      // optimized to do that function as well as mine, perhaps because it has
+      // to write to the alpha channel as well.  Sure enough -- If I switch and
+      // write into the Alpha channel, it goes the same speed as when I use
+      // the GL_LUMINANCE call here.  Drat!  XXX How about if we make it an
+      // RGB rendering window and deal with the alignment issues and then make
+      // it a LUMINANCE DrawPixels... probably won't make anything faster but
+      // it may make it more confusing.
+      glDrawPixels(g_image->get_num_columns(),g_image->get_num_rows(),
+        GL_RGBA, GL_UNSIGNED_BYTE, g_glut_image);
+    } // End of "not g_opengl_video for texture"
+
   }
 
   // If we have been asked to show the tracking markers, draw them.
@@ -1305,7 +1307,7 @@ void myLandscapeDisplayFunc(void)
     for (x = 0; x < g_landscape_size; x++) {
       for (y = 0; y < g_landscape_size; y++) {
 	g_active_tracker->xytracker()->set_location(x + xImageOffset, y + yImageOffset);
-	this_val = g_active_tracker->xytracker()->check_fitness(*g_image);
+	this_val = g_active_tracker->xytracker()->check_fitness(*g_image, g_colorIndex);
 	g_landscape_floats[x + g_landscape_size * y] = this_val;
 	if (this_val < min_val) { min_val = this_val; }
 	if (this_val > max_val) { max_val = this_val; }
@@ -1356,7 +1358,7 @@ void myLandscapeDisplayFunc(void)
       } else {
 	g_active_tracker->xytracker()->set_location(x + xImageOffset, start_y);
       }
-      this_val = g_active_tracker->xytracker()->check_fitness(*g_image);
+      this_val = g_active_tracker->xytracker()->check_fitness(*g_image, g_colorIndex);
       glVertex3f( strip_start_x + x * strip_step_x, this_val * scale - offset,0);
     }
     glEnd();
@@ -1461,8 +1463,7 @@ void mykymographDisplayFunc(void)
 
 // Optimize to find the best fit starting from last position for a tracker.
 // Invert the Y values on the way in and out.
-// Don't let it adjust the radius here (otherwise it gets too
-// jumpy).
+// Don't let it adjust the radius here (otherwise it gets too jumpy).
 static void optimize_tracker(Spot_Information *tracker)
 {
   double  x, y;
@@ -1481,7 +1482,7 @@ static void optimize_tracker(Spot_Information *tracker)
     tracker->xytracker()->set_location(new_pos[0], new_pos[1]);
   }
 
-  // If the frame-number has changed, and we are doing global searches
+  // If the frame number has changed, and we are doing global searches
   // within a radius, then create an image-based tracker at the last
   // location for the current tracker on the last frame; scan all locations
   // within radius and find the maximum fit on this frame; move the tracker
@@ -1510,7 +1511,7 @@ static void optimize_tracker(Spot_Information *tracker)
     twolines_image_spot_tracker_interp max_find(tracker->xytracker()->get_radius(), (g_invert != 0), g_precision,
       0.1, g_sampleSpacing);
     max_find.set_location(last_pos[0], last_pos[1]);
-    max_find.set_image(*g_last_image, last_pos[0], last_pos[1], tracker->xytracker()->get_radius() + used_search_radius);
+    max_find.set_image(*g_last_image, g_colorIndex, last_pos[0], last_pos[1], tracker->xytracker()->get_radius() + used_search_radius);
 
     // Loop over the pixels within used_search_radius of the initial location and find the
     // location with the best match over all of these points.  Do this in the current image,
@@ -1520,12 +1521,12 @@ static void optimize_tracker(Spot_Information *tracker)
     int x_offset, y_offset;
     int best_x_offset = 0;
     int best_y_offset = 0;
-    double best_value = max_find.check_fitness(*g_image);
+    double best_value = max_find.check_fitness(*g_image, g_colorIndex);
     for (x_offset = -floor(used_search_radius); x_offset <= floor(used_search_radius); x_offset++) {
       for (y_offset = -floor(used_search_radius); y_offset <= floor(used_search_radius); y_offset++) {
 	if ( (x_offset * x_offset) + (y_offset * y_offset) <= radsq) {
 	  max_find.set_location(x_base + x_offset, y_base + y_offset);
-	  double val = max_find.check_fitness(*g_image);
+	  double val = max_find.check_fitness(*g_image, g_colorIndex);
 	  if (val > best_value) {
 	    best_x_offset = x_offset;
 	    best_y_offset = y_offset;
@@ -1542,9 +1543,9 @@ static void optimize_tracker(Spot_Information *tracker)
 
   // Here's where the tracker is optimized to its new location
   if (g_parabolafit) {
-    tracker->xytracker()->optimize_xy_parabolafit(*g_image, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
+    tracker->xytracker()->optimize_xy_parabolafit(*g_image, g_colorIndex, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
   } else {
-    tracker->xytracker()->optimize_xy(*g_image, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
+    tracker->xytracker()->optimize_xy(*g_image, g_colorIndex, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
   }
 
   // If we are doing prediction, update the estimated velocity based on the
@@ -1605,7 +1606,7 @@ static void optimize_tracker(Spot_Information *tracker)
         x = r * cos(theta);
         y = r * sin(theta);
 	tracker->xytracker()->set_location(x + start_x, y + start_y);
-	this_val = tracker->xytracker()->check_fitness(*g_image);
+	this_val = tracker->xytracker()->check_fitness(*g_image, g_colorIndex);
 	if (this_val > max_val) { max_val = this_val; }
       }
       if (max_val < min_val) { min_val = max_val; }
@@ -1617,7 +1618,7 @@ static void optimize_tracker(Spot_Information *tracker)
     // on the type of kernel we are using.  It also depends on the setting of
     // the "lost sensitivity" parameter, which varies from 0 (not sensitive at
     // all) to 1 (most sensitive).
-    double starting_value = tracker->xytracker()->check_fitness(*g_image);
+    double starting_value = tracker->xytracker()->check_fitness(*g_image, g_colorIndex);
     //printf("XXX Center = %lg, min of maxes = %lg, scale = %lg\n", starting_value, min_val, min_val/starting_value);
     if (g_kernel_type == KERNEL_SYMMETRIC) {
       // The symmetric kernel reports values that are strictly non-positive for
@@ -1654,11 +1655,16 @@ static void optimize_tracker(Spot_Information *tracker)
   // If we are optimizing in Z, then do it here.
   if (g_opt_z) {
     double  z = 0;
-    tracker->ztracker()->locate_close_fit_in_depth(*g_image, tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), z);
-    tracker->ztracker()->optimize(*g_image, tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), z);
+    tracker->ztracker()->locate_close_fit_in_depth(*g_image, g_colorIndex, tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), z);
+    tracker->ztracker()->optimize(*g_image, g_colorIndex, tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), z);
   }
 }
 
+// The tracking is now done by separate threads from the main program.  This function is
+// what is called for each of these threads.  Semaphores are used to communicate with
+// the main program thread and determine when each sub-thread will run.  This is basically
+// a big wrapper for the optimize_tracker() function, which is called by each thread on
+// an appropriate tracker on the current frame as needed.
 void tracking_thread_function(void *pvThreadData)
 {
   struct ThreadData  *td = (struct ThreadData *)pvThreadData;
@@ -1744,12 +1750,15 @@ void myIdleFunc(void)
     if (*g_rewind) {
       *g_play = 0;
       *g_rewind = 0;
-      g_video->rewind();
-      g_frame_number = -1;
       g_logging = 0;
       g_logfilename = "";
       logfilename_changed("", NULL);
       g_logged_traces.clear();
+
+      // Do the rewind and setting after clearing the logging, so that
+      // the last logged frame has the correct index.
+      g_video->rewind();
+      g_frame_number = -1;
     }
   }
 

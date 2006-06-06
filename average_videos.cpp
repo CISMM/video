@@ -29,10 +29,6 @@ using namespace std;
 
 //#define	DEBUG
 
-#ifndef	M_PI
-const double M_PI = 2*asin(1.0);
-#endif
-
 //--------------------------------------------------------------------------
 // Version string for this program
 const char *Version_string = "01.00";

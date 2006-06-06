@@ -1,3 +1,16 @@
+2006-06-06  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* average_videos.cpp : Removed extra M_PI definition.
+	* directx_camera_server.cpp : Made it use BGR texture rather than
+		RGB texture so that the colors don't swap.
+	* directx_camera_server.h : Same.
+	* spot_tracker.h : Made it specify the color channel to use (so that
+		it didn't always track channel 0).
+	* spot_tracker.cpp : Same.
+	* cismm_video_optimizer.cpp : Same.
+	* test_spot_tracker.cpp : Same.
+	* video_spot_tracker.cpp : Same.
+
 2006-05-26  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* SEM_camera_server.cpp : Fixed problem that caused the SEM

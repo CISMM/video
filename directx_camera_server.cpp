@@ -765,12 +765,12 @@ bool directx_camera_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connect
 // we must write a complete texture, which may be larger than the actual bytes
 // allocated for the image.  After the first time, and if we don't change the
 // image size to be larger, we can use the subimage call to only write the
-// pixels we have.
+// pixels we have. Also note that we need to swap BGR format to RGB format.
 bool directx_camera_server::write_to_opengl_texture(GLuint tex_id)
 {
   // Note: Check the GLubyte or GLushort or whatever in the temporary buffer!
   const GLint   NUM_COMPONENTS = 3;
-  const GLenum  FORMAT = GL_RGB;
+  const GLenum  FORMAT = GL_BGR_EXT;
   const GLenum  TYPE = GL_UNSIGNED_BYTE;
 
   // We need to write an image to the texture at least once that includes all of

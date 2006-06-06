@@ -24,7 +24,7 @@ void  compute_disk_chase_statistics(spot_tracker_XY &tracker, double radius, dou
     double testy = y + ( (rand()/(double)(RAND_MAX)) - 0.5) * (radius/2);
     {
       disc_image image2(0,255, 0,255, 127, 5, testx, testy, radius, 250);
-      tracker.optimize_xy(image2, x, y);
+      tracker.optimize_xy(image2, 0, x, y);
       double err = sqrt( (x-testx)*(x-testx) + (y-testy)*(y-testy) );
       if (err < minerr) { minerr = err; }
       if (err > maxerr) { maxerr = err; }
@@ -50,7 +50,7 @@ void  compute_cone_chase_statistics(spot_tracker_XY &tracker, double radius, dou
     double testy = y + ( (rand()/(double)(RAND_MAX)) - 0.5) * (radius/2);
     {
       cone_image image2(0,255, 0,255, 127, 5, testx, testy, radius, 250);
-      tracker.optimize_xy(image2, x, y);
+      tracker.optimize_xy(image2, 0, x, y);
       double err = sqrt( (x-testx)*(x-testx) + (y-testy)*(y-testy) );
       if (err < minerr) { minerr = err; }
       if (err > maxerr) { maxerr = err; }
@@ -79,14 +79,14 @@ int main(int, char *[])
   disk_spot_tracker tracker(seedrad);
 
   printf("Looking for best fit within the image\n");
-  tracker.locate_good_fit_in_image(image, seedx, seedy);
+  tracker.locate_good_fit_in_image(image, 0, seedx, seedy);
 
   printf("Optimization, starting at found location %lg, %lg,  rad %lg\n", seedx, seedy, seedrad);
   int i;
   double  x,y, rad, fit;
-  tracker.take_single_optimization_step(image, x,y, seedx, seedy);
+  tracker.take_single_optimization_step(image, 0, x,y, seedx, seedy);
   for (i = 0; i < 5; i++) {
-    tracker.take_single_optimization_step(image, x, y, true, true, true);
+    tracker.take_single_optimization_step(image, 0, x, y, true, true, true);
     rad = tracker.get_radius();
     fit = tracker.get_fitness();
     printf("Next step: X = %8.3lg,  Y = %8.3lg,  rad = %8.3lg, fit = %12.5lg\n", x,y,rad, fit);
@@ -106,7 +106,7 @@ int main(int, char *[])
     testy += ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2);
     {
       disc_image image2(0,255, 0,255, 127, 5, testx, testy, testrad, 250);
-      tracker.optimize(image2, x, y);
+      tracker.optimize(image2, 0, x, y);
       rad = tracker.get_radius();
       fit = tracker.get_fitness();
       err = sqrt( (x-testx)*(x-testx) + (y-testy)*(y-testy) );
@@ -145,10 +145,10 @@ int main(int, char *[])
   printf("Timing how long it takes to optimize pos to %g pixels from a nearby position on average\n", pixacc);
   avgcount = 1000;
   struct timeval start, end;
-  tracker.optimize(image, x,y);	      // Get back to the correct starting location
+  tracker.optimize(image, 0, x,y);	      // Get back to the correct starting location
   gettimeofday(&start, NULL);
   for (i = 0; i < avgcount; i++) {
-    tracker.optimize_xy(image, x, y,
+    tracker.optimize_xy(image, 0, x, y,
       x + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2),
       y + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2));
   }
@@ -160,12 +160,12 @@ int main(int, char *[])
   disk_spot_tracker_interp interptracker(seedrad);
 
   printf("Looking for best fit within the image\n");
-  interptracker.locate_good_fit_in_image(image, seedx, seedy);
+  interptracker.locate_good_fit_in_image(image, 0, seedx, seedy);
 
   printf("Optimization, starting at found location %lg, %lg,  rad %lg\n", seedx, seedy, seedrad);
-  interptracker.take_single_optimization_step(image, x,y, seedx, seedy);
+  interptracker.take_single_optimization_step(image, 0, x,y, seedx, seedy);
   for (i = 0; i < 5; i++) {
-    interptracker.take_single_optimization_step(image, x, y, true, true, true);
+    interptracker.take_single_optimization_step(image, 0, x, y, true, true, true);
     rad = interptracker.get_radius();
     fit = interptracker.get_fitness();
     printf("Next step: X = %8.3lg,  Y = %8.3lg,  rad = %8.3lg, fit = %12.5lg\n", x,y,rad, fit);
@@ -185,7 +185,7 @@ int main(int, char *[])
     testy += ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2);
     {
       disc_image image2(0,255, 0,255, 127, 5, testx, testy, testrad, 250);
-      interptracker.optimize(image2, x, y);
+      interptracker.optimize(image2, 0, x, y);
       rad = interptracker.get_radius();
       fit = interptracker.get_fitness();
       err = sqrt( (x-testx)*(x-testx) + (y-testy)*(y-testy) );
@@ -223,7 +223,7 @@ int main(int, char *[])
   x = 120.5; y = 120;
   disc_image image3(0,255,0,255,127,0,x,y,testrad, 250);
   printf("Optimizing a slightly noisy disk of known radius %g at %g,%g\n", testrad, x,y);
-  interptracker.optimize_xy(image3, x, y, floor(x), ceil(y));
+  interptracker.optimize_xy(image3, 0, x, y, floor(x), ceil(y));
   printf("  Found a spot of radius %g at %g,%g\n", interptracker.get_radius(), interptracker.get_x(), interptracker.get_y());
 
   pixacc = 0.05;
@@ -231,10 +231,10 @@ int main(int, char *[])
   interptracker.set_pixel_accuracy(pixacc);
   printf("Timing how long it takes to optimize pos to %g pixels from a nearby position on average\n", pixacc);
   avgcount = 100;
-  interptracker.optimize(image, x,y);	      // Get back to the correct starting location
+  interptracker.optimize(image, 0, x,y);	      // Get back to the correct starting location
   gettimeofday(&start, NULL);
   for (i = 0; i < avgcount; i++) {
-    interptracker.optimize_xy(image, x, y,
+    interptracker.optimize_xy(image, 0, x, y,
       x + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2),
       y + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2));
   }
@@ -246,12 +246,12 @@ int main(int, char *[])
   cone_spot_tracker_interp conetracker(seedrad);
 
   printf("Looking for best fit within the image\n");
-  conetracker.locate_good_fit_in_image(image, seedx, seedy);
+  conetracker.locate_good_fit_in_image(image, 0, seedx, seedy);
 
   printf("Optimization, starting at found location %lg, %lg,  rad %lg\n", seedx, seedy, seedrad);
-  conetracker.take_single_optimization_step(image, x,y, seedx, seedy);
+  conetracker.take_single_optimization_step(image, 0, x,y, seedx, seedy);
   for (i = 0; i < 5; i++) {
-    conetracker.take_single_optimization_step(image, x, y, true, true, true);
+    conetracker.take_single_optimization_step(image, 0, x, y, true, true, true);
     rad = conetracker.get_radius();
     fit = conetracker.get_fitness();
     printf("Next step: X = %8.3lg,  Y = %8.3lg,  rad = %8.3lg, fit = %12.5lg\n", x,y,rad, fit);
@@ -271,7 +271,7 @@ int main(int, char *[])
     testy += ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2);
     {
       disc_image image2(0,255, 0,255, 127, 5, testx, testy, testrad, 250);
-      conetracker.optimize(image2, x, y);
+      conetracker.optimize(image2, 0, x, y);
       rad = conetracker.get_radius();
       fit = conetracker.get_fitness();
       err = sqrt( (x-testx)*(x-testx) + (y-testy)*(y-testy) );
@@ -311,7 +311,7 @@ int main(int, char *[])
   x = 120.5; y = 120;
   disc_image image4(0,255,0,255,127,0,x,y,testrad, 250);
   printf("Optimizing a slightly noisy disk of known radius %g at %g,%g\n", testrad, x,y);
-  conetracker.optimize_xy(image4, x, y, floor(x), ceil(y));
+  conetracker.optimize_xy(image4, 0, x, y, floor(x), ceil(y));
   printf("  Found a spot of radius %g at %g,%g\n", conetracker.get_radius(), conetracker.get_x(), conetracker.get_y());
 
   pixacc = 0.05;
@@ -319,10 +319,10 @@ int main(int, char *[])
   conetracker.set_pixel_accuracy(pixacc);
   printf("Timing how long it takes to optimize pos to %g pixels from a nearby position on average\n", pixacc);
   avgcount = 100;
-  conetracker.optimize(image, x,y);	      // Get back to the correct starting location
+  conetracker.optimize(image, 0, x,y);	      // Get back to the correct starting location
   gettimeofday(&start, NULL);
   for (i = 0; i < avgcount; i++) {
-    conetracker.optimize_xy(image, x, y,
+    conetracker.optimize_xy(image, 0, x, y,
       x + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2),
       y + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2));
   }
@@ -334,12 +334,12 @@ int main(int, char *[])
   symmetric_spot_tracker_interp symmetrictracker(seedrad);
 
   printf("Looking for best fit within the image\n");
-  symmetrictracker.locate_good_fit_in_image(image, seedx, seedy);
+  symmetrictracker.locate_good_fit_in_image(image, 0, seedx, seedy);
 
   printf("Optimization, starting at found location %lg, %lg,  rad %lg\n", seedx, seedy, seedrad);
-  symmetrictracker.take_single_optimization_step(image, x,y, seedx, seedy);
+  symmetrictracker.take_single_optimization_step(image, 0, x,y, seedx, seedy);
   for (i = 0; i < 5; i++) {
-    symmetrictracker.take_single_optimization_step(image, x, y, true, true, true);
+    symmetrictracker.take_single_optimization_step(image, 0, x, y, true, true, true);
     rad = symmetrictracker.get_radius();
     fit = symmetrictracker.get_fitness();
     printf("Next step: X = %8.3lg,  Y = %8.3lg,  rad = %8.3lg, fit = %12.5lg\n", x,y,rad, fit);
@@ -359,7 +359,7 @@ int main(int, char *[])
     testy += ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2);
     {
       disc_image image2(0,255, 0,255, 127, 5, testx, testy, testrad, 250);
-      symmetrictracker.optimize(image2, x, y);
+      symmetrictracker.optimize(image2, 0, x, y);
       rad = symmetrictracker.get_radius();
       fit = symmetrictracker.get_fitness();
       err = sqrt( (x-testx)*(x-testx) + (y-testy)*(y-testy) );
@@ -400,7 +400,7 @@ int main(int, char *[])
   x = 120.5; y = 120;
   disc_image image5(0,255,0,255,127,0,x,y,testrad, 250);
   printf("Optimizing a slightly noisy disk of known radius %g at %g,%g\n", testrad, x,y);
-  symmetrictracker.optimize_xy(image5, x, y, floor(x), ceil(y));
+  symmetrictracker.optimize_xy(image5, 0, x, y, floor(x), ceil(y));
   printf("  Found a spot of radius %g at %g,%g\n", symmetrictracker.get_radius(), symmetrictracker.get_x(), symmetrictracker.get_y());
 
   pixacc = 0.05;
@@ -408,10 +408,10 @@ int main(int, char *[])
   symmetrictracker.set_pixel_accuracy(pixacc);
   printf("Timing how long it takes to optimize pos to %g pixels from a nearby position on average\n", pixacc);
   avgcount = 100;
-  symmetrictracker.optimize(image, x,y);	      // Get back to the correct starting location
+  symmetrictracker.optimize(image, 0, x,y);	      // Get back to the correct starting location
   gettimeofday(&start, NULL);
   for (i = 0; i < avgcount; i++) {
-    symmetrictracker.optimize_xy(image, x, y,
+    symmetrictracker.optimize_xy(image, 0, x, y,
       x + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2),
       y + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2));
   }
@@ -425,12 +425,12 @@ int main(int, char *[])
   seedrad = 6, seedx = 120, seedy = 118;	  //< Start location for tracking
   Gaussian_spot_tracker Gaussiantracker(seedrad, false, 0.25, 0.25, 1.0, 127, 11689);
   printf("Looking for best fit within the image\n");
-  Gaussiantracker.locate_good_fit_in_image(image, seedx, seedy);
+  Gaussiantracker.locate_good_fit_in_image(image, 0, seedx, seedy);
 
   printf("Optimization, starting at found location %lg, %lg,  rad %lg\n", seedx, seedy, seedrad);
-  Gaussiantracker.take_single_optimization_step(image, x,y, seedx, seedy);
+  Gaussiantracker.take_single_optimization_step(image, 0, x,y, seedx, seedy);
   for (i = 0; i < 5; i++) {
-    Gaussiantracker.take_single_optimization_step(image, x, y, true, true, true);
+    Gaussiantracker.take_single_optimization_step(image, 0, x, y, true, true, true);
     rad = Gaussiantracker.get_radius();
     fit = Gaussiantracker.get_fitness();
     printf("Next step: X = %8.3lg,  Y = %8.3lg,  rad = %8.3lg, fit = %12.5lg\n", x,y,rad, fit);
@@ -448,7 +448,7 @@ int main(int, char *[])
     testy += ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2);
     {
       disc_image image2(0,255, 0,255, 127, 5, testx, testy, testrad, 250);
-      Gaussiantracker.optimize(image2, x, y);
+      Gaussiantracker.optimize(image2, 0, x, y);
       rad = Gaussiantracker.get_radius();
       fit = Gaussiantracker.get_fitness();
       err = sqrt( (x-testx)*(x-testx) + (y-testy)*(y-testy) );
@@ -490,7 +490,7 @@ int main(int, char *[])
   x = 120.5; y = 120;
   disc_image image6(0,255,0,255,127,0,x,y,testrad, 250);
   printf("Optimizing a slightly noisy disk of known radius %g at %g,%g\n", testrad, x,y);
-  Gaussiantracker.optimize(image6, x, y, floor(x), ceil(y));
+  Gaussiantracker.optimize(image6, 0, x, y, floor(x), ceil(y));
   printf("  Found a spot of radius %g at %g,%g\n", Gaussiantracker.get_radius(), Gaussiantracker.get_x(), Gaussiantracker.get_y());
 
   pixacc = 0.05;
@@ -498,10 +498,10 @@ int main(int, char *[])
   Gaussiantracker.set_pixel_accuracy(pixacc);
   printf("Timing how long it takes to optimize pos to %g pixels from a nearby position on average\n", pixacc);
   avgcount = 10;
-  Gaussiantracker.optimize(image, x,y);	      // Get back to the correct starting location
+  Gaussiantracker.optimize(image, 0, x,y);	      // Get back to the correct starting location
   gettimeofday(&start, NULL);
   for (i = 0; i < avgcount; i++) {
-    Gaussiantracker.optimize_xy(image, x, y,
+    Gaussiantracker.optimize_xy(image, 0, x, y,
       x + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2),
       y + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2));
   }
@@ -524,16 +524,16 @@ int main(int, char *[])
   // Test the best-fit-finding code
   radial_average_tracker_Z  Ztrack("deleteme.tif");
   double z = 0.0;
-  Ztrack.locate_best_fit_in_depth(*discs[5], 64, 64, z);
+  Ztrack.locate_best_fit_in_depth(*discs[5], 0, 64, 64, z);
   printf("Z best fit should be 5, found at %lf\n", z);
 
   // Test the optimization code
-  Ztrack.optimize(*discs[7], 64, 64, z);
+  Ztrack.optimize(*discs[7], 0, 64, 64, z);
   printf("Z optimum should be 7, found at %lf\n", z);
 
   // Test on a novel image
   disc_image test_disc(0,128, 0,128, 0, 0.0, 64,64, 5.5+10, 255, 4);
-  Ztrack.optimize(test_disc, 64, 64, z);
+  Ztrack.optimize(test_disc, 0, 64, 64, z);
   printf("Z optimum should be 5.5, found at %lf\n", z);
 
   // Delete the PSF file

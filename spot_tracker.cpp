@@ -28,7 +28,7 @@ spot_tracker_XY::spot_tracker_XY(double radius, bool inverted, double pixelaccur
 // better location or not.  Return new location in any case.  One step means
 // one step in X,Y, and radius space each.  The boolean parameters tell
 // whether to optimize in each direction (X, Y, and Radius).
-bool  spot_tracker_XY::take_single_optimization_step(const image_wrapper &image, double &x, double &y,
+bool  spot_tracker_XY::take_single_optimization_step(const image_wrapper &image, unsigned rgb, double &x, double &y,
 						       bool do_x, bool do_y, bool do_r)
 {
   double  new_fitness;	    //< Checked fitness value to see if it is better than current one
@@ -39,12 +39,12 @@ bool  spot_tracker_XY::take_single_optimization_step(const image_wrapper &image,
   if (do_x) {
     double starting_x = get_x();
     set_location(starting_x + _pixelstep, get_y());	// Try going a step in +X
-    if ( _fitness < (new_fitness = check_fitness(image)) ) {
+    if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
       _fitness = new_fitness;
       betterxy = true;
     } else {
       set_location(starting_x - _pixelstep, get_y());	// Try going a step in -X
-      if ( _fitness < (new_fitness = check_fitness(image)) ) {
+      if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
 	_fitness = new_fitness;
 	betterxy = true;
       } else {
@@ -57,12 +57,12 @@ bool  spot_tracker_XY::take_single_optimization_step(const image_wrapper &image,
   if (do_y) {
     double starting_y = get_y();
     set_location(get_x(), starting_y + _pixelstep);	// Try going a step in +Y
-    if ( _fitness < (new_fitness = check_fitness(image)) ) {
+    if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
       _fitness = new_fitness;
       betterxy = true;
     } else {
       set_location(get_x(), starting_y - _pixelstep);	// Try going a step in -Y
-      if ( _fitness < (new_fitness = check_fitness(image)) ) {
+      if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
 	_fitness = new_fitness;
 	betterxy = true;
       } else {
@@ -76,12 +76,12 @@ bool  spot_tracker_XY::take_single_optimization_step(const image_wrapper &image,
   if (do_r) {
     double starting_rad = get_radius();
     set_radius(starting_rad + _radstep);	// Try going a step in +radius
-    if ( _fitness < (new_fitness = check_fitness(image)) ) {
+    if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
       _fitness = new_fitness;
       betterrad = true;
     } else {
       set_radius(starting_rad - _radstep);	// Try going a step in -radius
-      if ( (_rad >= 1) && (_fitness < (new_fitness = check_fitness(image))) ) {
+      if ( (_rad >= 1) && (_fitness < (new_fitness = check_fitness(image, rgb))) ) {
 	_fitness = new_fitness;
 	betterrad = true;
       } else {
@@ -98,7 +98,7 @@ bool  spot_tracker_XY::take_single_optimization_step(const image_wrapper &image,
 // Find the best fit for the spot detector within the image, taking steps
 // that are 1/4 of the bead's radius.  Stay away from edge effects by staying
 // away from the edges of the image.
-void  spot_tracker_XY::locate_good_fit_in_image(const image_wrapper &image, double &x, double &y)
+void  spot_tracker_XY::locate_good_fit_in_image(const image_wrapper &image, unsigned rgb, double &x, double &y)
 {
   int i,j;
   int minx, maxx, miny, maxy;
@@ -115,7 +115,7 @@ void  spot_tracker_XY::locate_good_fit_in_image(const image_wrapper &image, doub
   for (i = ilow; i <= ihigh; i += step) {
     for (j = jlow; j <= jhigh; j += step) {
       set_location(i,j);
-      if ( bestfit < (newfit = check_fitness(image)) ) {
+      if ( bestfit < (newfit = check_fitness(image, rgb)) ) {
 	bestfit = newfit;
 	bestx = get_x();
 	besty = get_y();
@@ -131,20 +131,20 @@ void  spot_tracker_XY::locate_good_fit_in_image(const image_wrapper &image, doub
 
 // Continue to optimize until we can't do any better (the step size drops below
 // the minimum.
-void  spot_tracker_XY::optimize(const image_wrapper &image, double &x, double &y)
+void  spot_tracker_XY::optimize(const image_wrapper &image, unsigned rgb, double &x, double &y)
 {
   // Set the step sizes to a large value to start with
   _pixelstep = 2;
   _radstep = 2;
 
   // Find out what our current value is (presumably this is a new image)
-  _fitness = check_fitness(image);
+  _fitness = check_fitness(image, rgb);
 
   // Try with ever-smaller steps until we reach the smallest size and
   // can't do any better.
   do {
     // Repeat the optimization steps until we can't do any better.
-    while (take_single_optimization_step(image, x, y, true, true, true)) {};
+    while (take_single_optimization_step(image, rgb, x, y, true, true, true)) {};
 
     // Try to see if we reducing the step sizes helps.
     if ( _pixelstep > _pixelacc ) {
@@ -159,7 +159,7 @@ void  spot_tracker_XY::optimize(const image_wrapper &image, double &x, double &y
 
 // Continue to optimize until we can't do any better (the step size drops below
 // the minimum.  Only try moving in X and Y, not changing the radius,
-void  spot_tracker_XY::optimize_xy(const image_wrapper &image, double &x, double &y)
+void  spot_tracker_XY::optimize_xy(const image_wrapper &image, unsigned rgb, double &x, double &y)
 {
   int optsteps_tried = 0;
 
@@ -167,14 +167,14 @@ void  spot_tracker_XY::optimize_xy(const image_wrapper &image, double &x, double
   _pixelstep = 2;
 
   // Find out what our current value is (presumably this is a new image)
-  _fitness = check_fitness(image);
+  _fitness = check_fitness(image, rgb);
 
   // Try with ever-smaller steps until we reach the smallest size and
   // can't do any better.
   do {
     optsteps_tried += 4;
     // Repeat the optimization steps until we can't do any better.
-    while (take_single_optimization_step(image, x, y, true, true, false)) {optsteps_tried += 4;};
+    while (take_single_optimization_step(image, rgb, x, y, true, true, false)) {optsteps_tried += 4;};
 
     // Try to see if we reducing the step sizes helps, until it gets too small.
     if ( _pixelstep <= _pixelacc ) {
@@ -191,7 +191,7 @@ void  spot_tracker_XY::optimize_xy(const image_wrapper &image, double &x, double
 // to three samples starting from the center and separated by the sample distance.
 // The minimum for the parabola is the best location (if it has a minimum; otherwise
 // just stay where we started because it is hopeless).
-void  spot_tracker_XY::optimize_xy_parabolafit(const image_wrapper &image, double &x, double &y)
+void  spot_tracker_XY::optimize_xy_parabolafit(const image_wrapper &image, unsigned rgb, double &x, double &y)
 {
   double xn = get_x() - _samplesep;
   double x0 = get_x();
@@ -202,16 +202,16 @@ void  spot_tracker_XY::optimize_xy_parabolafit(const image_wrapper &image, doubl
   double yp = get_y() + _samplesep;
 
   // Check all of the fitness values at and surrounding the center.
-  double fx0 = check_fitness(image);
+  double fx0 = check_fitness(image, rgb);
   double fy0 = fx0;
   set_location(xn, y0);
-  double fxn = check_fitness(image);
+  double fxn = check_fitness(image, rgb);
   set_location(xp, y0);
-  double fxp = check_fitness(image);
+  double fxp = check_fitness(image, rgb);
   set_location(x0, yn);
-  double fyn = check_fitness(image);
+  double fyn = check_fitness(image, rgb);
   set_location(x0, yp);
-  double fyp = check_fitness(image);
+  double fyp = check_fitness(image, rgb);
 
   // Put the location back at the center, in case we can't do any
   // better.
@@ -273,7 +273,7 @@ spot_tracker_Z::spot_tracker_Z(double minz, double maxz, double radius, double d
 // Optimize starting at the specified depth to find the best-fit slice.
 // Take only one optimization step.  Return whether we ended up finding a
 // better depth or not.  Return new depth in any case.
-bool  spot_tracker_Z::take_single_optimization_step(const image_wrapper &image, double x, double y, double &z)
+bool  spot_tracker_Z::take_single_optimization_step(const image_wrapper &image, unsigned rgb, double x, double y, double &z)
 {
   double  new_fitness;	    //< Checked fitness value to see if it is better than current one
   bool	  betterz = false;  //< Do we find a better depth?
@@ -281,12 +281,12 @@ bool  spot_tracker_Z::take_single_optimization_step(const image_wrapper &image, 
   // Try going in +/- Z and see if we find a better location.
   double starting_z = get_z();
   set_z(starting_z + _depthstep);	// Try going a step in +Z
-  if ( _fitness < (new_fitness = check_fitness(image, x,y)) ) {
+  if ( _fitness < (new_fitness = check_fitness(image, rgb, x,y)) ) {
     _fitness = new_fitness;
     betterz = true;
   } else {
     set_z(starting_z - _depthstep);	// Try going a step in -Z
-    if ( _fitness < (new_fitness = check_fitness(image, x,y)) ) {
+    if ( _fitness < (new_fitness = check_fitness(image, rgb, x,y)) ) {
       _fitness = new_fitness;
       betterz = true;
     } else {
@@ -302,7 +302,7 @@ bool  spot_tracker_Z::take_single_optimization_step(const image_wrapper &image, 
 // Find the best fit for the spot detector within the image, taking steps
 // that are 1 slice apart.  Stay away from edge effects by staying
 // away from the edges of the image.
-void  spot_tracker_Z::locate_best_fit_in_depth(const image_wrapper &image, double x, double y, double &z)
+void  spot_tracker_Z::locate_best_fit_in_depth(const image_wrapper &image, unsigned rgb, double x, double y, double &z)
 {
   int i;
   int bestz = 0;
@@ -313,7 +313,7 @@ void  spot_tracker_Z::locate_best_fit_in_depth(const image_wrapper &image, doubl
   int ihigh = (int)(_maxz - 1);
   for (i = ilow; i <= ihigh; i ++) {
     set_z(i);
-    if ( bestfit < (newfit = check_fitness(image, x,y)) ) {
+    if ( bestfit < (newfit = check_fitness(image, rgb, x,y)) ) {
       bestfit = newfit;
       bestz = get_z();
     }
@@ -327,7 +327,7 @@ void  spot_tracker_Z::locate_best_fit_in_depth(const image_wrapper &image, doubl
 // Find a close fit for the spot detector within the image, taking ten steps
 // through the whole stack.  Stay away from edge effects by staying
 // away from the edges of the image.
-void  spot_tracker_Z::locate_close_fit_in_depth(const image_wrapper &image, double x, double y, double &z)
+void  spot_tracker_Z::locate_close_fit_in_depth(const image_wrapper &image, unsigned rgb, double x, double y, double &z)
 {
   int i;
   int bestz = 0;
@@ -340,7 +340,7 @@ void  spot_tracker_Z::locate_close_fit_in_depth(const image_wrapper &image, doub
   if (step == 0) { step = 1; }
   for (i = ilow; i <= ihigh; i += step) {
     set_z(i);
-    if ( bestfit < (newfit = check_fitness(image, x,y)) ) {
+    if ( bestfit < (newfit = check_fitness(image, rgb, x,y)) ) {
       bestfit = newfit;
       bestz = get_z();
     }
@@ -353,19 +353,19 @@ void  spot_tracker_Z::locate_close_fit_in_depth(const image_wrapper &image, doub
 
 // Continue to optimize until we can't do any better (the step size drops below
 // the minimum.
-void  spot_tracker_Z::optimize(const image_wrapper &image, double x, double y, double &z)
+void  spot_tracker_Z::optimize(const image_wrapper &image, unsigned rgb, double x, double y, double &z)
 {
   // Set the step size to a large value to start with
   _depthstep = 2;
 
   // Find out what our current value is (presumably this is a new image)
-  _fitness = check_fitness(image, x,y);
+  _fitness = check_fitness(image, rgb, x,y);
 
   // Try with ever-smaller steps until we reach the smallest size and
   // can't do any better.
   do {
     // Repeat the optimization steps until we can't do any better.
-    while (take_single_optimization_step(image, x, y, z)) {};
+    while (take_single_optimization_step(image, rgb, x, y, z)) {};
 
     // Try to see if we reducing the step sizes helps.
     if ( _depthstep > _depthacc ) {
@@ -417,7 +417,7 @@ disk_spot_tracker::disk_spot_tracker(double radius, bool inverted, double pixela
 // that many times as large as the radius (switches dark-on-light vs. light-on-dark
 // behavior).
 
-double	disk_spot_tracker::check_fitness(const image_wrapper &image)
+double	disk_spot_tracker::check_fitness(const image_wrapper &image, unsigned rgb)
 {
   double  i,j;
   int	  pixels = 0;			//< How many pixels we ended up using
@@ -442,7 +442,7 @@ double	disk_spot_tracker::check_fitness(const image_wrapper &image)
 
       // See if we are within the inner disk
       if ( dist2 <= centerr2 ) {
-	if (image.read_pixel((int)i,(int)j,val)) {
+	if (image.read_pixel((int)i,(int)j,val, rgb)) {
 	  pixels++;
 	  fitness += val;
 #ifdef	DEBUG
@@ -453,7 +453,7 @@ double	disk_spot_tracker::check_fitness(const image_wrapper &image)
 
       // See if we are within the outer disk (surroundfac * radius)
       else if ( dist2 <= surroundr2 ) {
-	if (image.read_pixel((int)i,(int)j,val)) {
+	if (image.read_pixel((int)i,(int)j,val, rgb)) {
 	  pixels++;
 #ifdef	DEBUG
 	  neg += val;
@@ -503,7 +503,7 @@ disk_spot_tracker_interp::disk_spot_tracker_interp(double radius, bool inverted,
 // Then the list can be re-used and the math avoided if the radius does not
 // change, making this run a lot faster.
 
-double	disk_spot_tracker_interp::check_fitness(const image_wrapper &image)
+double	disk_spot_tracker_interp::check_fitness(const image_wrapper &image, unsigned rgb)
 {
   double  r,theta;			//< Coordinates in disk space
   int	  pixels = 0;			//< How many pixels we ended up using
@@ -513,7 +513,7 @@ double	disk_spot_tracker_interp::check_fitness(const image_wrapper &image)
   double  surroundr = _rad*surroundfac;  //< The surround "off" disk radius
 
   // Start with the pixel in the middle.
-  if (image.read_pixel_bilerp(get_x(),get_y(),val)) {
+  if (image.read_pixel_bilerp(get_x(),get_y(),val, rgb)) {
     pixels++;
     fitness += val;
   }
@@ -524,7 +524,7 @@ double	disk_spot_tracker_interp::check_fitness(const image_wrapper &image)
   for (r = _samplesep; r <= _rad; r += _samplesep) {
     double rads_per_step = 1 / r * _samplesep;
     for (theta = r*rads_per_step*0.5; theta <= 2*M_PI + r*rads_per_step*0.5; theta += rads_per_step) {
-      if (image.read_pixel_bilerp(get_x()+r*cos(theta),get_y()+r*sin(theta),val)) {
+      if (image.read_pixel_bilerp(get_x()+r*cos(theta),get_y()+r*sin(theta),val, rgb)) {
 	pixels++;
 	fitness += val;
       }
@@ -537,7 +537,7 @@ double	disk_spot_tracker_interp::check_fitness(const image_wrapper &image)
   for (r = r /* Keep going */; r <= surroundr; r += _samplesep) {
     double rads_per_step = 1 / r * _samplesep;
     for (theta = r*rads_per_step*0.5; theta <= 2*M_PI + r*rads_per_step*0.5; theta += rads_per_step) {
-      if (image.read_pixel_bilerp(get_x()+r*cos(theta),get_y()+r*sin(theta),val)) {
+      if (image.read_pixel_bilerp(get_x()+r*cos(theta),get_y()+r*sin(theta),val, rgb)) {
 	pixels++;
 	fitness -= val;
       }
@@ -577,7 +577,7 @@ cone_spot_tracker_interp::cone_spot_tracker_interp(double radius, bool inverted,
 // change, making this run a lot faster.  It could also keep track of the
 // multiplier at each pixel.
 
-double	cone_spot_tracker_interp::check_fitness(const image_wrapper &image)
+double	cone_spot_tracker_interp::check_fitness(const image_wrapper &image, unsigned rgb)
 {
   double  r,theta;			//< Coordinates in disk space
   int	  pixels = 0;			//< How many pixels we ended up using
@@ -585,7 +585,7 @@ double	cone_spot_tracker_interp::check_fitness(const image_wrapper &image)
   double  val;				//< Pixel value read from the image
 
   // Start with the pixel in the middle.
-  if (image.read_pixel_bilerp(get_x(),get_y(),val)) {
+  if (image.read_pixel_bilerp(get_x(),get_y(),val, rgb)) {
     pixels++;
     fitness += val;
   }
@@ -598,7 +598,7 @@ double	cone_spot_tracker_interp::check_fitness(const image_wrapper &image)
     double rads_per_step  = 1 / r * _samplesep;
     double weight = 1 - (r / _rad);
     for (theta = r*rads_per_step*0.5; theta <= 2*M_PI + r*rads_per_step*0.5; theta += rads_per_step) {
-      if (image.read_pixel_bilerp(get_x()+r*cos(theta),get_y()+r*sin(theta),val)) {
+      if (image.read_pixel_bilerp(get_x()+r*cos(theta),get_y()+r*sin(theta),val, rgb)) {
 	pixels++;
 	fitness += val * weight;
       }
@@ -693,7 +693,7 @@ symmetric_spot_tracker_interp::~symmetric_spot_tracker_interp()
 // interpolation and sample within the space of the kernel, rather than
 // point-sampling the nearest pixel.
 
-double	symmetric_spot_tracker_interp::check_fitness(const image_wrapper &image)
+double	symmetric_spot_tracker_interp::check_fitness(const image_wrapper &image, unsigned rgb)
 {
   double  val;				//< Pixel value read from the image
   double  pixels;			//< How many pixels we ended up using (used in floating-point calculations only)
@@ -717,14 +717,14 @@ double	symmetric_spot_tracker_interp::check_fitness(const image_wrapper &image)
 // Using it would mean somehow clipping the boundaries before calling these functions, which would
 // surely slow things down.
 #if 1
-      if (image.read_pixel_bilerp(get_x()+list->x,get_y()+list->y,val)) {
+      if (image.read_pixel_bilerp(get_x()+list->x,get_y()+list->y,val, rgb)) {
 	valSum += val;
 	squareValSum += val*val;
 	pixels++;
 	list++;	  //< Makes big speed difference to do this with increment vs. index
       }
 #else
-      val = image.read_pixel_bilerp_nocheck(get_x()+list->x, get_y()+list->y);
+      val = image.read_pixel_bilerp_nocheck(get_x()+list->x, get_y()+list->y, rgb);
       valSum += val;
       squareValSum += val*val;
       pixels++;
@@ -780,7 +780,7 @@ image_spot_tracker_interp::~image_spot_tracker_interp()
   }
 }
 
-bool	image_spot_tracker_interp::set_image(const image_wrapper &image, double x, double y, double rad)
+bool	image_spot_tracker_interp::set_image(const image_wrapper &image, unsigned rgb, double x, double y, double rad)
 {
   // Find out the desired test radius and make sure it is valid.
   int desired_rad = (int)ceil(rad);
@@ -833,7 +833,7 @@ bool	image_spot_tracker_interp::set_image(const image_wrapper &image, double x, 
   int xsamp, ysamp;
   for (xsamp = -desired_rad; xsamp <= desired_rad; xsamp++) {
     for (ysamp = -desired_rad; ysamp <= desired_rad; ysamp++) {
-      _testimage[_testx + xsamp + _testsize * (_testy + ysamp)] = image.read_pixel_bilerp_nocheck(x + xsamp, y + ysamp);
+      _testimage[_testx + xsamp + _testsize * (_testy + ysamp)] = image.read_pixel_bilerp_nocheck(x + xsamp, y + ysamp, rgb);
     }
   }
 
@@ -847,7 +847,7 @@ bool	image_spot_tracker_interp::set_image(const image_wrapper &image, double x, 
 // interpolation and sample within the space of the kernel, rather than
 // point-sampling the nearest pixel.
 
-double	image_spot_tracker_interp::check_fitness(const image_wrapper &image)
+double	image_spot_tracker_interp::check_fitness(const image_wrapper &image, unsigned rgb)
 {
   double  val;				//< Pixel value read from the image
   double  pixels = 0;			//< How many pixels we ended up using (used in floating-point calculations only)
@@ -858,7 +858,7 @@ double	image_spot_tracker_interp::check_fitness(const image_wrapper &image)
   // the image we've been asked to optimize from.
   if (_testimage == NULL) {
     fprintf(stderr,"image_spot_tracker_interp::check_fitness(): Called before set_image() succeeded (grabbing from image)\n");
-    set_image(image, get_x(), get_y(), get_radius());
+    set_image(image, rgb, get_x(), get_y(), get_radius());
     if (_testimage == NULL) {
       return 0;
     }
@@ -866,7 +866,7 @@ double	image_spot_tracker_interp::check_fitness(const image_wrapper &image)
 
   for (x = -_testrad; x <= _testrad; x++) {
     for (y = -_testrad; y <= _testrad; y++) {
-      if (image.read_pixel_bilerp(get_x()+x,get_y()+y,val)) {
+      if (image.read_pixel_bilerp(get_x()+x,get_y()+y,val, rgb)) {
 	double myval = _testimage[(int)(_testx+x) + _testsize * (int)(_testy+y)];
 	double squarediff = (val-myval) * (val-myval);
 	fitness -= squarediff;
@@ -894,7 +894,7 @@ double	image_spot_tracker_interp::check_fitness(const image_wrapper &image)
 // interpolation and sample within the space of the kernel, rather than
 // point-sampling the nearest pixel.
 
-double	twolines_image_spot_tracker_interp::check_fitness(const image_wrapper &image)
+double	twolines_image_spot_tracker_interp::check_fitness(const image_wrapper &image, unsigned rgb)
 {
   double  val;				//< Pixel value read from the image
   double  pixels = 0;			//< How many pixels we ended up using (used in floating-point calculations only)
@@ -905,7 +905,7 @@ double	twolines_image_spot_tracker_interp::check_fitness(const image_wrapper &im
   // the image we've been asked to optimize from.
   if (_testimage == NULL) {
     fprintf(stderr,"image_spot_tracker_interp::check_fitness(): Called before set_image() succeeded (grabbing from image)\n");
-    set_image(image, get_x(), get_y(), get_radius());
+    set_image(image, rgb, get_x(), get_y(), get_radius());
     if (_testimage == NULL) {
       return 0;
     }
@@ -913,7 +913,7 @@ double	twolines_image_spot_tracker_interp::check_fitness(const image_wrapper &im
 
   // Check the X cross section through the center, then the Y.
   for (x = -_testrad; x <= _testrad; x++) {
-    if (image.read_pixel_bilerp(get_x()+x,get_y(),val)) {
+    if (image.read_pixel_bilerp(get_x()+x,get_y(),val, rgb)) {
       double myval = _testimage[(int)(_testx+x) + _testsize * (int)(_testy)];
       double squarediff = (val-myval) * (val-myval);
       fitness -= squarediff;
@@ -921,7 +921,7 @@ double	twolines_image_spot_tracker_interp::check_fitness(const image_wrapper &im
     }
   }
   for (y = -_testrad; y <= _testrad; y++) {
-    if (image.read_pixel_bilerp(get_x(),get_y()+y,val)) {
+    if (image.read_pixel_bilerp(get_x(),get_y()+y,val, rgb)) {
       double myval = _testimage[(int)(_testx) + _testsize * (int)(_testy+y)];
       double squarediff = (val-myval) * (val-myval);
       fitness -= squarediff;
@@ -988,7 +988,7 @@ Gaussian_spot_tracker::~Gaussian_spot_tracker()
 // test image.  We then sum the per-pixel squared error between the test image and
 // the image we're optimizing to.
 
-double	Gaussian_spot_tracker::check_fitness(const image_wrapper &image)
+double	Gaussian_spot_tracker::check_fitness(const image_wrapper &image, unsigned rgb)
 {
   // If we're inverting the Gaussian, do so by negating the summed value.
   double summed_value = _summedvalue;
@@ -1044,7 +1044,7 @@ double	Gaussian_spot_tracker::check_fitness(const image_wrapper &image)
   double fitness = 0.0;
   for (x = -2*_rad; x <= 2*_rad; x++) {
     for (y = -2*_rad; y <= 2*_rad; y++) {
-      if (image.read_pixel(x_int+x,y_int+y,val)) {
+      if (image.read_pixel(x_int+x,y_int+y,val, rgb)) {
         _testimage->read_pixel(x, y, myval, 0);
 	double squarediff = (val-myval) * (val-myval);
 	fitness -= squarediff;
@@ -1185,10 +1185,10 @@ rod3_spot_tracker_interp::rod3_spot_tracker_interp(const symmetric_spot_tracker_
   update_beginning_and_end_locations();
 }
 
-double rod3_spot_tracker_interp::check_fitness(const image_wrapper &image)
+double rod3_spot_tracker_interp::check_fitness(const image_wrapper &image, unsigned rgb)
 {
   if (d_center && d_beginning && d_end) {
-    return d_center->check_fitness(image) + d_beginning->check_fitness(image) + d_end->check_fitness(image);
+    return d_center->check_fitness(image, rgb) + d_beginning->check_fitness(image, rgb) + d_end->check_fitness(image, rgb);
   } else {
     fprintf(stderr, "rod3_spot_tracker_interp::check_fitness(): Missing subordinate tracker!\n");
     return 0;
@@ -1211,7 +1211,7 @@ void rod3_spot_tracker_interp::update_beginning_and_end_locations(void)
   }
 }
 
-bool  rod3_spot_tracker_interp::take_single_optimization_step(const image_wrapper &image, double &x, double &y,
+bool  rod3_spot_tracker_interp::take_single_optimization_step(const image_wrapper &image, unsigned rgb, double &x, double &y,
 						       bool do_x, bool do_y, bool do_r)
 {
   double  new_fitness;	    //< Checked fitness value to see if it is better than current one
@@ -1219,7 +1219,7 @@ bool  rod3_spot_tracker_interp::take_single_optimization_step(const image_wrappe
   bool	  betterorient = false;//< Do we find a better orientation?
 
   // See if the base class fitting steps can do better
-  betterbase = spot_tracker_XY::take_single_optimization_step(image, x, y, do_x, do_y, do_r);
+  betterbase = spot_tracker_XY::take_single_optimization_step(image, rgb, x, y, do_x, do_y, do_r);
 
   // Try going in +/- orient and see if we find a better orientation.
   // XXX HACK: Orientation step is set based on the pixelstep and scaled so
@@ -1229,12 +1229,12 @@ bool  rod3_spot_tracker_interp::take_single_optimization_step(const image_wrappe
   {
     double starting_o = get_orientation();
     set_orientation(starting_o + orient_step);	// Try going a step in +orient
-    if ( _fitness < (new_fitness = check_fitness(image)) ) {
+    if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
       _fitness = new_fitness;
       betterorient = true;
     } else {
     set_orientation(starting_o - orient_step);	// Try going a step in -orient
-      if ( _fitness < (new_fitness = check_fitness(image)) ) {
+      if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
 	_fitness = new_fitness;
 	betterorient = true;
       } else {
@@ -1283,7 +1283,7 @@ radial_average_tracker_Z::radial_average_tracker_Z(const char *in_filename, doub
 // interpolation and sample within the space of the kernel, rather than
 // point-sampling the nearest pixel.
 
-double	radial_average_tracker_Z::check_fitness(const image_wrapper &image, double x, double y)
+double	radial_average_tracker_Z::check_fitness(const image_wrapper &image, unsigned rgb, double x, double y)
 {
   double  val;				//< Pixel value read from the image
   double  pixels = 0;			//< How many pixels we ended up using (used in floating-point calculations only)
@@ -1302,7 +1302,7 @@ double	radial_average_tracker_Z::check_fitness(const image_wrapper &image, doubl
       double dist_sq = lx*lx + ly*ly;
       if ( dist_sq <= rad_sq) {
 	// Only count pixels inside the other image's boundaries
-	if (image.read_pixel_bilerp(x+lx,y+ly,val)) {
+	if (image.read_pixel_bilerp(x+lx,y+ly,val, rgb)) {
 	  double dist = sqrt(dist_sq);
 	  double myval = d_radial_image->read_pixel_bilerp_nocheck(dist, _z);
 

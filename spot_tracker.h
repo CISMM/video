@@ -13,44 +13,44 @@ public:
   // better location/radius or not.  Return new location in any case.  The
   // boolean parameters tell whether to try stepping in each of X, Y, and
   // Radius.
-  virtual bool	take_single_optimization_step(const image_wrapper &image, double &x, double &y,
+  virtual bool	take_single_optimization_step(const image_wrapper &image, unsigned rgb, double &x, double &y,
 				      bool do_x, bool do_y, bool do_r);
 
   // Same thing, but say where to start.  This means that we should measure the
   // fitness at that location before trying the steps.
-  virtual bool  take_single_optimization_step(const image_wrapper &image, double &x, double &y,
+  virtual bool  take_single_optimization_step(const image_wrapper &image, unsigned rgb, double &x, double &y,
 				      double startx, double starty)
-	    { set_location(startx, starty); _fitness = check_fitness(image);
-	     return take_single_optimization_step(image, x,y, true, true, true); }
+	    { set_location(startx, starty); _fitness = check_fitness(image, rgb);
+	     return take_single_optimization_step(image, rgb, x,y, true, true, true); }
 
   // Continue to optimize until we can't do any better (the step size drops below
   // the minimum.  Assume that we've got a new image or position, so measure the
   // fitness at our current location before starting.
-  virtual void	optimize(const image_wrapper &image, double &x, double &y);
+  virtual void	optimize(const image_wrapper &image, unsigned rgb, double &x, double &y);
   // Same thing, but say where to start
-  virtual void	optimize(const image_wrapper &image, double &x, double &y, double startx, double starty)
-	    { set_location(startx, starty); optimize(image, x, y); };
+  virtual void	optimize(const image_wrapper &image, unsigned rgb, double &x, double &y, double startx, double starty)
+	    { set_location(startx, starty); optimize(image, rgb, x, y); };
 
   /// Optimize in X and Y only, not in radius.
-  virtual void	optimize_xy(const image_wrapper &image, double &x, double &y);
-  virtual void	optimize_xy(const image_wrapper &image, double &x, double &y, double startx, double starty)
-	    { set_location(startx, starty); optimize_xy(image, x, y); };
+  virtual void	optimize_xy(const image_wrapper &image, unsigned rgb, double &x, double &y);
+  virtual void	optimize_xy(const image_wrapper &image, unsigned rgb, double &x, double &y, double startx, double starty)
+	    { set_location(startx, starty); optimize_xy(image, rgb, x, y); };
 
   /// Optimize in X and Y by solving separately for the best-fit parabola in X and Y
   // to three samples starting from the center and separated by the sample distance.
   // The minimum for the parabola is the best location (if it has a minimum; otherwise
   // just stay where we started because it is hopeless).
-  virtual void	optimize_xy_parabolafit(const image_wrapper &image, double &x, double &y);
-  virtual void	optimize_xy_parabolafit(const image_wrapper &image, double &x, double &y, double startx, double starty)
-	    { set_location(startx, starty); optimize_xy_parabolafit(image, x, y); };
+  virtual void	optimize_xy_parabolafit(const image_wrapper &image, unsigned rgb, double &x, double &y);
+  virtual void	optimize_xy_parabolafit(const image_wrapper &image, unsigned rgb, double &x, double &y, double startx, double starty)
+	    { set_location(startx, starty); optimize_xy_parabolafit(image, rgb, x, y); };
 
   /// Find the best fit for the spot detector within the image, taking steps
   // that are 1/4 of the bead's radius.
-  virtual void	locate_good_fit_in_image(const image_wrapper &image, double &x, double &y);
+  virtual void	locate_good_fit_in_image(const image_wrapper &image, unsigned rgb, double &x, double &y);
 
   /// Check the fitness of the disk against an image, at the current parameter settings.
   // Return the fitness value there.
-  virtual double  check_fitness(const image_wrapper &image) = 0;
+  virtual double  check_fitness(const image_wrapper &image, unsigned rgb) = 0;
 
   /// Get at internal information
   inline double  get_radius(void) const { return _rad; };
@@ -90,33 +90,33 @@ public:
   // Take only one optimization step.  Return whether we ended up finding a
   // better depth or not.  Return new depth in any case.  The caller tells
   // us where to look in X,Y on the image we are tracking in.
-  virtual bool	take_single_optimization_step(const image_wrapper &image, double x, double y, double &z);
+  virtual bool	take_single_optimization_step(const image_wrapper &image, unsigned rgb, double x, double y, double &z);
 
   // Same thing, but say where to start.  This means that we should measure the
   // fitness at that location before trying the steps.
-  virtual bool  take_single_optimization_step(const image_wrapper &image, double x, double y, double &z, double startz)
-	    { set_z(startz); _fitness = check_fitness(image, x,y);
-	     return take_single_optimization_step(image, x,y,z); }
+  virtual bool  take_single_optimization_step(const image_wrapper &image, unsigned rgb, double x, double y, double &z, double startz)
+	    { set_z(startz); _fitness = check_fitness(image, rgb, x,y);
+	     return take_single_optimization_step(image, rgb, x,y,z); }
 
   // Continue to optimize until we can't do any better (the step size drops below
   // the minimum.  Assume that we've got a new image or position, so measure the
   // fitness at our current location before starting.
-  virtual void	optimize(const image_wrapper &image, double x, double y, double &z);
+  virtual void	optimize(const image_wrapper &image, unsigned rgb, double x, double y, double &z);
   // Same thing, but say where to start
-  virtual void	optimize(const image_wrapper &image, double x, double y, double &z, double startz)
-	    { set_z(startz); optimize(image, x, y, z); };
+  virtual void	optimize(const image_wrapper &image, unsigned rgb, double x, double y, double &z, double startz)
+	    { set_z(startz); optimize(image, rgb, x, y, z); };
 
   /// Find the best fit for the spot detector within the depth stack, checking each
   // layer but not between layers.
-  virtual void	locate_best_fit_in_depth(const image_wrapper &image, double x, double y, double &z);
+  virtual void	locate_best_fit_in_depth(const image_wrapper &image, unsigned rgb, double x, double y, double &z);
 
   /// Find the best fit for the spot detector within the depth stack, checking only a
   // subset of the layers.
-  virtual void	locate_close_fit_in_depth(const image_wrapper &image, double x, double y, double &z);
+  virtual void	locate_close_fit_in_depth(const image_wrapper &image, unsigned rgb, double x, double y, double &z);
 
   /// Check the fitness of the disk against an image, at the current parameter settings.
   // Return the fitness value there.
-  virtual double  check_fitness(const image_wrapper &image, double x, double y) = 0;
+  virtual double  check_fitness(const image_wrapper &image, unsigned rgb, double x, double y) = 0;
 
   /// Get at internal information
   inline double  get_z(void) const { return _z; };
@@ -156,7 +156,7 @@ public:
 
   /// Check the fitness of the disk against an image, at the current parameter settings.
   // Return the fitness value there.
-  virtual double  check_fitness(const image_wrapper &image);
+  virtual double  check_fitness(const image_wrapper &image, unsigned rgb);
 
 protected:
 };
@@ -184,7 +184,7 @@ public:
 
   /// Check the fitness of the disk against an image, at the current parameter settings.
   // Return the fitness value there.
-  virtual double  check_fitness(const image_wrapper &image);
+  virtual double  check_fitness(const image_wrapper &image, unsigned rgb);
 
 protected:
 };
@@ -211,7 +211,7 @@ public:
 
   /// Check the fitness against an image, at the current parameter settings.
   // Return the fitness value there.
-  virtual double  check_fitness(const image_wrapper &image);
+  virtual double  check_fitness(const image_wrapper &image, unsigned rgb);
 
 protected:
 };
@@ -242,7 +242,7 @@ public:
 
   /// Check the fitness against an image, at the current parameter settings.
   // Return the fitness value there.
-  virtual double  check_fitness(const image_wrapper &image);
+  virtual double  check_fitness(const image_wrapper &image, unsigned rgb);
 
 protected:
   // These structures and functions support pre-filling the coordinate offsets
@@ -280,11 +280,11 @@ public:
   // position in the image we are to check.  The image is resampled
   // at sub-pixel resolution around the location.  Returns true on
   // success and false on failure.
-  virtual bool	set_image(const image_wrapper &image, double x, double y, double rad);
+  virtual bool	set_image(const image_wrapper &image, unsigned rgb, double x, double y, double rad);
 
   /// Check the fitness against an image, at the current parameter settings.
   // Return the fitness value there.
-  virtual double  check_fitness(const image_wrapper &image);
+  virtual double  check_fitness(const image_wrapper &image, unsigned rgb);
 
 protected:
   double  *_testimage;	  //< The image to test for fitness against
@@ -315,7 +315,7 @@ public:
 
   /// Check the fitness against an image, at the current parameter settings.
   // Return the fitness value there.
-  virtual double  check_fitness(const image_wrapper &image);
+  virtual double  check_fitness(const image_wrapper &image, unsigned rgb);
 
 protected:
 };
@@ -340,7 +340,7 @@ public:
 
   /// Check the fitness against an image, at the current parameter settings.
   // Return the fitness value there.
-  virtual double  check_fitness(const image_wrapper &image);
+  virtual double  check_fitness(const image_wrapper &image, unsigned rgb);
 
   // Debugging method.  Remember that the check_fitness() function has to
   // be called before it can be used, so that an image is created.
@@ -415,12 +415,12 @@ public:
   // better location/radius or not.  Return new location in any case.  The
   // boolean parameters tell whether to try stepping in each of X, Y, and
   // Radius.
-  virtual bool	take_single_optimization_step(const image_wrapper &image, double &x, double &y,
+  virtual bool	take_single_optimization_step(const image_wrapper &image, unsigned rgb, double &x, double &y,
 				      bool do_x, bool do_y, bool do_r);
 
   /// Check the fitness of the disk against an image, at the current parameter settings.
   // Return the fitness value there.
-  virtual double  check_fitness(const image_wrapper &image);
+  virtual double  check_fitness(const image_wrapper &image, unsigned rgb);
 
   /// Get at internal information
   double  get_length(void) const { return d_length; };
@@ -504,7 +504,7 @@ public:
 
   /// Check the fitness against an image, at the current parameter settings.
   // Return the fitness value there.
-  virtual double  check_fitness(const image_wrapper &image, double x, double y);
+  virtual double  check_fitness(const image_wrapper &image, unsigned rgb, double x, double y);
 
 protected:
   image_wrapper	*d_radial_image;	    //< Radial image read from file.
