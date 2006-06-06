@@ -1,5 +1,14 @@
 2006-06-06  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* video_spot_tracker.cpp : Makes the mouse motion and clicks match
+		the resized video window, so that if we're using OpenGL for
+		display of the texture, everything lines up correctly.  This
+		means that the user can resize the window and that images
+		that are narrower than the window is wide will display
+		consistently.
+
+2006-06-06  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* average_videos.cpp : Removed extra M_PI definition.
 	* directx_camera_server.cpp : Made it use BGR texture rather than
 		RGB texture so that the colors don't swap.

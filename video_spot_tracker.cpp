@@ -2313,69 +2313,86 @@ void keyboardCallbackForGLUT(unsigned char key, int x, int y)
   }
 }
 
-void mouseCallbackForGLUT(int button, int state, int x, int y)
+void mouseCallbackForGLUT(int button, int state, int raw_x, int raw_y)
 {
-    // Record where the button was pressed for use in the motion
-    // callback, flipping the Y axis to make the coordinates match
-    // image coordinates.
-    g_mousePressX = x;
-    g_mousePressY = y = flip_y(y);
+  // Record where the button was pressed for use in the motion
+  // callback, flipping the Y axis to make the coordinates match
+  // image coordinates.
+  g_mousePressX = raw_x;
+  g_mousePressY = raw_y;
 
-    switch(button) {
-      // The left button will create a new tracker and let the
-      // user specify its radius if they move far enough away
-      // from the pick point (it starts with a default of the same
-      // as the current active tracker).
-      // The new tracker becomes the active tracker.
-      case GLUT_LEFT_BUTTON:
-	if (state == GLUT_DOWN) {
-	  // Make sure that we don't have too many trackers.  If we do, then don't do anything.
-	  // The number is limited for purposes of logging to the maximum number of sensors in
-	  // a VRPN tracker.
-	  if (g_trackers.size() >= vrpn_TRACKER_MAX_SENSORS) {
-	    fprintf(stderr, "Too many trackers, only %d allowed\n", vrpn_TRACKER_MAX_SENSORS);
-	    return;
-	  }
+  // Convert from raw device coordinates to image coordinates.  This
+  // means scaling by the ratio of window size to image size.  If the
+  // user has not resized the window, and if the image was not too small
+  // then this will be 1; otherwise it will be different in general.
+  double xScale = (g_camera->get_num_columns() - 1.0) / (glutGet(GLUT_WINDOW_WIDTH) - 1.0);
+  double yScale = (g_camera->get_num_rows() - 1.0) / (glutGet(GLUT_WINDOW_HEIGHT) - 1.0);
+  int x = xScale * raw_x;
+  int y = flip_y( yScale * raw_y);
 
-	  g_whichDragAction = 1;
-	  g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(x,y,g_Radius),create_appropriate_ztracker()));
-	  g_active_tracker = g_trackers.back();
-	  if (g_active_tracker->ztracker()) { g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
-
-	  // Move the pointer to where the user clicked.
-	  // Invert Y to match the coordinate systems.
-	  g_X = x;
-	  g_Y = flip_y(y);
-	  if (g_active_tracker->ztracker()) {
-	    g_Z = g_active_tracker->ztracker()->get_z();
-	  }
-	} else {
-	  // Nothing to do at release.
+  switch(button) {
+    // The left button will create a new tracker and let the
+    // user specify its radius if they move far enough away
+    // from the pick point (it starts with a default of the same
+    // as the current active tracker).
+    // The new tracker becomes the active tracker.
+    case GLUT_LEFT_BUTTON:
+      if (state == GLUT_DOWN) {
+	// Make sure that we don't have too many trackers.  If we do, then don't do anything.
+	// The number is limited for purposes of logging to the maximum number of sensors in
+	// a VRPN tracker.
+	if (g_trackers.size() >= vrpn_TRACKER_MAX_SENSORS) {
+	  fprintf(stderr, "Too many trackers, only %d allowed\n", vrpn_TRACKER_MAX_SENSORS);
+	  return;
 	}
-	break;
 
-      case GLUT_MIDDLE_BUTTON:
-	if (state == GLUT_DOWN) {
-	  g_whichDragAction = 0;
-	}
-	break;
+	g_whichDragAction = 1;
+	g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(x,y,g_Radius),create_appropriate_ztracker()));
+	g_active_tracker = g_trackers.back();
+	if (g_active_tracker->ztracker()) { g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
 
-      // The right button will pull the closest existing tracker
-      // to the location where the mouse button was pressed, and
-      // then let the user pull it around the screen
-      case GLUT_RIGHT_BUTTON:
-	if (state == GLUT_DOWN) {
-	  g_whichDragAction = 2;
-	  activate_and_drag_nearest_tracker_to(x,y);
+	// Move the pointer to where the user clicked.
+	// Invert Y to match the coordinate systems.
+	g_X = x;
+	g_Y = flip_y(y);
+	if (g_active_tracker->ztracker()) {
+	  g_Z = g_active_tracker->ztracker()->get_z();
 	}
-	break;
-    }
+      } else {
+	// Nothing to do at release.
+      }
+      break;
+
+    case GLUT_MIDDLE_BUTTON:
+      if (state == GLUT_DOWN) {
+	g_whichDragAction = 0;
+      }
+      break;
+
+    // The right button will pull the closest existing tracker
+    // to the location where the mouse button was pressed, and
+    // then let the user pull it around the screen
+    case GLUT_RIGHT_BUTTON:
+      if (state == GLUT_DOWN) {
+	g_whichDragAction = 2;
+	activate_and_drag_nearest_tracker_to(x,y);
+      }
+      break;
+  }
 }
 
-void motionCallbackForGLUT(int x, int y) {
-
-  // Make mouse coordinates match image coordinates.
-  y = flip_y(y);
+void motionCallbackForGLUT(int raw_x, int raw_y)
+{
+  // Convert from raw device coordinates to image coordinates.  This
+  // means scaling by the ratio of window size to image size.  If the
+  // user has not resized the window, and if the image was not too small
+  // then this will be 1; otherwise it will be different in general.
+  double xScale = (g_camera->get_num_columns() - 1.0) / (glutGet(GLUT_WINDOW_WIDTH) - 1.0);
+  double yScale = (g_camera->get_num_rows() - 1.0) / (glutGet(GLUT_WINDOW_HEIGHT) - 1.0);
+  int x = xScale * raw_x;
+  int y = flip_y( yScale * raw_y);
+  int pressX = xScale * g_mousePressX;
+  int pressY = flip_y( yScale * g_mousePressY );
 
   switch (g_whichDragAction) {
 
@@ -2393,7 +2410,7 @@ void motionCallbackForGLUT(int x, int y) {
       if (y >= (int)g_image->get_num_rows()) { y = g_image->get_num_rows() - 1; };
 
       // Set the radius based on how far the user has moved from click
-      double radius = sqrt( (x - g_mousePressX) * (x - g_mousePressX) + (y - g_mousePressY) * (y - g_mousePressY) );
+      double radius = sqrt( (x - pressX) * (x - pressX) + (y - pressY) * (y - pressY) );
       if (radius >= 3) {
 	g_active_tracker->xytracker()->set_radius(radius);
 	g_Radius = radius;
