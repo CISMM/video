@@ -225,7 +225,6 @@ Tclvar_int_with_button	g_frame_number("frame_number",NULL,-1);  //< Keeps track 
 // by determining if the frame number has changed since last time.
 int                 g_last_optimized_frame_number = -1000;
 
-
 int		    g_tracking_window;		  //< Glut window displaying tracking
 unsigned char	    *g_glut_image = NULL;	  //< Pointer to the storage for the image
 
@@ -262,6 +261,8 @@ float		    g_kymograph_centers[g_kymograph_height];  //< Where the cell-coordina
 int		    g_kymograph_window;		  //< Glut window showing kymograph lines stacked into an image
 int		    g_kymograph_center_window;	  //< Glut window showing kymograph center-tracking
 int		    g_kymograph_filled = 0;	  //< How many lines of data are in there now.
+
+bool                g_quit_at_end_of_video = false; //< When we reach the end of the video, should we quit?
 
 //-----------------------------------------------------------------
 // This section deals with providing multiple threads for tracking.
@@ -312,7 +313,7 @@ Tclvar_float_with_scale	g_brighten("brighten", "", 0, 8, 0);
 Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_trackers);
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
 Tclvar_float_with_scale g_lossSensitivity("lost_tracking_sensitivity", "", 0.0, 1.0, 0.0);
-Tclvar_int_with_button	g_invert("dark_spot",NULL,1, rebuild_trackers);
+Tclvar_int_with_button	g_invert("dark_spot",NULL,0, rebuild_trackers);
 Tclvar_int_with_button	g_interpolate("interpolate",NULL,1, rebuild_trackers);
 Tclvar_int_with_button	g_parabolafit("parabolafit",NULL,0);
 Tclvar_int_with_button	g_areamax("areamax",NULL,0, set_maximum_search_radius);
@@ -655,7 +656,7 @@ static	double	timediff(struct timeval t1, struct timeval t2)
 
 // XXX The start time needs to be reset whenever a new file is opened, probably,
 // rather than once at the first logged message.
-static	bool  save_log_frame(unsigned frame_number)
+static	bool  save_log_frame(int frame_number)
 {
   static struct timeval start;
   static bool first_time = true;
@@ -1850,11 +1851,17 @@ void myIdleFunc(void)
         // If we are playing, then say that we've finished the run and
         // stop playing.
         if (((int)(*g_play)) != 0) {
+          // If we are supposed to quit at the end of the video, do so.
+          if (g_quit_at_end_of_video) {
+            printf("Exiting at the end of the video\n");
+            g_quit = 1;
+          } else {
   #ifdef	_WIN32
-	  if (!PlaySound("end_of_video.wav", NULL, SND_FILENAME | SND_ASYNC)) {
-	    fprintf(stderr,"Cannot play sound %s\n", "end_of_video.wav");
-	  }
+	    if (!PlaySound("end_of_video.wav", NULL, SND_FILENAME | SND_ASYNC)) {
+	      fprintf(stderr,"Cannot play sound %s\n", "end_of_video.wav");
+	    }
   #endif
+          }
 	  *g_play = 0;
         }
       }
@@ -1947,7 +1954,9 @@ void myIdleFunc(void)
     // upper-left corner of the image.
     // We log even if we aren't optimizing, because the user may be moving
     // the dots around by hand.
-    if (g_vrpn_tracker && g_video_valid) {
+    // Don't log if we just stepped to the zeroeth frame (this can happen
+    // if we start logging on the command line).
+    if (g_vrpn_tracker && g_video_valid && (g_frame_number > 0)) {
       if (!save_log_frame(g_frame_number-1)) {
 	fprintf(stderr,"Could not save data to log file\n");
 	cleanup();
@@ -2726,26 +2735,26 @@ void  handle_optimize_z_change(int newvalue, void *)
 
 //--------------------------------------------------------------------------
 
+void Usage(const char *progname)
+{
+    fprintf(stderr, "Usage: %s [-kernel disc|cone|symmetric] [-dark_spot] [-follow_jumps]\n", progname);
+    fprintf(stderr, "           [-outfile NAME] [-precision P] [-sample_spacing S]\n");
+    fprintf(stderr, "           [-tracker X Y R] [-tracker X Y R] ...\n");
+    fprintf(stderr, "           [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n");
+    fprintf(stderr, "       -kernel: Use kernels of the specified type (default symmetric)\n");
+    fprintf(stderr, "       -dark_spot: Track a dark spot (default is bright spot)\n");
+    fprintf(stderr, "       -follow_jumps: Set the follow_jumps flag\n");
+    fprintf(stderr, "       -outfile: Save the track to the file 'name' (.vrpn will be appended)\n");
+    fprintf(stderr, "       -precision: Set the precision for created trackers to P (default 0.05)\n");
+    fprintf(stderr, "       -sample_spacing: Set the sample spacing for created trackers to S (default 1)\n");
+    fprintf(stderr, "       -tracker: Create a tracker with radius R at pixel X,Y and initiate optimization\n");
+    fprintf(stderr, "                 Multiple trackers can be created\n");
+    fprintf(stderr, "       source: The source file for tracking can be specified here (default is a dialog box)\n");
+    exit(-1);
+}
+
 int main(int argc, char *argv[])
 {
-  //------------------------------------------------------------------
-  // If there is a command-line argument, treat it as the name of a
-  // file that is to be loaded.
-  switch (argc) {
-  case 1:
-    // No arguments, so ask the user for a file name
-    g_device_name = NULL;
-    break;
-  case 2:
-    // Filename argument: open the file specified.
-    g_device_name = argv[1];
-    break;
-
-  default:
-    fprintf(stderr, "Usage: %s [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n", argv[0]);
-    exit(-1);
-  };
-  
   // Set up exit handler to make sure we clean things up no matter
   // how we are quit.  We hope that we exit in a good way and so
   // cleanup() gets called, but if not then we do a dirty exit.
@@ -2925,6 +2934,79 @@ int main(int argc, char *argv[])
   }
 
   //------------------------------------------------------------------
+  // Parse the command line.  This has to be done after a bunch of the
+  // set-up, so that we can create trackers and output files and such.
+  // It has to be before the imager set-up because we don't know what
+  // source to use until after we parse this.
+  int	i, realparams;		  // How many non-flag command-line arguments
+  realparams = 0;
+  for (i = 1; i < argc; i++) {
+    if (!strncmp(argv[i], "-kernel", strlen("-kernel"))) {
+      if (++i > argc) { Usage(argv[0]); }
+      if (!strncmp(argv[i], "disc", strlen("disc"))) {
+        g_kernel_type = KERNEL_DISK;
+      } else if (!strncmp(argv[i], "cone", strlen("cone"))) {
+        g_kernel_type = KERNEL_CONE;
+      } else if (!strncmp(argv[i], "symmetric", strlen("symmetric"))) {
+        g_kernel_type = KERNEL_SYMMETRIC;
+      } else if (!strncmp(argv[i], "FIONA", strlen("FIONA"))) {
+        g_kernel_type = KERNEL_FIONA;
+      } else {
+        Usage(argv[0]);
+        exit(-1);
+      }
+    } else if (!strncmp(argv[i], "-dark_spot", strlen("-dark_spot"))) {
+      g_invert = true;
+    } else if (!strncmp(argv[i], "-follow_jumps", strlen("-follow_jumps"))) {
+      g_areamax = 1;
+    } else if (!strncmp(argv[i], "-outfile", strlen("-outfile"))) {
+      if (++i > argc) { Usage(argv[0]); }
+      char *name = new char[strlen(argv[i])+5];
+      sprintf(name, "%s.vrpn", argv[i]);
+      logfilename_changed(name, NULL);
+    } else if (!strncmp(argv[i], "-precision", strlen("-precision"))) {
+      if (++i > argc) { Usage(argv[0]); }
+      g_precision = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-sample_spacing", strlen("-sample_spacing"))) {
+      if (++i > argc) { Usage(argv[0]); }
+      g_sampleSpacing = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-tracker", strlen("-tracker"))) {
+      if (++i > argc) { Usage(argv[0]); }
+      g_X = atof(argv[i]);
+      if (++i > argc) { Usage(argv[0]); }
+      g_Y = atof(argv[i]);
+      if (++i > argc) { Usage(argv[0]); }
+      g_Radius = atof(argv[i]);
+      g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(g_X,g_Y,g_Radius),create_appropriate_ztracker()));
+      g_active_tracker = g_trackers.back();
+      if (g_active_tracker->ztracker()) { g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
+    } else {
+      switch (++realparams) {
+      case 1:
+        // Filename argument: open the file specified.
+        g_device_name = argv[i];
+        break;
+
+      default:
+        Usage(argv[0]);
+      }
+    }
+  }
+
+  //------------------------------------------------------------
+  // This pushes changes in the C variables over to Tcl and then
+  // calls any resulting callbacks (handles the commands set during
+  // the command-line parsing).
+
+  while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
+  if (Tclvar_mainloop()) {
+    fprintf(stderr,"Tclvar Mainloop failed\n");
+    return -1;
+  }
+  while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
+
+  
+  //------------------------------------------------------------------
   // If we don't have a device name, then throw a Tcl dialog asking
   // the user for the name of a file to use and wait until they respond.
   if (g_device_name == NULL) {
@@ -3029,6 +3111,29 @@ int main(int argc, char *argv[])
   g_vrpn_connection = new vrpn_Connection();
   g_vrpn_tracker = new vrpn_Tracker_Server("Spot", g_vrpn_connection, MAX_TRACKERS);
   g_vrpn_analog = new vrpn_Analog_Server("FrameNumber", g_vrpn_connection, 1);
+
+  //------------------------------------------------------------------
+  // Horrible hack to deal with the swapping of the Y axis in all of this
+  // code.  Any trackers that have been created need to have their Y value
+  // flipped.  We can't have done this until we've created the image and
+  // we know how large it is in y, so we do it here.
+  g_image = g_camera;
+  list<Spot_Information *>::iterator  loop;
+  for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+    double x = (*loop)->xytracker()->get_x();
+    double y = flip_y((*loop)->xytracker()->get_y());
+    (*loop)->xytracker()->set_location( x, y );
+  }
+
+  //------------------------------------------------------------------
+  // If we created a tracker during the command-line parsing, then we
+  // want to turn on optimization and also play the video.  Also set things
+  // so that we will exit when we get to the end of the video.
+  if (g_trackers.size()) {
+    g_opt = 1;
+    if (g_video) { (*g_play) = 1; }
+    g_quit_at_end_of_video = true;
+  }
 
   //------------------------------------------------------------------
   // Initialize GLUT and create the window that will display the

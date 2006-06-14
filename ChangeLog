@@ -1,3 +1,11 @@
+2006-06-13  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Added command-line arguments that let
+		you run the program and start trackers and have it log and
+		then quit at the end of a file sequence.  This is to let Ty
+		run it in a script harness and determine how well the
+		trackers work.
+
 2006-06-07  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Updated the version number for a new
