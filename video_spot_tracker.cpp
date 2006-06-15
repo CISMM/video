@@ -76,7 +76,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.06";
+const char *Version_string = "05.07";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -534,7 +534,7 @@ spot_tracker_XY  *create_appropriate_xytracker(double x, double y, double r)
         volume -= count*background;
       }
       printf("XXX FIONA kernel: background = %lg, volume = %lg\n", background, volume);
-      tracker = new Gaussian_spot_tracker(r, (g_invert != 0), g_precision, 0.1, g_sampleSpacing, background, volume);
+      tracker = new FIONA_spot_tracker(r, (g_invert != 0), g_precision, 0.1, g_sampleSpacing, background, volume);
     } else if (g_kernel_type == KERNEL_SYMMETRIC) {
       g_interpolate = 1;
       tracker = new symmetric_spot_tracker_interp(r,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
@@ -1115,9 +1115,13 @@ void myBeadDisplayFunc(void)
       double max = -1e10;
       double x,y;
       double double_pix;
+
+      // Include the maximum (center) spot in the Gaussian in the max calculation.  Then look
+      // at all of the pixel values in the image near the tracker center.
+      static_cast<FIONA_spot_tracker *>(g_active_tracker->xytracker())->read_pixel(0, 0, max);
       for (x = - 2*radius; x <= 2*radius; x++) {
         for (y = - 2*radius; y <= 2*radius; y++) {
-	  g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix);
+	  g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix, g_colorIndex);
           if (double_pix > max) { max = double_pix; }
         }
       }
@@ -1143,47 +1147,25 @@ void myBeadDisplayFunc(void)
       if (spin > 360) { spin -= 360; }
       glRotated( spin, 0,0,1 );
 
-      // Draw a ground plane with a grid on it so that we can see which
-      // of the line drawings are moving above/below the plane.  Make
-      // the lines a little above the surface, so they don't Z fight.
-      glColor3f(0.3,0.3,0.3);
-      glBegin(GL_TRIANGLES);
-        glVertex3d(-1,-1,0);
-        glVertex3d( 1,-1,0);
-        glVertex3d( 1, 1,0);
-
-        glVertex3d( 1, 1,0);
-        glVertex3d(-1, 1,0);
-        glVertex3d(-1,-1,0);
-      glEnd();
-
-      glColor3f(0.1, 0.1, 0.1);
-      glBegin(GL_LINES);
-      for (x = - max_to_draw; x <= max_to_draw; x++) {
-          glVertex3d(x, -1, 0.1);
-          glVertex3d(x,  1, 0.1);
-      }
-      for (y = - max_to_draw; y <= max_to_draw; y++) {
-          glVertex3d(-1, y, 0.1);
-          glVertex3d( 1, y, 0.1);
-      }
-      glEnd();
+      glEnable(GL_DEPTH_TEST);
 
       // Draw a graph of the image data in red, along Y direction.
       // Draw it again along the X direction, to produce a complete mesh.
+      // Make sure we have integral coordinates because that will center
+      // the middle of the kernel correctly.
       glColor3f(1,0.2,0.2);
-      for (x = - max_to_draw; x <= max_to_draw; x++) {
+      for (x = floor(-max_to_draw); x <= max_to_draw; x++) {
         glBegin(GL_LINE_STRIP);
-        for (y = - max_to_draw; y <= max_to_draw; y++) {
-	  g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix);
+        for (y = floor(-max_to_draw); y <= max_to_draw; y++) {
+	  g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix, g_colorIndex);
           glVertex3d(x*scale, y*scale, double_pix*zScale);
         }
         glEnd();
       }
-      for (y = - max_to_draw; y <= max_to_draw; y++) {
+      for (y = floor(-max_to_draw); y <= max_to_draw; y++) {
         glBegin(GL_LINE_STRIP);
-        for (x = - max_to_draw; x <= max_to_draw; x++) {
-	  g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix);
+        for (x = floor(-max_to_draw); x <= max_to_draw; x++) {
+	  g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix, g_colorIndex);
           glVertex3d(x*scale, y*scale, double_pix*zScale);
         }
         glEnd();
@@ -1191,23 +1173,33 @@ void myBeadDisplayFunc(void)
 
       // Draw a graph of the kernel data in green, along X direction.
       // Draw it again along the Y direction, to produce a complete mesh.
+      // Note that we have to shift the drawn kernel by the inverse of the fractional
+      // offset in the FIONA image, so that it will line up with the displayed image.
+      int x_int = static_cast<int>(floor(xImageOffset));
+      int y_int = static_cast<int>(floor(yImageOffset));
+      double x_frac = xImageOffset - x_int;
+      double y_frac = yImageOffset - y_int;
+
       glColor3f(0.0,1.0,0.6);
-      for (x = - max_to_draw; x <= max_to_draw; x++) {
+      for (x = floor(-max_to_draw); x <= max_to_draw; x++) {
         glBegin(GL_LINE_STRIP);
-        for (y = - max_to_draw; y <= max_to_draw; y++) {
-	  static_cast<Gaussian_spot_tracker *>(g_active_tracker->xytracker())->read_pixel(x, y, double_pix);
-          glVertex3d(x*scale, y*scale, double_pix*zScale);
+        for (y = floor(-max_to_draw); y <= max_to_draw; y++) {
+	  static_cast<FIONA_spot_tracker *>(g_active_tracker->xytracker())->read_pixel(x, y, double_pix);
+          glVertex3d( (x-x_frac)*scale, (y-y_frac)*scale, double_pix*zScale);
         }
         glEnd();
       }
-      for (y = - max_to_draw; y <= max_to_draw; y++) {
+      glColor3f(0.0,1.0,0.6);
+      for (y = floor(-max_to_draw); y <= max_to_draw; y++) {
         glBegin(GL_LINE_STRIP);
-        for (x = - max_to_draw; x <= max_to_draw; x++) {
-	  static_cast<Gaussian_spot_tracker *>(g_active_tracker->xytracker())->read_pixel(x, y, double_pix);
-          glVertex3d(x*scale, y*scale, double_pix*zScale);
+        for (x = floor(-max_to_draw); x <= max_to_draw; x++) {
+	  static_cast<FIONA_spot_tracker *>(g_active_tracker->xytracker())->read_pixel(x, y, double_pix);
+          glVertex3d((x-x_frac)*scale, (y-y_frac)*scale, double_pix*zScale);
         }
         glEnd();
       }
+
+      glDisable(GL_DEPTH_TEST);
 
     } else {
       // Copy pixels into the image buffer.
@@ -1253,7 +1245,7 @@ void myBeadDisplayFunc(void)
       int shift = total_shift;
       for (x = min_x; x < max_x; x++) {
         for (y = min_y; y < max_y; y++) {
-	  if (!g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix)) {
+	  if (!g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix, g_colorIndex)) {
 	    g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = 0;
 	    g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = 0;
 	    g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = 0;
@@ -1542,11 +1534,17 @@ static void optimize_tracker(Spot_Information *tracker)
     tracker->xytracker()->set_location(x_base + best_x_offset, y_base + best_y_offset);
   }
 
-  // Here's where the tracker is optimized to its new location
+  // Here's where the tracker is optimized to its new location.
+  // FIONA trackers always try to optimize radius along with XY.
   if (g_parabolafit) {
     tracker->xytracker()->optimize_xy_parabolafit(*g_image, g_colorIndex, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
   } else {
-    tracker->xytracker()->optimize_xy(*g_image, g_colorIndex, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
+    if (g_kernel_type == KERNEL_FIONA) {
+      //tracker->xytracker()->take_single_optimization_step(*g_image, g_colorIndex, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
+      tracker->xytracker()->optimize(*g_image, g_colorIndex, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
+    } else {
+      tracker->xytracker()->optimize_xy(*g_image, g_colorIndex, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
+    }
   }
 
   // If we are doing prediction, update the estimated velocity based on the
@@ -2099,7 +2097,7 @@ void myIdleFunc(void)
 	int ky = g_kymograph_filled;
 
 	// Look up the pixel in the image and put it into the kymograph if we get a reading.
-	if (!g_image->read_pixel_bilerp(x, y, double_pix)) {
+	if (!g_image->read_pixel_bilerp(x, y, double_pix, g_colorIndex)) {
 	  g_kymograph_image[0 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
 	  g_kymograph_image[1 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;
 	  g_kymograph_image[2 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 0;

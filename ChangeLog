@@ -1,3 +1,19 @@
+2006-06-15  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* image_wrapper.cpp : Adding a Gaussian image, which does not
+		integrate but simply point-samples.  This is to support
+		the FIONA kernel.
+	* image_wrapper.h : Same.
+	* spot_math.h : Same.
+	* spot_tracker.cpp : Switched the FIONA implementation away from doing
+		integration of a Gaussian to just doing point-sampling of the
+		Gaussian to match the implementation in the Selvin lab.  Also made
+		the optimization function always optimize the radius, background,
+		and volume within the Gaussian.
+	* spot_tracker.h : Same.
+	* video_spot_tracker.cpp : Same.
+	* video_spot_trcker.tcl : Put FIONA interface back in.
+
 2006-06-13  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Added command-line arguments that let

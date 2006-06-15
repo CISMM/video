@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v05.06</title>
+<title>Video Spot Tracker v05.07</title>
 
-<h1>Video Spot Tracker version 05.06</h1>
+<h1>Video Spot Tracker version 05.07</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -50,7 +50,7 @@
   icon that was created when the program was installed. To select a stack of image 
   files that are numbered consecutively, drag any one of the files onto the icon. 
   It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
-  Menu/All Programs/NSRG/Video Spot Tracker v05.06</b></i>. If you run the program 
+  Menu/All Programs/NSRG/Video Spot Tracker v05.07</b></i>. If you run the program 
   directly by double-clicking on the icon, it will ask for a video or image file 
   (AVI, TIF, or BMP) that it should open.</p>
 
@@ -94,7 +94,7 @@
 
 <h3>Selecting the type of tracker and tracking/logging parameters</h3>
 
-<p><img src="kernel.jpg" width="688" height="173"></p>
+<p><img src="kernel.jpg" width="745" height="171"></p>
 
 <p>There are three types of tracking kernels available in version 4.05: disc, 
   cone, and symmetric. Their properties are controlled using interface widgets 
@@ -106,20 +106,45 @@
 
 <p>A parameter relevant for both the disc and cone kernel is whether the spots are dark points in a lighter background (the default) or lighter points in a dark background). This is controlled using the <dfn><strong>dark_spot</strong></dfn> check box located at the top of the user interface. You should set this for the type of spot you are seeking.</p>
 
-<p>If the bead profile is changing over time, or if it does not fit well into one of the above categories, then the <cite><strong>symmetric</strong></cite> tracker should be chosen. This tracker operates by locating the minimum variance in concentric rings around the bead center. It sums the variance in circles of radius 1, 2, 3, ... up to the radius setting and divides each circle's radius by its circumference to provide even weights for each ring. The radius should be set to be at least slighly larger than the bead that is to be tracked; setting it larger will not harm tracking except to make the program run more slowly.  The setting on the <cite>dark_spot</cite> check box has no effect when symmetric tracker is chosen.</p> 
+<p>If the bead profile is changing over time, or if it does not fit well into 
+  one of the above categories, then the <cite><strong>symmetric</strong></cite> 
+  tracker should be chosen. This tracker operates by locating the minimum variance 
+  in concentric rings around the bead center. It sums the variance in circles 
+  of radius 1, 2, 3, ... up to the radius setting and divides each circle's radius 
+  by its circumference to provide even weights for each ring. The radius should 
+  be set to be at least slighly larger than the bead that is to be tracked; setting 
+  it larger will not harm tracking except to make the program run more slowly. 
+  The setting on the <cite>dark_spot</cite> check box has no effect when symmetric 
+  tracker is chosen.</p>
+<p>For fluorescent emitters that are much smaller than a pixel, use the <i><b>FIONA</b></i> 
+  kernel. This is based on code from Paul Selvin's laboratory for implementing 
+  &quot;Fluorescence Imaging with One Nanometer Accuracy.&quot; The technique 
+  is described in &quot;Molecular motors one at a time: FIONA to the rescue&quot; 
+  by Comert Kural, Hazma Balci and Paul Selvin from UIUC. It finds the least-squares 
+  fit 2D Gaussian to the area around the point, to approximate the effect of integrating 
+  an Airy pattern centered at the emitter. The technique implemented here differs 
+  from the UIUC implementation in two ways. First, it assumes a symmetric Gaussian 
+  (this assumes square pixels). Second, it only fits out to four standard deviations 
+  from the center (this prevents somewhat distant spots from interfering with 
+  the optimization). Even with this reduced radius, two points come near each 
+  other, they will interfere with one another's tracking even if the two bright 
+  spots do not overlap. <b><i>Hint: </i></b>If you are using the FIONA kernel, 
+  you may want to turn on the <i>follow_jumps</i> control; this will make the 
+  tracking slower, but will keep from getting lost if the particle moves too far 
+  in a single frame.</p> 
 
-<p><img src="rod3.jpg" width="152" height="164" align="right">A fourth, composite 
-  kernel is the <cite><strong>rod3</strong></cite> kernel. This is actually a 
-  grouping of three subkernels, each of which is one of the above types. These 
-  three kernels lie along the same line and move as a unit; they seek to track 
-  bars in the image. When this kernel box is selected, a new control panel will 
-  appear. This control panel is shown to the right, and it enables control over 
-  the length (in pixels) and orientation (in degrees) of the bar trackers. As 
-  with the radius and position controls described above, these controls change 
-  to display and control the values of the active tracker. The most successful 
-  bars may be made of cone kernels and be slightly less than the actual length 
-  of the bar on the screen. The symmetric kernel is probably the least useful. 
-  Note that if the bars flex, this tracker may not work very well.</p>
+<p><img src="rod3.jpg" width="152" height="164" align="right">The <cite><strong>rod3</strong></cite> 
+  kernel is a composite kernel. This is actually a grouping of three subkernels, 
+  each of which is one of the above types. These three kernels lie along the same 
+  line and move as a unit; they seek to track bars in the image. When this kernel 
+  box is selected, a new control panel will appear. This control panel is shown 
+  to the right, and it enables control over the length (in pixels) and orientation 
+  (in degrees) of the bar trackers. As with the radius and position controls described 
+  above, these controls change to display and control the values of the active 
+  tracker. The most successful bars may be made of cone kernels and be slightly 
+  less than the actual length of the bar on the screen. The symmetric kernel is 
+  probably the least useful. Note that if the bars flex, this tracker may not 
+  work very well.</p>
 <h3>Enabling the trackers to follow jumps in bead position</h3>
 
 

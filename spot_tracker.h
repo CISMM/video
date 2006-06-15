@@ -324,7 +324,9 @@ protected:
 // This class is initialized with a description of a Gaussian profile that it
 // should track, and then it will optimize against this initial image by shifting
 // over a specified range to find the image whose pixel-wise least-squares
-// difference is minimized.
+// difference is minimized.  It approximates integration of the volume of the
+// Gaussian within each pixel by sampling a number of times within each pixel
+// and averaging.
 
 class Gaussian_spot_tracker : public spot_tracker_XY {
 public:
@@ -354,11 +356,66 @@ public:
   };
 
 protected:
-  Gaussian_image  *_testimage;  //< The image to test for fitness against
+  Integrated_Gaussian_image  *_testimage;  //< The image to test for fitness against
   double          _lastwidth;   //< Last width we built the tracker for (should be twice the diameter (4x radius)) plus 1.
   double          _background;  //< The background value to use in the image (added to the Gaussian)
   double          _summedvalue; //< The summed value under the entire Gaussian (will be negative if inverted
 };
+
+//----------------------------------------------------------------------------
+// This class is initialized with a description of a Gaussian profile that it
+// should track, and then it will optimize against this initial image by shifting
+// over a specified range to find the image whose pixel-wise least-squares
+// difference is minimized.  Following the Selvin code, it uses a point-sampled
+// Gaussian and it optimizes the background, magnitude, and radius of the Gaussian each
+// time it optimizes its position.  Like the Selvin code, it looks at a 15-pixel
+// region around the center to do its tracking.  Unlike the Selvin code, it does not allow
+// for separate standard deviations in X and Y.
+// The "sample_separation_in_pixels" parameter does nothing for this tracker.
+
+class FIONA_spot_tracker : public spot_tracker_XY {
+public:
+  // Set initial parameters of the search routine
+  FIONA_spot_tracker(double radius,
+		    bool inverted = false,
+		    double pixelaccuracy = 0.25,
+		    double radiusaccuracy = 0.25,
+		    double sample_separation_in_pixels = 1.0,
+                    double background = 127,
+                    double summedvalue = 11689);
+
+  /// Check the fitness against an image, at the current parameter settings.
+  // Return the fitness value there.
+  virtual double  check_fitness(const image_wrapper &image, unsigned rgb);
+
+  //------------------------------------------------
+  // The FIONA tracker actually optimizes the radius and the background as
+  // part of the Gaussian-fit process.  So, we override the optimization
+  // routines here so that they do these extra steps.  This means that
+  // the do_r parameter is always treated as TRUE not matter what.
+
+  // Optimize starting at the specified location to find the best-fit disk.
+  // Take only one optimization step.  Return whether we ended up finding a
+  // better location/radius or not.  Return new location in any case.  The
+  // boolean parameters tell whether to try stepping in each of X, Y, and
+  // Radius.
+  virtual bool	take_single_optimization_step(const image_wrapper &image, unsigned rgb, double &x, double &y,
+				      bool do_x, bool do_y, bool do_r);
+
+  //------------------------------------------------
+
+  // Debugging method.  Remember that the check_fitness() function has to
+  // be called before it can be used, so that an image is created.
+  bool read_pixel(double x, double y, double &result) const {
+      return _testimage.read_pixel(floor(x),floor(y),result, 0);
+  };
+
+protected:
+  Point_sampled_Gaussian_image  _testimage;  //< The image to test for fitness against
+  double          _background;  //< The background value to use in the image (added to the Gaussian)
+  double          _summedvalue; //< The summed value under the entire Gaussian (will be negative for a dark spot)
+};
+
 
 //----------------------------------------------------------------------------
 // This class will optimize the response of three collinear kernels on an image.

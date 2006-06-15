@@ -968,7 +968,7 @@ Gaussian_spot_tracker::Gaussian_spot_tracker(double radius, bool inverted, doubl
   _pixelstep = 2.0; if (_pixelstep < 4*_pixelacc) { _pixelstep = 4*_pixelacc; };
   _radstep = 2.0; if (_radstep < 4*_radacc) { _radstep = 4*_radacc; };
 
-  // Store and invalid last width so we allocate the testimage the first time.
+  // Store an invalid last width so we allocate the testimage the first time.
   _lastwidth = -1;
 }
 
@@ -1023,8 +1023,7 @@ double	Gaussian_spot_tracker::check_fitness(const image_wrapper &image, unsigned
   // parameters.  Otherwise, just fill in the existing image with new values.  Allocate
   // out to twice the radius on each side (two standard deviations).
   if (!_testimage) {
-    //printf("XXX Gaussian_spot_tracker::check_fitness(): Creating tracker (r = %lg)\n",get_radius());
-    _testimage = new Gaussian_image(-2*get_radius(), 2*get_radius(), -2*get_radius(), 2*get_radius(),
+    _testimage = new Integrated_Gaussian_image(-2*get_radius(), 2*get_radius(), -2*get_radius(), 2*get_radius(),
       _background, 0.0, x_frac,y_frac, get_radius(), summed_value, 1/sample_separation_in_pixels);
   } else {
     _testimage->recompute(_background, 0.0, x_frac,y_frac, get_radius(), summed_value, 1/sample_separation_in_pixels);
@@ -1056,10 +1055,171 @@ double	Gaussian_spot_tracker::check_fitness(const image_wrapper &image, unsigned
   if (pixels == 0) {
     return 0.0;
   } else {
-    //printf("XXX Gaussian_spot_tracker::check_fitness(): Found %lg at (%lg,%lg)\n", fitness/pixels, get_x(), get_y());
     return fitness / pixels;
   }
 }
+
+// Note that the FIONA tracker is never inverted.  Set the inverted flag to false in the
+// base class.
+FIONA_spot_tracker::FIONA_spot_tracker(double radius,
+		    bool inverted,
+		    double pixelaccuracy,
+		    double radiusaccuracy,
+		    double sample_separation_in_pixels,
+                    double background,
+                    double summedvalue) :
+    spot_tracker_XY(radius, false, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels),
+    _testimage(NULL), _background(background), _summedvalue(summedvalue)
+{
+  // Make sure the parameters make sense
+  if (_rad <= 0) {
+    fprintf(stderr, "FIONA_spot_tracker::FIONA_spot_tracker(): Invalid radius, using 1.0\n");
+    _rad = 1.0;
+  }
+  if (_pixelacc <= 0) {
+    fprintf(stderr, "FIONA_spot_tracker::FIONA_spot_tracker(): Invalid pixel accuracy, using 0.25\n");
+    _pixelacc = 0.25;
+  }
+  if (_radacc <= 0) {
+    fprintf(stderr, "FIONA_spot_tracker::FIONA_spot_tracker(): Invalid radius accuracy, using 0.25\n");
+    _radacc = 0.25;
+  }
+  if (_samplesep <= 0) {
+    fprintf(stderr, "FIONA_spot_tracker::FIONA_spot_tracker(): Invalid sample spacing, using 1.00\n");
+    _samplesep = 1.0;
+  }
+
+  // Set the initial step sizes for radius and pixels
+  _pixelstep = 2.0; if (_pixelstep < 4*_pixelacc) { _pixelstep = 4*_pixelacc; };
+  _radstep = 2.0; if (_radstep < 4*_radacc) { _radstep = 4*_radacc; };
+}
+
+// Check the fitness of the stored image against another image, at the current parameter settings.
+// Return the fitness value there.
+
+// This is an image-to-image least-squares match.  We do not interpolate between pixels
+// in the image we're fitting, but rather shift the Gaussian within the pixels of our
+// test image.  We then sum the per-pixel squared error between the test image and
+// the image we're optimizing to.
+
+double	FIONA_spot_tracker::check_fitness(const image_wrapper &image, unsigned rgb)
+{
+  // If we're inverting the Gaussian, do so by negating the summed value.
+  double summed_value = _summedvalue;
+  if (_invert) { summed_value *= -1; }
+
+  // Figure out the offset for the Gaussian image we want to compute.  This is
+  // the floor of the translation, so it will always be between 0 and 1 in X and Y.
+  // We will translate the center pixel (0,0) of the Gaussian image so that
+  // it lies at the floor location when we do our pixel-by-pixel calculations
+  // below.
+  int x_int = static_cast<int>(floor(get_x()));
+  int y_int = static_cast<int>(floor(get_y()));
+  double x_frac = get_x() - x_int;
+  double y_frac = get_y() - y_int;
+
+  _testimage.set_new_parameters(_background, 0.0, x_frac,y_frac, get_radius(), summed_value);
+
+  // Figure out how far to check.  This should be 4 times the radius of the kernel.  In
+  // Selvin's code, they pick a 15-pixel square around the code, but this causes interference
+  // from nearby spots that cause optimization to fail.
+  double halfwidth = 4*_rad;
+  //if (halfwidth < 15.0) { halfwidth = 15.0; }
+
+  // Compute the sum of the squared errors between the test image and the image
+  // we're optimizing against.  The Gaussian image will have been shifted by
+  // the fractional part of the offset between the Gaussian and the test image, so
+  // we shift by the integral part when we do our pixel comparisons.
+  // We go out to twice the standard deviation (which is how large the Gaussian
+  // image is).  WE DO NOT BILERP either image, we read its pixels directly
+  // because we've shifted the Gaussian within the _testimage and resampled
+  // at the same resolution as the image we're optimizing against.
+  int x,y;
+  int pixels = 0;
+  double val, myval;
+  double fitness = 0.0;
+  for (x = -halfwidth; x <= halfwidth; x++) {
+    for (y = -halfwidth; y <= halfwidth; y++) {
+      if (image.read_pixel(x_int+x,y_int+y,val, rgb)) {
+        _testimage.read_pixel(x, y, myval, 0);
+	double squarediff = (val-myval) * (val-myval);
+	fitness -= squarediff;
+	pixels++;
+      }
+    }
+  }
+
+  if (pixels == 0) {
+    return 0.0;
+  } else {
+    // Note: Not dividing by the number of pixels here means that larger radii may be
+    // avoided because they make more pixels tested, which can only add noise.  However, dividing by the
+    // radius causes the kernel size to blow up.
+    return fitness;
+  }
+}
+
+// Optimize starting at the specified location to find the best-fit disk.
+// Take only one optimization step.  Return whether we ended up finding a
+// better location or not.  Return new location in any case.  One step means
+// one step in X,Y, and radius space each.  The boolean parameters tell
+// whether to optimize in each direction (X, Y, and Radius).
+bool  FIONA_spot_tracker::take_single_optimization_step(const image_wrapper &image, unsigned rgb, double &x, double &y,
+						       bool do_x, bool do_y, bool do_r)
+{
+  double  new_fitness;	    //< Checked fitness value to see if it is better than current one
+
+  // Never try to take larger than single-pixel steps in XY or single-value change in radius,
+  // to avoid jumping out of the local best fit.
+  if (_pixelstep > 1.0) { _pixelstep = 1.0; }
+  if (_radstep > 1.0) { _radstep = 1.0; }
+
+  // Call the base-class single-step routine.  Don't optimize the radius here, because we're
+  // going to completely optimize the radius next.
+  bool betterbase =  spot_tracker_XY::take_single_optimization_step(image, rgb, x, y, do_x, do_y, true);
+
+  // Try adjusting the background up and down by a number of counts that is equal to 10X the
+  // radius step size.  We use 4X to give the radius the chance to adjust itself faster.
+  // XXX This should probably be a decoupled parameter.
+  bool	  betterbackground = false; //< Do we find a better location?
+  double starting_background = _background;
+  _background = starting_background + 10*_radstep; // Try looking for larger background
+  if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
+    _fitness = new_fitness;
+    betterbackground = true;
+  } else {
+    _background = starting_background - 10*_radstep; // Try looking for smaller background
+    if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
+      _fitness = new_fitness;
+      betterbackground = true;
+    } else {
+      _background = starting_background;        // Back where we started
+    }
+  }
+
+  // Try adjusting the total summedvalue up and down by 1000X the radius step size.
+  // XXX This should almost certainly be a decoupled parameter.
+  bool	  bettersummedvalue = false;//< Do we find a better radius?
+  double starting_summedvalue = _summedvalue;
+  _summedvalue = starting_summedvalue + 1000 * _radstep; // Try looking for larger summedvalue
+  if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
+    _fitness = new_fitness;
+    bettersummedvalue = true;
+  } else {
+    _summedvalue = starting_summedvalue - 1000 * _radstep; // Try looking for smaller summedvalue
+    if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
+      _fitness = new_fitness;
+      bettersummedvalue = true;
+    } else {
+      _summedvalue = starting_summedvalue;        // Back where we started
+    }
+  }
+
+  // Return the new location and whether we found a better one.
+  x = get_x(); y = get_y();
+  return betterbase || betterbackground || bettersummedvalue;
+}
+
 
 rod3_spot_tracker_interp::rod3_spot_tracker_interp(const disk_spot_tracker *,
 			    double radius, bool inverted,

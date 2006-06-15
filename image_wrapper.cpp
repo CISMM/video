@@ -237,12 +237,13 @@ double cone_image::read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) 
 
 }
 
-Gaussian_image::Gaussian_image(int minx, int maxx, int miny, int maxy,
+Integrated_Gaussian_image::Integrated_Gaussian_image(int minx, int maxx, int miny, int maxy,
 	     double background, double noise,
 	     double centerx, double centery, double std_dev,
 	     double summedvolume, int oversample) :
   _minx(minx), _maxx(maxx), _miny(miny), _maxy(maxy),
-  _image(NULL), _oversample(oversample)
+  _image(NULL), _oversample(oversample),
+  _background(background)
 {
   // Make sure the parameters are meaningful
   if ( (_minx >= _maxx) || (_miny >= _maxy) ) {
@@ -261,14 +262,14 @@ Gaussian_image::Gaussian_image(int minx, int maxx, int miny, int maxy,
   recompute(background, noise, centerx, centery, std_dev, summedvolume, oversample);
 }
 
-Gaussian_image::recompute(double background, double noise,
+Integrated_Gaussian_image::recompute(double background, double noise,
 	     double centerx, double centery, double std_dev,
 	     double summedvolume, int oversample)
 {
   _oversample = oversample;
   int i,j, index;
 
-//  XXX Verify that this centers the pixel like it should
+//  XXX Verify that this centers the pixel like it should.
   // Compute where the samples should be taken.  These need to be taken
   // symmetrically around the pixel center and cover all samples within
   // the pixel exactly once.  First, compute the step size between the
@@ -307,37 +308,63 @@ Gaussian_image::recompute(double background, double noise,
   }
 }
 
-Gaussian_image::~Gaussian_image()
+Integrated_Gaussian_image::~Integrated_Gaussian_image()
 {
   delete [] _image;
 }
 
-void Gaussian_image::read_range(int &minx, int &maxx, int &miny, int &maxy) const
+void Integrated_Gaussian_image::read_range(int &minx, int &maxx, int &miny, int &maxy) const
 {
   minx = _minx; maxx = _maxx; miny = _miny; maxy = _maxy;
 };
 
 // Read a pixel from the image into a double; return true if the pixel
 // was in the image, false if it was not.
-bool Gaussian_image::read_pixel(int x, int y, double &result, unsigned /* RGB ignored */) const
+bool Integrated_Gaussian_image::read_pixel(int x, int y, double &result, unsigned /* RGB ignored */) const
 {
   int index;
   if (find_index(x,y, index)) {
     result = _image[index];
     return true;
   } else {
+    result = _background;
     return false;
   }
 }
 
-double Gaussian_image::read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) const
+double Integrated_Gaussian_image::read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) const
 {
   int index;
   if (find_index(x,y, index)) {
     return _image[index];
   } else {
-    return 0.0;
+    return _background;
   }
+}
 
+Point_sampled_Gaussian_image::Point_sampled_Gaussian_image(
+	     double background, double noise,
+	     double centerx, double centery, double std_dev,
+	     double summedvolume)
+{
+    set_new_parameters(background, noise, centerx, centery, std_dev, summedvolume);
+}
+
+double Point_sampled_Gaussian_image::read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) const
+{
+  double result = _background + _summedvolume * ComputeGaussianAtPoint(_std_dev, x - _centerx, y - _centery);
+  if (_noise != 0.0) {
+    double  unit_rand = (double)(rand()) / RAND_MAX;
+    result += (unit_rand - 0.5) * 2 * _noise;
+  }
+  return result;
+}
+
+// Read a pixel from the image into a double; return true if the pixel
+// was in the image, false if it was not.
+bool Point_sampled_Gaussian_image::read_pixel(int x, int y, double &result, unsigned /* RGB ignored */) const
+{
+  result = read_pixel_nocheck(x, y, 0);
+  return true;
 }
 

@@ -90,6 +90,34 @@ inline double	ComputeAiryVolume(
   return (sum / count) * (x1-x0) * (y1-y0);
 }
 
+// Compute the value of a Gaussian at the specified point.  The function is 2D,
+// centered at the origin.  The "standard normal distribution" Gaussian has an integrated
+// volume of 1 over all space and a variance of 1.  It is defined as:
+//               1           -(R^2)/2
+//   G(x) = ------------ * e
+//             2*PI
+// where R is the radius of the sample point from the origin.
+// We let the user set the standard deviation s, changing the function to:
+//                  1           -(R^2)/(2*s^2)
+//   G(x) = --------------- * e
+//           s^2 * 2*PI
+// For computational efficiency, we refactor this into A * e ^ (B * R^2).
+
+inline double	ComputeGaussianAtPoint(
+  double s_meters,      //< standard deviation (square root of variance)
+  double x, double y)	//< Point to sample (relative to origin)
+{
+  double variance = s_meters * s_meters;
+  double R_squared = x*x + y*y;
+
+  const double twoPI = 2*M_PI;
+  const double twoPIinv = 1.0 / twoPI;
+  double A = twoPIinv / variance;
+  double B = -1 / (2 * variance);
+
+  return A * exp(B * R_squared);
+}
+
 // Compute the volume under part of a Gaussian.  Do this by
 // sampling the function densely, finding the average value within the area,
 // and then multiplying by the area.  The function is 2D, centered at the
