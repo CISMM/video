@@ -26,7 +26,7 @@
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.03";
+const char *Version_string = "01.04";
 
 //--------------------------------------------------------------------------
 // Constants needed by the rest of the program
@@ -48,7 +48,7 @@ int     g_logrepeatcount = 0;             //< Keeps track of how many frames at 
 
 //--------------------------------------------------------------------------
 // Global variables
-int	g_Window_Size_X = 512;
+int	g_Window_Size_X = 800;
 int	g_Window_Size_Y = g_Window_Size_X;
 
 // Image array to hold the fraction of total Airy energy landing in
@@ -131,16 +131,16 @@ protected:
 //--------------------------------------------------------------------------
 // Tcl controls and displays
 void  logfilename_changed(char *newvalue, void *);
-Tclvar_float_with_scale	g_Wavelength("wavelength_nm", ".kernel.wavelength", 300, 750, 475);
-Tclvar_float_with_scale	g_PixelSpacing("pixelSpacing_nm", ".kernel.pixel", 15, g_Window_Size_X/4, 15);
+Tclvar_float_with_scale	g_Wavelength("wavelength_nm", ".kernel.wavelength", 350, 750, 510);
+Tclvar_float_with_scale	g_PixelSpacing("pixelSpacing_nm", ".kernel.pixel", 15, g_Window_Size_X/4, 70);
 Tclvar_float_with_scale	g_PixelHidden("pixelFracHidden", ".kernel.pixelhide", 0, 0.5, 0.1);
-Tclvar_float_with_scale	g_Radius("aperture_nm", ".kernel.aperture", 1000, 3000, 1000);
+Tclvar_float_with_scale	g_Radius("aperture_nm", ".kernel.aperture", 200, 2000, 500);
 Tclvar_float_with_scale	g_PixelXOffset("x_offset_pix", "", -1, 1, 0);
 Tclvar_float_with_scale	g_PixelYOffset("y_offset_pix", "", -1, 1, 0);
 Tclvar_float_with_scale	g_SampleCount("samples", "", 64, 256, 64);
-Tclvar_float_with_scale	g_UniformNoise("uniform_noise", "", 0, 0.1, 0.0077);
-Tclvar_float_with_scale	g_PhotonNoise("photon_noise", "", 0, 0.1, 0.0137);
-Tclvar_float_with_scale	g_DisplayGain("display_gain", "", 1,30, 17.7);
+Tclvar_float_with_scale	g_UniformNoise("uniform_noise", "", 0, 0.1, 0.0);
+Tclvar_float_with_scale	g_PhotonNoise("photon_noise", "", 0, 0.1, 0.0);
+Tclvar_float_with_scale	g_DisplayGain("display_gain", "", 1,30, 10);
 Tclvar_int_with_button	g_ShowSqrt("show_sqrt","", 1);
 Tclvar_int_with_button	g_quit("quit",NULL);
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
@@ -564,6 +564,12 @@ void myDisplayFunc(void)
       sprintf(filename, "%s.%03d.tif", g_basename, g_basenum);
 
       printf("Saving frame to %s\n", filename);
+      // Ensure that the size of the output image is at least 31x31 pixels by
+      // writing values into the (15,15) and (-15,-15) element.  Be sure not
+      // to change the values that are stored there.
+      g_NoiseImage.value(15,15,g_NoiseImage.read_pixel_nocheck(15,15));
+      g_NoiseImage.value(-15,-15,g_NoiseImage.read_pixel_nocheck(-15,-15,0));
+
       // Write to the file, scaled so that 65535 is the max (openGL had 1 as the max)
       g_NoiseImage.write_to_tiff_file(filename, 65535.0);
 

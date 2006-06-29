@@ -3,7 +3,7 @@ Microsoft Developer Studio Workspace File, Format Version 6.00
 
 ###############################################################################
 
-Project: "BaseClasses"="..\..\DXSDK\Samples\C++\DirectShow\BaseClasses\baseclasses.dsp" - Package Owner=<4>
+Project: "BaseClasses"="D:\DXSDK\Samples\C++\DirectShow\BaseClasses\baseclasses.dsp" - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -91,6 +91,9 @@ Package=<4>
 {{{
     Begin Project Dependency
     Project_Dep_Name spot_tracker_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name stocc_random_number_generator
     End Project Dependency
 }}}
 
@@ -487,6 +490,33 @@ Package=<4>
     End Project Dependency
     Begin Project Dependency
     Project_Dep_Name cooke_library
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "stocc_random_number_generator"=.\stocc_random_number_generator\stocc_random_number_generator.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "stocc_test_poisson"=.\stocc_test_poisson\stocc_test_poisson.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name stocc_random_number_generator
     End Project Dependency
 }}}
 

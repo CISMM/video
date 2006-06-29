@@ -1,3 +1,11 @@
+2006-06-29  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* airy_maker.cpp : Modified to make the default parameters closer
+		to what is found in the Selvin test code.  Modified to make
+		the minimum output file size 31x31 pixels.
+	* video.dsw : Added project files for STOCC random-number
+		generation library and a test program that came with it.
+
 2006-06-15  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* image_wrapper.cpp : Adding a Gaussian image, which does not
