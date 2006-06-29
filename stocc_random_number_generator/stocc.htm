@@ -1,0 +1,350 @@
+<html>
+<head>
+<meta http-equiv="Content-Language" content="en">
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<meta name="GENERATOR" content="Microsoft FrontPage 4.0">
+<title>Non-uniform random number generators</title>
+<style><!--
+body{font-family:verdana,arial,sans-serif;background-color:#CCFFCC;color:#000000;}
+a,p{font-family:verdana,arial,sans-serif}
+a:link{color:#0000CC; text-decoration:underline}
+a:visited{color:#990099; text-decoration:underline}
+a:active,a:hover{color:#6666FF; text-decoration:underline}
+h1{text-align:Center;font-size:150%;font-weight:700;}
+h2{text-align:Left;font-size:130%;font-weight:600;padding-top:1em}
+pre  {font-family: 'courier new',courier; color:#000000; background-color:#FFFFCC; 
+      border: 1px solid black; padding:0.5em }
+dt   {font-weight:bold;}
+dd   {font-weight:normal; padding-bottom:1em}
+li   {padding-bottom:1em}
+@media print {body{font-family:arial,sans-serif;background-color:#FFFFFF;color:#000000}}
+@media print {a,a:link,a:visited {text-decoration:none}}
+--></style>
+</head>
+
+<body>
+
+<h1>Non-uniform random number generators</h1>
+
+<p align="center">by Agner Fog</p>
+<p>The file <a href="stocc.zip">stocc.zip</a> contains a C++ class library of non-uniform random number generators
+providing variates with the following distributions: normal,
+bernoulli, poisson, binomial, hypergeometric, Wallenius' noncentral hypergeometric,
+and Fisher's noncentral hypergeometric distribution. Most distributions are
+available in both univariate and multivariate versions. There is also a function to
+shuffle numbers.</p>
+<p>Most of these functions are fast and accurate, even for extreme values of the
+parameters.</p>
+<p>The functions are based on the uniform random number generators in <a href="randomc.zip">randomc.zip</a>
+or <a href="randoma.zip">randoma.zip</a>.</p>
+<h2>File list</h2>
+<p>The archive <a href="stocc.zip">stocc.zip</a> contains the following
+files:</p>
+<dl>
+  <dt>stocc.htm</dt>
+  <dd>This file. Instructions</dd>
+  <dt>stocc.h</dt>
+  <dd>C++ header file containing class definitions.<br>
+    You must <code>#include</code> this in all C++ files that use this library.</dd>
+  <dt>stoc1.cpp</dt>
+  <dd>C++ source code for the non-uniform random number generators for the most
+    common probability distributions.</dd>
+  <dt>stoc2.cpp</dt>
+  <dd>Alternative code for the distributions poisson, binomial and hypergeometric.
+    Optimized for situations where these functions are called repeatedly with
+    the same parameters.</dd>
+  <DT>stoc3.cpp</DT>
+  <DD>Source code for generating random variables with the univariate and
+    multivariate Wallenius' and Fisher's noncentral hypergeometric distributions.</DD>
+  <DT>userintf.cpp</DT>
+  <DD>System-dependent user interface code</DD>
+  <DT>fnchyppr.cpp wnchyppr.cpp erfres.cpp</DT>
+  <DD>Additional source code used by stoc3.cpp</DD>
+  <dt>ex-stoc.cpp</dt>
+  <dd>Example showing how to use this class library to make random numbers with
+    various distributions.</dd>
+  <dt>ex-lib.cpp</dt>
+  <dd>Example showing how to use a combined random number generator from the
+    assembly language library as base for the non-uniform random number
+    functions.</dd>
+  <dt>ex-cards.cpp</dt>
+  <dd>Example showing how to shuffle a list of items randomly. Shuffles a deck
+    of cards.</dd>
+  <dt>ex-lotto.cpp</dt>
+  <dd>Example showing how to generate a sequence of random integers where no
+    number occurs more than once.</dd>
+  <dt>  testpois.cpp,&nbsp; testbino.cpp,&nbsp; testhype.cpp, testfnch.cpp, testwnch.cpp,
+    testmfnc.cpp, testmwnc.cpp</dt>
+  <dd>Test programs for testing the poisson, binomial, hypergeometric, and
+    univariate and multivariate Fisher's and Wallenius' noncentral
+    hypergeometric distribution generators. Also useful for calculating mean and variance of
+    these distributions.</dd>
+  <dt>distrib.pdf</dt>
+  <dd>Definition of the statistical distributions that can be generated with
+    this package.</dd>
+  <dt>sampmet.pdf</dt>
+  <dd>Sampling methods. Theoretical explanation of the methods used for
+    generating variates with these distributions.</dd>
+</dl>
+<h2>Instructions</h2>
+<p>Unpack the files <a href="randomc.zip">randomc.zip</a> and <a href="stocc.zip">stocc.zip</a>
+into a new directory. Make sure all the unpacked files are in the same
+directory. To get started, just compile one of the example programs for console
+mode using any C++ compiler.</p>
+<p>The C++ class <code>StochasticLib</code> can be derived from any of the
+random number generator classes in <a href="randomc.zip">randomc.zip</a>. Choose
+the one you like best. The examples use the &quot;Mersenne Twister&quot; class <code>TRandomMersenne</code>&nbsp;
+because this is the random number generator that has the fewest portability
+problems. To use a different random number generator as base class, just change
+the&nbsp;<br>
+&nbsp;
+<code>#define RANDOM_GENERATOR TRandomMersenne</code>&nbsp;<br>
+directive in the file stocc.h or
+make such a define before the&nbsp;<br>
+&nbsp;
+<code>#include &quot;stocc.h&quot;<br>
+</code>statement in <i>all</i> your
+modules.</p>
+<p>The C++ class <code>StochasticLib2</code> is derived from&nbsp;<code>StochasticLib</code>.
+It contains alternative versions of the functions poisson, binomial and
+hypergeometric.&nbsp; <code>StochasticLib </code>is the best choice if the
+parameters to these functions often wary in your program,&nbsp;<code>StochasticLib2</code>&nbsp;
+is faster when these functions are called many times with the same parameters.</p>
+<p>The C++ class <code>StochasticLib3</code> is derived from&nbsp;<code>StochasticLib</code>
+or <code>StochasticLib2</code>. It adds the Fisher's and Wallenius' noncentral
+hypergeometric distributions, and the multivariate versions of these, to the
+library.</p>
+<p>The header file stocc.h must be included in all modules that use this class
+library. The source code file stoc1.cpp can be included in your project, either
+as an <code>#include</code>, or as a separate module. If you are using&nbsp;<code>StochasticLib2</code>,&nbsp;
+then you need both stoc1.cpp and stoc2.cpp. If you are using&nbsp;<code>StochasticLib3</code>,&nbsp;
+then you need both stoc1.cpp and stoc3.cpp.</p>
+<p>It is recommended that you make only one instance of&nbsp;<code>StochasticLib
+</code>or&nbsp; <code>StochasticLib2 </code>or&nbsp;<code>StochasticLib3</code>. These stochastic library classes
+inherit the uniform random number functions from their base class. Therefore,
+one object of <code>StochasticLib3</code> gives you access to all the uniform and non-uniform random
+number generators.
+Example:</p>
+<pre>#include &quot;stocc.h&quot;                // header file for class library
+#include &lt;time.h&gt;                 // define time function
+
+void main () {
+  int seed = time(0);             // seed for random number generator
+  StochasticLib sto(seed);        // make instance of class
+  int i = sto.IRandom(0, 99);     // make random integer with uniform distribution
+  int b = sto.Binomial(0.2, 100); // make random integer with binomial distribution
+  ...
+  }</pre>
+
+<p>See the file ex-stoc.cpp for a more detailed example.</p>
+
+<p>See the file ex-lib.cpp for an example of how to use an assembly language
+uniform random number generator as base for the non-uniform random number
+generators.</p>
+<p>If you make more than one instance of these classes then make sure they don't
+have the same seed.</p>
+
+<h2>Portability</h2>
+<p>The C++ class library is supposed to work with all C++ compilers and all
+operating systems. It has been tested on several different systems.</p>
+<p>There are, however, a few system differences that you need to be aware of:</p>
+<ol>
+  <li>Error messages. There is no portable way of writing error messages.
+    Systems with a graphical user interface (e.g. Windows) need a pop-up message
+    box, while console mode programs and other line oriented systems need output to the standard output or error
+    output. Therefore, you may have to modify the function <code>FatalError</code>&nbsp;
+    in the file userintf.cpp to fit your system. This function is called by the library functions in case of illegal parameter
+    values or other fatal errors. Experience shows that these
+    error messages are very useful when debugging a program that uses the
+    non-uniform random variate generators. You may even enhance the <code>FatalError</code>
+    function to output additional debug information about the state of your
+    program.&nbsp;</li>
+  <li>Program exit. Windows-like environments may require that the program waits
+    for the user to press a key before exiting, in order to prevent the output
+    screen image from disappearing. Therefore, you may have to modify the function
+    <code>EndOfProgram</code>
+    in userintf.cpp to fit your system if you experience this problem.</li>
+  <li>Multithreaded programs. The functions are not re-entrant. This
+    is because they rely on static variables to remember the last parameters, so
+    that they don't have to re-do set-up calculations that are the same
+    as last time the function was called.<br>
+    <br>
+    If you want to call the same stochastic functions from more than one thread
+    in a multi-threaded program then you have to make these functions re-entrant. There are two ways to do
+    this:<br>
+    <br>
+    Method 1. Find all static local variables in the non-uniform random variate
+    generating functions in stoc1.cpp and stoc3.cpp. Make these variables non-static and make the setup in these
+    functions non-conditional. Don't use <code>StochasticLib2</code> and
+    stoc2.cpp.<br>
+    <br>
+    Method 2. Find all static local variables in the non-uniform random variate
+    generating functions in stoc1.cpp, stoc2.cpp and stoc3.cpp. Make all these variables
+    non-static members of the respective class. Those variables that need to be
+    initialized to <code>-1</code>  (names ending in <code>_last</code>) must be so in the constructor.<br>
+    <br>
+    Whether you use method 1 or 2, you have to give each thread its own instance
+    of the class and make sure they don't have the same seed. A difference of 1
+    in the seeds is sufficient.</li>
+  <li>See <a href="randomc.htm">randomc.htm</a> for more portability issues.</li>
+</ol>
+<h2>Function descriptions</h2>
+<dl>
+  <dt>int Bernoulli(double p)</dt>
+  <dd>Bernoulli distribution with probability parameter p.<br>
+    Returns 1 with probability p, or 0 with probability 1-p.<br>
+    Error conditions:<br>
+    Gives error message if p &lt; 0 or p &gt; 1.</dd>
+  <dt>double Normal(double m, double s)</dt>
+  <dd>Normal distribution with mean m and standard deviation s.<br>
+    This distribution simulates the sum of many random factors.<br>
+    Definition:<br>
+    f(x) = (2*pi*s<SUP>2</SUP>)<sup>-0.5</sup>*exp(-0.5*s<sup>-2</sup>*(x-m)<sup>2</sup>)<br>
+    Error conditions:<br>
+    None.</dd>
+  <dt>long int Poisson (double L)</dt>
+  <dd>Poisson distribution with mean L.<br>
+    This is the distribution of the number of events in a given time span or a
+    given geographical area when these events are randomly scattered in time or
+    space.<br>
+    Definition:<br>
+    f(x) = L<sup>x</sup>/x! * exp(-L)<br>
+    Error conditions:<br>
+    Gives error message if L &lt; 0 or L &gt; 2*10<sup>9</sup>.</dd>
+  <dt>long int Binomial (long int n, double p)</dt>
+  <dd>Binomial distribution with parameters n and p.<br>
+    This is the distribution of the number of red balls you get when drawing n
+    balls <i>with replacement</i> from an urn where p is the fraction of red
+    balls in the urn.<br>
+    Definition:<br>
+    f(x) = B(n,x) * p<sup>x </sup>* (1-p)<sup>n-x</sup>,<br>
+    where the binomial coefficient B(a,b) = a! / (b! * (a-b)!).<br>
+    Error conditions:<br>
+    Gives error message if n &lt; 0 or p &lt; 0 or p &gt; 1.</dd>
+  <dt>long int Hypergeometric (long int n, long int m, long int N)</dt>
+  <dd>Hypergeometric distribution with parameters n, m, N. (Note the order of
+    the parameters).<br>
+    This is the distribution of the number of red balls you get when drawing n
+    balls <i>without replacement</i> from an urn where the urn contains N balls,
+    where m balls are red and N-m balls are white.<br>
+    Definition:<br>
+    f(x) = B(m,x) * B(N-m,n-x) / B(N,n),<br>
+    where the binomial coefficient B(a,b) = a! / (b! * (a-b)!).<br>
+    Error conditions:<br>
+    Gives error message if any parameter is negative or n &gt; N or m &gt; N.</dd>
+  <dt>long int WalleniusNCHyp(long int n, long int m, long int N, double
+    odds)</dt>
+  <dd>The Wallenius noncentral hypergeometric distribution is the same as the hypergeometric distribution, but with bias. The bias can be seen
+    as an odds ratio. A bias &gt; 1 will favor the red balls, a bias &lt; 1 will
+    favor the white balls.<br>
+    When bias = 1 we have the hypergeometric distribution.<br>
+    Error conditions:<br>
+    Gives error message if any parameter is negative or n &gt; N or m &gt; N.</dd>
+  <dt>long int FishersNCHyp(long int n, long int m, long int N, double
+    odds)</dt>
+  <dd>The Fisher's noncentral hypergeometric distribution is a conditional binomial
+    distribution resembling the Wallenius noncentral hypergeometric distribution. See the
+    file <A HREF="distrib.pdf">distrib.pdf</A> for a definition. Execution may
+    be slow and inexact when N is high and bias is far from 1.<br>
+    Error conditions:<br>
+    Gives error message if any parameter is negative or n &gt; N or m &gt; N.</dd>
+  <dt>void Multinomial (long int * destination, double * source, long int n, int colors)<br>
+    void Multinomial (long int * destination, long int * source, long int n, int colors)</dt>
+  <dd>Multivariate binomial distribution.<br>
+    This is the distribution you get when drawing n balls from an urn <i>with
+    replacement</i>, where there can be any number of colors. This is the same
+    as the binomial distribution when <code>colors</code> = 2.<br>
+    The number of balls of each color is returned in <code>destination</code>,
+    which must be an array with <code>colors</code> places. <code>source</code>
+    contains the number or fraction of balls of each color in the urn. <code>source</code>
+    must be a <code>double</code> or <code>long int</code> array with <code>colors</code> places.<br>
+    The sum of the values in <code>source</code> does not have to be 1, but it
+    must be positive.&nbsp;The probability that a ball has color <code>i</code>
+    is <code>source[i]</code> divided by the sum of all values in <code>source</code>.<br>
+    Error conditions:<br>
+    Gives an error message if any parameter is negative or if the sum of the
+    values in <code>source</code> is zero. The behavior is unpredictable if <code>source</code>
+    or <code>destination</code>  has less than <code>colors</code> places.</dd>
+  <dt>void MultiHypergeo (long int * destination, long int * source, long int n, int colors)</dt>
+  <dd>Multivariate hypergeometric distribution.<br>
+    This is the distribution you get when drawing n balls from an urn <i>without
+    replacement</i>, where there can be any number of colors. This is the same
+    as the hypergeometric distribution when <code>colors</code> = 2.<br>
+    The number of balls of each color is returned in <code>destination</code>,
+    which must be an array with <code>colors</code> places. <code>source</code>
+    contains the number of balls of each color in the urn. <code>source</code>
+    must be an array with <code>colors</code> places.<br>
+    Error conditions:<br>
+    Gives an error message if any parameter is negative or if the sum of the
+    values in <code>source</code> is less than n. The behavior is unpredictable
+    if <code>source</code> or <code>destination</code>  has less than <code>colors</code>
+    places.</dd>
+  <dt>void MultiWalleniusNCHyp(long int * destination, long int * source, double * weights, long int n, int
+    colors)</dt>
+  <dd>Multivariate Wallenius noncentral hypergeometric distribution. This is the
+    distribution you get when drawing colored balls from un urn <i>without
+    replacement</i>, <i>with bias</i>. <code>weights</code>
+    is an array with <code>colors</code> places containing the odds for each
+    color. The probability of drawing a particular ball is proportional to its
+    weight. The other parameters are the same as above.<BR>
+    This function may be inexact, but uses an approximation with an accuracy that
+    is better than 1% in almost all cases.<br>
+    Error conditions:<br>
+    Gives an error message if any parameter is negative or if the total number
+    of balls with nonzero weight is less than n. The behavior is unpredictable
+    if any of the arrays has less than <code>colors</code>
+    places.</dd>
+  <dt>void MultiFishersNCHyp(long int * destination, long int * source, double * weights, long int n, int
+    colors)</dt>
+  <dd>The multivariate Fisher's noncentral hypergeometric distribution is a conditional
+    binomial distribution resembling the multivariate Wallenius noncentral hypergeometric
+    distribution. See the file <A HREF="distrib.pdf">distrib.pdf</A> for a
+    definition.<br>
+    This function may be inexact, but uses an approximation with an accuracy that
+    is better than 1% in most cases. The precision can be tuned at the expense
+    of higher calculation times.<br>
+    Error conditions:<br>
+    Gives an error message if any parameter is negative or if the total number
+    of balls with nonzero weight is less than n. The behavior is unpredictable
+    if any of the arrays has less than <code>colors</code>
+    places.</dd>
+  <dt>void Shuffle(int * list, int min, int n)</dt>
+  <dd>This function makes a list of the n numbers from&nbsp; <code>min</code>&nbsp;
+    to&nbsp; <code>min+n-1</code>&nbsp; in random order.<br>
+    The result is returned in <code>list</code>, which must be an array with n elements.<br>
+   The array index goes from <code> 0</code> to <code>n-1</code>.<br>
+   If you want to shuffle something else than integers then use the   integers in
+    <code> list</code> as an index into a table of the items you want to shuffle.<br>
+    Error conditions: none. The behavior is unpredictable if the size of the
+    array <code>list</code> is less than <code>n</code>.</dd>
+  <dt>static double LnFac(long int n)</dt>
+  <dd>Log factorial. Mainly used internally.<br>
+    Definition:<br>
+    LnFac(n) = log<sub>e</sub>(n!).<br>
+    This function uses a table when n &lt; 1024 and Stirling's approximation for
+    larger n. The table is generated by the constructor.<br>
+    Error conditions:<br>
+    Gives an error message if n &lt; 0.</dd>
+</dl>
+<h2>Theory</h2>
+<p>These distributions are defined in the file <A HREF="distrib.pdf">distrib.pdf</A>.
+The methods used for generating variates with these distributions are described
+in the file <A HREF="sampmet.pdf">sampmet.pdf</A>.</p>
+<p>A theoretical description of the univariate and multivariate Wallenius and
+Fisher's noncentral hypergeometric distributions, including calculation methods and
+sampling methods, is given in <A HREF="http://www.agner.org/random/theory/nchyp.pdf">nchyp.pdf</A>.</p>
+<p>Examples showing how to simulate biological evolution using this class
+library can be found in <a href="evolc.zip">evolc.zip</a>.</p>
+
+<h2>Copyright and licence</h2>
+<P>© 2002-2005 by Agner Fog.
+<a href="licence.htm">General public license statement</a>.
+</P>
+<p>&nbsp;</p>
+
+<p align="center"><a href="http://www.agner.org/random/">Back to random number
+generators page</a>.</p>
+
+</body>
+
+</html>

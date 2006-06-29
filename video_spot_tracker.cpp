@@ -2978,6 +2978,8 @@ int main(int argc, char *argv[])
       g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(g_X,g_Y,g_Radius),create_appropriate_ztracker()));
       g_active_tracker = g_trackers.back();
       if (g_active_tracker->ztracker()) { g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
+    } else if (argv[i][0] == '-') {
+      Usage(argv[0]);
     } else {
       switch (++realparams) {
       case 1:
