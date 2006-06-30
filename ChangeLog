@@ -1,3 +1,14 @@
+2006-06-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* airy_maker.cpp : Changed the specification of brightness to be
+		in terms of number of photons and photon/count in the
+		image.  Changed noise to be Poisson noise on dark current
+		and on photons.  Changed the way we ensure a large enough
+		image size so that it also computes dark current and noise
+		over the whole image.  Using the STOCC random-number
+		generator to get Poisson noise, so need to add GPL info
+		into a README that goes along with the installer.
+
 2006-06-29  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* airy_maker.cpp : Modified to make the default parameters closer

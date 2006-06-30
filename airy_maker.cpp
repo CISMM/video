@@ -1,10 +1,5 @@
 //XXX Make all of the units match in the program.  For now, they are half baked.
 //XXX What to do when the focal plane isn't at the emitter?
-//XXX Note that we have quantized images, but we're computing continuous
-//    Airy functions.  We should probably bin the expected values (or the
-//    distributions) if we want to not count error that we couldn't see
-//    in the image.  On the other hand, this may be okay so long as we have
-//    zero-mean error (we may not).
 
 #include <math.h>
 #include <stdio.h>
@@ -22,6 +17,14 @@
 #include "spot_math.h"
 #include "base_camera_server.h"
 
+//--------------------------------------------------------------------------
+#include <time.h>
+#include "stocc.h"                     // define random library classes
+// make random library
+static int32 seed = time(0);                // random seed
+static StochasticLib1 sto(seed);            // make instance of random library
+
+//--------------------------------------------------------------------------
 //#define	DEBUG
 
 //--------------------------------------------------------------------------
@@ -138,9 +141,10 @@ Tclvar_float_with_scale	g_Radius("aperture_nm", ".kernel.aperture", 200, 2000, 5
 Tclvar_float_with_scale	g_PixelXOffset("x_offset_pix", "", -1, 1, 0);
 Tclvar_float_with_scale	g_PixelYOffset("y_offset_pix", "", -1, 1, 0);
 Tclvar_float_with_scale	g_SampleCount("samples", "", 64, 256, 64);
-Tclvar_float_with_scale	g_UniformNoise("uniform_noise", "", 0, 0.1, 0.0);
-Tclvar_float_with_scale	g_PhotonNoise("photon_noise", "", 0, 0.1, 0.0);
-Tclvar_float_with_scale	g_DisplayGain("display_gain", "", 1,30, 10);
+Tclvar_float_with_scale	g_PhotonCount("fluorescent_photons", "", 10, 50000, 40000.0);
+Tclvar_float_with_scale	g_DarkPhotonsPerPixel("dark_photons_per_pixel", "", 0, 1000.0, 0.0);
+Tclvar_int_with_button	g_PoissonNoise("poisson_noise","", 0);
+Tclvar_float_with_scale	g_PhotonsPerCount("photons_per_count", "", 1,100, 20);
 Tclvar_int_with_button	g_ShowSqrt("show_sqrt","", 1);
 Tclvar_int_with_button	g_quit("quit",NULL);
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
@@ -384,10 +388,13 @@ void drawPixelIntensitiesAndComputeNoiseImage(
   // Compute how far to step between pixel centers in the screen, then
   // how far down you can go without getting below -1 when taking these
   // steps.  Then take one more step than this to get started.
-  // THIS CODE MUST MATCH that found in saveNoiseImage
+  // Make sure that the image size is at least 31x31 pixels by clamping
+  // numsteps.
+  // THIS CODE MUST MATCH that found in saveNoiseImage.
   double pixelStepInScreen = 1/(width/2.0) * (pixelSpacing/1e9) * units;
   double halfStepInScreen = 0.5 * pixelStepInScreen;
   int numsteps = floor(1/pixelStepInScreen) + 1;
+  if (numsteps < 15) { numsteps = 15; }
   int i,j;
 
   // Actually draw the pixels
@@ -409,43 +416,28 @@ void drawPixelIntensitiesAndComputeNoiseImage(
       // computed above.  This is the fraction of the pixel to fill.
       double frac = g_Image.value(i,j) / totVol;
 
-      // Add noise to the fraction.
-      // PhotonNoise is the fraction additional photons that may be generated.  It
-      // scales with the square root of the number of photons actually seen in a pixel.
-      // XXX Note that the number of photons needs to be way above 1 for this to work.
-      // XXX This should use a Poisson distribution, not a uniform distribution.
-      // It is applied first because it depends on the original pixel intensity.
-      // Uniform noise is what fraction of the total Airy volume each pixel adds or
-      // subtracts (range is -0.5 to 0.5 scaled by the UniformNoise parameter.  It
-      // is added second, because it does not depend on the original intensity.  This
-      // corresponds to readout noise.
-      // XXX What distribution should readout noise have?
-      double r1 = (static_cast<double>( rand() )) / RAND_MAX;
-      double r2 = (static_cast<double>( rand() )) / RAND_MAX;
-      frac *= 1.0 + r1 * g_PhotonNoise;
-      frac += (r2 - 0.5) * g_UniformNoise;
+      //---------------------------------------------------------------------------
+      // Find out how many photons this corresponds to.  Also find out how many
+      // photons there are in the dark current.
+      double light_photons = frac * g_PhotonCount;
+      double dark_photons = g_DarkPhotonsPerPixel;
 
-      // XXX Noise discussion:
-      // Noise independent of anything:
-      //    Readout noise on the detector.  Ober2003 models this as zero-mean
-      //  Gaussian noise with standard deviations of 7-57 e--/pixel (rms).  Not
-      //  clear to me what the units e-- means.  They didn't say what happens
-      //  if this makes pixel counts negative.
-      // Noise dependent on time:
-      //    Dark current, scattered photons, autofluorescence.  Ober2003 models
-      //  this as Poisson noise with a mean of bt, where "b" is a parameter and
-      //  t is seconds.  They used b from 660 photons/sec to 6600 photons/sec
-      //  for each pixel, when using a total flux of 66,000 photons/sec arriving at the
-      //  entire detector.
-      // Noise dependent on number of photons:
-      //    Mythical "shot noise" that I've heard of but not seen a model for.
+      // If we have are doing Poisson noise, replace each of these photon counts
+      // with samples from a Poisson distribution whose expected value is
+      // equal to the number of photons.
+      if (g_PoissonNoise == 1) {
+        light_photons = sto.Poisson(light_photons);
+        dark_photons = sto.Poisson(dark_photons);
+      }
 
-      // Multiply by the display gain.
-      // XXX If OpenGL didn't clip this value from 0-1, we'd need to check
-      // to make sure it did not go over one here.
-      frac *= g_DisplayGain;
+      // Add up the number of photons and divide by photons/count to turn the
+      // values into counts.  Leave the result back in the "frac" variable that
+      // started the process.
+      frac = (light_photons + dark_photons) / g_PhotonsPerCount;
 
-      // Copy the resulting value into the noise image
+      // Copy the resulting value into the noise image, dividing color by 255
+      // so that a pixel count of 255 goes to a full-on white (1).
+      frac /= 255.0;
       g_NoiseImage.value(i,j,frac);
 
       // Draw a filled-in square that covers the whole pixel with a color
@@ -564,11 +556,6 @@ void myDisplayFunc(void)
       sprintf(filename, "%s.%03d.tif", g_basename, g_basenum);
 
       printf("Saving frame to %s\n", filename);
-      // Ensure that the size of the output image is at least 31x31 pixels by
-      // writing values into the (15,15) and (-15,-15) element.  Be sure not
-      // to change the values that are stored there.
-      g_NoiseImage.value(15,15,g_NoiseImage.read_pixel_nocheck(15,15));
-      g_NoiseImage.value(-15,-15,g_NoiseImage.read_pixel_nocheck(-15,-15,0));
 
       // Write to the file, scaled so that 65535 is the max (openGL had 1 as the max)
       g_NoiseImage.write_to_tiff_file(filename, 65535.0);
