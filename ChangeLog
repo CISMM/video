@@ -1,3 +1,11 @@
+2006-07-06  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Switched to using the constant from
+		VPRN that says how many tracker sensors there can be, rather
+		than making up our own here which can't be larger than that
+		one anyway.  This lets us do up to 500 sensors with the
+		new setting in VRPN.
+
 2006-06-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* airy_maker.cpp : Changed the specification of brightness to be

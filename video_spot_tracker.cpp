@@ -66,7 +66,6 @@ using namespace std;
 static void cleanup();
 static void dirtyexit();
 
-const int MAX_TRACKERS = 500; // How many trackers can exist (for VRPN's tracker object)
 #ifndef	M_PI
 #ifndef M_PI_DEFINED
 const double M_PI = 2*asin(1.0);
@@ -76,7 +75,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.07";
+const char *Version_string = "05.08";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -3109,7 +3108,7 @@ int main(int argc, char *argv[])
   // Set up the VRPN server connection and the tracker object that will
   // report the position when tracking is turned on.
   g_vrpn_connection = new vrpn_Connection();
-  g_vrpn_tracker = new vrpn_Tracker_Server("Spot", g_vrpn_connection, MAX_TRACKERS);
+  g_vrpn_tracker = new vrpn_Tracker_Server("Spot", g_vrpn_connection, vrpn_TRACKER_MAX_SENSORS);
   g_vrpn_analog = new vrpn_Analog_Server("FrameNumber", g_vrpn_connection, 1);
 
   //------------------------------------------------------------------
