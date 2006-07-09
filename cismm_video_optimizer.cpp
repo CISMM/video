@@ -982,8 +982,22 @@ void myIdleFunc(void)
     exit(-1);
   }
 
+  // If we've gotten a new valid frame, then it is time to store the image
+  // for the previous frame and get a copy of the current frame so that we
+  // can store it next time around.  We do this after saving the previous
+  // frame (named based on the base log file name and the past frame number).
+  if (g_log_last_image && g_video_valid) {
+    if (!save_log_frame(g_frame_number - 1)) {
+      fprintf(stderr,"Couldn't save log file\n");
+      cleanup();
+      exit(-1);
+    }
+  }
+
   // If we've been asked to do auto-gain, set the
   // clip values to the minimum and maximum pixel intensities present.
+  // This must be done after the saving of the image, because otherwise
+  // we'll save it with the wrong gain and offset.
   if (g_auto_gain) {
     vrpn_uint16 clamp = (1 << ((unsigned)(g_bitdepth))) - 1;
     int x,y;
@@ -998,18 +1012,6 @@ void myIdleFunc(void)
     }
     g_clip_low = min / clamp;
     g_clip_high = max / clamp;
-  }
-
-  // If we've gotten a new valid frame, then it is time to store the image
-  // for the previous frame and get a copy of the current frame so that we
-  // can store it next time around.  We do this after saving the previous
-  // frame (named based on the base log file name and the past frame number).
-  if (g_log_last_image && g_video_valid) {
-    if (!save_log_frame(g_frame_number - 1)) {
-      fprintf(stderr,"Couldn't save log file\n");
-      cleanup();
-      exit(-1);
-    }
   }
 
   if (g_active_tracker) { 
