@@ -81,6 +81,18 @@ Package=<4>
 
 ###############################################################################
 
+Project: "add_noise_to_image"=.\add_noise_to_image.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
 Project: "airy_maker"=.\airy_maker.dsp - Package Owner=<4>
 
 Package=<5>
