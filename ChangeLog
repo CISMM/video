@@ -1,5 +1,11 @@
 2006-07-08  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* add_noise_to_image.cpp : Modified to include Poisson shot-noise
+		as well as dark current.  Also made it not use the same
+		random-number seed every time unless you tell it to.
+
+2006-07-08  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* cismm_video_optimizer.cpp : Fixed a bug where the gain and offset
 		for the saved frame come from the next frame's values.
 

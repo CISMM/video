@@ -11,14 +11,27 @@
 #define _LIB
 #define QuantumLeap
 #include <magick/api.h>
+#ifdef  _WIN32
+#include <process.h>
+#define getpid() _getpid()
+#endif
+
+//--------------------------------------------------------------------------
+#include <time.h>
+#include "stocc.h"                     // define random library classes
 
 static	char  magickfilesdir[] = "C:/nsrg/external/pc_win32/bin/ImageMagick-5.5.7-Q16/MAGIC_DIR_PATH";
 
 void Usage (const char * s)
 {
-  fprintf(stderr,"Usage: %s seed uniform_noise intensity_noise input_file output_file\n",s);
-  fprintf(stderr,"     seed : (int) Random-number seed to use to generate noise\n");
-  fprintf(stderr,"     uniform_noise : (real) specifies half-range of interval within\n");
+  fprintf(stderr,"Usage: %s [-uniform_noise R] [-intensity_noise R]\n", s);
+  fprintf(stderr,"       [-poisson PHOTPERCOUNT DARKPHOT] [-seed SEED] input_file output_file\n");
+  fprintf(stderr,"     -seed : (int) Random-number seed to use to generate noise.\n");
+  fprintf(stderr,"        This should be used if you want the same answer each time the program\n");
+  fprintf(stderr,"        is run on the same input image.  Do not use the same seed for a sequence\n");
+  fprintf(stderr,"        of images, or it will produce noise that is correlated between images\n");
+  fprintf(stderr,"     (One or more of the following noise parameters should be specified)\n");
+  fprintf(stderr,"     -uniform_noise : (real) specifies half-range of interval within\n");
   fprintf(stderr,"        which a uniform variable will select noise to\n");
   fprintf(stderr,"        be added to the image.  Each pixel will have a\n");
   fprintf(stderr,"        random value from [-uniform_noise..uniform_noise]\n");
@@ -26,7 +39,7 @@ void Usage (const char * s)
   fprintf(stderr,"        be added as real numbers, added to the value, and then\n");
   fprintf(stderr,"        rounded and clamped to the available pixel range [0..255] or [0..65535]\n");
   fprintf(stderr,"        The same uniform noise is added to red, green, and blue channels.\n");
-  fprintf(stderr,"     intensity_noise : (real) specifies fraction of the intensity found at\n");
+  fprintf(stderr,"     -intensity_noise : (real) specifies fraction of the intensity found at\n");
   fprintf(stderr,"        a pixel that will be used to determine the half-range\n");
   fprintf(stderr,"        of an interval for noise.  Each pixel will have a\n");
   fprintf(stderr,"        random value from [-val*intensity_noise..val*intensity_noise]\n");
@@ -34,6 +47,13 @@ void Usage (const char * s)
   fprintf(stderr,"        be added as real numbers, added to the value, and then\n");
   fprintf(stderr,"        rounded and clamped to the available pixel range [0..255] or [0..65535]\n");
   fprintf(stderr,"        The same random number is used to determine red, green, and blue noise.\n");
+  fprintf(stderr,"     -poisson : Generate Poisson (shot) noise depending on the number of\n");
+  fprintf(stderr,"        photons at each pixel and depending on the amount of dark current to add\n");
+  fprintf(stderr,"        to the image.  PHOTPERCOUNT (real) specifies the number of photons per\n");
+  fprintf(stderr,"        count in the image.  DARKPHOT (real) specifies the number of dark-current\n");
+  fprintf(stderr,"        photons to add to each pixel (these will be sampled from a separate Poisson\n");
+  fprintf(stderr,"        distribution and then added to the image count; this assumes that there\n");
+  fprintf(stderr,"        is one electron per photon.\n");
   fprintf(stderr,"     input_file : (string) Name of the input file to read from\n");
   fprintf(stderr,"     output_file : (string) Name of the output file to write to\n");
   exit(0);
@@ -50,34 +70,35 @@ main (int argc, char * argv[])
 {
   //------------------------------------------------------------------------
   // Parse the command line
-  double  uniform_noise, intensity_noise;
+  double  uniform_noise = 0, intensity_noise = 0;
+  double  photons_per_count = 0, dark_photons = 0;
   char	*input_file_name = NULL, *output_file_name = NULL;
-  int	seed;
+  int	seed = getpid();  // Random seed in case they don't specify one.
   int	realparams = 0;
   int	i;
   i = 1;
   while (i < argc) {
-    if (argv[i][0] == '-') {	// Unknown flag
+    if (!strncmp(argv[i], "-uniform_noise", strlen("-uniform_noise"))) {
+          if (++i > argc) { Usage(argv[0]); }
+	  uniform_noise = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-intensity_noise", strlen("-intensity_noise"))) {
+          if (++i > argc) { Usage(argv[0]); }
+	  intensity_noise = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-poisson", strlen("-poisson"))) {
+          if (++i > argc) { Usage(argv[0]); }
+	  photons_per_count = atof(argv[i]);
+          if (++i > argc) { Usage(argv[0]); }
+	  dark_photons = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-seed", strlen("-seed"))) {
+	  seed = atoi(argv[i]);
+    } else if (argv[i][0] == '-') {	// Unknown flag
 	  Usage(argv[0]);
     } else switch (realparams) {		// Non-flag parameters
       case 0:
-	  seed = atoi(argv[i]);
-	  srand(seed);
-	  realparams++;
-	  break;
-      case 1:
-	  uniform_noise = atof(argv[i]);
-	  realparams++;
-	  break;
-      case 2:
-	  intensity_noise = atof(argv[i]);
-	  realparams++;
-	  break;
-      case 3:
 	  input_file_name = argv[i];
 	  realparams++;
 	  break;
-      case 4:
+      case 1:
 	  output_file_name = argv[i];
 	  realparams++;
 	  break;
@@ -86,9 +107,14 @@ main (int argc, char * argv[])
     }
     i++;
   }
-  if (realparams != 5) {
+  if (realparams != 2) {
     Usage(argv[0]);
   }
+
+  //------------------------------------------------------------------------
+  // Set seeds and make random library to use for Poisson distribution
+  srand(seed);
+  static StochasticLib1 sto(seed);            // make instance of random library
 
   //------------------------------------------------------------------------
   // Initialize the ImageMagick software with a pointer to the place it can
@@ -134,10 +160,6 @@ main (int argc, char * argv[])
   strcpy(out_image_info->filename,output_file_name);
   strcpy(out_image->filename, output_file_name);
 
-  //------------------------------------------------------------------------
-  // Add noise to each pixel proportional to the uniform noise and to the
-  // scaled intensity noise.  Round to an integer, clamp to the range of pixels
-  // available in the image.
   unsigned row,col;
   PixelPacket	  *read_pixels, *write_pixels;
   double uniform, intensity;
@@ -165,13 +187,47 @@ main (int argc, char * argv[])
   }
   for (row = 0; row < out_image->rows; row++) {
     for (col = 0; col < out_image->columns; col++) {
-      uniform = uniform_noise * unit_random();
-      intensity = intensity_noise * unit_random();
 
       r = read_pixels[col + out_image->columns*row].red >> (16 - depth);
       g = read_pixels[col + out_image->columns*row].green >> (16 - depth);
       b = read_pixels[col + out_image->columns*row].blue >> (16 - depth);
 
+      //------------------------------------------------------------------------
+      // Handle Poisson sampling for both dark current and shot noise if
+      // we have nonzero values for photons_per_count or dark_photons.
+      if (photons_per_count > 0) {
+        // Convert from counts to photons.
+        r *= photons_per_count;
+        g *= photons_per_count;
+        b *= photons_per_count;
+
+        // Poisson noise on the original photons
+        r = sto.Poisson(r);
+        g = sto.Poisson(g);
+        b = sto.Poisson(b);
+
+        // Dark-noise photons added in, if there are any.
+        // XXX Adding the same to each channel.
+        if (dark_photons > 0) {
+          double dark = sto.Poisson(dark_photons);
+          r += dark;
+          g += dark;
+          b += dark;
+        }
+
+        // Convert from photons back to counts
+        r /= photons_per_count;
+        g /= photons_per_count;
+        b /= photons_per_count;
+      }
+
+      //------------------------------------------------------------------------
+      // Add noise to each pixel proportional to the uniform noise and to the
+      // scaled intensity noise.  Round to an integer, clamp to the range of pixels
+      // available in the image.  These types of noise are unrealistic and should
+      // no longer be used.
+      uniform = uniform_noise * unit_random();
+      intensity = intensity_noise * unit_random();
       r += r*intensity + uniform;
       g += g*intensity + uniform;
       b += b*intensity + uniform;
