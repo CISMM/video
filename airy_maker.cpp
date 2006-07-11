@@ -1,4 +1,3 @@
-//XXX Make all of the units match in the program.  For now, they are half baked.
 //XXX What to do when the focal plane isn't at the emitter?
 
 #include <math.h>
@@ -29,7 +28,7 @@ static StochasticLib1 sto(seed);            // make instance of random library
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.04";
+const char *Version_string = "01.05";
 
 //--------------------------------------------------------------------------
 // Constants needed by the rest of the program
@@ -512,6 +511,7 @@ void myDisplayFunc(void)
   // the number of pixels on the whole screen is g_Window_Size_X in the
   // whole display), making the mapping from ScreenSpace/Pixel = 2/g_Window_Size_X.
   // The number of pixels/Imager step = g_PixelSpacing.
+  // Make sure we fill at least 31x31 pixels.
   double display_pixel_per_imager_pixel = g_PixelSpacing;
   double airy_pixel_per_display_pixel = (2.0/g_Window_Size_X);//XXX; // XXX Fix later when we have units
   double airy_pixel_per_imager_pixel = airy_pixel_per_display_pixel * display_pixel_per_imager_pixel;
@@ -519,6 +519,7 @@ void myDisplayFunc(void)
   double airy_offset_matching_pixel_offset_X = -g_PixelXOffset * airy_pixel_per_imager_pixel;
   double airy_offset_matching_pixel_offset_Y = g_PixelYOffset * airy_pixel_per_imager_pixel;
   int radius = ceil( (g_Window_Size_X/2.0) / display_pixel_per_imager_pixel );
+  if (radius < 31) { radius = 31; }
   int numsamples = g_SampleCount / (radius*2);
 
   // Compute the values in the Airy image buffer.

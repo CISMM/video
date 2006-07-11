@@ -1,5 +1,13 @@
 2006-07-08  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* add_noise_to_image.cpp : Added Gaussian noise and a camera
+		offset.
+	* airy_maker.cpp : Made it so that the program does not clip
+		the pattern to the on-screen preview window size, but
+		makes it the whole 31x31 pixels at least.
+
+2006-07-08  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* add_noise_to_image.cpp : Modified to include Poisson shot-noise
 		as well as dark current.  Also made it not use the same
 		random-number seed every time unless you tell it to.
