@@ -1,3 +1,10 @@
+2006-07-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_imager_server.cpp : Fixed a bug where it was naming the
+		channels "mono", "green", and "blue".  This confused the
+		poor receiver of color images.  Now it does either "mono"
+		or "red, green, blue".
+
 2006-07-08  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* add_noise_to_image.cpp : Added Gaussian noise and a camera

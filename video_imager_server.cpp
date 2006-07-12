@@ -102,11 +102,11 @@ void  teardown_camera_code(void)
 //-----------------------------------------------------------------
 // This section contains code that does what the server should do
 
-vrpn_Connection  *svrcon;	//< Connection for server to talk on
+vrpn_Connection               *svrcon;	//< Connection for server to talk on
 vrpn_Imager_Server	      *svr;	//< Image server to be used to send
 int			      svrchan;	//< Server channel index for image data
 
-bool  init_server_code(const char *outgoing_logfile_name)
+bool  init_server_code(const char *outgoing_logfile_name, bool do_color)
 {
   const int PORT = vrpn_DEFAULT_LISTEN_PORT_NO;
   if ( (svrcon = new vrpn_Connection(PORT, NULL, outgoing_logfile_name)) == NULL) {
@@ -118,20 +118,26 @@ bool  init_server_code(const char *outgoing_logfile_name)
     fprintf(stderr, "Could not open Imager Server\n");
     return false;
   }
-  // XXX This should either be (red, green, blue) or (mono).
-  if ( (svrchan = svr->add_channel("mono", "unknown", 0, (float)(g_maxval) )) == -1) {
-    fprintf(stderr, "Could not add channel to server image\n");
-    return false;
-  }
-  // This relies on VRPN to hand us sequential channel numbers.  This might be
-  // dangerous.
-  if ( (svr->add_channel("green", "unknown", 0, (float)(g_maxval) )) == -1) {
-    fprintf(stderr, "Could not add channel to server image\n");
-    return false;
-  }
-  if ( (svr->add_channel("blue", "unknown", 0, (float)(g_maxval) )) == -1) {
-    fprintf(stderr, "Could not add channel to server image\n");
-    return false;
+  if (do_color) {
+    if ( (svrchan = svr->add_channel("red", "unknown", 0, (float)(g_maxval) )) == -1) {
+      fprintf(stderr, "Could not add channel to server image\n");
+      return false;
+    }
+    // This relies on VRPN to hand us sequential channel numbers.  This might be
+    // dangerous.
+    if ( (svr->add_channel("green", "unknown", 0, (float)(g_maxval) )) == -1) {
+      fprintf(stderr, "Could not add channel to server image\n");
+      return false;
+    }
+    if ( (svr->add_channel("blue", "unknown", 0, (float)(g_maxval) )) == -1) {
+      fprintf(stderr, "Could not add channel to server image\n");
+      return false;
+    }
+  } else {
+    if ( (svrchan = svr->add_channel("mono", "unknown", 0, (float)(g_maxval) )) == -1) {
+      fprintf(stderr, "Could not add channel to server image\n");
+      return false;
+    }
   }
   printf("Waiting for video connections on %d\n", PORT);
 
@@ -140,8 +146,8 @@ bool  init_server_code(const char *outgoing_logfile_name)
 
 void  teardown_server_code(void)
 {
-  if (svr) { delete svr; };
-  if (svrcon) { delete svrcon; };
+  if (svr) { delete svr; svr = NULL; };
+  if (svrcon) { delete svrcon; svrcon = NULL; };
 }
 
 //-----------------------------------------------------------------
@@ -242,11 +248,12 @@ int main(int argc, char *argv[])
 
   if (!init_camera_code(devicename, devicenum)) { return -1; }
   printf("Opened camera\n");
-  if (!init_server_code(logfilename)) { return -1; }
+  if (!init_server_code(logfilename, (g_numchannels > 1) )) { return -1; }
 
   while (!g_done) {
     g_camera->read_image_to_memory(0,0,0,0,g_exposure);
     g_camera->send_vrpn_image(svr,svrcon,g_exposure,svrchan, g_numchannels);
+    svr->mainloop();
     svrcon->mainloop();
     svrcon->save_log_so_far();
 //    vrpn_SleepMsecs(1);
