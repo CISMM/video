@@ -164,12 +164,7 @@ inline double	ComputeGaussianVolume(
     }
   }
 
-  // HACK HACK HACK.  We're only going out to 2 standard deviations, but
-  // in a box configuration.  Empirically, this seems to capture only
-  // most of the volume; we multiply by a hack factor as an estimate of how much
-  // inflation eneds to be done to match the requested volume.
-  const double volume_hack_ratio = 1.0765;
-  return volume_hack_ratio * A * (sum / count) * (x1-x0) * (y1-y0);
+  return A * (sum / count) * (x1-x0) * (y1-y0);
 }
 
 

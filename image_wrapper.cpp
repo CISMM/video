@@ -42,9 +42,15 @@ disc_image::disc_image(int minx, int maxx, int miny, int maxy,
     }
   }
 
+  // Add in 0.5 pixel to the X and Y positions
+  // so that we center the disc on the middle of the pixel rather than
+  // having it centered between pixels.
+  diskx += 0.5;
+  disky += 0.5;
+
   // Fill in the disk intensity (the part of it that is within the image).
   // Oversample the image by the factor specified in _oversample, averaging
-  // all results within the pixel.
+  // all results within the pixel.  
 #ifdef	DEBUG
   printf("disc_image::disc_image(): Making disk of radius %lg\n", diskr);
 #endif
@@ -148,7 +154,6 @@ cone_image::cone_image(int minx, int maxx, int miny, int maxy,
     }
   }
 
-//  XXX This doesn't seem to center the pixel like it should
   // Compute where the samples should be taken.  These need to be taken
   // symmetrically around the pixel center and cover all samples within
   // the pixel exactly once.  First, compute the step size between the

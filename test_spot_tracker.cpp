@@ -1,3 +1,5 @@
+XXX_why_is_there_a_bias_since_I_centered_the_disc_maker;
+
 #include  <math.h>
 #include  <stdlib.h>
 #include  <stdio.h>

@@ -1,3 +1,13 @@
+2006-07-14  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* image_wrapper.cpp : Centered the disc-generation program so that
+		the disc is centered on the pixel rather than at the edge.
+	* make_moving_spot_video.cpp : New program to help test the spot
+		tracking.
+	* make_moving_spot_video.dsp : Project to build it.
+	* test_spot_tracker.cpp : Comment about bias.
+	* video.dsw : Added project to build the moving spot video.
+
 2006-07-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_imager_server.cpp : Fixed a bug where it was naming the
