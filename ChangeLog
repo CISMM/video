@@ -1,3 +1,12 @@
+2006-07-17  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* make_moving_spot_video.cpp : Added a CSV file output the tells where
+		the spots were located.  Also flips the image in Y so that the
+		video-spot-tracker reported positions match.  Added version
+		number (1.0).
+	* airy_maker.cpp : Added a CSV file output the tells where the spots
+		were located.  Changed the version number.
+
 2006-07-14  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* image_wrapper.cpp : Centered the disc-generation program so that

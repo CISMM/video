@@ -28,7 +28,7 @@ static StochasticLib1 sto(seed);            // make instance of random library
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.05";
+const char *Version_string = "01.06";
 
 //--------------------------------------------------------------------------
 // Constants needed by the rest of the program
@@ -47,6 +47,7 @@ int	g_whichDragAction;		  //< What action to take for mouse drag
 char    *g_basename = NULL;               //< Base name for saving files
 int     g_basenum = 0;                    //< Number to append to the next-saved file
 int     g_logrepeatcount = 0;             //< Keeps track of how many frames at this location have been logged
+FILE	*g_csv_file = NULL;		  //< File to save data in with .csv extension
 
 //--------------------------------------------------------------------------
 // Global variables
@@ -130,6 +131,7 @@ protected:
   int     d_minx, d_maxx, d_miny, d_maxy;  //< Range of pixels that have had something filled in, (0,0) is the center.
 } g_Image, g_NoiseImage;
 
+
 //--------------------------------------------------------------------------
 // Tcl controls and displays
 void  logfilename_changed(char *newvalue, void *);
@@ -158,6 +160,8 @@ static void  cleanup(void)
 {
   // Done with the camera and other objects.
   printf("Exiting\n");
+
+  if (g_csv_file) { fclose(g_csv_file); g_csv_file = NULL; };
 }
 
 void drawSideViewVsPixels(
@@ -550,6 +554,20 @@ void myDisplayFunc(void)
 
   // If we're supposed to be saving images, then do so
   if (g_basename != NULL) {
+
+    // First store a new line into the CSV log file.
+    if (g_csv_file) {
+      int minx, maxx, miny, maxy;
+      g_NoiseImage.read_range(minx, maxx, miny, maxy);
+      int num_x = maxx-minx+1;
+      int num_y = maxy-miny+1;
+      double x = num_x/2 + g_PixelXOffset;
+      double y = num_y/2 + g_PixelYOffset;
+
+      fprintf(g_csv_file, "%d,0,%lg,%lg,0\n", g_basenum, x, y);
+    }
+
+    // Then save the image file.
     if (strlen(g_basename) > 2000) {
       fprintf(stderr,"Cannot save to file, name too long\n");
     } else {
@@ -762,6 +780,12 @@ void motionCallbackForGLUT(int x, int y) {
 
 void  logfilename_changed(char *newvalue, void *)
 {
+  // Close the old CSV log file, if there was one.
+  if (g_csv_file != NULL) {
+    fclose(g_csv_file);
+    g_csv_file = NULL;
+  }
+
   // Clear everything that was set before.
   g_basenum = 0;
   g_logrepeatcount = 0;
@@ -787,6 +811,25 @@ void  logfilename_changed(char *newvalue, void *)
     *last_dot = '\0';
   }
   printf("Saving to a sequence of images named %s.NNN.tif\n", g_basename);
+
+  // Open the CSV file and put the titles on.
+  // Make sure that the file does not exist by deleting it if it does.
+  // The Tcl code had a dialog box that asked the user if they wanted
+  // to overwrite, so this is "safe."
+  char *csvname = new char[strlen(newvalue)+5];	// Remember the closing '\0'
+  if (csvname == NULL) {
+    fprintf(stderr, "Out of memory when allocating CSV file name\n");
+    cleanup();
+    exit(-1);
+  }
+  strcpy(csvname, newvalue);
+  strcpy(&csvname[strlen(csvname)-4], ".csv");  // Replace ".tif" with ".csv"
+  if ( NULL == (g_csv_file = fopen(csvname, "w")) ) {
+    fprintf(stderr,"Cannot open CSV file for writing: %s\n", csvname);
+  } else {
+    fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z\n");
+  }
+  delete [] csvname;
 }
 
 //--------------------------------------------------------------------------

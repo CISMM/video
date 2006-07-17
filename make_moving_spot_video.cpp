@@ -3,6 +3,8 @@
 #include  <stdio.h>
 #include  "spot_tracker.h"
 
+const char *version = "01.00";
+
 typedef enum { DISC, CONE, GAUSSIAN
     } SPOT_TYPE;
 typedef enum { CIRCLE, SPIRAL
@@ -126,12 +128,30 @@ int main(int argc, char *argv[])
     Usage(argv[0]);
   }
 
+  if (verbose) { printf("Version %s\n", version); }
+
   const unsigned MAX_NAME = 2048;
   char filename[MAX_NAME];
   if (strlen(basename) > MAX_NAME - strlen(".0000.tif")) {
     fprintf(stderr,"Base file name too long\n");
     return -1;
   }
+
+  //------------------------------------------------------------------------------------
+  // Open the CSV file that will record the motion and put the header information into it.
+  FILE  *g_csv_file = NULL;		  //< File to save data in with .csv extension
+  char *csvname = new char[strlen(basename)+5];	// Remember the closing '\0'
+  if (csvname == NULL) {
+    fprintf(stderr, "Out of memory when allocating CSV file name\n");
+    return -1;
+  }
+  sprintf(csvname, "%s.csv", basename);
+  if ( NULL == (g_csv_file = fopen(csvname, "w")) ) {
+    fprintf(stderr,"Cannot open CSV file for writing: %s\n", csvname);
+  } else {
+    fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius\n");
+  }
+  delete [] csvname;
 
   //------------------------------------------------------------------------------------
   // Generate images matching the requested motion and disc types, with the
@@ -155,23 +175,30 @@ int main(int argc, char *argv[])
         break;
     }
 
+    // Flip the image in Y because the write function is going to flip it again
+    // for us before saving the image.
+    double flip_y = (height - 1) - y;
+
     // Make the appropriate image based on the bead type
     image_wrapper *bead;
+    double        radius;   // Used for logging
     switch (spot_type) {
     case DISC:
       bead = new disc_image(0, width-1, 0, height-1,
                             background, 0.0,
-                            x, y, disc_radius,
+                            x, flip_y, disc_radius,
                             disc_value,
                             oversampling);
+      radius = disc_radius;
       break;
 
     case CONE:
       bead = new cone_image(0, width-1, 0, height-1,
                             background, 0.0,
-                            x, y, disc_radius,
-                            disc_value,
+                            x, flip_y, cone_radius,
+                            cone_value,
                             oversampling);
+      radius = cone_radius;
       break;
 
     case GAUSSIAN:
@@ -182,9 +209,10 @@ int main(int argc, char *argv[])
       // by the value we want.
       bead = new Integrated_Gaussian_image(0, width-1, 0, height-1,
                                            background, 0.0,
-                                           x, y, gaussian_std,
+                                           x, flip_y, gaussian_std,
                                            gaussian_value * gaussian_std*gaussian_std * 2 * M_PI,
                                            oversampling);
+      radius = gaussian_std;
       break;
     }
 
@@ -194,9 +222,15 @@ int main(int argc, char *argv[])
     if (verbose) { printf("Writing %s:\n", filename); }
     bead->write_to_grayscale_tiff_file(filename, 0);
 
-    // Clean up
+    // Write the information about the current bead to the CSV file, in a format
+    // that matches the header description.  We DO NOT flip y in this report.
+    fprintf(g_csv_file, "%d,0,%lg,%lg,0,%lg\n", frame, x,y, radius);
+
+    // Clean up things allocated for this frame.
     delete bead;
   }
 
+  // Clean up things allocated for the whole sequence
+  if (g_csv_file) { fclose(g_csv_file); g_csv_file = NULL; };
   return 0;
 }
