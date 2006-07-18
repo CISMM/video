@@ -234,6 +234,18 @@ Package=<4>
 
 ###############################################################################
 
+Project: "compare_tracking_files"=.\compare_tracking_files.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
 Project: "cooke_library"=.\cooke_library.dsp - Package Owner=<4>
 
 Package=<5>
