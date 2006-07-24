@@ -1,3 +1,12 @@
+2006-07-24  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* directx_camera_server.cpp : Initializes _buffer to NULL so that
+		it doesn't get set to a random thing and than cause a crash
+		at exit if passed a bogus file name.
+	* directx_video_server.cpp : Same.
+	* make_moving_spot_video.cpp : Make Usage() match the code.
+	* video_spot_tracker.cpp : White-space changes
+
 2006-07-17  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* make_moving_spot_video.cpp : Added a CSV file output the tells where

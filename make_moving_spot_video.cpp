@@ -15,7 +15,7 @@ void Usage (const char * s)
   fprintf(stderr,"Usage: %s [-v] [-background BACK] [oversampling OVER]\n", s);
   fprintf(stderr,"       [-imagesize WIDTH HEIGHT]\n");
   fprintf(stderr,"       [-start X Y] [-frames FRAMES]\n");
-  fprintf(stderr,"       [-disc VALUE RADIUS | cone VALUE RADIUS | -gaussian VOLUME STD_DEV]\n");
+  fprintf(stderr,"       [-disc VALUE RADIUS | cone VALUE RADIUS | -gaussian CENTER_VALUE STD_DEV]\n");
   fprintf(stderr,"       [-circle RAD SPEED | -spiral XXXX]\n");
   fprintf(stderr,"       [BASENAME]\n");
   fprintf(stderr,"     -v: Verbose mode\n");

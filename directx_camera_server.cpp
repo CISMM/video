@@ -508,7 +508,8 @@ directx_camera_server::directx_camera_server() :
   _pStreamConfig(NULL),
   _pCallback(NULL),
   _started_graph(false),
-  _mode(0)
+  _mode(0),
+  _buffer(NULL)
 {
   // No image in memory yet.
   _minX = _maxX = _minY = _maxY = 0;
@@ -525,7 +526,8 @@ directx_camera_server::directx_camera_server(int which, unsigned width, unsigned
   _pStreamConfig(NULL),
   _pCallback(NULL),
   _started_graph(false),
-  _mode(0)
+  _mode(0),
+  _buffer(NULL)
 {
   //---------------------------------------------------------------------
   if (!open_and_find_parameters(which, width, height)) {
