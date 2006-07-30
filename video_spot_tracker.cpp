@@ -7,9 +7,14 @@
 // things that depend on these definitions.  They may need to be changed
 // as well, depending on where the libraries were installed.
 
+#ifdef _WIN32
 #define	VST_USE_ROPER
 #define	VST_USE_COOKE
+#define	VST_USE_DIAGINC
+#define	VST_USE_SEM
+#define	VST_USE_DIRECTX
 //#define USE_METAMORPH	    // Metamorph reader not completed.
+#endif
 
 #ifdef	VST_USE_ROPER
 #pragma comment(lib,"D:\\Program Files\\Roper Scientific\\PVCAM\\pvcam32.lib")
@@ -51,6 +56,7 @@
 
 #include <quat.h>
 #include <vrpn_Connection.h>
+#include <vrpn_FileConnection.h>
 #include <vrpn_Analog.h>
 #include <vrpn_Tracker.h>
 
@@ -134,6 +140,7 @@ public:
   virtual void single_step() = 0;
 };
 
+#ifdef	VST_USE_DIRECTX
 class Directx_Controllable_Video : public Controllable_Video , public directx_videofile_server {
 public:
   Directx_Controllable_Video(const char *filename) : directx_videofile_server(filename) {};
@@ -143,6 +150,31 @@ public:
   void rewind(void) { pause(); directx_videofile_server::rewind(); }
   void single_step(void) { directx_videofile_server::single_step(); }
 };
+#endif
+
+#ifdef	VST_USE_ROPER
+class SPE_Controllable_Video : public Controllable_Video, public spe_file_server {
+public:
+  SPE_Controllable_Video(const char *filename) : spe_file_server(filename) {};
+  virtual ~SPE_Controllable_Video() {};
+  void play(void) { spe_file_server::play(); }
+  void pause(void) { spe_file_server::pause(); }
+  void rewind(void) { pause(); spe_file_server::rewind(); }
+  void single_step(void) { spe_file_server::single_step(); }
+};
+#endif
+
+#ifdef	VST_USE_SEM
+class SEM_Controllable_Video : public Controllable_Video, public SEM_camera_server {
+public:
+  SEM_Controllable_Video(const char *filename) : SEM_camera_server(filename) {};
+  virtual ~SEM_Controllable_Video() {};
+  void play(void) { SEM_camera_server::play(); }
+  void pause(void) { SEM_camera_server::pause(); }
+  void rewind(void) { pause(); SEM_camera_server::rewind(); }
+  void single_step(void) { SEM_camera_server::single_step(); }
+};
+#endif
 
 class Pulnix_Controllable_Video : public Controllable_Video, public edt_pulnix_raw_file_server {
 public:
@@ -152,16 +184,6 @@ public:
   void pause(void) { edt_pulnix_raw_file_server::pause(); }
   void rewind(void) { pause(); edt_pulnix_raw_file_server::rewind(); }
   void single_step(void) { edt_pulnix_raw_file_server::single_step(); }
-};
-
-class SPE_Controllable_Video : public Controllable_Video, public spe_file_server {
-public:
-  SPE_Controllable_Video(const char *filename) : spe_file_server(filename) {};
-  virtual ~SPE_Controllable_Video() {};
-  void play(void) { spe_file_server::play(); }
-  void pause(void) { spe_file_server::pause(); }
-  void rewind(void) { pause(); spe_file_server::rewind(); }
-  void single_step(void) { spe_file_server::single_step(); }
 };
 
 class FileStack_Controllable_Video : public Controllable_Video, public file_stack_server {
@@ -185,16 +207,6 @@ public:
   void single_step(void) { Metamorph_stack_server::single_step(); }
 };
 #endif
-
-class SEM_Controllable_Video : public Controllable_Video, public SEM_camera_server {
-public:
-  SEM_Controllable_Video(const char *filename) : SEM_camera_server(filename) {};
-  virtual ~SEM_Controllable_Video() {};
-  void play(void) { SEM_camera_server::play(); }
-  void pause(void) { SEM_camera_server::pause(); }
-  void rewind(void) { pause(); SEM_camera_server::rewind(); }
-  void single_step(void) { SEM_camera_server::single_step(); }
-};
 
 // Used to keep track of the past traces of spots that have been tracked.
 typedef struct { double x; double y; } Position_XY;
@@ -375,6 +387,7 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     g_camera_bit_depth = 16;
   } else
 #endif  
+#ifdef	VST_USE_DIAGINC
   if (!strcmp(type, "diaginc")) {
     // XXX Starts with binning of 2 to get the image size down so that
     // it fits on the screen.
@@ -382,10 +395,14 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     *camera = r;
     g_exposure = 80;	// Seems to be the minimum exposure for the one we have
     g_camera_bit_depth = 12;
-  } else if (!strcmp(type, "edt")) {
+  } else
+#endif  
+  if (!strcmp(type, "edt")) {
     edt_server *r = new edt_server();
     *camera = r;
-  } else if (!strcmp(type, "directx")) {
+  } else
+#ifdef	VST_USE_DIRECTX
+  if (!strcmp(type, "directx")) {
     // Passing width and height as zero leaves it open to whatever the camera has
     directx_camera_server *d = new directx_camera_server(1,0,0);	// Use camera #1 (first one found)
     *camera = d;
@@ -395,7 +412,10 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
 
   // If this is a VRPN URL for an SEM device, then open the file and set up
   // to read from that device.
-  } else if (!strncmp(type, "SEM@", 4)) {
+  } else
+#endif  
+#ifdef	VST_USE_SEM
+  if (!strncmp(type, "SEM@", 4)) {
     SEM_Controllable_Video  *s = new SEM_Controllable_Video (type);
     *camera = s;
     *video = s;
@@ -404,7 +424,9 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
   // Unknown type, so we presume that it is a file.  Now we figure out what
   // kind of file based on the extension and open the appropriate type of
   // imager.
-  } else {
+  } else
+#endif  
+  {
     fprintf(stderr,"get_camera(): Assuming filename (%s)\n", type);
 
     // If the extension is ".raw" then we assume it is a Pulnix file and open
@@ -417,6 +439,7 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
 
     // If the extension is ".spe" then we assume it is a Roper file and open
     // it that way.
+#ifdef	VST_USE_ROPER
     } else if ( (strcmp(".spe", &type[strlen(type)-4]) == 0) ||
 		(strcmp(".SPE", &type[strlen(type)-4]) == 0) ) {
       SPE_Controllable_Video *f = new SPE_Controllable_Video(type);
@@ -427,6 +450,8 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     // If the extension is ".sem" then we assume it is a VRPN-format file
     // with an SEM device in it, so we form the name of the device and open
     // a VRPN Remote object to handle it.
+#endif
+#ifdef	VST_USE_SEM
     } else if (strcmp(".sem", &type[strlen(type)-4]) == 0) {
       char *name;
       if ( NULL == (name = new char[strlen(type) + 20]) ) {
@@ -442,6 +467,7 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
 
     // If the extension is ".tif" or ".tiff" or ".bmp" then we assume it is
     // a file or stack of files to be opened by ImageMagick.
+#endif
     } else if (   (strcmp(".tif", &type[strlen(type)-4]) == 0) ||
 		  (strcmp(".TIF", &type[strlen(type)-4]) == 0) ||
 		  (strcmp(".bmp", &type[strlen(type)-4]) == 0) ||
@@ -467,9 +493,14 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     // how to open.
 #endif
     } else {
+#ifdef	VST_USE_DIRECTX
       Directx_Controllable_Video *f = new Directx_Controllable_Video(type);
       *camera = f;
       *video = f;
+#else
+	fprintf(stderr,"Unknown camera or file type\n");
+	return false;
+#endif
     }
   }
   return true;
@@ -1250,9 +1281,9 @@ void myBeadDisplayFunc(void)
 	    g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = 0;
 	    g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
 	  } else {
-	    g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = ((uns16)(double_pix)) >> shift;
-	    g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = ((uns16)(double_pix)) >> shift;
-	    g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = ((uns16)(double_pix)) >> shift;
+	    g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = ((vrpn_uint16)(double_pix)) >> shift;
+	    g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = ((vrpn_uint16)(double_pix)) >> shift;
+	    g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = ((vrpn_uint16)(double_pix)) >> shift;
 	    g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
 	  }
         }
@@ -2107,9 +2138,9 @@ void myIdleFunc(void)
 	  // from the first channel into all colors of the image.  It uses
 	  // RGBA so that we don't have to worry about byte-alignment problems
 	  // that plagued us when using RGB pixels.
-	  g_kymograph_image[0 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (uns16)(double_pix) >> shift;
-	  g_kymograph_image[1 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (uns16)(double_pix) >> shift;
-	  g_kymograph_image[2 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (uns16)(double_pix) >> shift;
+	  g_kymograph_image[0 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (vrpn_uint16)(double_pix) >> shift;
+	  g_kymograph_image[1 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (vrpn_uint16)(double_pix) >> shift;
+	  g_kymograph_image[2 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = (vrpn_uint16)(double_pix) >> shift;
 	  g_kymograph_image[3 + 4 * (kx + g_kymograph_width * (g_kymograph_height - 1 - ky))] = 255;
 	}
       }

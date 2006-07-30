@@ -1,3 +1,4 @@
+#ifdef _WIN32
 #ifndef	DIRECTX_CAMERA_SERVER_H
 #define	DIRECTX_CAMERA_SERVER_H
 
@@ -147,3 +148,5 @@ protected:
 };
 
 #endif
+#endif
+

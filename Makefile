@@ -110,7 +110,8 @@ endif
 OBJ_DIR := $(HW_OS)$(OBJECT_DIR_SUFFIX)
 LIB_DIR := ../$(OBJ_DIR)
 
-CFLAGS = -g -I./ -Istocc_random_number_generator -I../quat -I../vrpn -I/usr/local/include
+CFLAGS = -g -I./ -Istocc_random_number_generator -I../quat -I../vrpn \
+	-I../nano/src/lib/nmMP -I/usr/local/include
 
 # The -rpath command specifies that the system should look for shared objects in
 # the specified location.  In our case, this is an attempt to get ImageMagick
@@ -190,7 +191,7 @@ $(OBJ_DIR)/test_spot_tracker: $(OBJ_DIR)/test_spot_tracker.o $(OBJ_DIR)/libspott
 $(OBJ_DIR)/video_spot_tracker: $(OBJ_DIR)/video_spot_tracker.o $(OBJ_DIR)/libspottracker.a
 	$(CC) $(LFLAGS) -o $(OBJ_DIR)/video_spot_tracker \
 		$(OBJ_DIR)/video_spot_tracker.o \
-		-lspottracker $(MAGICLIBS) $(GL) $(VRPNLIBS) $(SYSLIBS) -lm
+		-lspottracker $(MAGICLIBS) -lglut $(GL) $(VRPNLIBS) $(SYSLIBS) -lm
 
 $(OBJ_DIR)/add_noise_to_image: $(OBJ_DIR)/add_noise_to_image.o $(OBJ_DIR)/libstocc.a
 	$(CC) $(LFLAGS) -o $(OBJ_DIR)/add_noise_to_image \

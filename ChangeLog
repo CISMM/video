@@ -1,5 +1,18 @@
 2006-07-29  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* Makefile : Getting closer to making VST compile under Linux.
+	* SEM_camera_server.h : Turned off compilation for non-Windows.
+	* cooke_server.h : Same.
+	* diaginc_server.h : Same.
+	* directx_camera_server.h : Same.
+	* directx_videofile_server.h : Same.
+	* roper_server.h : Same.
+	* video_spot_tracker.cpp : Doing scope-by-scope turning off
+		of compilation.  Then doing an architecture-based
+		turning on/off of the scopes.
+
+2006-07-29  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* Makefile : Start of the process to make this build under
 		Linux.  The test_spot_tracker app builds.
 	* add_noise_to_image.cpp : Newline at the end of the file.

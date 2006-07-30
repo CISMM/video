@@ -1,3 +1,4 @@
+#ifdef _WIN32
 #include <windows.h>
 #include "base_camera_server.h"
 
@@ -118,3 +119,5 @@ protected:
   // don't use the base-class method.
   virtual bool write_opengl_texture_to_quad(double xfrac, double yfrac);
 };
+#endif
+

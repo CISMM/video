@@ -1,3 +1,4 @@
+#ifdef _WIN32
 #ifndef	DIRECTX_VIDEOFILE_SERVER_H
 #define	DIRECTX_VIDEOFILE_SERVER_H
 
@@ -44,3 +45,5 @@ protected:
 };
 
 #endif
+#endif
+

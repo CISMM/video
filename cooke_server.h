@@ -1,3 +1,4 @@
+#ifdef _WIN32
 #include <windows.h>
 #include "base_camera_server.h"
 
@@ -91,3 +92,5 @@ protected:
   // pixels we have.
   virtual bool write_to_opengl_texture(GLuint tex_id);
 };
+#endif
+
