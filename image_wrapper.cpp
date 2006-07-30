@@ -267,7 +267,7 @@ Integrated_Gaussian_image::Integrated_Gaussian_image(int minx, int maxx, int min
   recompute(background, noise, centerx, centery, std_dev, summedvolume, oversample);
 }
 
-Integrated_Gaussian_image::recompute(double background, double noise,
+void Integrated_Gaussian_image::recompute(double background, double noise,
 	     double centerx, double centery, double std_dev,
 	     double summedvolume, int oversample)
 {

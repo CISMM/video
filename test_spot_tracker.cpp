@@ -1,9 +1,13 @@
-XXX_why_is_there_a_bias_since_I_centered_the_disc_maker;
+//XXX_why_is_there_a_bias_since_I_centered_the_disc_maker;
 
 #include  <math.h>
 #include  <stdlib.h>
 #include  <stdio.h>
 #include  "spot_tracker.h"
+
+#ifdef _WIN32
+#define unlink(s) _unlink(s)
+#endif
 
 static	double	duration(struct timeval t1, struct timeval t2)
 {
@@ -539,7 +543,7 @@ int main(int, char *[])
   printf("Z optimum should be 5.5, found at %lf\n", z);
 
   // Delete the PSF file
-  _unlink("deleteme.tif");
+  unlink("deleteme.tif");
   
   return 0;
 }

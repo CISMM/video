@@ -10,8 +10,13 @@ using namespace std;
 
 static bool file_exists(const string file_name)
 {
+#ifdef _WIN32
   struct _stat buf;
   if (_stat( file_name.c_str(), &buf) == 0) {
+#else
+  struct stat buf;
+  if (stat(file_name.c_str(), &buf) == 0) {
+#endif
     return true;
   } else {
     return false;

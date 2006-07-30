@@ -1,3 +1,19 @@
+2006-07-29  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* Makefile : Start of the process to make this build under
+		Linux.  The test_spot_tracker app builds.
+	* add_noise_to_image.cpp : Newline at the end of the file.
+	* base_camera_server.cpp : Removed call to base class virtual
+		destructor.
+	* base_camera_server.h : Comment change.
+	* file_list.cpp : uses stat() under Linux, rather than _stat()
+	* file_stack_server.h : Newline at end of file.
+	* image_wrapper.cpp : Declared return type for method.
+	* image_wrapper.h : Same.
+	* spot_tracker.cpp : Explicit double-to-int conversions.
+	* spot_tracker.h : Same.
+	* test_spot_tracker.cpp : Uses unlink() rather than _unlink() on Linux.
+
 2006-07-24  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* directx_camera_server.cpp : Initializes _buffer to NULL so that

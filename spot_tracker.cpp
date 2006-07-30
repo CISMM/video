@@ -315,7 +315,7 @@ void  spot_tracker_Z::locate_best_fit_in_depth(const image_wrapper &image, unsig
     set_z(i);
     if ( bestfit < (newfit = check_fitness(image, rgb, x,y)) ) {
       bestfit = newfit;
-      bestz = get_z();
+      bestz = i;
     }
   }
 
@@ -334,15 +334,15 @@ void  spot_tracker_Z::locate_close_fit_in_depth(const image_wrapper &image, unsi
   double bestfit = -1e10;
   double  newfit;
 
-  int ilow = (int)(_minz + 1);
-  int ihigh = (int)(_maxz - 1);
-  int step = (_maxz - _minz - 2) / 10;
+  int ilow = static_cast<int>((_minz + 1));
+  int ihigh = static_cast<int>((_maxz - 1));
+  int step = static_cast<int>((_maxz - _minz - 2) / 10);
   if (step == 0) { step = 1; }
   for (i = ilow; i <= ihigh; i += step) {
     set_z(i);
     if ( bestfit < (newfit = check_fitness(image, rgb, x,y)) ) {
       bestfit = newfit;
-      bestz = get_z();
+      bestz = i;
     }
   }
 
@@ -1023,10 +1023,14 @@ double	Gaussian_spot_tracker::check_fitness(const image_wrapper &image, unsigned
   // parameters.  Otherwise, just fill in the existing image with new values.  Allocate
   // out to twice the radius on each side (two standard deviations).
   if (!_testimage) {
-    _testimage = new Integrated_Gaussian_image(-2*get_radius(), 2*get_radius(), -2*get_radius(), 2*get_radius(),
-      _background, 0.0, x_frac,y_frac, get_radius(), summed_value, 1/sample_separation_in_pixels);
+    _testimage = new Integrated_Gaussian_image(static_cast<int>(-2*get_radius()),
+      static_cast<int>(2*get_radius()),
+      static_cast<int>(-2*get_radius()),
+      static_cast<int>(2*get_radius()),
+      _background, 0.0, x_frac,y_frac, get_radius(), summed_value,
+      static_cast<int>(1/sample_separation_in_pixels));
   } else {
-    _testimage->recompute(_background, 0.0, x_frac,y_frac, get_radius(), summed_value, 1/sample_separation_in_pixels);
+    _testimage->recompute(_background, 0.0, x_frac,y_frac, get_radius(), summed_value, static_cast<int>(1/sample_separation_in_pixels));
   }
 
   // Compute the sum of the squared errors between the test image and the image
@@ -1041,8 +1045,9 @@ double	Gaussian_spot_tracker::check_fitness(const image_wrapper &image, unsigned
   int pixels = 0;
   double val, myval;
   double fitness = 0.0;
-  for (x = -2*_rad; x <= 2*_rad; x++) {
-    for (y = -2*_rad; y <= 2*_rad; y++) {
+  int double_rad = static_cast<int>(2*_rad);
+  for (x = -double_rad; x <= double_rad; x++) {
+    for (y = -double_rad; y <= double_rad; y++) {
       if (image.read_pixel(x_int+x,y_int+y,val, rgb)) {
         _testimage->read_pixel(x, y, myval, 0);
 	double squarediff = (val-myval) * (val-myval);
@@ -1069,7 +1074,7 @@ FIONA_spot_tracker::FIONA_spot_tracker(double radius,
                     double background,
                     double summedvalue) :
     spot_tracker_XY(radius, false, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels),
-    _testimage(NULL), _background(background), _summedvalue(summedvalue)
+    _background(background), _summedvalue(summedvalue)
 {
   // Make sure the parameters make sense
   if (_rad <= 0) {
@@ -1123,8 +1128,8 @@ double	FIONA_spot_tracker::check_fitness(const image_wrapper &image, unsigned rg
   // Figure out how far to check.  This should be 4 times the radius of the kernel.  In
   // Selvin's code, they pick a 15-pixel square around the code, but this causes interference
   // from nearby spots that cause optimization to fail.
-  double halfwidth = 4*_rad;
-  //if (halfwidth < 15.0) { halfwidth = 15.0; }
+  int halfwidth = static_cast<int>(4*_rad);
+  //if (halfwidth < 15) { halfwidth = 15; }
 
   // Compute the sum of the squared errors between the test image and the image
   // we're optimizing against.  The Gaussian image will have been shifted by

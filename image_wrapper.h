@@ -94,7 +94,7 @@ public:
   ~Integrated_Gaussian_image();
 
   // Recompute the Gaussian based on new parameters.
-  recompute(double background = 127.0, double noise = 0.0,
+  void recompute(double background = 127.0, double noise = 0.0,
 	     double centerx = 127.25, double centery = 127.75, double std_dev = 2.5,
 	     double summedvolume = 250, int oversample = 1);
 

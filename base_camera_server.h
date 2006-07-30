@@ -35,7 +35,7 @@ public:
 
   image_wrapper() : _opengl_texture_size_x(0), _opengl_texture_size_y(0), _opengl_texture_have_written(false) {};
 
-  // Virtual destructor to let children de-allocate space as needed.
+  // Virtual destructor so that children can de-allocate space as needed.
   virtual ~image_wrapper() {};
 
   // Tell what the range is for the image.

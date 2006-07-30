@@ -14,6 +14,9 @@
 #ifdef  _WIN32
 #include <process.h>
 #define getpid() _getpid()
+#else
+#include <sys/types.h>
+#include <unistd.h>
 #endif
 
 //--------------------------------------------------------------------------
@@ -315,3 +318,4 @@ main (int argc, char * argv[])
 
   return 0;
 }
+

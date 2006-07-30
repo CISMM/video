@@ -238,7 +238,7 @@ public:
 		    double pixelaccuracy = 0.25,
 		    double radiusaccuracy = 0.25,
 		    double sample_separation_in_pixels = 1.0);
-  symmetric_spot_tracker_interp::~symmetric_spot_tracker_interp();
+  ~symmetric_spot_tracker_interp();
 
   /// Check the fitness against an image, at the current parameter settings.
   // Return the fitness value there.
@@ -351,7 +351,7 @@ public:
       result = 0.0;
       return false;
     } else {
-      return _testimage->read_pixel(x,y,result, 0);
+      return _testimage->read_pixel(static_cast<int>(x),static_cast<int>(y),result, 0);
     }
   };
 
@@ -407,7 +407,8 @@ public:
   // Debugging method.  Remember that the check_fitness() function has to
   // be called before it can be used, so that an image is created.
   bool read_pixel(double x, double y, double &result) const {
-      return _testimage.read_pixel(floor(x),floor(y),result, 0);
+      return _testimage.read_pixel(static_cast<int>(floor(x)),
+				   static_cast<int>(floor(y)),result, 0);
   };
 
 protected:
