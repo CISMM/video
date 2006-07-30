@@ -10,6 +10,7 @@
 #ifdef _WIN32
 #define	VST_USE_ROPER
 #define	VST_USE_COOKE
+#define	VST_USE_EDT
 #define	VST_USE_DIAGINC
 #define	VST_USE_SEM
 #define	VST_USE_DIRECTX
@@ -33,7 +34,11 @@
 #include <string.h>
 #include <tcl.h>
 #include <tk.h>
+#ifdef _WIN32
 #include "Tcl_Linkvar.h"
+#else
+#include "Tcl_Linkvar85.h"
+#endif
 #ifdef	VST_USE_ROPER
 #include "roper_server.h"
 #endif
@@ -231,6 +236,13 @@ copy_of_image	    *g_last_image = NULL;	  //< Copy of the last image we had, if 
 float		    g_search_radius = 0;	  //< Search radius for doing local max in before optimizing.
 Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
 Tclvar_int_with_button	g_frame_number("frame_number",NULL,-1);  //< Keeps track of video frame number
+#ifdef _WIN32
+Tclvar_int_with_button	g_window_offset_x("window_offset_x",NULL,0);  //< Offset windows more in some arch
+Tclvar_int_with_button	g_window_offset_y("window_offset_y",NULL,0);  //< Offset windows more in some arch
+#else
+Tclvar_int_with_button	g_window_offset_x("window_offset_x",NULL,25);  //< Offset windows more in some arch
+Tclvar_int_with_button	g_window_offset_y("window_offset_y",NULL,-10);  //< Offset windows more in some arch
+#endif
 
 // This variable is used to determine if we should consider doing maximum fits,
 // by determining if the frame number has changed since last time.
@@ -300,8 +312,13 @@ vector<ThreadInfo *>    g_tracking_threads;           //< The threads to use for
 
 //--------------------------------------------------------------------------
 // Tcl controls and displays
+#ifdef	_WIN32
 void  logfilename_changed(char *newvalue, void *);
 void  device_filename_changed(char *newvalue, void *);
+#else
+void  logfilename_changed(const char *newvalue, void *);
+void  device_filename_changed(const char *newvalue, void *);
+#endif
 void  rebuild_trackers(int newvalue, void *);
 void  rebuild_trackers(float newvalue, void *);
 void  reset_background_image(int newvalue, void *);
@@ -341,7 +358,7 @@ Tclvar_int_with_button	g_small_area("small_area",NULL);
 Tclvar_int_with_button	g_full_area("full_area",NULL);
 Tclvar_int_with_button	g_mark("show_tracker",NULL,1);
 Tclvar_int_with_button	g_show_video("show_video","",1);
-Tclvar_int_with_button	g_opengl_video("use_opengl_video","",1);
+Tclvar_int_with_button	g_opengl_video("use_texture_video","",1);
 Tclvar_int_with_button	g_show_debug("show_debug","",0, set_debug_visibility);
 Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
 Tclvar_int_with_button	g_show_traces("show_logged_traces","",1);
@@ -397,10 +414,12 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     g_camera_bit_depth = 12;
   } else
 #endif  
+#ifdef	VST_USE_EDT
   if (!strcmp(type, "edt")) {
     edt_server *r = new edt_server();
     *camera = r;
   } else
+#endif  
 #ifdef	VST_USE_DIRECTX
   if (!strcmp(type, "directx")) {
     // Passing width and height as zero leaves it open to whatever the camera has
@@ -773,7 +792,7 @@ void myDisplayFunc(void)
     // This depends on how many bits the camera has above zero minus
     // the number of bits we want to shift to brighten the image.
     // If this number is negative, clamp to zero.
-    int shift_due_to_camera = g_camera_bit_depth - 8;
+    int shift_due_to_camera = static_cast<int>(g_camera_bit_depth) - 8;
     int total_shift = shift_due_to_camera - g_brighten;
     if (total_shift < 0) { total_shift = 0; }
 
@@ -2484,7 +2503,11 @@ void motionCallbackForGLUT(int raw_x, int raw_y)
 // Also do the same for a comma-separated values file, replacing the
 // .vrpn extension with .csv
 
+#ifdef _WIN32
 void  logfilename_changed(char *newvalue, void *)
+#else
+void  logfilename_changed(const char *newvalue, void *)
+#endif
 {
   // If we have been logging, then see if we have saved the
   // current frame's image.  If not, go ahead and do it now.
@@ -2578,11 +2601,20 @@ void  logfilename_changed(char *newvalue, void *)
 // If the device filename becomes non-empty, then set the global
 // device name to match what it is set to.
 
+#ifdef _WIN32
 void  device_filename_changed(char *newvalue, void *)
+#else
+void  device_filename_changed(const char *newvalue, void *)
+#endif
 {
-  // Open a new connection and .csv file, if we have a non-empty name.
+  // Set the global name, if we have a non-empty name.
   if (strlen(newvalue) > 0) {
     g_device_name = new char[strlen(newvalue)+1];
+    if (g_device_name == NULL) {
+	fprintf(stderr,"device_filename_changed(): Out of memory\n");
+	dirtyexit();
+	exit(-1);
+    }
     strcpy(g_device_name, newvalue);
   }
 }
@@ -3035,7 +3067,6 @@ int main(int argc, char *argv[])
   }
   while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
 
-  
   //------------------------------------------------------------------
   // If we don't have a device name, then throw a Tcl dialog asking
   // the user for the name of a file to use and wait until they respond.
@@ -3171,7 +3202,7 @@ int main(int argc, char *argv[])
   // opened in VRPN.  Also set mouse callbacks.
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(175, 210);
+  glutInitWindowPosition(175 + g_window_offset_x, 210 + g_window_offset_y);
   glutInitWindowSize(g_camera->get_num_columns(), g_camera->get_num_rows());
 #ifdef DEBUG
   printf("initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());
@@ -3198,7 +3229,7 @@ int main(int argc, char *argv[])
   //------------------------------------------------------------------
   // Create the window that will be used for the "Bead's-eye view"
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(375, 140);
+  glutInitWindowPosition(375 + g_window_offset_x, 140 + g_window_offset_y);
   glutInitWindowSize(g_beadseye_size, g_beadseye_size);
   g_beadseye_window = glutCreateWindow("Tracked");
 
@@ -3219,7 +3250,7 @@ int main(int argc, char *argv[])
   //------------------------------------------------------------------
   // Create the window that will be used for the "Landscape view"
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(375 + 10 + g_beadseye_size, 140);
+  glutInitWindowPosition(375 + 10 + g_beadseye_size + g_window_offset_x, 140 + g_window_offset_y);
   glutInitWindowSize(g_landscape_size + g_landscape_strip_width, g_landscape_size);
   g_landscape_window = glutCreateWindow("Landscape");
 
@@ -3251,7 +3282,7 @@ int main(int argc, char *argv[])
   //------------------------------------------------------------------
   // Create the window that will be used for the kymograph
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(190 + g_camera->get_num_columns(), 140);
+  glutInitWindowPosition(190 + g_camera->get_num_columns() + g_window_offset_x, 140 + g_window_offset_y);
   initializekymograph();
 
   // Figure out how wide the kymograph needs to be based on the window size.
@@ -3271,7 +3302,7 @@ int main(int argc, char *argv[])
   }
   glutInitWindowSize(g_kymograph_width, g_kymograph_height);
   g_kymograph_window = glutCreateWindow("kymograph");
-  glutInitWindowPosition(190 + g_camera->get_num_columns(), 440);
+  glutInitWindowPosition(190 + g_camera->get_num_columns() + g_window_offset_x, 440 + g_window_offset_y);
   g_kymograph_center_window = glutCreateWindow("kymograph_center");
 
   // Set the display functions for each window and idle function for GLUT (they

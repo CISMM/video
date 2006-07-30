@@ -116,7 +116,9 @@ CFLAGS = -g -I./ -Istocc_random_number_generator -I../quat -I../vrpn \
 # The -rpath command specifies that the system should look for shared objects in
 # the specified location.  In our case, this is an attempt to get ImageMagick
 # shared objects to load.
-LFLAGS = -L$(LIB_DIR) -L../quat/$(HW_OS)$(OBJECT_DIR_SUFFIX) -L../vrpn/$(HW_OS)$(OBJECT_DIR_SUFFIX) -L$(HW_OS)$(OBJECT_DIR_SUFFIX)
+LFLAGS = -L$(LIB_DIR) -L../quat/$(HW_OS)$(OBJECT_DIR_SUFFIX) -L../vrpn/$(HW_OS)$(OBJECT_DIR_SUFFIX) -L$(HW_OS)$(OBJECT_DIR_SUFFIX) -L../nano/obj/$(HW_OS)/lib/nmMP -W1,-rpath,/usr/local/lib
+
+TCLLIBS = -ltk8.5 -ltcl8.5 -lXss
 
 MAGICLIBS = -lMagick -ltiff -lfreetype -ljpeg -lpng -lfontconfig -lXext -lXt -lSM -lICE -lX11 -lbz2 -lrsvg-2 -lgdk_pixbuf-2.0 -lgobject-2.0 -lgmodule-2.0 -ldl -lglib-2.0 -lxml2 -lz -lpthread -lpthread 
 
@@ -146,12 +148,16 @@ $(OBJ_DIR)/%.o:	%.cpp
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 STOCC_LIB_FILES = stocc_random_number_generator/mersenne.cpp stocc_random_number_generator/stoc1.cpp stocc_random_number_generator/userintf.cpp
-
 STOCC_LIB_OBJECTS = $(patsubst %,%,$(STOCC_LIB_FILES:.cpp=.o))
 
 SPOT_TRACKER_LIB_FILES = spot_math.cpp spot_tracker.cpp image_wrapper.cpp base_camera_server.cpp file_stack_server.cpp file_list.cpp
-
 SPOT_TRACKER_LIB_OBJECTS = $(patsubst %,$(OBJ_DIR)/%,$(SPOT_TRACKER_LIB_FILES:.cpp=.o))
+
+TCL_LINKVAR_LIB_FILES = Tcl_Linkvar85.C
+TCL_LINKVAR_LIB_OBJECTS = $(patsubst %,$(OBJ_DIR)/%,$(TCL_LINKVAR_LIB_FILES:.C=.o))
+
+EDT_LIB_FILES = edt_server.cpp
+EDT_LIB_OBJECTS = $(patsubst %,$(OBJ_DIR)/%,$(EDT_LIB_FILES:.cpp=.o))
 
 INSTALL_APPS := video_spot_tracker
 APPS := test_spot_tracker add_noise_to_image $(INSTALL_APPS)
@@ -168,6 +174,12 @@ add_noise_to_image:	$(OBJ_DIR)/add_noise_to_image
 .PHONY:	average_videos
 average_videos:	$(OBJ_DIR)/average_videos
 
+.PHONY:	libedt.a
+libedt.a:	$(OBJ_DIR)/libedt.a
+
+.PHONY:	libtcllinkvar85.a
+libtcllinkvar85.a:	$(OBJ_DIR)/libtcllinkvar85.a
+
 .PHONY:	test_spot_tracker
 test_spot_tracker:	$(OBJ_DIR)/test_spot_tracker
 
@@ -177,6 +189,14 @@ video_spot_tracker:	$(OBJ_DIR)/video_spot_tracker
 $(OBJ_DIR)/libspottracker.a : $(MAKEFILE) $(SPOT_TRACKER_LIB_OBJECTS)
 	$(AR) $(OBJ_DIR)/libspottracker.a $(SPOT_TRACKER_LIB_OBJECTS)
 	-$(RANLIB) $(OBJ_DIR)/libspottracker.a
+
+$(OBJ_DIR)/libtcllinkvar85.a : $(MAKEFILE) $(TCL_LINKVAR_LIB_OBJECTS)
+	$(AR) $(OBJ_DIR)/libtcllinkvar85.a $(TCL_LINKVAR_LIB_OBJECTS)
+	-$(RANLIB) $(OBJ_DIR)/libtcllinkvar85.a
+
+$(OBJ_DIR)/libedt.a : $(MAKEFILE) $(EDT_LIB_OBJECTS)
+	$(AR) $(OBJ_DIR)/libedt.a $(EDT_LIB_OBJECTS)
+	-$(RANLIB) $(OBJ_DIR)/libedt.a
 
 $(OBJ_DIR)/libstocc.a : $(MAKEFILE) $(STOCC_LIB_OBJECTS)
 	-mv *.o stocc_random_number_generator
@@ -188,10 +208,12 @@ $(OBJ_DIR)/test_spot_tracker: $(OBJ_DIR)/test_spot_tracker.o $(OBJ_DIR)/libspott
 		$(OBJ_DIR)/test_spot_tracker.o \
 		-lspottracker $(MAGICLIBS) $(GL) $(VRPNLIBS) $(SYSLIBS) -lm
 
-$(OBJ_DIR)/video_spot_tracker: $(OBJ_DIR)/video_spot_tracker.o $(OBJ_DIR)/libspottracker.a
+$(OBJ_DIR)/video_spot_tracker: $(OBJ_DIR)/video_spot_tracker.o $(OBJ_DIR)/libspottracker.a\
+				$(OBJ_DIR)/libtcllinkvar85.a libedt.a
 	$(CC) $(LFLAGS) -o $(OBJ_DIR)/video_spot_tracker \
 		$(OBJ_DIR)/video_spot_tracker.o \
-		-lspottracker $(MAGICLIBS) -lglut $(GL) $(VRPNLIBS) $(SYSLIBS) -lm
+		-lnmMP -lspottracker -ledt -ltcllinkvar85 $(TCLLIBS) \
+		$(MAGICLIBS) -lglut $(GL) $(VRPNLIBS) $(SYSLIBS) -lm
 
 $(OBJ_DIR)/add_noise_to_image: $(OBJ_DIR)/add_noise_to_image.o $(OBJ_DIR)/libstocc.a
 	$(CC) $(LFLAGS) -o $(OBJ_DIR)/add_noise_to_image \
@@ -202,22 +224,6 @@ $(OBJ_DIR)/average_videos: $(OBJ_DIR)/average_videos.o
 	$(CC) $(LFLAGS) -o $(OBJ_DIR)/average_videos \
 		$(OBJ_DIR)/average_videos.o \
 		$(MAGICLIBS) $(GL) $(VRPNLIBS) $(SYSLIBS) -lm
-
-$(OBJ_DIR)/vrpn_server: $(OBJ_DIR)/vrpn.o $(LIB_DIR)/libvrpnserver.a \
-		$(OBJ_DIR)/buzzForceField.o $(OBJ_DIR)/constraint.o \
-		$(OBJ_DIR)/forcefield.o $(OBJ_DIR)/plane.o \
-		$(OBJ_DIR)/texture_plane.o $(OBJ_DIR)/trimesh.o \
-		$(OBJ_DIR)/vrpn_Phantom.o \
-		$(OBJ_DIR)/InstantBuzzEffect.o \
-		$(OBJ_DIR)/vrpn_Generic_server_object.o 
-	$(CC) $(LFLAGS) -o $(OBJ_DIR)/vrpn_server $(OBJ_DIR)/vrpn.o \
-		$(OBJ_DIR)/buzzForceField.o $(OBJ_DIR)/constraint.o \
-		$(OBJ_DIR)/forcefield.o $(OBJ_DIR)/plane.o \
-		$(OBJ_DIR)/texture_plane.o $(OBJ_DIR)/trimesh.o \
-		$(OBJ_DIR)/vrpn_Phantom.o \
-		$(OBJ_DIR)/InstantBuzzEffect.o \
-		$(OBJ_DIR)/vrpn_Generic_server_object.o \
-		$(LIB_DIR)/libvrpnserver.a $(GL) -lquat $(SYSLIBS) -lm
 
 install: all
 	-mkdir $(BIN_DIR)

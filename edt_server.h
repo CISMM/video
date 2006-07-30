@@ -1,5 +1,6 @@
 #include "base_camera_server.h"
 
+#ifdef _WIN32
 class edt_server : public base_camera_server {
 public:
   // Version 3303 of the library would flip every other line
@@ -51,6 +52,7 @@ protected:
   // don't use the base-class method.
   virtual bool write_opengl_texture_to_quad(double xfrac, double yfrac);
 };
+#endif
 
 class edt_pulnix_raw_file_server : public base_camera_server {
 public:

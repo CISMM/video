@@ -1,5 +1,9 @@
-#include "edtinc.h"
 #include "edt_server.h"
+
+#define min(a,b) ( (a)<(b)?(a):(b) )
+
+#ifdef _WIN32
+#include "edtinc.h"
 
 edt_server::edt_server(bool swap_lines, unsigned num_buffers) :
 d_buffer(NULL),
@@ -235,7 +239,7 @@ bool  edt_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrco
   int nRowsPerRegion=vrpn_IMAGER_MAX_REGIONu8/_num_columns;
   svr->send_begin_frame(0, _num_columns-1, 0, _num_rows-1);
   for(y=0; y<_num_rows; y+=nRowsPerRegion) {
-    svr->send_region_using_base_pointer(svrchan,0,_num_columns-1,y,__min(_num_rows,y+nRowsPerRegion)-1,
+    svr->send_region_using_base_pointer(svrchan,0,_num_columns-1,y,min(_num_rows,y+nRowsPerRegion)-1,
       d_buffer, 1, _num_columns, _num_rows, true);
     svr->mainloop();
   }
@@ -317,7 +321,7 @@ bool edt_server::write_opengl_texture_to_quad(double xfrac, double yfrac)
 
   return true;
 }
-
+#endif
 
 const unsigned PULNIX_X_SIZE = 648;
 const unsigned PULNIX_Y_SIZE = 484;
@@ -480,8 +484,8 @@ bool  edt_pulnix_raw_file_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_C
     int nRowsPerRegion=vrpn_IMAGER_MAX_REGIONu8/num_x;
     unsigned y;
     svr->send_begin_frame(0, num_x-1, 0, num_y-1);
-    for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
-      svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1,
+    for(y=0;y<num_y;y=min(num_y,y+nRowsPerRegion)) {
+      svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,min(num_y,y+nRowsPerRegion)-1,
 	(vrpn_uint8 *)d_buffer, 1, get_num_columns());
       svr->mainloop();
     }

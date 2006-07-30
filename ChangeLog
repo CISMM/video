@@ -1,3 +1,20 @@
+2006-07-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* Makefile : Compiles VST under Linux.  On my machine, you
+		need to build Tcl/Tk and ImageMagick using static-
+		only (--disable-shared) for the program to run
+		after it has linked.
+	* edt_server.cpp : Made the raw Pulnix file code work
+		with Linux; the camera driver does not.
+	* edt_server.h : Same.
+	* video_spot_tracker.cpp : Explicitly set things to NULL
+		that should be NULL.  Moved initial window positions
+		over to the right for Linux.
+	* Tcl_Linkvar85.C : Version of Tcl_Linkvars that work with
+		Tcl/Tk 8.5.  Leaving the old ones in for Windows because
+		they work with the NSRG Runtime.
+	* Tcl_Linkvar85.h : Same.
+
 2006-07-29  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* Makefile : Getting closer to making VST compile under Linux.
