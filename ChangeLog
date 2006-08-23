@@ -1,3 +1,9 @@
+2006-08-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Fixed off-by-one memory allocation
+		bug that caused crashes randomly when using the command
+		line to specify an output file name.
+
 2006-07-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* Makefile : Compiles VST under Linux.  On my machine, you

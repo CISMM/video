@@ -86,7 +86,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.08";
+const char *Version_string = "05.09";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -3021,7 +3021,7 @@ int main(int argc, char *argv[])
       g_areamax = 1;
     } else if (!strncmp(argv[i], "-outfile", strlen("-outfile"))) {
       if (++i > argc) { Usage(argv[0]); }
-      char *name = new char[strlen(argv[i])+5];
+      char *name = new char[strlen(argv[i])+6];
       sprintf(name, "%s.vrpn", argv[i]);
       logfilename_changed(name, NULL);
     } else if (!strncmp(argv[i], "-precision", strlen("-precision"))) {
