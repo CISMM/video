@@ -42,12 +42,21 @@ pack .story.sec1.part4 -side left
 
 frame .story.sec2
 pack .story.sec2 -fill x
-label .story.sec2.part2 -text "(currently set at"
+label .story.sec2.part2 -text "(currently at"
 pack .story.sec2.part2 -side left
 label .story.sec2.part3 -textvariable focus_microns
 pack .story.sec2.part3 -side left
-label .story.sec2.part4 -text "microns)"
+label .story.sec2.part4 -text "microns"
 pack .story.sec2.part4 -side left
+
+frame .story.sec2b
+pack .story.sec2b -fill x
+label .story.sec2b.part2 -text "with offset of"
+pack .story.sec2b.part2 -side left
+label .story.sec2b.part3 -textvariable focus_offset_microns
+pack .story.sec2b.part3 -side left
+label .story.sec2b.part4 -text "microns)"
+pack .story.sec2b.part4 -side left
 
 frame .story.sec3
 pack .story.sec3 -fill x

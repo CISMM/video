@@ -8,10 +8,10 @@ OperatingSystem=WinXP  5.1  2600 (Service Pack 2)
 ProjectName=video_imager_server
 ProjectDirectory=D:\Temp\video\video_imager_server
 NonSFXDirectory=D:\Temp\video\video_imager_server\NonSFX
-MediaFileName=video_imager_server_v02_05
+MediaFileName=video_imager_server_v02_06
 CopyMediaToFName=
 ProgramDescriptiveName=Video Imager Server
-ProgramVersion=02_05
+ProgramVersion=02_06
 CompanyName=UNC NSRG
 ProgVerLiveUpdate=0
 RegisterAsApp=1
@@ -62,7 +62,7 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|1|0|
 CompanyUrl=
 
 [TargetExe]
-TargetDirectory=<ProgramFilesDir>NSRG\video_imager_server_02_05
+TargetDirectory=<ProgramFilesDir>NSRG\video_imager_server_02_06
 CommonDirectory=<CommonFilesDir>UNC NSRG
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\video_imager_server.bat
@@ -106,7 +106,7 @@ ShowCopyrightWarning=1
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=NSRG\Video Imager Server v02_05
+ProgramLinkFolder=NSRG\Video Imager Server v02_06
 ProgramLinkName=Video_imager_server
 ProgramLinkParam=
 ProgramLinkWorkDir=<Application Folder>

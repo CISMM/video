@@ -41,7 +41,7 @@ const unsigned FAKE_CAMERA_SIZE = 256;
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "02.04";
+const char *Version_string = "02.05";
 char  *g_device_name = NULL;			  //< Name of the device to open
 bool	g_focus_changed = false;
 base_camera_server  *g_camera = NULL;
@@ -76,6 +76,10 @@ Tclvar_float_with_scale	*g_maxX;
 Tclvar_float_with_scale	*g_minY;
 Tclvar_float_with_scale	*g_maxY;
 Tclvar_float_with_scale	g_focus_command("focus_command_microns", "", 0, 100, 50, handle_tcl_focus_change);
+// At least with the Mad City Labs stages, there is an offset in Z (and X and Y)
+// between the command signal and the response signal.  This is estimated when
+// the program starts but can be set by the user as well.
+Tclvar_float_with_scale	g_focus_offset("focus_offset_microns", NULL, -1, 1, 0);
 Tclvar_float_with_scale	g_focus("focus_microns", NULL, 0, 100, -1);
 Tclvar_float_with_scale	g_focusDown("focus_lower_microns", NULL, 0, 20, 5);
 Tclvar_float_with_scale	g_focusUp("focus_raise_microns", NULL, 0, 20, 5);
@@ -126,7 +130,7 @@ bool  get_camera(const char *type, base_camera_server **camera)
   } else if (!strcmp(type, "roper")) {
     roper_server *r = new roper_server();
     *camera = r;
-    g_pixelcount = 12;
+    g_pixelcount = 14;
   } else if (!strcmp(type, "diaginc")) {
     diaginc_server *r = new diaginc_server();
     *camera = r;
@@ -370,7 +374,7 @@ void  wait_until_enough_time_has_passed_since(const struct timeval last_stack_st
 
     //------------------------------------------------------------
     // This is called once every time through the main loop.  It
-    // pushes changes in the C variab`les over to Tcl.
+    // pushes changes in the C variables over to Tcl.
 
     if (Tclvar_mainloop()) {
 	    fprintf(stderr,"Mainloop failed\n");
@@ -393,8 +397,10 @@ void  wait_until_enough_time_has_passed_since(const struct timeval last_stack_st
 
 void  move_focus_and_wait_until_it_gets_there(double where_to_go_meters) {
 #ifndef	FAKE_STAGE
-  // Request that the camera focus go where we want it to
-  vrpn_float64  pos[3] = { 0, 0, where_to_go_meters };
+  // Request that the camera focus go where we want it to,
+  // but take into account the offset between the command and
+  // the response from the stage.
+  vrpn_float64  pos[3] = { 0, 0, where_to_go_meters - g_focus_offset*METERS_PER_MICRON };
   vrpn_float64  quat[4] = { 0, 0, 0, 1 };
   struct timeval now;
   gettimeofday(&now, NULL);
@@ -422,7 +428,7 @@ void  move_focus_and_wait_until_it_gets_there(double where_to_go_meters) {
 
     //------------------------------------------------------------
     // This is called once every time through the main loop.  It
-    // pushes changes in the C variab`les over to Tcl.
+    // pushes changes in the C variables over to Tcl.
 
     if (Tclvar_mainloop()) {
 	    fprintf(stderr,"Mainloop failed\n");
@@ -431,6 +437,59 @@ void  move_focus_and_wait_until_it_gets_there(double where_to_go_meters) {
     err = fabs((float)g_focus - where_to_go_meters/METERS_PER_MICRON);
   } while (err > ((float)g_close_enough));
   printf("Found focus at %lg\n", (float)g_focus);
+#endif
+}
+
+void estimate_focus_offset(double where_to_go_meters) {
+#ifndef	FAKE_STAGE
+  // Request that the camera focus go where we want it to
+  vrpn_float64  pos[3] = { 0, 0, where_to_go_meters };
+  vrpn_float64  quat[4] = { 0, 0, 0, 1 };
+  struct timeval now;
+  gettimeofday(&now, NULL);
+  set_z->request_pose(now, pos, quat);
+
+  // Wait at least a quarter of a second and then get a new focus report.
+  // Subtract it from the requested focus each time when we ask
+  // for one later.  This is to deal with an offset between
+  // the requested position and the found position because the
+  // Mad City Labs stage (at least) has an offset between them.
+  set_z->mainloop();
+  if (svr) { svr->mainloop(); }
+  vrpn_SleepMsecs(250);
+
+  // Wait until we get at least one reponse for focus.
+  g_focus_changed = false;
+  do {
+    if (svr) { svr->mainloop(); }
+    if (con) { con->mainloop(); }
+    set_z->mainloop();
+    read_z->mainloop();
+    vrpn_SleepMsecs(1);
+
+    //------------------------------------------------------------
+    // If the user has pressed "quit" then
+    // break out of the wait.
+    while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
+    if ( g_quit ) {
+      if (g_quit) {
+	cleanup();
+	exit(0);
+      }
+      return;
+    }
+
+    //------------------------------------------------------------
+    // This is called once every time through the main loop.  It
+    // pushes changes in the C variables over to Tcl.
+
+    if (Tclvar_mainloop()) {
+	    fprintf(stderr,"Mainloop failed\n");
+	    exit(-1);
+    }
+    g_focus_offset = g_focus - where_to_go_meters / METERS_PER_MICRON;
+  } while (!g_focus_changed);
+  printf("Estimated focus offset at %lg\n", (float)g_focus_offset);
 #endif
 }
 
@@ -467,7 +526,7 @@ void myIdleFunc(void)
       // Wait until we hear where the focus is from the stage
 #ifndef	FAKE_STAGE
       g_focus_changed = false;
-      printf("Waiting for response from Focus control\n");
+      printf("Waiting for response from Focus control...\n");
       while (!g_focus_changed) {
 	if (svr) { svr->mainloop(); }
         if (con) { con->mainloop(); }
@@ -489,7 +548,7 @@ void myIdleFunc(void)
 
         //------------------------------------------------------------
         // This is called once every time through the main loop.  It
-        // pushes changes in the C variab`les over to Tcl.
+        // pushes changes in the C variables over to Tcl.
 
         if (Tclvar_mainloop()) {
 	        fprintf(stderr,"Mainloop failed\n");
@@ -501,6 +560,9 @@ void myIdleFunc(void)
 #endif
       printf("  (Initial focus found at %g)\n", ((float)g_focus));
       startfocus = g_focus * METERS_PER_MICRON;
+
+      printf("Estimating focus command offset...\n");
+      estimate_focus_offset(startfocus);
 
       struct timeval last_stack_started;
       last_stack_started.tv_sec = 0;
@@ -587,8 +649,15 @@ void myIdleFunc(void)
               (long)((focusloop-startfocus-focusdown)/METERS_PER_MICRON*1000 + 0.5), image_string );
 	    printf("Writing image to %s\n", name);
 #ifndef	FAKE_CAMERA
-	    // Write the selected subregion to a TIFF file.
-	    g_camera->write_to_tiff_file(name, (int)(g_gain * (g_sixteenbits ? 1 : 256 )), g_sixteenbits != 0);
+	    // Write the selected subregion to a TIFF file.  Write channel 0 (the red channel for color cameras,
+            // but the only channel for our scientific cameras) to a grayscale TIFF file.  If we're doing
+            // an 8-bit save, then effectively shift over to make the highest available bits be in the
+            // 8 that we save.
+            double shift_gain = 1.0;
+            if (g_sixteenbits == 0) {
+              shift_gain = pow(2,g_pixelcount-8);
+            }
+	    g_camera->write_to_grayscale_tiff_file(name, 0, g_gain * shift_gain, 0.0, g_sixteenbits != 0);
 #endif
 	    //------------------------------------------------------------
 	    // This must be done in any Tcl app, to allow Tcl/Tk to handle
@@ -598,7 +667,7 @@ void myIdleFunc(void)
 
             //------------------------------------------------------------
             // This is called once every time through the main loop.  It
-            // pushes changes in the C variab`les over to Tcl.
+            // pushes changes in the C variables over to Tcl.
 
             if (Tclvar_mainloop()) {
 	            fprintf(stderr,"Mainloop failed\n");
@@ -607,7 +676,7 @@ void myIdleFunc(void)
 
 	    //------------------------------------------------------------
 	    // If the user has deselected the "take_stack" or pressed "quit" then
-	    // break out of the loop.
+	    // break out of the loop immediately.
 	    if ( g_quit || !g_take_stack) {
 	      goto jump_out_because_user_pressed_quit;
 	    }
@@ -632,7 +701,7 @@ jump_out_because_user_pressed_quit:
 
     //------------------------------------------------------------
     // This is called once every time through the main loop.  It
-    // pushes changes in the C variab`les over to Tcl.
+    // pushes changes in the C variables over to Tcl.
 
     if (Tclvar_mainloop()) {
 	    fprintf(stderr,"Mainloop failed\n");

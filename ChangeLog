@@ -1,3 +1,13 @@
+2006-08-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* stack_collector.cpp : Added an estimator for the offset between the
+		requested position of the stage and its actual position.
+		Increased the version number. Increased the number of
+		pixels in the Roper camera to 14 from 12 (some of our
+		cameras have 14 bits).  Writes to grayscale TIFFs rather
+		than color ones, and also sets the gain and offset
+		appropriately now (bug fix).
+
 2006-08-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Fixed off-by-one memory allocation
