@@ -1,3 +1,11 @@
+2006-08-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* directx_library.dsp : Made it work with the include files
+		located on $(SYSTEMDRIVE) not just D:.  ALSO, had to
+		enable default include paths (it was turned off for
+		one configuration?????)
+	* roper_library.dsp : Same.
+
 2006-08-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* stack_collector.cpp : Added an estimator for the offset between the
