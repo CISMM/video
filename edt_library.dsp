@@ -117,6 +117,14 @@ SOURCE="$(SYSTEMDRIVE)\EDT\pdv\libpdv.c"
 # End Source File
 # Begin Source File
 
+SOURCE=C:\EDT\pdv\pdv_bayer_filter.c
+# End Source File
+# Begin Source File
+
+SOURCE=C:\EDT\pdv\pdv_dmy_image.c
+# End Source File
+# Begin Source File
+
 SOURCE="$(SYSTEMDRIVE)\EDT\pdv\pdv_interlace.c"
 # End Source File
 # End Group

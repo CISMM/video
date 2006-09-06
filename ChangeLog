@@ -1,3 +1,9 @@
+2006-09-06  Ryan Schubert	<res@cs.unc.edu>
+
+	* directx_library.dsp : Added include path for dshow.h
+	* roper_library.dsp : Fixed CR LF problems
+	* edt_library.dsp : added new files for new version of library
+
 2006-08-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* directx_library.dsp : Made it work with the include files

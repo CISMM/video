@@ -35,9 +35,9 @@
 #include <GL/gl.h>
 #include <GL/glut.h>
 
-//#define	FAKE_CAMERA
+#define	FAKE_CAMERA
 const unsigned FAKE_CAMERA_SIZE = 256;
-//#define	FAKE_STAGE
+#define	FAKE_STAGE
 
 //--------------------------------------------------------------------------
 // Version string for this program
