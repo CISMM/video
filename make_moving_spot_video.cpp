@@ -3,11 +3,11 @@
 #include  <stdio.h>
 #include  "spot_tracker.h"
 
-const char *version = "01.00";
+const char *version = "01.01";
 
-typedef enum { DISC, CONE, GAUSSIAN
+typedef enum { DISC, CONE, GAUSSIAN, ROD
     } SPOT_TYPE;
-typedef enum { CIRCLE, SPIRAL
+typedef enum { CIRCLE, SPIRAL, RANDOM
     } MOTION_TYPE;
 
 void Usage (const char * s)
@@ -15,8 +15,9 @@ void Usage (const char * s)
   fprintf(stderr,"Usage: %s [-v] [-background BACK] [oversampling OVER]\n", s);
   fprintf(stderr,"       [-imagesize WIDTH HEIGHT]\n");
   fprintf(stderr,"       [-start X Y] [-frames FRAMES]\n");
-  fprintf(stderr,"       [-disc VALUE RADIUS | cone VALUE RADIUS | -gaussian CENTER_VALUE STD_DEV]\n");
-  fprintf(stderr,"       [-circle RAD SPEED | -spiral XXXX]\n");
+  fprintf(stderr,"       [-disc VALUE RADIUS | cone VALUE RADIUS | -gaussian CENTER_VALUE STD_DEV |\n");
+  fprintf(stderr,"       -rod VALUE RADIUS LENGTH]\n");
+  fprintf(stderr,"       [-circle RAD SPEED | -spiral SIZE SPEED | -random SEED MAX_STEP MAX_ANGLE]\n");
   fprintf(stderr,"       [BASENAME]\n");
   fprintf(stderr,"     -v: Verbose mode\n");
   fprintf(stderr,"     -background: Specify the background brightness (default 0)\n");
@@ -25,12 +26,21 @@ void Usage (const char * s)
   fprintf(stderr,"     -start: Starting location for the bead in pixels (default 75 50)\n");
   fprintf(stderr,"     -frames: The number of output images (default 120)\n");
   fprintf(stderr,"     -disc: Draw a disc-shaped bead of specified value (fraction of total) and radius in pixels (default 1.0 10)\n");
-  fprintf(stderr,"     -cone: Draw a cone-shaped bead of specified maximum value (fraction of total) and radius in pixels (default 1.0 10)\n");
-  fprintf(stderr,"     -gaussian: Draw a Gaussian-shaped bead of specified maximum fractional brightness and standard deviation in pixels (default is a disc)\n");
+  fprintf(stderr,"     -cone: Draw a cone-shaped bead of specified maximum value (fraction of total) and radius in pixels\n");
+  fprintf(stderr,"     -gaussian: Draw a Gaussian-shaped bead of specified maximum fractional brightness and standard deviation in pixels\n");
+  fprintf(stderr,"     -rod: Draw a rod shape of specified value (fraction of total) and radius in pixels; angle is in degrees\n");
   fprintf(stderr,"     -circle: Move the bead in a circle of specified radius and speed (degrees/frame) (default 50 3)\n");
   fprintf(stderr,"     -spiral: Move the bead in a spiral of specified size and speed (degrees/frame) (try 1 5)\n");
+  fprintf(stderr,"     -random: Move the bead randomly with maximum step size in pixels and angle in degrees\n");
   fprintf(stderr,"     BASENAME: Base name for the output file (default ./moving_spot if not specified)\n");
   exit(0);
+}
+
+// Return a random double in the range [-1..1]
+double	unit_random(void)
+{
+  double val = rand();
+  return -1 + 2 * (val / RAND_MAX);
 }
 
 int main(int argc, char *argv[])
@@ -50,11 +60,17 @@ int main(int argc, char *argv[])
   double cone_radius = 10;            // Radius of a cone in pixels
   double gaussian_value;              // Maximum pixel value obtained by the Gaussian
   double gaussian_std;                // Standard deviation of a Gaussian
+  double rod_value = 65535;           // Pixel value within a rod
+  double rod_radius = 65535;          // Raidus of a rod in pixels
+  double rod_length = 65535;          // Length of a rod in pixels
   MOTION_TYPE motion_type = CIRCLE;
   double circle_radius = 25;          // Radius of circular motion
   double circle_speed = 3;            // Speed of moving around the circle in degrees/second
   double spiral_size = 1;             // Larger numbers make a looser spiral
   double spiral_speed = 1;            // Speed of moving around the spiral
+  int random_seed = 1;                 // Seed for random number generator
+  double random_step = 1;              // Maximum magnitude of noise step
+  double random_angle = 1;             // Maximum degrees of angle change
   bool verbose = false;               // Print out info along the way?
 
   int	realparams = 0;
@@ -98,6 +114,14 @@ int main(int argc, char *argv[])
           if (++i > argc) { Usage(argv[0]); }
 	  gaussian_std = atof(argv[i]);
           spot_type = GAUSSIAN;
+    } else if (!strncmp(argv[i], "-rod", strlen("-rod"))) {
+          if (++i > argc) { Usage(argv[0]); }
+	  rod_value = 65535 * atof(argv[i]);   // Scale 1 becomes maximum pixel value
+          if (++i > argc) { Usage(argv[0]); }
+	  rod_radius = atof(argv[i]);
+          if (++i > argc) { Usage(argv[0]); }
+	  rod_length = atof(argv[i]);
+          spot_type = ROD;
     } else if (!strncmp(argv[i], "-circle", strlen("-circle"))) {
           if (++i > argc) { Usage(argv[0]); }
 	  circle_radius = atof(argv[i]);   
@@ -110,6 +134,15 @@ int main(int argc, char *argv[])
           if (++i > argc) { Usage(argv[0]); }
 	  spiral_speed = atof(argv[i]);
           motion_type = SPIRAL;
+    } else if (!strncmp(argv[i], "-random", strlen("-random"))) {
+          if (++i > argc) { Usage(argv[0]); }
+	  random_seed = atoi(argv[i]);   
+          if (++i > argc) { Usage(argv[0]); }
+	  random_step = atof(argv[i]);
+          if (++i > argc) { Usage(argv[0]); }
+	  random_angle = atof(argv[i]);
+          motion_type = RANDOM;
+          srand(random_seed);
     } else if (!strncmp(argv[i], "-v", strlen("-v"))) {
           verbose = true;
     } else if (argv[i][0] == '-') {	// Unknown flag
@@ -159,7 +192,7 @@ int main(int argc, char *argv[])
 
   unsigned frame;
   for (frame = 0; frame < frames; frame++) {
-    double x, y;
+    double x = start_x, y = start_y, angle = 0;
 
     // Find out where we should be based on the motion type
     switch (motion_type) {
@@ -168,11 +201,17 @@ int main(int argc, char *argv[])
         // correct location, not one radius away from it.
         x = start_x + circle_radius * (cos(frame * circle_speed * M_PI/180) - 1);
         y = start_y + circle_radius * sin(frame * circle_speed * M_PI/180);
+        angle = (90 - frame * circle_speed);
         break;
       case SPIRAL:
         x = start_x + spiral_size * exp(frame/32.0) * sin(frame * spiral_speed * M_PI/180);
         y = start_y + spiral_size * exp(frame/32.0) * cos(frame * spiral_speed * M_PI/180);
+        angle = (90 - frame * spiral_speed);
         break;
+      case RANDOM:
+        x += random_step * unit_random();
+        y += random_step * unit_random();
+        angle += random_angle * unit_random();
     }
 
     // Flip the image in Y because the write function is going to flip it again
@@ -214,6 +253,15 @@ int main(int argc, char *argv[])
                                            oversampling);
       radius = gaussian_std;
       break;
+
+    case ROD:
+      bead = new rod_image(0, width-1, 0, height-1,
+                            background, 0.0,
+                            x, flip_y, rod_radius,
+                            rod_length, angle * M_PI/180, rod_value,
+                            oversampling);
+      radius = cone_radius;
+      break;
     }
 
     // Write the image to file whose name is the base name with
@@ -224,7 +272,7 @@ int main(int argc, char *argv[])
 
     // Write the information about the current bead to the CSV file, in a format
     // that matches the header description.  We DO NOT flip y in this report.
-    fprintf(g_csv_file, "%d,0,%lg,%lg,0,%lg\n", frame, x,y, radius);
+    fprintf(g_csv_file, "%d,0,%lg,%lg,0,%lg,%lg\n", frame, x,y, radius, angle);
 
     // Clean up things allocated for this frame.
     delete bead;

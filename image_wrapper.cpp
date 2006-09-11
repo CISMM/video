@@ -373,3 +373,154 @@ bool Point_sampled_Gaussian_image::read_pixel(int x, int y, double &result, unsi
   return true;
 }
 
+rod_image::rod_image(int minx, int maxx, int miny, int maxy,
+		       double background, double noise,
+		       double rodx, double rody, double rodr,
+		       double rodlength, double rodangleradians,
+                       double rodintensity, int oversample) :
+  _minx(minx), _maxx(maxx), _miny(miny), _maxy(maxy),
+  _oversample(oversample),
+  _image(NULL)
+{
+  int i,j, index;
+  double oi,oj;	  //< Oversample steps
+
+  // Make sure the parameters are meaningful
+  if ( (_minx >= _maxx) || (_miny >= _maxy) || (_minx < 0) || (_miny < 0) ) {
+    fprintf(stderr,"rod_image::rod_image(): Bad min/max coordinates\n");
+    _minx = _maxy = _minx = _maxx = 0;
+    return;
+  }
+  if ( (_oversample <= 0) ) {
+    fprintf(stderr,"rod_image::rod_image(): Bad oversample\n");
+    _minx = _maxy = _minx = _maxx = 0;
+    return;
+  }
+
+  // Try to allocate a large enough array to hold all of the values.
+  if ( (_image = new double[(_maxx-_minx+1) * (_maxy-_miny+1)]) == NULL) {
+    fprintf(stderr,"rod_image::rod_image(): Out of memory\n");
+    _minx = _maxy = _minx = _maxx = 0;
+    return;
+  }
+
+  // Fill in the background intensity.
+  for (i = _minx; i <= _maxx; i++) {
+    for (j = _miny; j <= _maxy; j++) {
+      if (find_index(i,j,index)) {
+	_image[index] = background;
+      }
+    }
+  }
+
+  // Add in 0.5 pixel to the X and Y positions
+  // so that we center the rod on the middle of the pixel rather than
+  // having it centered between pixels.
+  rodx += 0.5;
+  rody += 0.5;
+
+  // Find the points A and B at either end of the line segment
+  double Ax = rodx + cos(rodangleradians) * (rodlength/2);
+  double Ay = rody + sin(rodangleradians) * (rodlength/2);
+  double Bx = rodx - cos(rodangleradians) * (rodlength/2);
+  double By = rody - sin(rodangleradians) * (rodlength/2);
+
+  // Fill in the rod intensity (the part of it that is within the image).
+  // Oversample the image by the factor specified in _oversample, averaging
+  // all results within the pixel.  
+#ifdef	DEBUG
+  printf("rod_image::disc_image(): Making rod of radius %lg\n", rodr);
+#endif
+  double  radius2 = rodr * rodr;
+  // Only do these checks within the region that MAY contain a rod, which
+  // is length/2 + radius from the center.
+  double range = rodlength/2 + rodr;
+  for (i = (int)floor(rodx - range); i <= (int)ceil(rodx + range); i++) {
+    for (j = (int)floor(rody - range); j <= (int)ceil(rody + range); j++) {
+      if (find_index(i,j,index)) {
+	_image[index] = 0;
+	for (oi = 0; oi < _oversample; oi++) {
+	  for (oj = 0; oj < _oversample; oj++) {
+	    double Px = i + oi/_oversample;
+	    double Py = j + oj/_oversample;
+
+            // Find out if our particular sample is within the rod or not.
+            // If so, we add in the rod intensity.  If not, we add in the
+            // background.  We do this by checking if it is within radius
+            // of the nearest point on the line segment that joins the two
+            // ends of the rod.  Each end is located a distance of rodlength/2
+            // from the center, along vectors that are in the +angle direction
+            // and its opposite (pi radians away).  We find the two points
+            // and then use the algorithm described on pages 10-13 of
+            // Graphics Gems II to determine the (square of the) distance from the segment
+            // between them.
+            double a2 = (Py - Ay)*(Bx - Ax) - (Px - Ax)*(By - Ay);
+            double perpdist2 = (a2*a2) / ( (Bx - Ax)*(Bx - Ax) + (By - Ay)*(By - Ay) );
+            double t = (Px - Ax)*(Bx - Ax) + (Py - Ay)*(By - Ay);
+            double dist2;
+            if (t < 0) {  // The perpendicular is beyond A, so use A
+              dist2 = (Px - Ax)*(Px - Ax) + (Py - Ay)*(Py - Ay);
+            } else {
+              t = (Bx - Px)*(Bx - Ax) + (By - Py)*(By - Ay);
+              if (t < 0) {  // The perpendicular is beyond B, so use B
+                dist2 = (Px - Bx)*(Px - Bx) + (Py - By)*(Py - By);
+              } else {  // We're in the middle, so use perpendicular distance
+                dist2 = perpdist2;
+              }
+            }
+
+	    if ( radius2 >= dist2 ) {
+	      _image[index] += rodintensity;
+	    } else {
+	      _image[index] += background;
+	    }
+	  }
+	}
+	_image[index] /= (_oversample * _oversample);
+      }
+    }
+  }
+
+  // Add zero-mean uniform noise to the image, with the specified width
+  for (i = _minx; i <= _maxx; i++) {
+    for (j = _miny; j <= _maxy; j++) {
+      if (find_index(i,j,index)) {
+	double	unit_rand = (double)(rand()) / RAND_MAX;
+	_image[index] += (unit_rand - 0.5) * 2 * noise;
+      }
+    }
+  }  
+}
+
+rod_image::~rod_image()
+{
+  delete [] _image;
+}
+
+void rod_image::read_range(int &minx, int &maxx, int &miny, int &maxy) const
+{
+  minx = _minx; maxx = _maxx; miny = _miny; maxy = _maxy;
+};
+
+// Read a pixel from the image into a double; return true if the pixel
+// was in the image, false if it was not.
+bool rod_image::read_pixel(int x, int y, double &result, unsigned /* RGB ignored */) const
+{
+  int index;
+  if (find_index(x,y, index)) {
+    result = _image[index];
+    return true;
+  } else {
+    return false;
+  }
+}
+
+double rod_image::read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) const
+{
+  int index;
+  if (find_index(x,y, index)) {
+    return _image[index];
+  } else {
+    return 0.0;
+  }
+}

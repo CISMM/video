@@ -1,5 +1,18 @@
 2006-09-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* image_wrapper.cpp : Added a rod_image class, which is
+		like the disc class but it makes a rod.
+	* image_wrapper.h : Same.
+	* make_moving_spot_video.cpp : Add an argument for doing
+		rod trackers.  When going in a circle or spiral, they
+		face along the direction of travel (approximate for
+		spiral).  Added entry for "random" motion in addition
+		to circle and spiral.
+	* make_test_image.cpp : Made it compile with current ImageMagick.
+	* make_test_image.dsp : Same.
+
+2006-09-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* directx_library.dsp : Adding ^Ms back in.
 	* roper_library.dsp : Same.
 	* edt_library.dsp : Same.  Also, making it work with the

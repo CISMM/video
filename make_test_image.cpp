@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
+#define _LIB  // Needed for ImageMagick to build and link statically.
 #define QuantumLeap
 #include <magick/api.h>
 #include "image_wrapper.h"
