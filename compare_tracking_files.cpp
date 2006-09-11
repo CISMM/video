@@ -3,11 +3,11 @@
 #include  <stdio.h>
 #include  <string.h>
 
-const char *version = "01.00";
+const char *version = "01.01";
 
 void Usage (const char * s)
 {
-  fprintf(stderr,"Usage: %s [-v] infile1.csv infile2.csv\n", s);
+  fprintf(stderr,"Usage: %s [-v] [-angle] infile1.csv infile2.csv\n", s);
   fprintf(stderr,"     -v: Verbose mode prints version and header\n");
   exit(0);
 }
@@ -19,12 +19,15 @@ int main(int argc, char *argv[])
   const unsigned MAX_LINE_LEN = 2047;
   char  line[MAX_LINE_LEN+1];
   bool verbose = false;               // Print out info along the way?
+  bool check_angle = false;           // Check for angle differences?
 
   int	realparams = 0;
   int	i;
   i = 1;
   while (i < argc) {
-    if (!strncmp(argv[i], "-v", strlen("-v"))) {
+    if (!strncmp(argv[i], "-angle", strlen("-angle"))) {
+          check_angle = true;
+    } else if (!strncmp(argv[i], "-v", strlen("-v"))) {
           verbose = true;
     } else if (argv[i][0] == '-') {	// Unknown flag
 	  Usage(argv[0]);
@@ -68,14 +71,15 @@ int main(int argc, char *argv[])
   // the bead number should always be zero.  Compute statistics on the differences
   // between the traces in the two files.
   unsigned count = 0;
-  double biasx = 0, biasy = 0;
-  double maxx = 0, maxy = 0, maxrad = 0;
-  double meanx = 0, meany = 0, meanrad = 0;
+  double biasx = 0, biasy = 0, biasangle = 0;
+  double maxx = 0, maxy = 0, maxrad = 0, maxangle = 0;
+  double meanx = 0, meany = 0, meanrad = 0, meanangle = 0;
   while (fgets(line, MAX_LINE_LEN, infile1) != NULL) {
     // Parse the line read from file 1
     int frame1, bead1;
     double x1, y1, z1;
-    if (sscanf(line, "%d,%d,%lg,%lg,%lg", &frame1, &bead1, &x1, &y1, &z1) != 5) {
+    double radius1, angle1;
+    if (sscanf(line, "%d,%d,%lg,%lg,%lg,%lg,%lg", &frame1, &bead1, &x1, &y1, &z1, &radius1, &angle1) != 7) {
       fprintf(stderr,"Error parsing line %d from file %s:\n", count, infilename1);
       fprintf(stderr,"  '%s'\n", line);
       return -1;
@@ -88,7 +92,8 @@ int main(int argc, char *argv[])
     }
     int frame2, bead2;
     double x2, y2, z2;
-    if (sscanf(line, "%d,%d,%lg,%lg,%lg", &frame2, &bead2, &x2, &y2, &z2) != 5) {
+    double radius2, angle2;
+    if (sscanf(line, "%d,%d,%lg,%lg,%lg,%lg,%lg", &frame2, &bead2, &x2, &y2, &z2, &radius2, &angle2) != 7) {
       fprintf(stderr,"Error parsing line %d from file %s:\n", count, infilename2);
       fprintf(stderr,"  '%s'\n", line);
       return -1;
@@ -105,15 +110,19 @@ int main(int argc, char *argv[])
     double dx = x2 - x1;
     double dy = y2 - y1;
     double drad = sqrt ( dx*dx + dy*dy );
+    double dangle = angle2 - angle1;
 
     biasx += dx;
     biasy += dy;
+    biasangle += dangle;
     meanx += fabs(dx);
     meany += fabs(dy);
     meanrad += drad;
+    meanangle += fabs(dangle);
     if (fabs(dx) > maxx) { maxx = fabs(dx); }
     if (fabs(dy) > maxy) { maxy = fabs(dy); }
     if (drad > maxrad) { maxrad = drad; }
+    if (fabs(dangle) > maxangle) { maxangle = fabs(dangle); }
     count++;
   }
   if (count == 0) {
@@ -122,16 +131,26 @@ int main(int argc, char *argv[])
   }
   biasx /= count;
   biasy /= count;
+  biasangle /= count;
   meanx /= count;
   meany /= count;
   meanrad /= count;
+  meanangle /= count;
 
   //------------------------------------------------------------------------------------
   // Print the statistics. If verbose, print a header.
   if (verbose) {
-    printf("meanrad,meanx,meany,maxrad,maxx,maxy,biasx,biasy\n");
+    printf("meanrad,meanx,meany,maxrad,maxx,maxy,biasx,biasy");
+    if (check_angle) {
+      printf(",meanangle,maxangle,biasangle");
+    }
+    printf("\n");
   }
-  printf("%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg\n", meanrad,meanx,meany,maxrad,maxx,maxy,biasx,biasy);
+  printf("%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg", meanrad,meanx,meany,maxrad,maxx,maxy,biasx,biasy);
+  if (check_angle) {
+    printf(",%lg,%lg,%lg", meanangle, maxangle, biasangle);
+  }
+  printf("\n");
 
   //------------------------------------------------------------------------------------
   // Clean up things allocated for the whole sequence

@@ -1,5 +1,10 @@
 2006-09-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* compare_tracking_files.cpp : Added option to compare and print
+		angle differences.
+
+2006-09-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* image_wrapper.h : Whitespace change.
 	* image_wrapper.cpp : Error message fix.
 	* make_moving_spot_video.cpp : Don't report angle change
