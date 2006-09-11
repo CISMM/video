@@ -1,3 +1,10 @@
+2006-09-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* directx_library.dsp : Adding ^Ms back in.
+	* roper_library.dsp : Same.
+	* edt_library.dsp : Same.  Also, making it work with the
+		EDT files installed on $(SYSTEMDRIVE) rather than C:
+
 2006-09-06  Ryan Schubert	<res@cs.unc.edu>
 
 	* directx_library.dsp : Added include path for dshow.h
