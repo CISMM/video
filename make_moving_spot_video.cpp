@@ -182,7 +182,7 @@ int main(int argc, char *argv[])
   if ( NULL == (g_csv_file = fopen(csvname, "w")) ) {
     fprintf(stderr,"Cannot open CSV file for writing: %s\n", csvname);
   } else {
-    fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius\n");
+    fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius,Orientation (if meaningful)\n");
   }
   delete [] csvname;
 
@@ -229,6 +229,7 @@ int main(int argc, char *argv[])
                             disc_value,
                             oversampling);
       radius = disc_radius;
+      angle = 0.0;
       break;
 
     case CONE:
@@ -238,6 +239,7 @@ int main(int argc, char *argv[])
                             cone_value,
                             oversampling);
       radius = cone_radius;
+      angle = 0.0;
       break;
 
     case GAUSSIAN:
@@ -260,7 +262,7 @@ int main(int argc, char *argv[])
                             x, flip_y, rod_radius,
                             rod_length, angle * M_PI/180, rod_value,
                             oversampling);
-      radius = cone_radius;
+      radius = rod_radius;
       break;
     }
 

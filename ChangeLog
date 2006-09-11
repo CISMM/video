@@ -1,5 +1,12 @@
 2006-09-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* image_wrapper.h : Whitespace change.
+	* image_wrapper.cpp : Error message fix.
+	* make_moving_spot_video.cpp : Don't report angle change
+		for symmetric objects.
+
+2006-09-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* image_wrapper.cpp : Added a rod_image class, which is
 		like the disc class but it makes a rod.
 	* image_wrapper.h : Same.

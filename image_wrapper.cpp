@@ -252,14 +252,14 @@ Integrated_Gaussian_image::Integrated_Gaussian_image(int minx, int maxx, int min
 {
   // Make sure the parameters are meaningful
   if ( (_minx >= _maxx) || (_miny >= _maxy) ) {
-    fprintf(stderr,"Gaussian_image::Gaussian_image(): Bad min/max coordinates\n");
+    fprintf(stderr,"Integrated_Gaussian_image::Integrated_Gaussian_image(): Bad min/max coordinates\n");
     _minx = _maxy = _minx = _maxx = 0;
     return;
   }
 
   // Try to allocate a large enough array to hold all of the values.
   if ( (_image = new double[(_maxx-_minx+1) * (_maxy-_miny+1)]) == NULL) {
-    fprintf(stderr,"Gaussian_image::Gaussian_image(): Out of memory\n");
+    fprintf(stderr,"Integrated_Gaussian_image::Integrated_Gaussian_image(): Out of memory\n");
     _minx = _maxy = _minx = _maxx = 0;
     return;
   }
