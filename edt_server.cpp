@@ -1,6 +1,8 @@
 #include "edt_server.h"
 
+#ifndef min
 #define min(a,b) ( (a)<(b)?(a):(b) )
+#endif
 
 #ifdef _WIN32
 #include "edtinc.h"

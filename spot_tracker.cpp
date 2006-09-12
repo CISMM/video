@@ -10,6 +10,15 @@ const double M_PI = 2*asin(1.0);
 #endif
 #endif
 
+// Find the maximum of three elements.  Return the
+// index of which one was picked.
+double max3(double v0, double v1, double v2, unsigned &index) {
+  double max = v0; index = 0;
+  if (v1 > max) { max = v1; index = 1; }
+  if (v2 > max) { max = v2; index = 2; }
+  return max;
+}
+
 spot_tracker_XY::spot_tracker_XY(double radius, bool inverted, double pixelaccuracy, double radiusaccuracy,
 			   double sample_separation_in_pixels) :
     _rad(radius),	      // Initial radius of the disk
@@ -35,59 +44,87 @@ bool  spot_tracker_XY::take_single_optimization_step(const image_wrapper &image,
   bool	  betterxy = false; //< Do we find a better location?
   bool	  betterrad = false;//< Do we find a better radius?
 
-  // Try going in +/- X and see if we find a better location.
+  // Try going in +/- X and see if we find a better location.  It is
+  // important that we check both directions before deciding to step
+  // to avoid unbiased estimations.
   if (do_x) {
+    double v0, vplus, vminus;
     double starting_x = get_x();
+    v0 = _fitness;                                      // Value at starting location
     set_location(starting_x + _pixelstep, get_y());	// Try going a step in +X
-    if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
-      _fitness = new_fitness;
-      betterxy = true;
-    } else {
-      set_location(starting_x - _pixelstep, get_y());	// Try going a step in -X
-      if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
-	_fitness = new_fitness;
-	betterxy = true;
-      } else {
-	set_location(starting_x, get_y());	// Back where we started in X
-      }
+    vplus = check_fitness(image, rgb);
+    set_location(starting_x - _pixelstep, get_y());	// Try going a step in -X
+    vminus = check_fitness(image, rgb);
+    unsigned which;
+    new_fitness = max3(v0, vplus, vminus, which);
+    switch (which) {
+      case 0: set_location(starting_x, get_y());
+              break;
+      case 1: set_location(starting_x + _pixelstep, get_y());
+              betterxy = true;
+              break;
+      case 2: set_location(starting_x - _pixelstep, get_y());
+              betterxy = true;
+              break;
     }
+    _fitness = new_fitness;
   }
 
-  // Try going in +/- Y and see if we find a better location.
+  // Try going in +/- Y and see if we find a better location.  It is
+  // important that we check both directions before deciding to step
+  // to avoid unbiased estimations.
   if (do_y) {
+    double v0, vplus, vminus;
     double starting_y = get_y();
+    v0 = _fitness;                                      // Value at starting location
     set_location(get_x(), starting_y + _pixelstep);	// Try going a step in +Y
-    if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
-      _fitness = new_fitness;
-      betterxy = true;
-    } else {
-      set_location(get_x(), starting_y - _pixelstep);	// Try going a step in -Y
-      if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
-	_fitness = new_fitness;
-	betterxy = true;
-      } else {
-	set_location(get_x(), starting_y);	// Back where we started in Y
-      }
+    vplus = check_fitness(image, rgb);
+    set_location(get_x(), starting_y - _pixelstep);	// Try going a step in -Y
+    vminus = check_fitness(image, rgb);
+    unsigned which;
+    new_fitness = max3(v0, vplus, vminus, which);
+    switch (which) {
+      case 0: set_location(get_x(), starting_y);
+              break;
+      case 1: set_location(get_x(), starting_y + _pixelstep);
+              betterxy = true;
+              break;
+      case 2: set_location(get_x(), starting_y - _pixelstep);
+              betterxy = true;
+              break;
     }
+    _fitness = new_fitness;
   }
 
   // Try going in +/- radius and see if we find a better value.
-  // Don't let the radius get below 1 pixel.
+  // Don't let the radius get below 1 pixel.  It is
+  // important that we check both directions before deciding to step
+  // to avoid unbiased estimations.
   if (do_r) {
+    double v0, vplus, vminus;
     double starting_rad = get_radius();
+    v0 = _fitness;                                      // Value at starting radius
     set_radius(starting_rad + _radstep);	// Try going a step in +radius
-    if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
-      _fitness = new_fitness;
-      betterrad = true;
-    } else {
+    vplus = check_fitness(image, rgb);
+    if (_rad - _radstep >= 1) {  // Don't let it get less than 1
       set_radius(starting_rad - _radstep);	// Try going a step in -radius
-      if ( (_rad >= 1) && (_fitness < (new_fitness = check_fitness(image, rgb))) ) {
-	_fitness = new_fitness;
-	betterrad = true;
-      } else {
-	set_radius(starting_rad);	// Back where we started in radius
-      }
+      vminus = check_fitness(image, rgb);
+    } else {
+      vminus = v0 - 1;  // Don't make it want to step in this direction
     }
+    unsigned which;
+    new_fitness = max3(v0, vplus, vminus, which);
+    switch (which) {
+      case 0: set_radius(starting_rad);
+              break;
+      case 1: set_radius(starting_rad + _radstep);
+              betterrad = true;
+              break;
+      case 2: set_radius(starting_rad - _radstep);
+              betterrad = true;
+              break;
+    }
+    _fitness = new_fitness;
   }
 
   // Return the new location and whether we found a better one.
@@ -279,20 +316,26 @@ bool  spot_tracker_Z::take_single_optimization_step(const image_wrapper &image, 
   bool	  betterz = false;  //< Do we find a better depth?
 
   // Try going in +/- Z and see if we find a better location.
+  double v0, vplus, vminus;
   double starting_z = get_z();
+  v0 = _fitness;                                      // Value at starting location
   set_z(starting_z + _depthstep);	// Try going a step in +Z
-  if ( _fitness < (new_fitness = check_fitness(image, rgb, x,y)) ) {
-    _fitness = new_fitness;
-    betterz = true;
-  } else {
-    set_z(starting_z - _depthstep);	// Try going a step in -Z
-    if ( _fitness < (new_fitness = check_fitness(image, rgb, x,y)) ) {
-      _fitness = new_fitness;
-      betterz = true;
-    } else {
-      set_z(starting_z);	// Back where we started
-    }
+  vplus = check_fitness(image, rgb, x,y);
+  set_z(starting_z - _depthstep);	// Try going a step in -Z
+  vminus = check_fitness(image, rgb, x,y);
+  unsigned which;
+  new_fitness = max3(v0, vplus, vminus, which);
+  switch (which) {
+    case 0: set_z(starting_z);
+            break;
+    case 1: set_z(starting_z + _depthstep);
+            betterz = true;
+            break;
+    case 2: set_z(starting_z - _depthstep);
+            betterz = true;
+            break;
   }
+  _fitness = new_fitness;
 
   // Return the new location and whether we found a better one.
   z = get_z();
@@ -1186,39 +1229,49 @@ bool  FIONA_spot_tracker::take_single_optimization_step(const image_wrapper &ima
   // Try adjusting the background up and down by a number of counts that is equal to 10X the
   // radius step size.  We use 4X to give the radius the chance to adjust itself faster.
   // XXX This should probably be a decoupled parameter.
+  double v0, vplus, vminus;
   bool	  betterbackground = false; //< Do we find a better location?
   double starting_background = _background;
+  v0 = _fitness;                                    // Value at start
   _background = starting_background + 10*_radstep; // Try looking for larger background
-  if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
-    _fitness = new_fitness;
-    betterbackground = true;
-  } else {
-    _background = starting_background - 10*_radstep; // Try looking for smaller background
-    if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
-      _fitness = new_fitness;
-      betterbackground = true;
-    } else {
-      _background = starting_background;        // Back where we started
-    }
+  vplus = check_fitness(image, rgb);
+  _background = starting_background - 10*_radstep; // Try looking for smaller background
+  vminus = check_fitness(image, rgb);
+  unsigned which;
+  new_fitness = max3(v0, vplus, vminus, which);
+  switch (which) {
+    case 0: _background = starting_background;
+            break;
+    case 1: _background = starting_background + 10*_radstep;
+            betterbackground = true;
+            break;
+    case 2: _background = starting_background - 10*_radstep;
+            betterbackground = true;
+            break;
   }
+  _fitness = new_fitness;
 
   // Try adjusting the total summedvalue up and down by 1000X the radius step size.
   // XXX This should almost certainly be a decoupled parameter.
   bool	  bettersummedvalue = false;//< Do we find a better radius?
   double starting_summedvalue = _summedvalue;
+  v0 = _fitness;                                    // Value at start
   _summedvalue = starting_summedvalue + 1000 * _radstep; // Try looking for larger summedvalue
-  if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
-    _fitness = new_fitness;
-    bettersummedvalue = true;
-  } else {
-    _summedvalue = starting_summedvalue - 1000 * _radstep; // Try looking for smaller summedvalue
-    if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
-      _fitness = new_fitness;
-      bettersummedvalue = true;
-    } else {
-      _summedvalue = starting_summedvalue;        // Back where we started
-    }
+  vplus = check_fitness(image, rgb);
+  _summedvalue = starting_summedvalue - 1000 * _radstep; // Try looking for smaller summedvalue
+  vminus = check_fitness(image, rgb);
+  new_fitness = max3(v0, vplus, vminus, which);
+  switch (which) {
+    case 0: _summedvalue = starting_summedvalue;
+            break;
+    case 1: _summedvalue = starting_summedvalue + 1000 * _radstep;
+            bettersummedvalue = true;
+            break;
+    case 2: _summedvalue = starting_summedvalue - 1000 * _radstep;
+            bettersummedvalue = true;
+            break;
   }
+  _fitness = new_fitness;
 
   // Return the new location and whether we found a better one.
   x = get_x(); y = get_y();
@@ -1392,20 +1445,26 @@ bool  rod3_spot_tracker_interp::take_single_optimization_step(const image_wrappe
 
   double orient_step = _pixelstep * (180 / M_PI) / (d_length / 2);
   {
+    double v0, vplus, vminus;
     double starting_o = get_orientation();
+    v0 = _fitness;                                      // Value at starting location
     set_orientation(starting_o + orient_step);	// Try going a step in +orient
-    if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
-      _fitness = new_fitness;
-      betterorient = true;
-    } else {
+    vplus = check_fitness(image, rgb);
     set_orientation(starting_o - orient_step);	// Try going a step in -orient
-      if ( _fitness < (new_fitness = check_fitness(image, rgb)) ) {
-	_fitness = new_fitness;
-	betterorient = true;
-      } else {
-	set_orientation(starting_o);	// Back where we started in orientation
-      }
+    vminus = check_fitness(image, rgb);
+    unsigned which;
+    new_fitness = max3(v0, vplus, vminus, which);
+    switch (which) {
+      case 0: set_orientation(starting_o);
+              break;
+      case 1: set_orientation(starting_o + orient_step);
+              betterorient = true;
+              break;
+      case 2: set_orientation(starting_o - orient_step);
+              betterorient = true;
+              break;
     }
+    _fitness = new_fitness;
   }
 
   // Return the new location and whether we found a better one.

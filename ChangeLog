@@ -1,3 +1,14 @@
+2006-09-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* edt_server.cpp : Guarded definition of min() to avoid warning.
+	* spot_tracker.cpp : Modified all of the single optimization step
+		code to check both the + and - direction to find the minimum
+		before taking a step.  This should remove bias from the
+		estimates that was revealed by tests with noisy images.
+	* video_spot_tracker.cpp : Added a command-line argument to let
+		it be started with a rod tracker.  This is being released
+		as version 05.09.
+
 2006-09-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* compare_tracking_files.cpp : Added option to compare and print

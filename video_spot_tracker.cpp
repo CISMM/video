@@ -1589,7 +1589,6 @@ static void optimize_tracker(Spot_Information *tracker)
     tracker->xytracker()->optimize_xy_parabolafit(*g_image, g_colorIndex, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
   } else {
     if (g_kernel_type == KERNEL_FIONA) {
-      //tracker->xytracker()->take_single_optimization_step(*g_image, g_colorIndex, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
       tracker->xytracker()->optimize(*g_image, g_colorIndex, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
     } else {
       tracker->xytracker()->optimize_xy(*g_image, g_colorIndex, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
@@ -2797,11 +2796,12 @@ void  handle_optimize_z_change(int newvalue, void *)
 
 void Usage(const char *progname)
 {
-    fprintf(stderr, "Usage: %s [-kernel disc|cone|symmetric] [-dark_spot] [-follow_jumps]\n", progname);
-    fprintf(stderr, "           [-outfile NAME] [-precision P] [-sample_spacing S]\n");
+    fprintf(stderr, "Usage: %s [-kernel disc|cone|symmetric|FIONA] [-dark_spot] [-follow_jumps]\n", progname);
+    fprintf(stderr, "           [-rod3 LENGTH ORIENT] [-outfile NAME] [-precision P] [-sample_spacing S]\n");
     fprintf(stderr, "           [-tracker X Y R] [-tracker X Y R] ...\n");
     fprintf(stderr, "           [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n");
     fprintf(stderr, "       -kernel: Use kernels of the specified type (default symmetric)\n");
+    fprintf(stderr, "       -rod3: Make a rod3 kernel of specified LENGTH (pixels) and ORIENT (degrees)\n");
     fprintf(stderr, "       -dark_spot: Track a dark spot (default is bright spot)\n");
     fprintf(stderr, "       -follow_jumps: Set the follow_jumps flag\n");
     fprintf(stderr, "       -outfile: Save the track to the file 'name' (.vrpn will be appended)\n");
@@ -3024,6 +3024,12 @@ int main(int argc, char *argv[])
       char *name = new char[strlen(argv[i])+6];
       sprintf(name, "%s.vrpn", argv[i]);
       logfilename_changed(name, NULL);
+    } else if (!strncmp(argv[i], "-rod3", strlen("-rod3"))) {
+      if (++i > argc) { Usage(argv[0]); }
+      g_length = atof(argv[i]);
+      if (++i > argc) { Usage(argv[0]); }
+      g_orientation = atof(argv[i]);
+      g_rod = 1;
     } else if (!strncmp(argv[i], "-precision", strlen("-precision"))) {
       if (++i > argc) { Usage(argv[0]); }
       g_precision = atof(argv[i]);

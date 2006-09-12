@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v05.07</title>
+<title>Video Spot Tracker v05.09</title>
 
-<h1>Video Spot Tracker version 05.07</h1>
+<h1>Video Spot Tracker version 05.09</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -50,7 +50,7 @@
   icon that was created when the program was installed. To select a stack of image 
   files that are numbered consecutively, drag any one of the files onto the icon. 
   It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
-  Menu/All Programs/NSRG/Video Spot Tracker v05.07</b></i>. If you run the program 
+  Menu/All Programs/NSRG/Video Spot Tracker v05.09</b></i>. If you run the program 
   directly by double-clicking on the icon, it will ask for a video or image file 
   (AVI, TIF, or BMP) that it should open.</p>
 
@@ -278,6 +278,19 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 5.09:</h3>
+<ul>
+  <li>Removed bias for +X and +Y directions, larger radius, larger orientation, 
+    and larger Z from the optimization routines. Before, it would always test 
+    those directions first and go there if it got better. Testing involving noise 
+    images revealed that this adds a bias. It now looks in both directions and 
+    selects the best out of the +, -, and no-step values as the new location.</li>
+  <li>Added command-line arguments to facilitate using the program as part of 
+    a script. This was done to enable automatic testing of the program, but it 
+    could also be used to have the program automatically start, track, and stop 
+    when finished. Run as &quot;video_spot_tracker.exe -help&quot; to see a description 
+    of the arguments.</li>
+</ul>
 <h3>Version 5.07:</h3>
 <ul>
   <li>Modified the FIONA code so that it uses a point-sampled Gaussian when fitting, 
