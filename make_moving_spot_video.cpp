@@ -3,7 +3,7 @@
 #include  <stdio.h>
 #include  "spot_tracker.h"
 
-const char *version = "01.01";
+const char *version = "01.02";
 
 typedef enum { DISC, CONE, GAUSSIAN, ROD
     } SPOT_TYPE;
@@ -20,7 +20,7 @@ void Usage (const char * s)
   fprintf(stderr,"       [-circle RAD SPEED | -spiral SIZE SPEED | -random SEED MAX_STEP MAX_ANGLE]\n");
   fprintf(stderr,"       [BASENAME]\n");
   fprintf(stderr,"     -v: Verbose mode\n");
-  fprintf(stderr,"     -background: Specify the background brightness (default 0)\n");
+  fprintf(stderr,"     -background: Specify the background brightness, infraction of total brightness (default 0)\n");
   fprintf(stderr,"     -oversampling: How many times oversampling in X and Y (default 100)\n");
   fprintf(stderr,"     -imagesize: Specify the image size in X and Y (default 101 101)\n");
   fprintf(stderr,"     -start: Starting location for the bead in pixels (default 75 50)\n");
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
   while (i < argc) {
     if (!strncmp(argv[i], "-background", strlen("-background"))) {
           if (++i > argc) { Usage(argv[0]); }
-	  background = atof(argv[i]);
+	  background = 65535 * atof(argv[i]); // Scale 1 becomes maximum pixel value
     } else if (!strncmp(argv[i], "-oversampling", strlen("-oversampling"))) {
           if (++i > argc) { Usage(argv[0]); }
 	  oversampling = atoi(argv[i]);

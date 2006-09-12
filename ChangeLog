@@ -1,5 +1,10 @@
 2006-09-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* make_moving_spot_video.cpp : Changed background value to be
+		fractional value to match the other parameters.
+
+2006-09-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* edt_server.cpp : Guarded definition of min() to avoid warning.
 	* spot_tracker.cpp : Modified all of the single optimization step
 		code to check both the + and - direction to find the minimum
