@@ -3,7 +3,7 @@ Microsoft Developer Studio Workspace File, Format Version 6.00
 
 ###############################################################################
 
-Project: "BaseClasses"="D:\DXSDK\Samples\C++\DirectShow\BaseClasses\baseclasses.dsp" - Package Owner=<4>
+Project: "DirectShow_baseclasses"=.\DirectShow_baseclasses.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -643,6 +643,24 @@ Package=<4>
     End Project Dependency
     Begin Project Dependency
     Project_Dep_Name cooke_library
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "video_imager_server_directx_only"=.\video_imager_server_directx_only.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name DirectShow_baseclasses
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name directx_library
     End Project Dependency
 }}}
 

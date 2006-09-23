@@ -1,3 +1,20 @@
+2006-09-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* DirectShow_baseclasses.dsp : Switching to the latest version
+		of DirectShow, which lives in the platform SDK now.  It
+		does not include Visual Studio projects to make the
+		libraries, so I made one that includes the needed files.
+	* directx_camera_server.cpp : Updated to work with the latest
+		version of DirectShow.
+	* directx_librarldsp : Same.
+	* directx_vidfeofile_server.cpp : Same.
+	* video.dsw : Same.
+	* video_imager_server.cpp : Added #defines to let us build this
+		with only a DirectX input, so that it can be built by
+		those without scientific cameras.
+	* video_imager_server_directx_only.dsp : Project to build a
+		server without the scientific cameras in it.
+
 2006-09-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* make_moving_spot_video.cpp : Changed background value to be

@@ -5,14 +5,17 @@
 #include  <stdio.h>
 #include  <vrpn_Connection.h>
 #include  <vrpn_Imager.h>
+#include  "directx_camera_server.h"
+
+#ifndef	DIRECTX_VIDEO_ONLY
 #include  "roper_server.h"
 #include  "diaginc_server.h"
-#include  "directx_camera_server.h"
 #include  "edt_server.h"
 #include  "cooke_server.h"
+#endif
 
 const int MAJOR_VERSION = 2;
-const int MINOR_VERSION = 5;
+const int MINOR_VERSION = 6;
 
 //-----------------------------------------------------------------
 // This section contains code to initialize the camera and read its
@@ -30,7 +33,28 @@ bool                g_swap_edt = false; //< Swap lines in EDT to fix bug in driv
 /// Open the camera we want to use (the type is based on the name passed in)
 bool  init_camera_code(const char *type, int which = 1)
 {
-  if (!strcmp(type, "roper")) {
+  if (!strcmp(type, "directx")) {
+    printf("Opening DirectX Camera %d\n", which);
+    g_camera = new directx_camera_server(which, g_width, g_height);
+    g_numchannels = 3; // Send RGB
+    g_maxval = 255;
+    printf("Making sure camera is working\n");
+    if (!g_camera->working()) {
+      fprintf(stderr,"init_camera_code(): Can't open DirectX camera server\n");
+      return false;
+    }
+  } else if (!strcmp(type, "directx640x480")) {
+    printf("Opening DirectX Camera %d\n", which);
+    g_camera = new directx_camera_server(which, 640, 480);
+    g_numchannels = 3; // Send RGB
+    g_maxval = 255;
+    printf("Making sure camera is working\n");
+    if (!g_camera->working()) {
+      fprintf(stderr,"init_camera_code(): Can't open DirectX camera server\n");
+      return false;
+    }
+#ifndef DIRECTX_VIDEO_ONLY
+  } else if (!strcmp(type, "roper")) {
     printf("Opening Roper Camera with binning at %d\n", g_bincount);
     g_camera = new roper_server(g_bincount);
     g_numchannels = 1;
@@ -66,26 +90,7 @@ bool  init_camera_code(const char *type, int which = 1)
       fprintf(stderr,"init_camera_code(): Can't open Cooke camera server\n");
       return false;
     }
-  } else if (!strcmp(type, "directx")) {
-    printf("Opening DirectX Camera %d\n", which);
-    g_camera = new directx_camera_server(which, g_width, g_height);
-    g_numchannels = 3; // Send RGB
-    g_maxval = 255;
-    printf("Making sure camera is working\n");
-    if (!g_camera->working()) {
-      fprintf(stderr,"init_camera_code(): Can't open DirectX camera server\n");
-      return false;
-    }
-  } else if (!strcmp(type, "directx640x480")) {
-    printf("Opening DirectX Camera %d\n", which);
-    g_camera = new directx_camera_server(which, 640, 480);
-    g_numchannels = 3; // Send RGB
-    g_maxval = 255;
-    printf("Making sure camera is working\n");
-    if (!g_camera->working()) {
-      fprintf(stderr,"init_camera_code(): Can't open DirectX camera server\n");
-      return false;
-    }
+#endif
   } else {
     fprintf(stderr,"init_camera_code(): Unknown camera type (%s)\n", type);
     return false;

@@ -59,7 +59,7 @@ HRESULT AddGraphToRot(IUnknown *pUnkGraph, DWORD *pdwRegister)
     }
 
     WCHAR wsz[128];
-    wsprintfW(wsz, L"FilterGraph %08x pid %08x", (DWORD_PTR)pUnkGraph, 
+    StringCbPrintfW(wsz, sizeof(wsz), L"FilterGraph %08x pid %08x", (DWORD_PTR)pUnkGraph, 
               GetCurrentProcessId());
 
     HRESULT hr = CreateItemMoniker(L"!", wsz, &pMoniker);
