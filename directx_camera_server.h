@@ -24,10 +24,9 @@
 // code.  What a sick world we live in when example code can't be freely
 // shared.
 
-// The DirectX Software Developer's Kit must be installed on your machine
+// The Microsoft Platform SDK must be installed on your machine
 // to make this work; this code makes use of the BaseClasses library and
-// other parts of the library.  On my laptop, I've installed this on the
-// D: drive; you may need to change the BaseClasses 
+// other parts of the library.
 
 class directx_samplegrabber_callback; //< Forward declaration
 

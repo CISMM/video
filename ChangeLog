@@ -1,5 +1,9 @@
 2006-09-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* directx_camera_server.h : Updated comments.
+
+2006-09-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* DirectShow_baseclasses.dsp : Switching to the latest version
 		of DirectShow, which lives in the platform SDK now.  It
 		does not include Visual Studio projects to make the
