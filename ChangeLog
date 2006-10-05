@@ -1,3 +1,11 @@
+2006-10-05  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* stack_collector.dsp : Modified to link with the new versions
+		of the Microsoft SDKs (Release only under Visual Studio
+		version 6).
+	* video_imager_server_directx_only.dsp : same.
+	* video_spot_tracker.dsp : Same.
+
 2006-09-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_imager_server.dsp : Changed include paths for the

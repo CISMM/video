@@ -50,7 +50,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /machine:I386
-# ADD LINK32 SpotCamVC.lib glut32.lib opengl32.lib tcl83.lib tk83.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /profile /machine:I386 /libpath:"../vrpn/pc_win32/Release" /libpath:"../quat/pc_win32/Release" /libpath:"C:\Program Files\GnuWin32\lib" /libpath:"D:\Program Files\GnuWin32\lib" /libpath:"C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib" /libpath:"C:\nsrg\external\pc_win32\lib"
+# ADD LINK32 SpotCamVC.lib glut32.lib opengl32.lib tcl83.lib tk83.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /profile /machine:I386 /libpath:"../vrpn/pc_win32/Release" /libpath:"../quat/pc_win32/Release" /libpath:"$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib" /libpath:"C:\Program Files\GnuWin32\lib" /libpath:"D:\Program Files\GnuWin32\lib" /libpath:"C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib" /libpath:"C:\nsrg\external\pc_win32\lib"
 
 !ELSEIF  "$(CFG)" == "video_spot_tracker - Win32 Debug"
 
@@ -74,7 +74,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 SpotCamVC.lib glut32.lib opengl32.lib tcl83.lib tk83.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /profile /debug /machine:I386 /nodefaultlib:"msvcrt.lib" /libpath:"../vrpn/pc_win32/Debug" /libpath:"../quat/pc_win32/Debug" /libpath:"C:\Program Files\GnuWin32\lib" /libpath:"D:\Program Files\GnuWin32\lib" /libpath:"C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib" /libpath:"C:\nsrg\external\pc_win32\lib"
+# ADD LINK32 SpotCamVC.lib glut32.lib opengl32.lib tcl83.lib tk83.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /profile /debug /machine:I386 /nodefaultlib:"msvcrt.lib" /libpath:"../vrpn/pc_win32/Debug" /libpath:"../quat/pc_win32/Debug" /libpath:"$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib" /libpath:"C:\Program Files\GnuWin32\lib" /libpath:"D:\Program Files\GnuWin32\lib" /libpath:"C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib" /libpath:"C:\nsrg\external\pc_win32\lib"
 
 !ENDIF 
 
