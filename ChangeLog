@@ -1,3 +1,9 @@
+2006-11-04  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_imager_server.dsp : Fixing include path.
+	* video_spot_tracker.dsp : Same.
+	* video_spot_tracker.cpp : Looks on C: drive for Roper library.s
+
 2006-10-05  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_imager_server.dsp : Modified to link with the new

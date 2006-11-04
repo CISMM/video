@@ -18,7 +18,7 @@
 #endif
 
 #ifdef	VST_USE_ROPER
-#pragma comment(lib,"D:\\Program Files\\Roper Scientific\\PVCAM\\pvcam32.lib")
+#pragma comment(lib,"C:\\Program Files\\Roper Scientific\\PVCAM\\pvcam32.lib")
 #endif
 
 // END configuration section.
