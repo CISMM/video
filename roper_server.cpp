@@ -379,7 +379,7 @@ bool  roper_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned 
   _maxY = maxY * _binning + (_binning-1);
 
   //---------------------------------------------------------------------
-  // If the maxes are greater than the mins, set them to the size of
+  // If the maxes are less than the mins, set them to the size of
   // the image.
   if (_maxX < _minX) {
     _minX = 0; _maxX = _num_columns - 1;

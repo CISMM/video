@@ -256,7 +256,8 @@ int main(int argc, char *argv[])
   if (!init_server_code(logfilename, (g_numchannels > 1) )) { return -1; }
 
   while (!g_done) {
-    g_camera->read_image_to_memory(0,0,0,0,g_exposure);
+    // Setting the min to be larger than the max means "the whole image"
+    g_camera->read_image_to_memory(1,0,1,0,g_exposure);
     g_camera->send_vrpn_image(svr,svrcon,g_exposure,svrchan, g_numchannels);
     svr->mainloop();
     svrcon->mainloop();

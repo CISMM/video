@@ -1,3 +1,10 @@
+2006-11-09  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_imager_server.cpp : Changed so that it sets the range with
+		the min larger than the max, which means "however large the
+		whole image is."  Before it was trying to read a region of
+		size 1 pixel (0,0,0,0);
+
 2006-11-04  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_imager_server.dsp : Fixing include path.
