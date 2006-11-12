@@ -1,3 +1,10 @@
+2006-11-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* VST_multi_file_script.bat : A script that you can drop
+		a bunch of video files onto and it will try to track
+		a bead with specified precision and location in each
+		of them.  For Ricky Spero.
+
 2006-11-09  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_imager_server.cpp : Changed so that it sets the range with
@@ -1908,4 +1915,3 @@
 	* roper_server.cpp : Same.
 	* roper_library.dsp : Builds library for inclusion in multiple apps.
 	* video.dsw : Dependency changes and new projects.
-
