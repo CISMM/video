@@ -1,3 +1,10 @@
+2007-01-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* file_stack_server.cpp : Added suppport for multi-layer TIFF files,
+		where each layer in the file is played as a separate frame.
+	* file_stack_server.h : Same.
+	* video_spot_tracker.cpp : Updated version number.
+
 2006-11-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* VST_multi_file_script.bat : A script that you can drop

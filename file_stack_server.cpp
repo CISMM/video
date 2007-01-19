@@ -26,7 +26,8 @@ file_stack_server::file_stack_server(const char *filename, const char *magickfil
 d_buffer(NULL),
 d_mode(SINGLE),
 d_xFileSize(0),
-d_yFileSize(0)
+d_yFileSize(0),
+d_listOfImages(NULL)
 {
   // In case we fail somewhere along the way
   _status = false;
@@ -68,9 +69,15 @@ d_yFileSize(0)
 
 file_stack_server::~file_stack_server(void)
 {
-  // Free the space taken by the in-memory image (if allocated)
+  // Free the space taken by the in-memory image copy (if allocated)
   if (d_buffer) {
     delete [] d_buffer;
+  }
+
+  // If we have a multi-layer image open, then destroy it.
+  Image *image = static_cast<Image *>(d_listOfImages);
+  if (image != NULL) {
+    DestroyImage(image);
   }
 }
 
@@ -86,6 +93,15 @@ void  file_stack_server::pause()
 
 void  file_stack_server::rewind()
 {
+  // If we have a multi-layer image open, then destroy it
+  // and set our open-image pointer to NULL to indicate that
+  // we don't have one open.
+  Image *image = static_cast<Image *>(d_listOfImages);
+  if (image != NULL) {
+    DestroyImage(image);
+    d_listOfImages = NULL;
+  }
+
   // Seek back to the first file
   d_whichFile = d_fileNames.begin();
 
@@ -98,8 +114,14 @@ void  file_stack_server::single_step()
   d_mode = SINGLE;
 }
 
-  // This routine has some side effects: It allocates the buffer and it fills in
-  // the d_xFileSize and d_yFileSize data members.
+// This routine has some side effects: It allocates the buffer and it fills in
+// the d_xFileSize and d_yFileSize data members.
+//*** Note: This routine is complicated by the fact that some images (TIFF files
+// in particular) can have more than one actual image in them.  In this case, there
+// is an additional side effect that the d_listOfImages variable holds a pointer
+// to an already-opened image when we're not at the end of the stack in that
+// one image.  In this case, we step forward in the stack for that image rather
+// than going to the next image in the file list.
 bool  file_stack_server::read_image_from_file(const string filename)
 {
   ExceptionInfo	  exception;
@@ -112,16 +134,25 @@ bool  file_stack_server::read_image_from_file(const string filename)
   GetExceptionInfo(&exception);
   image_info=CloneImageInfo((ImageInfo *) NULL);
   (void) strcpy(image_info->filename,filename.c_str());
-  image=ReadImage(image_info,&exception);
-  if (image == (Image *) NULL) {
-      // print out something to let us know we are missing the 
-      // delegates.mgk or whatever if that is the problem instead of just
-      // saying the file can't be loaded later
-      fprintf(stderr, "nmb_ImgMagic: %s: %s\n",
-             exception.reason,exception.description);
-      //MagickError(exception.severity,exception.reason,exception.description);
-      // Get here if we can't decipher the file, let caller handle it. 
-      return false;
+
+  // If we have a multi-layer image in memory from last time, we
+  // use it.  Otherwise, go ahead and open a new image based on the
+  // file name.
+
+  if (d_listOfImages != NULL) {
+    image = static_cast<Image *>(d_listOfImages);
+  } else {
+    image=ReadImage(image_info,&exception);
+    if (image == (Image *) NULL) {
+        // print out something to let us know we are missing the 
+        // delegates.mgk or whatever if that is the problem instead of just
+        // saying the file can't be loaded later
+        fprintf(stderr, "nmb_ImgMagic: %s: %s\n",
+               exception.reason,exception.description);
+        //MagickError(exception.severity,exception.reason,exception.description);
+        // Get here if we can't decipher the file, let caller handle it. 
+        return false;
+    }
   }
 
   // Ensure that we don't get images of different sizes.  If this image is the
@@ -170,10 +201,27 @@ bool  file_stack_server::read_image_from_file(const string filename)
 
   CloseCacheView(vinfo);
   DestroyImageInfo(image_info);
-  DestroyImage(image);
+
+  // If we just looked at the last image in this file, destroy the image.
+  // Otherwise, keep a pointer to the next image around so that we can look
+  // at it in the next frame.  In this case, we advance the d_listOfImages
+  // to the next image in the file.
+  Image *next = GetNextImageInList(image);
+  if (next == NULL) {
+    DestroyImage(image);
+    d_listOfImages = NULL;
+  } else {
+    d_listOfImages = next;
+  }
   return true;
 }
 
+//*** Note: This routine is complicated by the fact that some images (TIFF files
+// in particular) can have more than one actual image in them.  In this case, there
+// is an additional side effect that the d_listOfImages variable holds a pointer
+// to an already-opened image when we're not at the end of the stack in that
+// one image.  In this case, we step forward in the stack for that image rather
+// than going to the next image in the file list.
 bool  file_stack_server::read_image_to_memory(unsigned minX, unsigned maxX,
 							unsigned minY, unsigned maxY,
 							double exposure_time_millisecs)
@@ -226,7 +274,11 @@ bool  file_stack_server::read_image_to_memory(unsigned minX, unsigned maxX,
     fprintf(stderr,"file_stack_server::read_image_to_memory(): Could not read file\n");
     return false;
   }
-  d_whichFile++;
+  // If we have a multi-image image file in memory, then don't advance to the
+  // next file name.  Otherwise, go to the next file name.
+  if (d_listOfImages == NULL) {
+    d_whichFile++;
+  }
 
   // Okay, we got a new frame!
   return true;
