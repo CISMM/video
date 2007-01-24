@@ -651,8 +651,8 @@ bool image_wrapper::write_to_opengl_quad(double scale, double offset)
 
   // Figure out the next power-of-two size up based on the current texture size.
   // This is because textures must be an even power of two size on each axis.
-  _opengl_texture_size_x = static_cast<unsigned>( pow(2, ceil( log( get_num_columns() ) / log(2.0) ) ) );
-  _opengl_texture_size_y = static_cast<unsigned>( pow(2, ceil( log( get_num_rows() ) / log(2.0) ) ) );
+  _opengl_texture_size_x = static_cast<unsigned>( pow(2.0, ceil( log( static_cast<double>(get_num_columns()) ) / log(2.0) ) ) );
+  _opengl_texture_size_y = static_cast<unsigned>( pow(2.0, ceil( log( static_cast<double>(get_num_rows()) ) / log(2.0) ) ) );
 
   // Write the texture, using a virtual method call appropriate to the particular
   // camera type.  NOTE: At least the first time this function is called,

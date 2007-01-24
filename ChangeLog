@@ -1,3 +1,12 @@
+2007-01-24  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* base_camera_server.cpp : Fixing ambiguous cast for Visual Studio
+		.NET 2003.
+	* image_wrapper.cpp : Same.
+	* video_spot_tracker.cpp : Same.
+	* *.vcproj : Visual Studio .NET 2003 project files.
+	* video.sln : Visual Studio .NET 2003 project files.
+
 2007-01-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* file_stack_server.cpp : Added suppport for multi-layer TIFF files,

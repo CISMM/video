@@ -798,7 +798,7 @@ void myDisplayFunc(void)
 
     if (g_opengl_video) {
       // If we can't write using OpenGL, turn off the feature for next frame.
-      if (!g_image->write_to_opengl_quad(pow(2.0,g_brighten))) {
+      if (!g_image->write_to_opengl_quad(pow(2.0,static_cast<double>(g_brighten)))) {
         g_opengl_video = false;
       }
     } else {
@@ -2465,7 +2465,7 @@ void motionCallbackForGLUT(int raw_x, int raw_y)
       if (y >= (int)g_image->get_num_rows()) { y = g_image->get_num_rows() - 1; };
 
       // Set the radius based on how far the user has moved from click
-      double radius = sqrt( (x - pressX) * (x - pressX) + (y - pressY) * (y - pressY) );
+      double radius = sqrt( static_cast<double>( (x - pressX) * (x - pressX) + (y - pressY) * (y - pressY) ) );
       if (radius >= 3) {
 	g_active_tracker->xytracker()->set_radius(radius);
 	g_Radius = radius;

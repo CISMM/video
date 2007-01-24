@@ -165,7 +165,7 @@ cone_image::cone_image(int minx, int maxx, int miny, int maxy,
   double step = 1.0 / _oversample;
   double start;
   if (_oversample % 2 == 1) { // Odd number of steps
-    start = - step * floor( _oversample / 2 );
+    start = - step * floor( _oversample / 2.0 );
   } else {    // Even number of steps
     start = - step * ( (_oversample / 2 - 1) + 0.5 );
   }
