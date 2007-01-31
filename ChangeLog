@@ -1,3 +1,9 @@
+2007-01-31  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* *.vcproj : Getting rid of Visual Studio 2003 versions
+		to replace them soon with Visual Studio 2005
+		versions.
+
 2007-01-24  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* base_camera_server.cpp : Fixing ambiguous cast for Visual Studio
