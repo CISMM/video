@@ -4,6 +4,7 @@
 		fix the PVOID64 error (by including the platform SDK
 		Include directory first) and with _CRT_SECURE_NO_WARNINGS
 		defined to avoid deprecation compiler warnings.
+	* Added video.sln VS8 solution file.
 
 
 2007-01-31  Russell M. Taylor II  <taylorr@cs.unc.edu>
