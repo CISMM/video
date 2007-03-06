@@ -1,3 +1,14 @@
+2007-03-05  Ryan Schubert  <res@cs.unc.edu>
+
+	* PlotGLCanvas.* : Added to project.
+	* PlotWindow.* : Added to project.
+	* Got image stack loading working.  Currently video can be 
+		played via the menu.  Not very convienant, but will do
+		for the moment.  Also, added logging of focus measure 
+		(currently SMD) and added a plot window to show the 
+		curve of focus over time for the selected spot in the image.
+
+
 2007-03-01  Ryan Schubert  <res@cs.unc.edu>
 
 	* *.* Added all new source files for this project.

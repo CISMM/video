@@ -1,78 +1,35 @@
 /////////////////////////////////////////////////////////////////////////////
-// Name:        ztracker.h
-// Purpose:     realtime video bead tracking main form
+// Name:        PlotWindow.h
+// Purpose:     plot window for focus measure over time
 // Author:      Ryan Schubert
-// Created:     2/24/07
+// Created:     3/5/07
 // Modified by:
 /////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <wx/wx.h>
-#include <wx/image.h>
 
-#include "TestGLCanvas.h"
-#include "PixelLine.h"
-#include "PlotWindow.h"
+#include "PlotGLCanvas.h"
 
 #include <vector>
 
-
-class zTracker : public wxFrame {
+class PlotWindow : public wxFrame {
 public:
-    zTracker(wxWindow* parent, int id, const wxString& title, const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=wxDEFAULT_FRAME_STYLE);
+    PlotWindow(wxWindow* parent, int id, const wxString& title, const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=wxDEFAULT_FRAME_STYLE);
 
-	void OnMenuFileOpen(wxCommandEvent& event);
-    void OnMenuFileExit(wxCommandEvent& event);
-    void OnMenuHelpAbout(wxCommandEvent& event);
-	void OnMenuVideoPlay(wxCommandEvent& event);
-	void OnMenuVideoPause(wxCommandEvent& event);
-	void OnMenuVideoSingle(wxCommandEvent& event);
-	void OnMenuVideoRewind(wxCommandEvent& event);
+	void setVals(std::vector<float> vals);
 
-	void OnMenuFocusStart(wxCommandEvent& event);
-	void OnMenuFocusStop(wxCommandEvent& event);
+	void Refresh();
 
-
-	void Idle(wxIdleEvent& event);
-
-//	void SetCanvas( TestGLCanvas *canvas ) { m_canvas = canvas; }
-//    TestGLCanvas *GetCanvas() { return m_canvas; }
+	void plot();
 
 protected:
 
-	PlotWindow *m_plotWindow;
+	float* m_vals;
+	int m_num_vals;
 
-//	wxStaticText* label_1;
-//	wxTextCtrl* text_ctrl_1;
-	wxPanel* m_video_control_panel;
-
-	TestGLCanvas *m_canvas;
-//	TestGLCanvas *m_canvasZoomed;
-
-	wxStaticText* m_horizLabel;
-	PixelLine* m_horizPixels;
-
-	wxStaticText* m_vertLabel;
-	PixelLine* m_vertPixels;
-
-	wxButton* m_play;
-	wxButton* m_pause;
-	wxButton* m_stop;
-	wxButton* m_rewind;
-
-	int m_frame_number;
-
-	bool m_logging;
-
-	base_camera_server  *g_camera;	//< Camera used to get an image
-	image_wrapper       *g_image;	//< Image, possibly from camera and possibly computed
-	Controllable_Video  *g_video;	//< Video controls, if we have them
-
-	std::vector<float> m_focus;
-
-	int m_channel;
-
+	PlotGLCanvas* m_plot;
 
 private:
 
@@ -86,7 +43,7 @@ private:
 
 // icon
 /* XPM */
-static const char *sample_xpm[] = {
+static const char *plot_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "32 32 6 1",
 "  c black",

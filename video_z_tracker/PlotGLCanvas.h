@@ -10,28 +10,20 @@
 
 #include "GL/glu.h"
 
-
-class PixelLine : public wxGLCanvas
+class PlotGLCanvas: public wxGLCanvas
 {
 public:
-    PixelLine(wxWindow *parent, wxWindowID id = wxID_ANY,
+    PlotGLCanvas(wxWindow *parent, wxWindowID id = wxID_ANY,
         const wxPoint& pos = wxDefaultPosition,
         const wxSize& size = wxDefaultSize, long style = 0,
-        const wxString& name = wxT("PixelLine"), bool horizontal = true);
+        const wxString& name = wxT("PlotGLCanvas"));
 
-    ~PixelLine();
+    ~PlotGLCanvas();
 
+	void setVals(float* v, int n, float min, float max);
 
-	float calcSMD(int channel);
-
-
-	// the RGB values for the pixel line
-	float R[256];
-	float G[256];
-	float B[256];
-
-	// number of pixels in current strip
-	int p_len;
+	void setMin(float m) { m_min = m; }
+	void setMax(float m) { m_min = m; }
 
 protected:
     void OnPaint(wxPaintEvent& event);
@@ -39,13 +31,15 @@ protected:
     void OnEraseBackground(wxEraseEvent& event);
     void OnMouse(wxMouseEvent& event);
 
-private:
+	float* m_vals;
+	int m_num;
 
-	bool m_horizontal;
+	float m_min, m_max;
+
+private:
 
     void InitGL();
     void ResetProjectionMode();
-
 
     DECLARE_EVENT_TABLE()
 };

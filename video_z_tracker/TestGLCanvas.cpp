@@ -45,7 +45,7 @@ TestGLCanvas::~TestGLCanvas()
 }
 
 
-void TestGLCanvas::SetInput(FileToTexture* newInput)
+void TestGLCanvas::SetInput(base_camera_server* newInput)
 {
 	if (m_image != NULL)
 		delete m_image;
@@ -104,6 +104,8 @@ void TestGLCanvas::OnPaint( wxPaintEvent& WXUNUSED(event) )
 
     // Swap
     SwapBuffers();
+
+	UpdateSlices();
 }
 
 
@@ -224,21 +226,20 @@ void TestGLCanvas::OnMouse(wxMouseEvent& event)
     {
 
         /* orientation has changed, redraw mesh */
-        Refresh(false);
+        //Refresh(false);
     }
 
 	if (event.LeftIsDown())
 	{
 		m_selectX = m_mouseX;
 		m_selectY = m_mouseY;
-		Refresh(false);
+//		Refresh(false);
+		Update();
 	}
 
-	// set start loc for radius dragging
 	if (event.RightDown())
 	{
-		m_baseMouseX = m_mouseX;
-		m_baseMouseY = m_mouseY;
+		// nothing yet
 	}
 
 	if (event.RightIsDown())
@@ -254,60 +255,75 @@ void TestGLCanvas::OnMouse(wxMouseEvent& event)
 		// 127 because right now our PixelLine buffer is limited to 256 pixels!
 		if (m_pixelRadius > 127)
 			m_pixelRadius = 127;
+
+		Update();
 	}
 
+	/*
 	if (event.LeftIsDown() || event.RightIsDown())
 	{
-		if (m_hPixRef == NULL)
-			printf("m_hPixRef = %i\n", m_hPixRef);
-
-		if (m_image != NULL && m_hPixRef != NULL)
-		{
-			// update horizontal pixelLine slice
-
-			// set current strip length
-			m_hPixRef->p_len = (m_pixelRadius * 2) + 1;
-
-			double r = 0, g = 0, b = 0;
-			int e = 0;
-			int pixelY = sz.GetHeight() - (m_mouseY); 
-			for (int i = m_mouseX - m_pixelRadius; i <= m_mouseX + m_pixelRadius; ++i)
-			{
-				m_image->read_pixel(i, pixelY, r, 0);
-				m_image->read_pixel(i, pixelY, g, 1);
-				m_image->read_pixel(i, pixelY, b, 2);
-				m_hPixRef->R[e] = r / 65535.0f;
-				m_hPixRef->G[e] = g / 65535.0f;
-				m_hPixRef->B[e] = b / 65535.0f;
-				++e;
-			}
-
-			m_hPixRef->Refresh();
-
-
-			// update vertical pixelLine slice
-
-			// set current strip length
-			m_vPixRef->p_len = (m_pixelRadius * 2) + 1;
-
-			e = 0;
-			int pixelX = m_mouseX;
-			for (int i = (sz.GetHeight() - m_mouseY) - m_pixelRadius; i <= (sz.GetHeight() - m_mouseY) + m_pixelRadius; ++i)
-			{
-				m_image->read_pixel(pixelX, i, r, 0);
-				m_image->read_pixel(pixelX, i, g, 1);
-				m_image->read_pixel(pixelX, i, b, 2);
-				m_vPixRef->R[e] = r / 65535.0f;
-				m_vPixRef->G[e] = g / 65535.0f;
-				m_vPixRef->B[e] = b / 65535.0f;
-				++e;
-			}
-
-			m_vPixRef->Refresh();
-		}
+		
+		UpdateSlices(pixelX, pixelY);		
 	}
+	*/
 
 }
+
+void TestGLCanvas::UpdateSlices()
+{
+
+	if (m_image != NULL && m_hPixRef != NULL && m_vPixRef != NULL)
+	{
+
+		wxSize sz(GetClientSize());
+
+		int pixelY = sz.GetHeight() - (m_selectY);
+		int pixelX = m_selectX;
+
+
+
+		// update horizontal pixelLine slice
+
+		// set current strip length
+		m_hPixRef->p_len = (m_pixelRadius * 2) + 1;
+
+		double r = 0, g = 0, b = 0;
+		int e = 0;
+		for (int i = m_selectX - m_pixelRadius; i <= m_selectX + m_pixelRadius; ++i)
+		{
+			m_image->read_pixel(i, pixelY, r, 0);
+			m_image->read_pixel(i, pixelY, g, 1);
+			m_image->read_pixel(i, pixelY, b, 2);
+			m_hPixRef->R[e] = r / 65535.0f;
+			m_hPixRef->G[e] = g / 65535.0f;
+			m_hPixRef->B[e] = b / 65535.0f;
+			++e;
+		}
+
+		m_hPixRef->Refresh();
+
+
+		// update vertical pixelLine slice
+
+		// set current strip length
+		m_vPixRef->p_len = (m_pixelRadius * 2) + 1;
+
+		e = 0;
+		for (int i = (sz.GetHeight() - m_selectY) - m_pixelRadius; i <= (sz.GetHeight() - m_selectY) + m_pixelRadius; ++i)
+		{
+			m_image->read_pixel(pixelX, i, r, 0);
+			m_image->read_pixel(pixelX, i, g, 1);
+			m_image->read_pixel(pixelX, i, b, 2);
+			m_vPixRef->R[e] = r / 65535.0f;
+			m_vPixRef->G[e] = g / 65535.0f;
+			m_vPixRef->B[e] = b / 65535.0f;
+			++e;
+		}
+
+		m_vPixRef->Refresh();
+	}
+}
+
 
 void TestGLCanvas::InitGL()
 {

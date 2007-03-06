@@ -9,13 +9,15 @@ public:
     bool OnInit();
 };
 
+
 bool zTrackApp::OnInit()
 {
 	wxSize appSize(640, 480);
 //    wxInitAllImageHandlers();
     zTracker* frmZTrack = new zTracker(0, -1, wxT("Video Z Tracker, prototype version."),wxDefaultPosition, appSize);
     SetTopWindow(frmZTrack);
-    frmZTrack->Show();
+	frmZTrack->Show();
+
     return true;
 }
 

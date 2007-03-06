@@ -23,7 +23,7 @@ public:
 
     ~TestGLCanvas();
 
-	void SetInput(FileToTexture* newInput);
+	void SetInput(base_camera_server* newInput);
 
 	void SetHPixRef(PixelLine* ref)	{	m_hPixRef = ref;	}
 	void SetVPixRef(PixelLine* ref)	{	m_vPixRef = ref;	}
@@ -36,7 +36,9 @@ protected:
 
 	void DrawSelectionBox();
 
-	FileToTexture* m_image;
+	void UpdateSlices();
+
+	base_camera_server* m_image;
 
 	PixelLine* m_hPixRef;
 	PixelLine* m_vPixRef;
@@ -44,7 +46,6 @@ protected:
 private:
 
 	int m_mouseX, m_mouseY;
-	int m_baseMouseX, m_baseMouseY;
 	int m_selectX, m_selectY;
 	float m_radius;
 	int m_pixelRadius;

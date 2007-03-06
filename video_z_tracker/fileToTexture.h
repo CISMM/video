@@ -3,7 +3,7 @@
 
 #include "file_stack_server.h"
 #include "image_wrapper.h"
-
+#include "edt_server.h"
 
 class Controllable_Video {
 public:
@@ -20,14 +20,23 @@ public:
   virtual void single_step() = 0;
 };
 
-class FileToTexture : public Controllable_Video, public file_stack_server {
+
+class Pulnix_Controllable_Video : public Controllable_Video, public edt_pulnix_raw_file_server {
 public:
-  FileToTexture(const char *filename) : file_stack_server(filename) {};
-  virtual ~FileToTexture() {};
+  Pulnix_Controllable_Video(const char *filename) : edt_pulnix_raw_file_server(filename) {};
+  virtual ~Pulnix_Controllable_Video() {};
+  void play(void) { edt_pulnix_raw_file_server::play(); }
+  void pause(void) { edt_pulnix_raw_file_server::pause(); }
+  void rewind(void) { pause(); edt_pulnix_raw_file_server::rewind(); }
+  void single_step(void) { edt_pulnix_raw_file_server::single_step(); }
+};
+
+class FileStack_Controllable_Video : public Controllable_Video, public file_stack_server {
+public:
+  FileStack_Controllable_Video(const char *filename) : file_stack_server(filename) {};
+  virtual ~FileStack_Controllable_Video() {};
   void play(void) { file_stack_server::play(); }
   void pause(void) { file_stack_server::pause(); }
   void rewind(void) { pause(); file_stack_server::rewind(); }
   void single_step(void) { file_stack_server::single_step(); }
-  bool write_memory_to_ppm_file(const char *filename, int gain = 1, bool sixteen_bits = false)
-  {	  return file_stack_server::write_memory_to_ppm_file(filename, gain, sixteen_bits);  }
 };

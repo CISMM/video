@@ -54,12 +54,14 @@ void PixelLine::OnPaint( wxPaintEvent& WXUNUSED(event) )
 
 	float dx = 2.0f / (float)p_len;
 
+	/*
 	if (m_horizontal)
 		printf("H:\n");
 	else
 		printf("V:\n");
 
-	printf("\tSMD = %f\n", calcSMD());
+	printf("\tSMD = %f\n", calcSMD(0));
+	*/
 
 	for (int i = 0; i < p_len; ++i)
 	{
@@ -149,17 +151,55 @@ void PixelLine::ResetProjectionMode()
     }
 }
 
-float PixelLine::calcSMD()
+float PixelLine::calcSMD(int channel)
 {
-	float avg1 = 0, avg2 = 0;
+	float Ia = 0, Ib = 0;
 	float sum = 0;
 	float val = 0;
-	for (int i = 0; i < p_len; ++i)
+	if (channel == 0) // red channel
 	{
-		avg1 = R[i] + G[i] + B[i] / 3.0f;
-		avg2 = R[i+1] + G[i+1] + B[i+1] / 3.0f;
-		val = abs(avg1 - avg2) / (avg1 + avg2);
-		sum += val;
+		for (int i = 0; i < p_len - 1; ++i)
+		{
+			Ia = R[i];
+			Ib = R[i+1];
+			if (Ia + Ib != 0)
+				val = abs(Ia - Ib) / (Ia + Ib);
+			else
+				val = 0;
+			sum += val;
+		}
 	}
+	else if (channel == 1) // green channel
+	{
+		for (int i = 0; i < p_len - 1; ++i)
+		{
+			Ia = G[i];
+			Ib = G[i+1];
+			if (Ia + Ib != 0)
+				val = abs(Ia - Ib) / (Ia + Ib);
+			else
+				val = 0;
+			sum += val;
+		}
+	}
+	else if (channel == 2) // blue channel
+	{
+		for (int i = 0; i < p_len - 1; ++i)
+		{
+			Ia = B[i];
+			Ib = B[i+1];
+			if (Ia + Ib != 0)
+				val = abs(Ia - Ib) / (Ia + Ib);
+			else
+				val = 0;
+			sum += val;
+		}
+	}
+	else // INVALID CHANNEL!
+	{
+		printf("Invalid channel \"%i\" passed to PixelLine::calcSMD()\n", channel);
+	}
+
+	
 	return sum;
 }

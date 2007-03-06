@@ -182,6 +182,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\video_z_tracker\PlotGLCanvas.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\video_z_tracker\PlotWindow.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\video_z_tracker\TestGLCanvas.cpp"
 				>
 			</File>
@@ -205,6 +213,14 @@
 			</File>
 			<File
 				RelativePath=".\video_z_tracker\PixelLine.h"
+				>
+			</File>
+			<File
+				RelativePath=".\video_z_tracker\PlotGLCanvas.h"
+				>
+			</File>
+			<File
+				RelativePath=".\video_z_tracker\PlotWindow.h"
 				>
 			</File>
 			<File

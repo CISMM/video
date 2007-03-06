@@ -1883,39 +1883,39 @@ void myIdleFunc(void)
   // moving the tracker back on or by adjusting the sensitivity.
 
   if (g_tracker_is_lost) {
-    g_video_valid = false;
+	  g_video_valid = false;
   } else {
-    if (!g_camera->read_image_to_memory((int)(*g_minX),(int)(*g_maxX), (int)(*g_minY),(int)(*g_maxY), g_exposure)) {
-      if (!g_video) {
-        fprintf(stderr, "Can't read image to memory!\n");
-        cleanup();
-        exit(-1);
-      } else {
-        // We timed out; either paused or at the end.  Don't log in this case.
-        g_video_valid = false;
+	  if (!g_camera->read_image_to_memory((int)(*g_minX),(int)(*g_maxX), (int)(*g_minY),(int)(*g_maxY), g_exposure)) {
+		  if (!g_video) {
+			  fprintf(stderr, "Can't read image to memory!\n");
+			  cleanup();
+			  exit(-1);
+		  } else {
+			  // We timed out; either paused or at the end.  Don't log in this case.
+			  g_video_valid = false;
 
-        // If we are playing, then say that we've finished the run and
-        // stop playing.
-        if (((int)(*g_play)) != 0) {
-          // If we are supposed to quit at the end of the video, do so.
-          if (g_quit_at_end_of_video) {
-            printf("Exiting at the end of the video\n");
-            g_quit = 1;
-          } else {
-  #ifdef	_WIN32
-	    if (!PlaySound("end_of_video.wav", NULL, SND_FILENAME | SND_ASYNC)) {
-	      fprintf(stderr,"Cannot play sound %s\n", "end_of_video.wav");
-	    }
-  #endif
-          }
-	  *g_play = 0;
-        }
-      }
-    } else {
-      // Got a valid video frame; can log it.  Add to the frame number.
-      g_video_valid = true;
-      g_frame_number++;
-    }
+			  // If we are playing, then say that we've finished the run and
+			  // stop playing.
+			  if (((int)(*g_play)) != 0) {
+				  // If we are supposed to quit at the end of the video, do so.
+				  if (g_quit_at_end_of_video) {
+					  printf("Exiting at the end of the video\n");
+					  g_quit = 1;
+				  } else {
+#ifdef	_WIN32
+					  if (!PlaySound("end_of_video.wav", NULL, SND_FILENAME | SND_ASYNC)) {
+						  fprintf(stderr,"Cannot play sound %s\n", "end_of_video.wav");
+					  }
+#endif
+				  }
+				  *g_play = 0;
+			  }
+		  }
+	  } else {
+		  // Got a valid video frame; can log it.  Add to the frame number.
+		  g_video_valid = true;
+		  g_frame_number++;
+	  }
   }
   // Point the image to use at the camera's image.
   g_image = g_camera;
