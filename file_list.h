@@ -21,9 +21,11 @@
 // the whole block of numbers is filled in).
 
 #pragma warning( disable : 4786 )
-#include <list>
+#include <vector>
 #include <string>
 
-bool  file_list(const std::string file_name, std::list <std::string> &file_list);
+#include <algorithm> // for std::sort()
+
+bool  file_list(const std::string file_name, std::vector <std::string> &file_list);
 
 #endif

@@ -47,7 +47,7 @@ static string make_filename(const string file_name, string::size_type start, str
   return retval;
 }
 
-bool  file_list(const string file_name, list <string> &file_list)
+bool  file_list(const string file_name, vector <string> &file_list)
 {
   int stride = 0; // How many steps between file names?
   int i;
@@ -145,6 +145,7 @@ bool  file_list(const string file_name, list <string> &file_list)
   } while (found);
 
   // Sort the list before returning it.
-  file_list.sort();
+
+  std::sort(file_list.begin(), file_list.end());
   return true;
 }

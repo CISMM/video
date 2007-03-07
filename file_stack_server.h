@@ -1,6 +1,6 @@
 #include "base_camera_server.h"
 #pragma warning( disable : 4786 )
-#include <list>
+#include <vector>
 #include <string>
 
 class file_stack_server : public base_camera_server {
@@ -49,8 +49,8 @@ public:
 protected:
   vrpn_uint16		      *d_buffer;	  //< Holds one frame of data from the file
   enum {PAUSE, PLAY, SINGLE}  d_mode;		  //< What we're doing right now
-  std::list <std::string>     d_fileNames;	  //< Sorted list of files that we are to use.
-  std::list <std::string>::iterator d_whichFile;  //< Which file is next up to be read.
+  std::vector <std::string>     d_fileNames;	  //< Sorted list of files that we are to use.
+  std::vector <std::string>::iterator d_whichFile;  //< Which file is next up to be read.
   void                        *d_listOfImages;    //< Non-NULL if we have a list of images in memory (multi-layer image loaded).
 
   unsigned		      d_xFileSize;	  //< Number of pixels in X in the files
