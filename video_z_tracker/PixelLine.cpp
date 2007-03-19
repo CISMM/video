@@ -151,55 +151,78 @@ void PixelLine::ResetProjectionMode()
     }
 }
 
-float PixelLine::calcSMD(int channel)
+float PixelLine::calcFocus(int channel, int method, int weightedMethod)
 {
 	float Ia = 0, Ib = 0;
 	float sum = 0;
 	float val = 0;
-	if (channel == 0) // red channel
+
+	float half = p_len / 2.0f;
+
+	if (method == 0 || method == 1)
 	{
 		for (int i = 0; i < p_len - 1; ++i)
 		{
-			Ia = R[i];
-			Ib = R[i+1];
+			if (channel == 0) // red channel
+			{
+				Ia = R[i];
+				Ib = R[i+1];
+			}
+			else if (channel == 1) // green channel
+			{
+				Ia = G[i];
+				Ib = G[i+1];
+			}
+			else if (channel == 2) // blue channel
+			{
+				Ia = B[i];
+				Ib = B[i+1];
+			}
+			else // INVALID CHANNEL
+			{
+				printf("Invalid channel \"%i\" passed to PixelLine::calcFocus()\n", channel);
+			}
+
 			if (Ia + Ib != 0)
+			{
 				val = abs(Ia - Ib) / (Ia + Ib);
+				float weight = 1.0f;
+				if (weightedMethod == 1)
+				{
+					// weight with a simple 0-1 tent function centered at the bead center
+					weight = 1 - abs(((float)i + 0.5f) - half) / half;
+				}
+				val *= weight;
+			}
 			else
+			{
 				val = 0;
+			}
 			sum += val;
 		}
-	}
-	else if (channel == 1) // green channel
+	} // end method == 0
+	
+	if (method == 1)
 	{
-		for (int i = 0; i < p_len - 1; ++i)
-		{
-			Ia = G[i];
-			Ib = G[i+1];
-			if (Ia + Ib != 0)
-				val = abs(Ia - Ib) / (Ia + Ib);
-			else
-				val = 0;
-			sum += val;
-		}
-	}
-	else if (channel == 2) // blue channel
-	{
-		for (int i = 0; i < p_len - 1; ++i)
-		{
-			Ia = B[i];
-			Ib = B[i+1];
-			if (Ia + Ib != 0)
-				val = abs(Ia - Ib) / (Ia + Ib);
-			else
-				val = 0;
-			sum += val;
-		}
-	}
-	else // INVALID CHANNEL!
-	{
-		printf("Invalid channel \"%i\" passed to PixelLine::calcSMD()\n", channel);
+		float center = 0;
+		if (channel == 0) // red channel
+			{
+				center = R[p_len / 2];
+			}
+			else if (channel == 1) // green channel
+			{
+				center = G[p_len / 2];
+			}
+			else if (channel == 2) // blue channel
+			{
+				center = B[p_len / 2];
+			}
+			else // INVALID CHANNEL
+			{
+				printf("Invalid channel \"%i\" passed to PixelLine::calcFocus()\n", channel);
+			}
+		sum *= center;
 	}
 
-	
 	return sum;
 }

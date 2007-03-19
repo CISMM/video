@@ -18,18 +18,32 @@ class PlotWindow : public wxFrame {
 public:
     PlotWindow(wxWindow* parent, int id, const wxString& title, const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=wxDEFAULT_FRAME_STYLE);
 
-	void setVals(std::vector<float> vals);
+//	void setVals(std::vector<float> vals);
 
 	void Refresh();
 
-	void plot();
+	void SetIndicator(int index);
+
+	void SetOffset(int offset) {	m_plot->setOffset(offset);	}
+
+	void Update();
+
+	void SetMethod(int m) {	method = m;	}
+	void SetWeightedMethod(int m) {	weightedMethod = m;	}
+
+	std::vector<float> vals;
+	int method;
+	int weightedMethod;
 
 protected:
+	void OnMouse(wxMouseEvent& event);
 
-	float* m_vals;
-	int m_num_vals;
+//	float* m_vals;
+//	int m_num_vals;
 
 	PlotGLCanvas* m_plot;
+
+	int m_indicator;
 
 private:
 

@@ -11,7 +11,7 @@
 
 
 BEGIN_EVENT_TABLE(PlotWindow, wxFrame)
-   
+	EVT_MOUSE_EVENTS(PlotWindow::OnMouse)
 END_EVENT_TABLE()
 
 
@@ -20,13 +20,20 @@ PlotWindow::PlotWindow(wxWindow* parent, int id, const wxString& title, const wx
 {	
 	SetIcon(wxIcon(plot_xpm));
 
+/*
 	CreateStatusBar(2);
 	SetStatusText(wxT("Focus curve over time"));
+*/
 
 	// to avoid assert failure from GLCanvas
 	this->Show();
 
 	m_plot = new PlotGLCanvas(this, wxID_ANY, wxDefaultPosition, wxSize(348, 260), wxNO_BORDER);
+
+	m_indicator = 0;
+
+	method = 0;
+	weightedMethod = 0;
 
     do_layout();
 }
@@ -36,6 +43,31 @@ void PlotWindow::Refresh()
 	m_plot->Refresh();
 }
 
+void PlotWindow::Update()
+{
+	// we're gonna let PlotGLCanvas handle this memory cleanup!!
+	float* pvals = new float[vals.size()];
+
+	float min = vals[0];
+	float max = vals[0];
+
+	for (int i = 0; i < vals.size(); ++i)
+	{
+		pvals[i] = vals[i];
+
+		if (vals[i] > max)
+			max = vals[i];
+
+		if (vals[i] < min)
+			min = vals[i];
+	}
+
+	m_plot->setVals(pvals, vals.size(), min, max);
+
+	m_plot->Update();
+}
+
+/*
 void PlotWindow::setVals(std::vector<float> vals)
 {
 	m_num_vals = vals.size();
@@ -61,10 +93,17 @@ void PlotWindow::setVals(std::vector<float> vals)
 
 	m_plot->Update();
 }
-
-void PlotWindow::plot()
+*/
+void PlotWindow::SetIndicator(int index)
 {
+	m_plot->setIndicator(index);
+}
 
+void PlotWindow::OnMouse(wxMouseEvent& event)
+{
+	// update mouse position for use otherwhere
+//	m_mouseX = event.GetX();
+//	m_mouseY = event.GetY();
 }
 
 

@@ -1,3 +1,14 @@
+2007-03-18  Ryan Schubert  <res@cs.unc.edu>
+
+	* Stage.* : Added to project.
+	* zTracker.* : Moved video controls out of menu.  
+	* Fixed frame offset bug when logging starting at frame != 0
+	* Added toggle for drawing crosshairs
+	* Added support for multiple arbitrary focus plot windows for
+		easy comparison of focus measures (currently only SMD and
+		scaled SMD) and weighting of pairs for the SMD (currently
+		either uniform or tent).
+
 2007-03-05  Ryan Schubert  <res@cs.unc.edu>
 
 	* PlotGLCanvas.* : Added to project.

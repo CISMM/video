@@ -36,6 +36,10 @@ TestGLCanvas::TestGLCanvas(wxWindow *parent, wxWindowID id,
 	m_selectX = m_selectY = -1000;
 	m_radius = 0.05;
 	m_pixelRadius = 10;
+
+	m_bits = 16;  // default to 16 bits
+
+	m_showCross = true;
 }
 
 TestGLCanvas::~TestGLCanvas()
@@ -68,20 +72,16 @@ void TestGLCanvas::OnPaint( wxPaintEvent& WXUNUSED(event) )
     SetCurrent();
 
     // Clear
-	float red, green, blue;
-
-	red = rand()/(float)RAND_MAX;
-	green = rand()/(float)RAND_MAX;
-	blue = rand()/(float)RAND_MAX;
-
-    //glClearColor( red, green, blue, 1.0f );
 	glClearColor( 0, 0, 0, 1.0f );
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
     // Transformations
     glLoadIdentity();
 
-	DrawSelectionBox();
+	if (m_showCross)
+	{
+		DrawSelectionBox();
+	}
 
 	// draw current image frame
 	if (m_image != NULL)
@@ -97,7 +97,6 @@ void TestGLCanvas::OnPaint( wxPaintEvent& WXUNUSED(event) )
 
 		m_image->write_to_opengl_quad();
 	}
-
 	
     // Flush
     glFlush();
@@ -120,44 +119,6 @@ void TestGLCanvas::DrawSelectionBox()
 	float radius = m_radius;
 
 	int pixelRadius = m_pixelRadius;
-
-/*
-	glBegin(GL_LINE_LOOP);
-
-	glColor3f(1, 0, 0);
-	glVertex2f(cx - radius, cy - radius);
-
-	glColor3f(1, 1, 0);
-	glVertex2f(cx - radius, cy + radius);
-
-	glColor3f(0, 1, 1);
-	glVertex2f(cx + radius, cy + radius);
-
-	glColor3f(1, 0, 1);
-	glVertex2f(cx + radius, cy - radius);
-
-	glEnd();
-*/
-
-/*
-	// radius box 
-	gluOrtho2D(0, sz.GetX() - 2, sz.GetY() - 2, 0);
-	glBegin(GL_LINE_LOOP);
-
-	glColor3f(1, 0, 0);
-	glVertex2f(m_selectX - m_pixelRadius, m_selectY - m_pixelRadius);
-
-	glColor3f(1, 1, 0);
-	glVertex2f(m_selectX - m_pixelRadius, m_selectY + m_pixelRadius);
-
-	glColor3f(0, 1, 1);
-	glVertex2f(m_selectX + m_pixelRadius, m_selectY + m_pixelRadius);
-
-	glColor3f(1, 0, 1);
-	glVertex2f(m_selectX + m_pixelRadius, m_selectY - m_pixelRadius);
-
-	glEnd();
-//*/
 
 	// +
 	gluOrtho2D(0, sz.GetX(), sz.GetY(), 0);
@@ -281,6 +242,7 @@ void TestGLCanvas::UpdateSlices()
 		int pixelX = m_selectX;
 
 
+		float scale = 1.0f / (pow(2.0f, m_bits) - 1.0f);
 
 		// update horizontal pixelLine slice
 
@@ -294,9 +256,10 @@ void TestGLCanvas::UpdateSlices()
 			m_image->read_pixel(i, pixelY, r, 0);
 			m_image->read_pixel(i, pixelY, g, 1);
 			m_image->read_pixel(i, pixelY, b, 2);
-			m_hPixRef->R[e] = r / 65535.0f;
-			m_hPixRef->G[e] = g / 65535.0f;
-			m_hPixRef->B[e] = b / 65535.0f;
+//			printf("(%f, %f, %f)\n", r, g, b);
+			m_hPixRef->R[e] = r * scale;
+			m_hPixRef->G[e] = g * scale;
+			m_hPixRef->B[e] = b * scale;
 			++e;
 		}
 
@@ -314,13 +277,17 @@ void TestGLCanvas::UpdateSlices()
 			m_image->read_pixel(pixelX, i, r, 0);
 			m_image->read_pixel(pixelX, i, g, 1);
 			m_image->read_pixel(pixelX, i, b, 2);
-			m_vPixRef->R[e] = r / 65535.0f;
-			m_vPixRef->G[e] = g / 65535.0f;
-			m_vPixRef->B[e] = b / 65535.0f;
+			m_vPixRef->R[e] = r * scale;
+			m_vPixRef->G[e] = g * scale;
+			m_vPixRef->B[e] = b * scale;
 			++e;
 		}
 
 		m_vPixRef->Refresh();
+	}
+	else
+	{
+		//printf("Something was NULL in TestGLCanvas::UpdateSlices()\n");
 	}
 }
 

@@ -8,8 +8,11 @@
 
 #pragma once
 
+#include <wx/slider.h>
 #include <wx/wx.h>
 #include <wx/image.h>
+
+
 
 #include "TestGLCanvas.h"
 #include "PixelLine.h"
@@ -25,14 +28,23 @@ public:
 	void OnMenuFileOpen(wxCommandEvent& event);
     void OnMenuFileExit(wxCommandEvent& event);
     void OnMenuHelpAbout(wxCommandEvent& event);
-	void OnMenuVideoPlay(wxCommandEvent& event);
-	void OnMenuVideoPause(wxCommandEvent& event);
-	void OnMenuVideoSingle(wxCommandEvent& event);
-	void OnMenuVideoRewind(wxCommandEvent& event);
+	void OnVideoPlay(wxCommandEvent& event);
+	void OnVideoPause(wxCommandEvent& event);
+	void OnVideoSingle(wxCommandEvent& event);
+	void OnVideoRewind(wxCommandEvent& event);
 
 	void OnMenuFocusStart(wxCommandEvent& event);
 	void OnMenuFocusStop(wxCommandEvent& event);
 
+	void OnFrameScroll(wxScrollEvent& event);
+
+	void OnResize(wxSizeEvent& event); // ***********************
+
+	void OnCrossCheck(wxCommandEvent& event);
+
+	void OnNewPlot(wxCommandEvent& event);
+	
+	void OnNewPlotArray(wxCommandEvent& event);
 
 	void Idle(wxIdleEvent& event);
 
@@ -40,15 +52,36 @@ public:
 //    TestGLCanvas *GetCanvas() { return m_canvas; }
 
 protected:
+	wxBoxSizer* m_videoControlSizer;
+	wxBoxSizer* m_assortedSizer;
 
-	PlotWindow *m_plotWindow;
+	wxBoxSizer* m_sizer;
 
-//	wxStaticText* label_1;
-//	wxTextCtrl* text_ctrl_1;
+	wxBoxSizer* m_vertSizer;
+	wxBoxSizer* m_horizSizer;
+
+	wxBoxSizer* m_canvasSizer;
+
+	wxBoxSizer* m_frameSizer;
+	wxBoxSizer* m_frameLabelSizer;
+
+	wxButton* m_newPlotButton;
+	wxButton* m_newPlotArrayButton;
+
+	wxStaticText* m_minFrameLabel;
+	wxStaticText* m_maxFrameLabel;
+	wxStaticText* m_curFrameLabel;
+
+
+	wxCheckBox* m_showCrossCheck;
+
+	wxSlider* m_frameSlider;
+
+	std::vector<PlotWindow*> m_plotWindows;
+
 	wxPanel* m_video_control_panel;
 
 	TestGLCanvas *m_canvas;
-//	TestGLCanvas *m_canvasZoomed;
 
 	wxStaticText* m_horizLabel;
 	PixelLine* m_horizPixels;
@@ -58,7 +91,7 @@ protected:
 
 	wxButton* m_play;
 	wxButton* m_pause;
-	wxButton* m_stop;
+	wxButton* m_step;
 	wxButton* m_rewind;
 
 	int m_frame_number;
@@ -69,14 +102,20 @@ protected:
 	image_wrapper       *g_image;	//< Image, possibly from camera and possibly computed
 	Controllable_Video  *g_video;	//< Video controls, if we have them
 
-	std::vector<float> m_focus;
+	wxBoxSizer* m_focusMethodSizer;
+	wxRadioButton* m_focusMethod0Radio;
+	wxRadioButton* m_focusMethod1Radio;
+	
+	wxBoxSizer* m_focusWeightSizer;
+	wxRadioButton* m_focusWeight0Radio;
+	wxRadioButton* m_focusWeight1Radio;
 
 	int m_channel;
 
 
 private:
 
-    void set_properties();
+    void set_layout();
     void do_layout();
 
 	DECLARE_EVENT_TABLE()

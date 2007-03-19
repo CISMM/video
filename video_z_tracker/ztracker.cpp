@@ -8,33 +8,57 @@
 
 
 #include "ztracker.h"
+#include <string>
 
-// forward function declarations
+// forward declaration
 bool  get_camera(const char *type, base_camera_server **camera, Controllable_Video **video);
 
 
 // Application IDs used
-const static int MENU_PLAY = 100;
-const static int MENU_PAUSE = 101;
-const static int MENU_SINGLE = 102;
-const static int MENU_REWIND = 103;
+enum 
+{
+	PLAY = 100,
+	PAUSE,
+	SINGLE,
+	REWIND,
 
-const static int MENU_START_LOG = 104;
-const static int MENU_STOP_LOG = 105;
+	MENU_START_LOG,
+	MENU_STOP_LOG,
 
+	SHOW_CROSS,
+
+	NEW_PLOT,
+	NEW_PLOT_ARRAY,
+
+	FOCUS_METHOD,
+	FOCUS_WEIGHT,
+
+	LAST_LOCAL_ID
+};
 
 
 BEGIN_EVENT_TABLE(zTracker, wxFrame)
     EVT_MENU(wxID_OPEN, zTracker::OnMenuFileOpen)
     EVT_MENU(wxID_EXIT, zTracker::OnMenuFileExit)
-    EVT_MENU(wxID_HELP, zTracker::OnMenuHelpAbout)
-	EVT_MENU(MENU_PLAY, zTracker::OnMenuVideoPlay)
-	EVT_MENU(MENU_PAUSE, zTracker::OnMenuVideoPause)
-	EVT_MENU(MENU_SINGLE, zTracker::OnMenuVideoSingle)
-	EVT_MENU(MENU_REWIND, zTracker::OnMenuVideoRewind)
-	
+    EVT_MENU(wxID_HELP, zTracker::OnMenuHelpAbout)	
 	EVT_MENU(MENU_START_LOG, zTracker::OnMenuFocusStart)
 	EVT_MENU(MENU_STOP_LOG, zTracker::OnMenuFocusStop)
+
+	EVT_BUTTON(PLAY, zTracker::OnVideoPlay)
+	EVT_BUTTON(PAUSE, zTracker::OnVideoPause)
+	EVT_BUTTON(SINGLE, zTracker::OnVideoSingle)
+	EVT_BUTTON(REWIND, zTracker::OnVideoRewind)
+
+	EVT_SCROLL_THUMBTRACK(zTracker::OnFrameScroll)
+	// EVT_SCROLL_CHANGED will also take into account keyboard controlling of the
+	//		slider as well as clicking on the slider, but not at the current position
+	EVT_SCROLL_CHANGED(zTracker::OnFrameScroll) 
+
+	EVT_CHECKBOX(SHOW_CROSS, zTracker::OnCrossCheck)
+
+	EVT_BUTTON(NEW_PLOT, zTracker::OnNewPlot)
+	EVT_BUTTON(NEW_PLOT_ARRAY, zTracker::OnNewPlotArray)
+
 
 	EVT_IDLE(zTracker::Idle)
 END_EVENT_TABLE()
@@ -43,14 +67,13 @@ END_EVENT_TABLE()
 zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoint& pos, const wxSize& size, long style):
     wxFrame(parent, id, title, pos, size, wxDEFAULT_FRAME_STYLE)
 {
-
 	g_video = NULL;
 	g_camera = NULL;
 	g_image = NULL;
 
 	m_frame_number = -1;
 
-	m_channel = 0; // R
+	m_channel = 0;			// R
 
 	m_logging = false;
 
@@ -66,12 +89,6 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
     wxMenu *helpMenu = new wxMenu;
     helpMenu->Append(wxID_HELP, wxT("&About..."));
 
-	// Make the "Video" menu
-	wxMenu *videoMenu = new wxMenu;
-	videoMenu->Append(MENU_PLAY, wxT("&Play"));
-	videoMenu->Append(MENU_PAUSE, wxT("P&ause"));
-	videoMenu->Append(MENU_SINGLE, wxT("&Single step"));
-	videoMenu->Append(MENU_REWIND, wxT("&Rewind"));
 
 	// Make the "Focus" menu
 	wxMenu *focusMenu = new wxMenu;
@@ -82,24 +99,19 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 	// Make it happen!
     wxMenuBar *menuBar = new wxMenuBar;
     menuBar->Append(fileMenu, wxT("&File"));
-	menuBar->Append(videoMenu, wxT("&Video"));
 	menuBar->Append(focusMenu, wxT("F&ocus"));
     menuBar->Append(helpMenu, wxT("&Help"));
     SetMenuBar(menuBar);
 
-	CreateStatusBar(2);
+	CreateStatusBar(3);
 	SetStatusText(wxT("Z tracker operational"));
-
-
-//    panel_1 = new wxPanel(this, wxID_ANY);
-//    label_1 = new wxStaticText(panel_1, wxID_ANY, wxT("1111111111111111111111111111"));
-//    text_ctrl_1 = new wxTextCtrl(panel_1, wxID_ANY, wxT("2222222222222222222222222222222222222222222"), wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE|wxTE_RICH2|wxTE_AUTO_URL);
 
 	// to avoid assert failure from GLCanvas
 	this->Show();
 
 	m_canvas = new TestGLCanvas(this, wxID_ANY, wxDefaultPosition,
-        wxSize(348, 260), wxNO_BORDER);
+        wxSize(200, 200), wxNO_BORDER);
+
 /*
 	m_canvasZoomed = new TestGLCanvas(this, wxID_ANY, wxPoint(348,0),
         wxSize(174, 130), wxSUNKEN_BORDER);
@@ -112,10 +124,82 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 
 	m_canvas->SetVPixRef(m_vertPixels);
 	m_canvas->SetHPixRef(m_horizPixels);
-		
-	m_plotWindow = new PlotWindow(this, wxID_ANY, wxT("Focus measure curve"));
-
 	
+	m_frameSlider = new wxSlider(this, wxID_ANY, 0, 0, 299);
+
+	m_minFrameLabel = new wxStaticText(this, wxID_ANY, wxT("0"));
+	m_maxFrameLabel = new wxStaticText(this, wxID_ANY, wxT("max"));
+	m_curFrameLabel = new wxStaticText(this, wxID_ANY, wxT("cur"));
+
+	// Make all our sizers we'll need for a nice layout
+	m_frameSizer = new wxBoxSizer(wxVERTICAL);
+	m_frameLabelSizer = new wxBoxSizer(wxHORIZONTAL);
+	m_sizer = new wxBoxSizer(wxVERTICAL);
+	m_vertSizer = new wxBoxSizer(wxVERTICAL);
+	m_horizSizer = new wxBoxSizer(wxVERTICAL);
+	m_canvasSizer = new wxBoxSizer(wxHORIZONTAL);
+
+	m_frameSlider->Disable();
+
+	m_assortedSizer = new wxBoxSizer(wxHORIZONTAL);
+	m_videoControlSizer = new wxBoxSizer(wxHORIZONTAL);
+
+	m_play = new wxButton(this, PLAY, "play");
+	m_pause = new wxButton(this, PAUSE, "pause");
+	m_step = new wxButton(this, SINGLE, "single step");
+	m_rewind = new wxButton(this, REWIND, "rewind");
+
+	m_showCrossCheck = new wxCheckBox(this, SHOW_CROSS, "Show crosshairs");
+	m_showCrossCheck->SetValue(true);
+
+	m_newPlotButton = new wxButton(this, NEW_PLOT, "New plot window");	
+
+	m_newPlotArrayButton = new wxButton(this, NEW_PLOT_ARRAY, "plot array");
+
+
+	m_focusMethodSizer = new wxBoxSizer(wxVERTICAL);
+	m_focusMethod0Radio = new wxRadioButton(this, FOCUS_METHOD, "SMD", wxDefaultPosition, wxDefaultSize, wxRB_GROUP);
+	m_focusMethod1Radio = new wxRadioButton(this, FOCUS_METHOD, "scaled SMD");
+
+	m_focusWeightSizer = new wxBoxSizer(wxVERTICAL);
+	m_focusWeight0Radio = new wxRadioButton(this, FOCUS_WEIGHT, "Uniform", wxDefaultPosition, wxDefaultSize, wxRB_GROUP);
+	m_focusWeight1Radio = new wxRadioButton(this, FOCUS_WEIGHT, "Tent");
+
+
+
+
+
+
+
+	// ****************************************
+	// *** DO ALL INSTANTIATING BEFORE THIS ***
+	// ****************************************
+	set_layout();
+
+
+	// by default let's look for a simple directx camera
+	if (!get_camera("directx", &g_camera, &g_video)) 
+	{
+		fprintf(stderr,"Cannot open camera\n");
+		if (g_camera) { delete g_camera; g_camera = NULL; }
+		return;
+	}
+	else
+	{
+		m_frame_number = -1;
+
+		int width = g_camera->get_num_columns();
+		int height = g_camera->get_num_rows();
+
+		m_canvas->SetInput(g_camera);
+
+		m_canvas->SetSize(width, height);
+		m_canvas->SetMinSize(wxSize(width, height));
+
+		m_canvas->SetNumBits(8);
+	}
+
+
 	do_layout();
 }
 
@@ -123,7 +207,7 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 // File|Open... command
 void zTracker::OnMenuFileOpen( wxCommandEvent& WXUNUSED(event) )
 {
-	
+
     wxString filename = wxFileSelector(wxT("Select input image."), wxT(""), wxT(""), wxT(""),
         wxT("All files (*.*)|*.*"),
 		wxFD_OPEN);
@@ -136,28 +220,45 @@ void zTracker::OnMenuFileOpen( wxCommandEvent& WXUNUSED(event) )
 		{
 			fprintf(stderr,"Cannot open camera\n");
 			if (g_camera) { delete g_camera; g_camera = NULL; }
-			exit(-1);
-		}
-		else
-		{
-			m_frame_number = -1;
+			return;
 		}
 
-		// let the canvas handle this memory management!
-//		FileToTexture* temp = new FileToTexture(filename);
-
-		//	temp->write_to_tiff_file("test.tiff", 1, 0, true);
+		m_frame_number = -1;
 
 		int width = g_camera->get_num_columns();
 		int height = g_camera->get_num_rows();
 
-//		delete m_canvas;
-//		m_canvas = new TestGLCanvas(this, wxID_ANY, wxDefaultPosition,
-//			wxSize(width, height), wxNO_BORDER);
 		m_canvas->SetInput(g_camera);
-//		m_canvas->SetHPixRef(m_horizPixels);
-//		m_canvas->SetVPixRef(m_vertPixels);
+
 		m_canvas->SetSize(width, height);
+		m_canvas->SetMinSize(wxSize(width, height));
+
+		m_canvas->SetNumBits(16);
+
+		m_minFrameLabel->SetLabel(wxT("0"));
+		m_maxFrameLabel->SetLabel(wxT("max"));
+
+		int numFrames = g_video->get_num_frames();
+		if (numFrames >= 0)
+		{
+			m_frameSlider->Enable();
+
+			m_frameSlider->SetMax(numFrames - 1);
+			char* maxFrame = new char[8];
+			itoa(numFrames - 1, maxFrame, 10);
+			m_maxFrameLabel->SetLabel(maxFrame);
+			delete maxFrame;
+		}
+		else
+		{
+			m_frameSlider->Disable();
+		}
+
+		for (int i = 0; i < m_plotWindows.size(); ++i)
+		{
+			m_plotWindows[i]->Destroy();
+		}
+		m_plotWindows.clear();
 
 		do_layout();
 	}
@@ -177,31 +278,29 @@ void zTracker::OnMenuHelpAbout( wxCommandEvent& WXUNUSED(event) )
 }
 
 
-void zTracker::OnMenuVideoPlay( wxCommandEvent& WXUNUSED(event) )
+void zTracker::OnVideoPlay( wxCommandEvent& WXUNUSED(event) )
 {
 	if (g_video != NULL)
 		g_video->play();
 }
 
-void zTracker::OnMenuVideoPause( wxCommandEvent& WXUNUSED(event) )
+void zTracker::OnVideoPause( wxCommandEvent& WXUNUSED(event) )
 {
 	if (g_video != NULL)
 		g_video->pause();
 }
 
-void zTracker::OnMenuVideoSingle( wxCommandEvent& WXUNUSED(event) )
+void zTracker::OnVideoSingle( wxCommandEvent& WXUNUSED(event) )
 {
 	if (g_video != NULL)
 		g_video->single_step();
 }
 
-void zTracker::OnMenuVideoRewind( wxCommandEvent& WXUNUSED(event) )
+void zTracker::OnVideoRewind( wxCommandEvent& WXUNUSED(event) )
 {
 	if (g_video != NULL)
 		g_video->rewind();
 	m_frame_number = -1;
-
-	m_focus.clear();
 
 	m_logging = false;
 }
@@ -210,7 +309,11 @@ void zTracker::OnMenuFocusStart( wxCommandEvent& WXUNUSED(event) )
 {
 	if (!m_logging)
 	{
-		m_focus.clear();
+		for (int i = 0; i < m_plotWindows.size(); ++i)
+		{
+			m_plotWindows[i]->vals.clear();
+			m_plotWindows[i]->SetOffset(m_frame_number);
+		}
 	}
 	m_logging = true;
 	printf("Logging...\n");
@@ -220,27 +323,137 @@ void zTracker::OnMenuFocusStop( wxCommandEvent& WXUNUSED(event) )
 {
 	printf("Stopped logging...\n");
 
-	m_focus.clear();
-
 	m_logging = false;
+}
+
+
+void zTracker::OnFrameScroll(wxScrollEvent& event)
+{
+	m_logging = false; // stop logging since we're jumping anyway
+
+	int curFrame = m_frameSlider->GetValue();
+	if (g_video->jump_to_frame(curFrame))
+	{
+		m_frame_number = curFrame - 1;
+	}
+}
+
+void zTracker::OnResize(wxSizeEvent& event)
+{
+	// nothing here...wxwindows wasn't happy with this event--not sure why...
+}
+
+void zTracker::OnCrossCheck(wxCommandEvent& WXUNUSED(event))
+{
+	m_canvas->SetShowCross(m_showCrossCheck->IsChecked());
+}
+
+void zTracker::OnNewPlot(wxCommandEvent& event)
+{
+	std::string title = "";
+	int method = 0, weight = 0;
+
+	if (m_focusMethod0Radio->GetValue())
+	{
+		method = 0;
+		title += "SMD, ";
+	}
+	if (m_focusMethod1Radio->GetValue())
+	{
+		method = 1;
+		title += "scaled SMD, ";
+	}
+
+	if (m_focusWeight0Radio->GetValue())
+	{
+		weight = 0;
+		title += "Uniform";
+	}
+	if (m_focusWeight1Radio->GetValue())
+	{
+		weight = 1;
+		title += "Tent";
+	}
+
+	PlotWindow* temp = new PlotWindow(this, wxID_ANY, title.c_str());
+	temp->SetMethod(method);
+	temp->SetWeightedMethod(weight);
+	m_plotWindows.push_back(temp);
+}
+
+void zTracker::OnNewPlotArray(wxCommandEvent& event)
+{
+	wxPoint pos = this->GetPosition();
+	pos = pos + wxPoint(this->GetSize().x, 0);
+
+	std::string title = "";
+	int method = 0, weight = 0;
+	for (method = 0; method <= 1; ++method)
+	{
+		PlotWindow* temp;
+		for (weight = 0; weight <= 1; ++weight)
+		{
+			if (method == 0)
+				title = "SMD, ";
+			else if (method == 1)
+				title = "scaled SMD, ";
+
+			if (weight == 0)
+				title += "Uniform";
+			else if (weight == 1)
+				title += "Tent";
+
+			temp = new PlotWindow(this, wxID_ANY, title.c_str(), pos);
+			temp->SetMethod(method);
+			temp->SetWeightedMethod(weight);
+			m_plotWindows.push_back(temp);
+
+			pos = pos + wxPoint(temp->GetSize().x, 0);
+		}
+		pos = pos - wxPoint(weight * temp->GetSize().x, 0);
+		pos = pos + wxPoint(0, temp->GetSize().y);
+	}
 }
 
 void zTracker::Idle(wxIdleEvent& WXUNUSED(event))
 {
+	if (m_logging)
+	{
+		SetStatusText("Logging...", 1);
+	}
+	else
+	{
+		SetStatusText("", 1);
+	}
+
+
 	if (g_camera != NULL)
 	{
 		if (g_camera->read_image_to_memory()) 
 		{
 			++m_frame_number;
-			printf("frame: %i\n", m_frame_number);
+			for (int i = 0; i < m_plotWindows.size(); ++i)
+			{
+				m_plotWindows[i]->SetIndicator(m_frame_number);
+			}
 
+			char* frame = new char[8];
+			itoa(m_frame_number, frame, 10);
+			m_curFrameLabel->SetLabel(frame);
+			m_frameSlider->SetValue(m_frame_number);
+			delete frame;
 
 			if (m_logging)
 			{
-				float smd1 = m_horizPixels->calcSMD(m_channel);
-				float smd2 = m_vertPixels->calcSMD(m_channel);
-				m_focus.push_back(smd1 + smd2);
-				m_plotWindow->setVals(m_focus);
+				float smd1, smd2;
+				for (int i = 0; i < m_plotWindows.size(); ++i)
+				{
+					smd1 = m_horizPixels->calcFocus(m_channel, m_plotWindows[i]->method, m_plotWindows[i]->weightedMethod);
+					smd2 = m_vertPixels->calcFocus(m_channel, m_plotWindows[i]->method, m_plotWindows[i]->weightedMethod);
+					m_plotWindows[i]->vals.push_back(smd1 + smd2);
+					m_plotWindows[i]->Update();
+					printf("%i: (%f)\n", m_frame_number, smd1 + smd2);
+				}
 			}
 		}
 		else
@@ -254,38 +467,74 @@ void zTracker::Idle(wxIdleEvent& WXUNUSED(event))
 		m_canvas->Refresh();
 	}
 
-	if (m_plotWindow != NULL)
+	for (int i = 0; i < m_plotWindows.size(); ++i)
 	{
-		m_plotWindow->Refresh();
+		if (m_plotWindows[i] != NULL)
+		{
+			m_plotWindows[i]->Refresh();
+		}
 	}
 }
 
 
-
-void zTracker::set_properties()
+// only called once at end of constructor
+void zTracker::set_layout()
 {
-    //SetTitle(wxT("Hello World of Wx"));
-//	label_1->SetMinSize(wxSize(250, 25));
+	m_vertSizer->Add(m_vertLabel, 0, wxALIGN_CENTER | wxALL, 3);
+	m_vertSizer->Add(m_vertPixels, 0, wxALIGN_CENTER | wxALL, 3);
+
+	m_canvasSizer->Add(m_canvas, 0, wxALL, 3);
+	m_canvasSizer->Add(m_vertSizer, 0, 0, 0);
+
+	m_horizSizer->Add(m_horizLabel, 0, wxALIGN_CENTER | wxALL, 3);
+	m_horizSizer->Add(m_horizPixels, 0, wxALIGN_CENTER | wxALL, 3);
+
+	m_frameLabelSizer->Add(m_minFrameLabel, 0, wxLEFT | wxRIGHT, 3);
+	m_frameLabelSizer->Add(0, 0, 1);
+	m_frameLabelSizer->Add(m_curFrameLabel, 0, 0, 0);
+	m_frameLabelSizer->Add(0, 0, 1);
+	m_frameLabelSizer->Add(m_maxFrameLabel, 0, wxLEFT | wxRIGHT, 3);
+
+	m_frameSizer->Add(m_frameSlider, 0, wxEXPAND | wxLEFT | wxRIGHT, 3);
+	m_frameSizer->Add(m_frameLabelSizer, 0, wxEXPAND | wxLEFT | wxRIGHT, 3);
+
+	m_videoControlSizer->Add(0, 0, 1);
+	m_videoControlSizer->Add(m_play, 0, wxEXPAND | wxTOP | wxBOTTOM, 3);
+	m_videoControlSizer->Add(m_step, 0, wxEXPAND | wxTOP | wxBOTTOM, 3);
+	m_videoControlSizer->Add(m_pause, 0, wxEXPAND | wxTOP | wxBOTTOM, 3);
+	m_videoControlSizer->Add(m_rewind, 0, wxEXPAND | wxTOP | wxBOTTOM, 3);
+	m_videoControlSizer->Add(0, 0, 1);
+
+	m_focusMethodSizer->Add(new wxStaticText(this, wxID_ANY, "Focus Method"));
+	m_focusMethodSizer->Add(m_focusMethod0Radio, 0, 0);
+	m_focusMethodSizer->Add(m_focusMethod1Radio, 0, 0);
+
+	m_focusWeightSizer->Add(new wxStaticText(this, wxID_ANY, "Focus Weighting"));
+	m_focusWeightSizer->Add(m_focusWeight0Radio, 0, 0);
+	m_focusWeightSizer->Add(m_focusWeight1Radio, 0, 0);
+
+	m_assortedSizer->Add(m_showCrossCheck, 0, wxALL, 3);
+	m_assortedSizer->Add(m_newPlotButton, 0, wxALL, 3);
+	m_assortedSizer->Add(m_focusMethodSizer, 0, wxALL, 3);
+	m_assortedSizer->Add(m_focusWeightSizer, 0, wxALL, 3);
+	m_assortedSizer->Add(m_newPlotArrayButton, 0, wxALL, 3);
+
+	m_sizer->Add(m_canvasSizer, 0, 0, 0);
+	m_sizer->Add(m_horizSizer, 0, wxLEFT, 3);
+	m_sizer->Add(m_frameSizer, 0, wxEXPAND, 0);
+	m_sizer->Add(m_videoControlSizer, 0, wxEXPAND | wxLEFT | wxRIGHT, 3);
+	m_sizer->Add(m_assortedSizer, 0, 0, 0);
 }
 
-
+// updates the layout whenever things change
 void zTracker::do_layout()
 {
-	int x, y, w, h;
-	m_canvas->GetPosition(&x, &y);
-	m_canvas->GetClientSize(&w, &h);
+	m_sizer->SetSizeHints(this);
+	SetSizer(m_sizer);
 
-	m_horizLabel->SetPosition(wxPoint(x + 10, y + h + 5));
-	m_horizPixels->SetPosition(wxPoint(x + 5, y + h + 20));
-
-	m_vertLabel->SetPosition(wxPoint(x + w + 5, y + 5));
-	m_vertPixels->SetPosition(wxPoint(x + w + 20, y + 20)); 
-
-	SetSize(w + 60, h + 150);
-
-	m_plotWindow->SetPosition(this->GetPosition() + wxPoint(this->GetSize().x, 0));
+	// set the seperate plot window position next to the main window
+	//m_plotWindow->SetPosition(this->GetPosition() + wxPoint(this->GetSize().x, 0));
 }
-
 
 
 
@@ -293,7 +542,7 @@ void zTracker::do_layout()
 //  camera we're trying to open.
 bool  get_camera(const char *type, base_camera_server **camera, Controllable_Video **video)
 {
-#ifdef VST_USE_ROPER
+#ifdef VZT_USE_ROPER
   if (!strcmp(type, "roper")) {
     // XXX Starts with binning of 2 to get the image size down so that
     // it fits on the screen.
@@ -302,7 +551,7 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     g_camera_bit_depth = 12;
   } else
 #endif  
-#ifdef VST_USE_COOKE
+#ifdef VZT_USE_COOKE
   if (!strcmp(type, "cooke")) {
     // XXX Starts with binning of 2 to get the image size down so that
     // it fits on the screen.
@@ -311,7 +560,7 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     g_camera_bit_depth = 16;
   } else
 #endif  
-#ifdef	VST_USE_DIAGINC
+#ifdef	VZT_USE_DIAGINC
   if (!strcmp(type, "diaginc")) {
     // XXX Starts with binning of 2 to get the image size down so that
     // it fits on the screen.
@@ -321,13 +570,13 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     g_camera_bit_depth = 12;
   } else
 #endif  
-#ifdef	VST_USE_EDT
+#ifdef	VZT_USE_EDT
   if (!strcmp(type, "edt")) {
     edt_server *r = new edt_server();
     *camera = r;
   } else
 #endif  
-#ifdef	VST_USE_DIRECTX
+#ifdef	VZT_USE_DIRECTX
   if (!strcmp(type, "directx")) {
     // Passing width and height as zero leaves it open to whatever the camera has
     directx_camera_server *d = new directx_camera_server(1,0,0);	// Use camera #1 (first one found)
@@ -340,7 +589,7 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
   // to read from that device.
   } else
 #endif  
-#ifdef	VST_USE_SEM
+#ifdef	VZT_USE_SEM
   if (!strncmp(type, "SEM@", 4)) {
     SEM_Controllable_Video  *s = new SEM_Controllable_Video (type);
     *camera = s;
@@ -365,7 +614,7 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
 
     // If the extension is ".spe" then we assume it is a Roper file and open
     // it that way.
-#ifdef	VST_USE_ROPER
+#ifdef	VZT_USE_ROPER
     } else if ( (strcmp(".spe", &type[strlen(type)-4]) == 0) ||
 		(strcmp(".SPE", &type[strlen(type)-4]) == 0) ) {
       SPE_Controllable_Video *f = new SPE_Controllable_Video(type);
@@ -377,7 +626,7 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     // with an SEM device in it, so we form the name of the device and open
     // a VRPN Remote object to handle it.
 #endif
-#ifdef	VST_USE_SEM
+#ifdef	VZT_USE_SEM
     } else if (strcmp(".sem", &type[strlen(type)-4]) == 0) {
       char *name;
       if ( NULL == (name = new char[strlen(type) + 20]) ) {
@@ -419,7 +668,7 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     // how to open.
 #endif
     } else {
-#ifdef	VST_USE_DIRECTX
+#ifdef	VZT_USE_DIRECTX
       Directx_Controllable_Video *f = new Directx_Controllable_Video(type);
       *camera = f;
       *video = f;

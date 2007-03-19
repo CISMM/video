@@ -28,6 +28,10 @@ public:
 	void SetHPixRef(PixelLine* ref)	{	m_hPixRef = ref;	}
 	void SetVPixRef(PixelLine* ref)	{	m_vPixRef = ref;	}
 
+	void SetNumBits(int bits) {	m_bits = bits;	}
+
+	void SetShowCross(bool show) {	m_showCross = show;	}
+
 protected:
     void OnPaint(wxPaintEvent& event);
     void OnSize(wxSizeEvent& event);
@@ -43,6 +47,8 @@ protected:
 	PixelLine* m_hPixRef;
 	PixelLine* m_vPixRef;
 
+	bool m_showCross;
+
 private:
 
 	int m_mouseX, m_mouseY;
@@ -50,6 +56,7 @@ private:
 	float m_radius;
 	int m_pixelRadius;
 
+	int m_bits;
 
 
 

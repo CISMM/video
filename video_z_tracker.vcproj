@@ -39,7 +39,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;..\wxMSW-2.7.0-1\wxWidgets-2.7.0-1\include&quot;;&quot;..\wxMSW-2.7.0-1\wxWidgets-2.7.0-1\include\msvc&quot;;.\;..\vrpn"
+				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;C:\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;&quot;..\wxMSW-2.7.0-1\wxWidgets-2.7.0-1\include&quot;;&quot;..\wxMSW-2.7.0-1\wxWidgets-2.7.0-1\include\msvc&quot;;.\;..\vrpn"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -116,7 +116,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="&quot;..\wxMSW-2.7.0-1\wxWidgets-2.7.0-1\include&quot;;&quot;..\wxMSW-2.7.0-1\wxWidgets-2.7.0-1\include\msvc&quot;;.\;..\vrpn"
+				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;C:\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;&quot;..\wxMSW-2.7.0-1\wxWidgets-2.7.0-1\include&quot;;&quot;..\wxMSW-2.7.0-1\wxWidgets-2.7.0-1\include\msvc&quot;;.\;..\vrpn"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="2"
 				WarningLevel="3"
@@ -190,6 +190,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\video_z_tracker\Stage.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\video_z_tracker\TestGLCanvas.cpp"
 				>
 			</File>
@@ -221,6 +225,10 @@
 			</File>
 			<File
 				RelativePath=".\video_z_tracker\PlotWindow.h"
+				>
+			</File>
+			<File
+				RelativePath=".\video_z_tracker\Stage.h"
 				>
 			</File>
 			<File

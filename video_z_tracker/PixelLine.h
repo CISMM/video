@@ -22,7 +22,7 @@ public:
     ~PixelLine();
 
 
-	float calcSMD(int channel);
+	float calcFocus(int channel = 0, int method = 0, int weightedMethod = 0);
 
 
 	// the RGB values for the pixel line

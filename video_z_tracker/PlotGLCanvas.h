@@ -25,6 +25,10 @@ public:
 	void setMin(float m) { m_min = m; }
 	void setMax(float m) { m_min = m; }
 
+	void setIndicator(int index) {	m_indicator = index;	}
+
+	void setOffset(int offset) {	m_offset = offset;	}
+
 protected:
     void OnPaint(wxPaintEvent& event);
     void OnSize(wxSizeEvent& event);
@@ -35,6 +39,10 @@ protected:
 	int m_num;
 
 	float m_min, m_max;
+
+	int m_indicator;
+
+	int m_offset;
 
 private:
 

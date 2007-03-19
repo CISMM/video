@@ -88,6 +88,11 @@ void PlotGLCanvas::OnPaint( wxPaintEvent& WXUNUSED(event) )
 			glVertex3f((i + 1) * dx, m_vals[i + 1] * scale, 0);
 		}
 
+		// draw our indicator line
+		glColor3f(1, 0, 0);
+		glVertex3f((m_indicator - m_offset) * dx, 0, 0);
+		glVertex3f((m_indicator - m_offset) * dx, 1, 0);		
+
 		glEnd();
 	}
 
