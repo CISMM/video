@@ -1,3 +1,11 @@
+2007-03-23  Ryan Schubert  <res@cs.unc.edu>
+
+	* Stage simulation is generally working now, when video state is PAUSED.
+	* zTracker.* : GUI updates for stage z position, zVelocity, and
+		auto-tracking checkbox
+	* zTracker.* : Added simple auto-tracking for uncalibrated case ...
+		just climbs focus measure gradient (with some hysteresis)
+
 2007-03-18  Ryan Schubert  <res@cs.unc.edu>
 
 	* Stage.* : Added to project.

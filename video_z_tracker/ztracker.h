@@ -18,7 +18,18 @@
 #include "PixelLine.h"
 #include "PlotWindow.h"
 
+#include "Stage.h"
+
 #include <vector>
+
+
+enum VideoMode
+{
+	PLAYING,
+	PAUSED,
+	SINGLE_STEPPING
+};
+
 
 
 class zTracker : public wxFrame {
@@ -46,10 +57,13 @@ public:
 	
 	void OnNewPlotArray(wxCommandEvent& event);
 
+	void On8BitsCheck(wxCommandEvent& event);
+
+	void OnDo(wxCommandEvent& event);
+
 	void Idle(wxIdleEvent& event);
 
-//	void SetCanvas( TestGLCanvas *canvas ) { m_canvas = canvas; }
-//    TestGLCanvas *GetCanvas() { return m_canvas; }
+	void CalcFocus();
 
 protected:
 	wxBoxSizer* m_videoControlSizer;
@@ -96,6 +110,8 @@ protected:
 
 	int m_frame_number;
 
+	VideoMode m_videoMode;
+
 	bool m_logging;
 
 	base_camera_server  *g_camera;	//< Camera used to get an image
@@ -110,8 +126,28 @@ protected:
 	wxRadioButton* m_focusWeight0Radio;
 	wxRadioButton* m_focusWeight1Radio;
 
+	wxCheckBox* m_8Bits;
+
+	wxButton* m_Do;
+
 	int m_channel;
 
+	Stage m_stage;
+
+	float m_lastFocus;
+
+	wxBoxSizer* m_zSizer;
+	wxStaticText* m_zLabel;
+	wxTextCtrl* m_zText;
+	wxTextCtrl* m_zUpText;
+	wxTextCtrl* m_zVelText;
+	wxTextCtrl* m_zDownText;
+	
+	bool m_aboveTarget; // ***
+	bool m_goingUp; // ***
+	float m_zVel;
+
+	wxCheckBox* m_tracking;
 
 private:
 

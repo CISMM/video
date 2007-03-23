@@ -33,6 +33,10 @@ enum
 	FOCUS_METHOD,
 	FOCUS_WEIGHT,
 
+	BIT_DEPTH,
+
+	DO,
+
 	LAST_LOCAL_ID
 };
 
@@ -59,6 +63,9 @@ BEGIN_EVENT_TABLE(zTracker, wxFrame)
 	EVT_BUTTON(NEW_PLOT, zTracker::OnNewPlot)
 	EVT_BUTTON(NEW_PLOT_ARRAY, zTracker::OnNewPlotArray)
 
+	EVT_CHECKBOX(BIT_DEPTH, zTracker::On8BitsCheck)
+
+	EVT_BUTTON(DO, zTracker::OnDo)
 
 	EVT_IDLE(zTracker::Idle)
 END_EVENT_TABLE()
@@ -166,6 +173,24 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 	m_focusWeight1Radio = new wxRadioButton(this, FOCUS_WEIGHT, "Tent");
 
 
+	m_8Bits = new wxCheckBox(this, BIT_DEPTH, "8 bits");
+	m_8Bits->SetValue(false);
+
+
+	m_Do = new wxButton(this, DO, "Do!");
+
+	m_tracking = new wxCheckBox(this, wxID_ANY, "Auto-track");
+	m_goingUp = false;
+	m_zVel = 0;
+
+
+	m_zSizer = new wxBoxSizer(wxVERTICAL);
+	m_zLabel = new wxStaticText(this, wxID_ANY, "Z");
+	m_zText = new wxTextCtrl(this, wxID_ANY, "0", wxDefaultPosition, wxSize(40, 20), wxTE_CENTER | wxTE_READONLY);
+	m_zUpText = new wxTextCtrl(this, wxID_ANY, " ", wxDefaultPosition, wxSize(20, 20), wxTE_CENTER | wxTE_READONLY);
+	m_zVelText = new wxTextCtrl(this, wxID_ANY, "0", wxDefaultPosition, wxSize(50, 20), wxTE_CENTER | wxTE_READONLY);
+	m_zDownText = new wxTextCtrl(this, wxID_ANY, " ", wxDefaultPosition, wxSize(20, 20), wxTE_CENTER | wxTE_READONLY);
+
 
 
 
@@ -197,6 +222,7 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 		m_canvas->SetMinSize(wxSize(width, height));
 
 		m_canvas->SetNumBits(8);
+		m_8Bits->SetValue(true);
 	}
 
 
@@ -234,6 +260,7 @@ void zTracker::OnMenuFileOpen( wxCommandEvent& WXUNUSED(event) )
 		m_canvas->SetMinSize(wxSize(width, height));
 
 		m_canvas->SetNumBits(16);
+		m_8Bits->SetValue(false);
 
 		m_minFrameLabel->SetLabel(wxT("0"));
 		m_maxFrameLabel->SetLabel(wxT("max"));
@@ -282,18 +309,21 @@ void zTracker::OnVideoPlay( wxCommandEvent& WXUNUSED(event) )
 {
 	if (g_video != NULL)
 		g_video->play();
+	m_videoMode = PLAYING;
 }
 
 void zTracker::OnVideoPause( wxCommandEvent& WXUNUSED(event) )
 {
 	if (g_video != NULL)
 		g_video->pause();
+	m_videoMode = PAUSED;
 }
 
 void zTracker::OnVideoSingle( wxCommandEvent& WXUNUSED(event) )
 {
 	if (g_video != NULL)
 		g_video->single_step();
+	m_videoMode = SINGLE_STEPPING;
 }
 
 void zTracker::OnVideoRewind( wxCommandEvent& WXUNUSED(event) )
@@ -302,6 +332,12 @@ void zTracker::OnVideoRewind( wxCommandEvent& WXUNUSED(event) )
 		g_video->rewind();
 	m_frame_number = -1;
 
+	float x, y, z;
+	m_stage.GetPosition(x, y, z);
+	m_stage.SetPosition(x, y, m_frame_number / 10.0f);
+
+
+	m_videoMode = SINGLE_STEPPING;
 	m_logging = false;
 }
 
@@ -336,6 +372,10 @@ void zTracker::OnFrameScroll(wxScrollEvent& event)
 	{
 		m_frame_number = curFrame - 1;
 	}
+	float x, y, z;
+	m_stage.GetPosition(x, y, z);
+	m_stage.SetPosition(x, y, m_frame_number / 10.0f);
+
 }
 
 void zTracker::OnResize(wxSizeEvent& event)
@@ -346,6 +386,18 @@ void zTracker::OnResize(wxSizeEvent& event)
 void zTracker::OnCrossCheck(wxCommandEvent& WXUNUSED(event))
 {
 	m_canvas->SetShowCross(m_showCrossCheck->IsChecked());
+}
+
+void zTracker::On8BitsCheck(wxCommandEvent& WXUNUSED(event))
+{
+	if (m_8Bits->GetValue())
+	{
+		m_canvas->SetNumBits(8);
+	}
+	else
+	{
+		m_canvas->SetNumBits(16);
+	}
 }
 
 void zTracker::OnNewPlot(wxCommandEvent& event)
@@ -415,8 +467,102 @@ void zTracker::OnNewPlotArray(wxCommandEvent& event)
 	}
 }
 
+void zTracker::CalcFocus()
+{
+	float smd1, smd2;
+
+	if (m_logging)
+	{
+		for (int i = 0; i < m_plotWindows.size(); ++i)
+		{
+			smd1 = m_horizPixels->calcFocus(m_channel, m_plotWindows[i]->method, m_plotWindows[i]->weightedMethod);
+			smd2 = m_vertPixels->calcFocus(m_channel, m_plotWindows[i]->method, m_plotWindows[i]->weightedMethod);
+			m_plotWindows[i]->vals.push_back(smd1 + smd2);
+			m_plotWindows[i]->Update();
+//			printf("%i: (%f)\n", m_frame_number, smd1 + smd2);
+		}
+	}
+
+	int method = 0, weight = 0;
+	if (m_focusMethod0Radio->GetValue())
+		method = 0;
+	if (m_focusMethod1Radio->GetValue())
+		method = 1;
+
+	if (m_focusWeight0Radio->GetValue())
+		weight = 0;
+	if (m_focusWeight1Radio->GetValue())
+		weight = 1;
+
+	smd1 = m_horizPixels->calcFocus(m_channel, method, weight);
+	smd2 = m_vertPixels->calcFocus(m_channel, method, weight);
+	float focusMeasure = smd1 + smd2;
+
+	float stageX, stageY, stageZ;
+	m_stage.GetPosition(stageX, stageY, stageZ);
+
+	if (m_tracking->GetValue()) // if we're doing active, automatic tracking
+	{
+		float delta = focusMeasure - m_lastFocus;
+			
+		if (delta > 0)// || abs(delta) < focusMeasure / 100.0f)
+		{
+			// we seem to have gone in the right direction!
+			if (m_zVel > 0)
+				m_zVel += 0.01;
+			else
+				m_zVel -= 0.01;
+		}
+		else if (delta < 0)
+		{
+			// we got worse!
+			if (m_zVel > 0)
+				m_zVel -= 0.02;
+			else
+				m_zVel += 0.02;
+		}
+		else
+		{
+			m_zVel += 0.001 * ((rand()/(float)RAND_MAX) - 0.5); // move a bit just in case :)
+		}
+
+//		printf("\tdelta = %f\t", delta);
+//		printf("m_zVel = %f\n", m_zVel);
+		if (m_zVel > 0)
+		{
+			m_zUpText->SetValue("/\\");
+			m_zDownText->SetValue("");
+		}
+		else if (m_zVel < 0)
+		{
+			m_zUpText->SetValue("");
+			m_zDownText->SetValue("\\/");
+		}
+		else
+		{
+			m_zUpText->SetValue("");
+			m_zDownText->SetValue("");
+		}
+
+
+		m_stage.MoveTo(stageX, stageY, stageZ + m_zVel);
+
+	}
+
+	m_lastFocus = focusMeasure;
+}
+
+void zTracker::OnDo(wxCommandEvent& event)
+{
+	float stageX, stageY, stageZ;
+	m_stage.GetTargetPosition(stageX, stageY, stageZ);
+	m_stage.MoveTo(stageX, stageY, stageZ + 1);
+}
+
 void zTracker::Idle(wxIdleEvent& WXUNUSED(event))
 {
+	m_stage.Update();
+
 	if (m_logging)
 	{
 		SetStatusText("Logging...", 1);
@@ -426,16 +572,45 @@ void zTracker::Idle(wxIdleEvent& WXUNUSED(event))
 		SetStatusText("", 1);
 	}
 
+	if (m_tracking->GetValue())
+	{
+		m_videoMode = PAUSED; // stop 'playing' or 'single stepping' if we're auto-tracking
+	}
+
+
+	float x, y, z;
+	m_stage.GetPosition(x, y, z);
+	// update "image" (i.e. frame_number) based on z position of stage! (unless we're playing/stepping)
+	if (m_videoMode == PAUSED)
+	{
+		m_frame_number = z * 10;
+	}
+
+
+	char buffer[20] = "";
+	sprintf(buffer, "%.4f", z);	
+	m_zText->SetValue(buffer);
+	sprintf(buffer, "%.4f", m_zVel);	
+	m_zVelText->SetValue(buffer);
+
+	if (g_video != NULL && m_videoMode != PAUSED)
+		g_video->jump_to_frame(m_frame_number - 1);
 
 	if (g_camera != NULL)
 	{
 		if (g_camera->read_image_to_memory()) 
 		{
-			++m_frame_number;
+			if (m_videoMode == SINGLE_STEPPING || m_videoMode == PLAYING)
+			{
+				++m_frame_number;
+				m_stage.SetPosition(x, y, m_frame_number / 10.0f);
+			}
 			for (int i = 0; i < m_plotWindows.size(); ++i)
 			{
 				m_plotWindows[i]->SetIndicator(m_frame_number);
 			}
+
+			printf("frame: %i\n", m_frame_number);
 
 			char* frame = new char[8];
 			itoa(m_frame_number, frame, 10);
@@ -443,22 +618,20 @@ void zTracker::Idle(wxIdleEvent& WXUNUSED(event))
 			m_frameSlider->SetValue(m_frame_number);
 			delete frame;
 
-			if (m_logging)
-			{
-				float smd1, smd2;
-				for (int i = 0; i < m_plotWindows.size(); ++i)
-				{
-					smd1 = m_horizPixels->calcFocus(m_channel, m_plotWindows[i]->method, m_plotWindows[i]->weightedMethod);
-					smd2 = m_vertPixels->calcFocus(m_channel, m_plotWindows[i]->method, m_plotWindows[i]->weightedMethod);
-					m_plotWindows[i]->vals.push_back(smd1 + smd2);
-					m_plotWindows[i]->Update();
-					printf("%i: (%f)\n", m_frame_number, smd1 + smd2);
-				}
-			}
+			CalcFocus();
+
+			if (m_videoMode == SINGLE_STEPPING)
+				m_videoMode = PAUSED;
 		}
 		else
 		{
 			//fprintf(stderr, "Something incredibly wrong happened in zTracker::Idle...\t\n");
+			if (m_videoMode == PLAYING || m_videoMode == SINGLE_STEPPING)
+			{
+				CalcFocus();
+				m_logging = false;
+				m_videoMode = PAUSED;
+			}
 		}
 	}
 
@@ -483,8 +656,15 @@ void zTracker::set_layout()
 	m_vertSizer->Add(m_vertLabel, 0, wxALIGN_CENTER | wxALL, 3);
 	m_vertSizer->Add(m_vertPixels, 0, wxALIGN_CENTER | wxALL, 3);
 
+	m_zSizer->Add(m_zLabel, 0, wxALIGN_CENTER);
+	m_zSizer->Add(m_zText, 0, wxALIGN_CENTER);
+	m_zSizer->Add(m_zUpText, 0, wxALIGN_CENTER);
+	m_zSizer->Add(m_zVelText, 0, wxALIGN_CENTER);
+	m_zSizer->Add(m_zDownText, 0, wxALIGN_CENTER);
+
 	m_canvasSizer->Add(m_canvas, 0, wxALL, 3);
 	m_canvasSizer->Add(m_vertSizer, 0, 0, 0);
+	m_canvasSizer->Add(m_zSizer, 0, wxALL, 3);
 
 	m_horizSizer->Add(m_horizLabel, 0, wxALIGN_CENTER | wxALL, 3);
 	m_horizSizer->Add(m_horizPixels, 0, wxALIGN_CENTER | wxALL, 3);
@@ -518,6 +698,9 @@ void zTracker::set_layout()
 	m_assortedSizer->Add(m_focusMethodSizer, 0, wxALL, 3);
 	m_assortedSizer->Add(m_focusWeightSizer, 0, wxALL, 3);
 	m_assortedSizer->Add(m_newPlotArrayButton, 0, wxALL, 3);
+	m_assortedSizer->Add(m_8Bits, 0, wxALL, 3);
+	m_assortedSizer->Add(m_Do, 0, wxALL, 3);
+	m_assortedSizer->Add(m_tracking, 0, wxALL, 3);
 
 	m_sizer->Add(m_canvasSizer, 0, 0, 0);
 	m_sizer->Add(m_horizSizer, 0, wxLEFT, 3);
