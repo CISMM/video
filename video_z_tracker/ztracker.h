@@ -18,7 +18,7 @@
 #include "PixelLine.h"
 #include "PlotWindow.h"
 
-#include "wxDoubleSlider.h"
+//#include "wxDoubleSlider.h"
 
 #include "Stage.h"
 
