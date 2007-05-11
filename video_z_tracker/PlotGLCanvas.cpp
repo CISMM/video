@@ -21,6 +21,8 @@ PlotGLCanvas::PlotGLCanvas(wxWindow *parent, wxWindowID id,
 	m_min = 0;
 	m_max = 1;
 
+	m_num = 0;
+
 
 	InitGL();
 	ResetProjectionMode();

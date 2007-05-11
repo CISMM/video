@@ -179,6 +179,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "video_z_tracker", "video_z_
 		{B14D45A3-AFC9-4142-B872-6F38E18649AE} = {B14D45A3-AFC9-4142-B872-6F38E18649AE}
 	EndProjectSection
 EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "videoZtracker", "..\videoZtracker\videoZtracker.vdproj", "{172E43AA-FD92-4797-BDBC-C523B6B972B0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -341,6 +343,8 @@ Global
 		{A6B48084-4509-45EC-BD75-D22E28181EF6}.Debug|Win32.Build.0 = Debug|Win32
 		{A6B48084-4509-45EC-BD75-D22E28181EF6}.Release|Win32.ActiveCfg = Release|Win32
 		{A6B48084-4509-45EC-BD75-D22E28181EF6}.Release|Win32.Build.0 = Release|Win32
+		{172E43AA-FD92-4797-BDBC-C523B6B972B0}.Debug|Win32.ActiveCfg = Debug
+		{172E43AA-FD92-4797-BDBC-C523B6B972B0}.Release|Win32.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

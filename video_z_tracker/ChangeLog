@@ -1,3 +1,9 @@
+2007-05-11  Ryan Schubert  <res@cs.unc.edu>
+
+	* Lots of code cleanup.
+	* Supports now: XY tracking, Z tracking, Pulnix camera 
+		(Roper code untested), MCL stage Z control
+
 2007-03-23  Ryan Schubert  <res@cs.unc.edu>
 
 	* Stage simulation is generally working now, when video state is PAUSED.

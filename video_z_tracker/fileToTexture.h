@@ -1,9 +1,9 @@
 #pragma once
 
 #ifdef _WIN32
-//#define	VZT_USE_ROPER
+#define	VZT_USE_ROPER
 //#define	VZT_USE_COOKE
-//#define	VZT_USE_EDT
+#define	VZT_USE_EDT
 //#define	VZT_USE_DIAGINC
 //#define	VZT_USE_SEM
 #define	VZT_USE_DIRECTX

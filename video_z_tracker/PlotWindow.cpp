@@ -67,33 +67,28 @@ void PlotWindow::Update()
 	m_plot->Update();
 }
 
-/*
-void PlotWindow::setVals(std::vector<float> vals)
+float PlotWindow::GetMax()
 {
-	m_num_vals = vals.size();
-
-	// we're gonna let PlotGLCanvas handle this memory cleanup!!
-	m_vals = new float[vals.size()];
-
-	float min = vals[0];
-	float max = vals[0];
-
+	float max = -1;
 	for (int i = 0; i < vals.size(); ++i)
 	{
-		m_vals[i] = vals[i];
-
 		if (vals[i] > max)
 			max = vals[i];
+	}
+	return max;
+}
 
+float PlotWindow::GetMin()
+{
+	float min = 9999999;
+	for (int i = 0; i < vals.size(); ++i)
+	{
 		if (vals[i] < min)
 			min = vals[i];
 	}
-
-	m_plot->setVals(m_vals, m_num_vals, min, max);
-
-	m_plot->Update();
+	return min;
 }
-*/
+
 void PlotWindow::SetIndicator(int index)
 {
 	m_plot->setIndicator(index);

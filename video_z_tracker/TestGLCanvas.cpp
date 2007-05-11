@@ -114,28 +114,28 @@ void TestGLCanvas::DrawSelectionBox()
 	// draw selection box
 	wxSize sz(GetClientSize());
 	float cx = m_selectX, cy = m_selectY;
-	toGLCoords(cx, cy, sz);
+	//toGLCoords(cx, cy, sz); ** we don't want to do this anymore **
 
 	float radius = m_radius;
 
 	int pixelRadius = m_pixelRadius;
 
-	// +
+	// draw the "+"
 	gluOrtho2D(0, sz.GetX(), sz.GetY(), 0);
 
 	glBegin(GL_LINE_LOOP);
 
 	glColor3f(0, 0, 1);
-	glVertex2f(m_selectX - 1, m_selectY - m_pixelRadius - 1);
+	glVertex2f(cx - 1, cy - m_pixelRadius - 1);
 
 	glColor3f(0, 0, 1);
-	glVertex2f(m_selectX - 1, m_selectY + m_pixelRadius + 1);
+	glVertex2f(cx - 1, cy + m_pixelRadius + 1);
 
 	glColor3f(0, 0, 1);
-	glVertex2f(m_selectX + 1, m_selectY + m_pixelRadius + 1);
+	glVertex2f(cx + 1, cy + m_pixelRadius + 1);
 
 	glColor3f(0, 0, 1);
-	glVertex2f(m_selectX + 1, m_selectY - m_pixelRadius - 1);
+	glVertex2f(cx + 1, cy - m_pixelRadius - 1);
 
 	glEnd();
 
@@ -143,16 +143,16 @@ void TestGLCanvas::DrawSelectionBox()
 	glBegin(GL_LINE_LOOP);
 
 	glColor3f(1, 0, 0);
-	glVertex2f(m_selectX - m_pixelRadius - 1, m_selectY - 1);
+	glVertex2f(cx - m_pixelRadius - 1, cy - 1);
 
 	glColor3f(1, 0, 0);
-	glVertex2f(m_selectX - m_pixelRadius - 1, m_selectY + 1);
+	glVertex2f(cx - m_pixelRadius - 1, cy + 1);
 
 	glColor3f(1, 0, 0);
-	glVertex2f(m_selectX + m_pixelRadius + 1, m_selectY + 1);
+	glVertex2f(cx + m_pixelRadius + 1, cy + 1);
 
 	glColor3f(1, 0, 0);
-	glVertex2f(m_selectX + m_pixelRadius + 1, m_selectY - 1);
+	glVertex2f(cx + m_pixelRadius + 1, cy - 1);
 
 	glEnd();
 

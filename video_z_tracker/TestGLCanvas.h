@@ -32,6 +32,27 @@ public:
 
 	void SetShowCross(bool show) {	m_showCross = show;	}
 
+	double GetSelectX() {	return m_selectX;	}
+	double GetSelectY() {	return m_selectY;	}
+
+	void SetSelect(double x, double y) {	m_selectX = x; m_selectY = y;	}
+
+	double GetSelectYflip() 
+	{	
+		wxSize sz(GetClientSize());
+		return (sz.GetY() - 1 - m_selectY);	
+	}
+
+	void SetSelectYflip(double x, double y) 
+	{	
+		m_selectX = x;
+		wxSize sz(GetClientSize());
+		m_selectY = sz.GetY() - 1 - y;	
+	}
+
+
+	int GetRadius()	{	return m_pixelRadius;	}
+
 protected:
     void OnPaint(wxPaintEvent& event);
     void OnSize(wxSizeEvent& event);
@@ -52,7 +73,7 @@ protected:
 private:
 
 	int m_mouseX, m_mouseY;
-	int m_selectX, m_selectY;
+	double m_selectX, m_selectY;
 	float m_radius;
 	int m_pixelRadius;
 

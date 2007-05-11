@@ -18,7 +18,8 @@ class PlotWindow : public wxFrame {
 public:
     PlotWindow(wxWindow* parent, int id, const wxString& title, const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=wxDEFAULT_FRAME_STYLE);
 
-//	void setVals(std::vector<float> vals);
+	float GetMax();
+	float GetMin();
 
 	void Refresh();
 
@@ -37,9 +38,6 @@ public:
 
 protected:
 	void OnMouse(wxMouseEvent& event);
-
-//	float* m_vals;
-//	int m_num_vals;
 
 	PlotGLCanvas* m_plot;
 

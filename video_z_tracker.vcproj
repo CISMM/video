@@ -39,7 +39,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;C:\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;&quot;..\wxMSW-2.7.0-1\wxWidgets-2.7.0-1\include&quot;;&quot;..\wxMSW-2.7.0-1\wxWidgets-2.7.0-1\include\msvc&quot;;.\;..\vrpn"
+				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;C:\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;.\;..\quat;..\vrpn;..\vrpn\server_src;&quot;..\wxWidgets-2.8.3\include\msvc&quot;;&quot;..\wxWidgets-2.8.3\include\&quot;;&quot;C:\Program Files\Roper Scientific\PVCAM&quot;"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -59,9 +59,9 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="wxmsw27d_gl.lib comctl32.lib rpcrt4.lib file_stack_library.lib base_camera_server.lib"
+				AdditionalDependencies="wxmsw27d_gl.lib comctl32.lib rpcrt4.lib file_stack_library.lib base_camera_server.lib vrpn.lib quat.lib"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib&quot;;&quot;..\wxMSW-2.7.0-1\wxWidgets-2.7.0-1\lib\vc_lib&quot;;..\vrpn\pc_win32\Debug;.\Debug;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib&quot;"
+				AdditionalLibraryDirectories="../quat/pc_win32/Release;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib&quot;;&quot;..\wxWidgets-2.8.3\lib\vc_lib&quot;;..\vrpn\pc_win32\Debug;.\Debug;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="1"
@@ -97,7 +97,7 @@
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
 			CharacterSet="2"
-			WholeProgramOptimization="1"
+			WholeProgramOptimization="0"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -116,7 +116,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;C:\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;&quot;..\wxMSW-2.7.0-1\wxWidgets-2.7.0-1\include&quot;;&quot;..\wxMSW-2.7.0-1\wxWidgets-2.7.0-1\include\msvc&quot;;.\;..\vrpn"
+				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;C:\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;.\;..\quat;..\vrpn;..\vrpn\server_src;&quot;..\wxWidgets-2.8.3\include\msvc&quot;;&quot;..\wxWidgets-2.8.3\include\&quot;;&quot;C:\Program Files\Roper Scientific\PVCAM&quot;"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="2"
 				WarningLevel="3"
@@ -134,9 +134,9 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="wxmsw27_gl.lib comctl32.lib rpcrt4.lib file_stack_library.lib base_camera_server.lib"
+				AdditionalDependencies="wxmsw28_gl.lib comctl32.lib rpcrt4.lib file_stack_library.lib base_camera_server.lib libfftw3-3.lib vrpn.lib quat.lib"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib&quot;;&quot;..\wxMSW-2.7.0-1\wxWidgets-2.7.0-1\lib\vc_lib&quot;;..\vrpn\pc_win32\Release;.\Release;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib&quot;"
+				AdditionalLibraryDirectories="../quat/pc_win32/Release;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib&quot;;&quot;..\wxWidgets-2.8.3\lib\vc_lib&quot;;..\vrpn\pc_win32\Release;.\Release;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib&quot;;.\video_z_tracker;C:\nsrg\external\pc_win32\lib"
 				GenerateDebugInformation="false"
 				SubSystem="1"
 				OptimizeReferences="2"
@@ -198,6 +198,22 @@
 				>
 			</File>
 			<File
+				RelativePath="..\vrpn\server_src\vrpn_Generic_server_object.C"
+				>
+			</File>
+			<File
+				RelativePath=".\video_z_tracker\wxDoubleSlider.cxx"
+				>
+			</File>
+			<File
+				RelativePath=".\video_z_tracker\wxUtils.cxx"
+				>
+			</File>
+			<File
+				RelativePath=".\video_z_tracker\ZGuesser.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\video_z_tracker\ztracker.cpp"
 				>
 			</File>
@@ -228,11 +244,31 @@
 				>
 			</File>
 			<File
+				RelativePath=".\video_z_tracker\SpotInformation.h"
+				>
+			</File>
+			<File
 				RelativePath=".\video_z_tracker\Stage.h"
 				>
 			</File>
 			<File
 				RelativePath=".\video_z_tracker\TestGLCanvas.h"
+				>
+			</File>
+			<File
+				RelativePath="..\vrpn\server_src\vrpn_Generic_server_object.h"
+				>
+			</File>
+			<File
+				RelativePath=".\video_z_tracker\wxDoubleSlider.h"
+				>
+			</File>
+			<File
+				RelativePath=".\video_z_tracker\wxUtils.h"
+				>
+			</File>
+			<File
+				RelativePath=".\video_z_tracker\ZGuesser.h"
 				>
 			</File>
 			<File

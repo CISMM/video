@@ -18,7 +18,14 @@
 #include "PixelLine.h"
 #include "PlotWindow.h"
 
+#include "wxDoubleSlider.h"
+
 #include "Stage.h"
+
+#include "SpotInformation.h"
+
+#include "ZGuesser.h"
+
 
 #include <vector>
 
@@ -34,7 +41,10 @@ enum VideoMode
 
 class zTracker : public wxFrame {
 public:
-    zTracker(wxWindow* parent, int id, const wxString& title, const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=wxDEFAULT_FRAME_STYLE);
+    zTracker(wxWindow* parent, int id, const wxString& title, const wxPoint& pos=wxDefaultPosition, 
+		const wxSize& size=wxDefaultSize, long style=wxDEFAULT_FRAME_STYLE, char* stage_name="Focus@mercury-cs.cs.unc.edu");
+
+	~zTracker();
 
 	void OnMenuFileOpen(wxCommandEvent& event);
     void OnMenuFileExit(wxCommandEvent& event);
@@ -44,8 +54,13 @@ public:
 	void OnVideoSingle(wxCommandEvent& event);
 	void OnVideoRewind(wxCommandEvent& event);
 
+	void OnMenuShowAdv(wxCommandEvent& event);
 	void OnMenuFocusStart(wxCommandEvent& event);
 	void OnMenuFocusStop(wxCommandEvent& event);
+
+	void OnSelectDirectX(wxCommandEvent& event);
+	void OnSelectPulnix(wxCommandEvent& event);
+	void OnSelectRoper(wxCommandEvent& event);
 
 	void OnFrameScroll(wxScrollEvent& event);
 
@@ -64,10 +79,16 @@ public:
 	void Idle(wxIdleEvent& event);
 
 	void CalcFocus();
+	bool UpdateSpotTracker();
 
 protected:
+
+	wxPanel* m_panel;
+
 	wxBoxSizer* m_videoControlSizer;
 	wxBoxSizer* m_assortedSizer;
+
+	wxBoxSizer* m_rootSizer;
 
 	wxBoxSizer* m_sizer;
 
@@ -79,12 +100,13 @@ protected:
 	wxBoxSizer* m_frameSizer;
 	wxBoxSizer* m_frameLabelSizer;
 
-	wxButton* m_newPlotButton;
-	wxButton* m_newPlotArrayButton;
-
 	wxStaticText* m_minFrameLabel;
 	wxStaticText* m_maxFrameLabel;
 	wxStaticText* m_curFrameLabel;
+
+
+	wxBoxSizer* m_manualFocusSizer;
+	wxSlider* m_manualFocusSlider;
 
 
 	wxCheckBox* m_showCrossCheck;
@@ -118,13 +140,15 @@ protected:
 	image_wrapper       *g_image;	//< Image, possibly from camera and possibly computed
 	Controllable_Video  *g_video;	//< Video controls, if we have them
 
+	wxBoxSizer* m_advancedSizer;
+
 	wxBoxSizer* m_focusMethodSizer;
-	wxRadioButton* m_focusMethod0Radio;
-	wxRadioButton* m_focusMethod1Radio;
-	
-	wxBoxSizer* m_focusWeightSizer;
-	wxRadioButton* m_focusWeight0Radio;
-	wxRadioButton* m_focusWeight1Radio;
+	wxRadioBox* m_focusMethodRadio;
+	wxRadioBox* m_focusWeightRadio;
+
+	wxBoxSizer* m_newPlotSizer;
+	wxButton* m_newPlotButton;
+	wxButton* m_newPlotArrayButton;
 
 	wxCheckBox* m_8Bits;
 
@@ -132,9 +156,14 @@ protected:
 
 	int m_channel;
 
-	Stage m_stage;
+	Stage* m_stage;
 
+	float m_focus;
 	float m_lastFocus;
+
+	// calibration numbers -- these should be moved into ZGuesser class
+	float m_maxFocus;
+	float m_minFocus;
 
 	wxBoxSizer* m_zSizer;
 	wxStaticText* m_zLabel;
@@ -143,13 +172,34 @@ protected:
 	wxTextCtrl* m_zVelText;
 	wxTextCtrl* m_zDownText;
 	
-	bool m_aboveTarget; // ***
-	bool m_goingUp; // ***
 	float m_zVel;
 
-	wxCheckBox* m_tracking;
+	wxBoxSizer* m_trackingSizer;
+	wxCheckBox* m_Ztracking;
+	wxCheckBox* m_XYtracking;
+
+
+	Spot_Information* m_spotTracker;
+	bool m_predict;
+	bool m_newTrackingData;
+	int m_invert;
+	int m_precision;
+	double m_searchRadius;
+	double m_sampleSpacing;
+	int m_parabolafit;
+	copy_of_image	    *m_last_image;
+	float m_lossSensitivity;
+	bool m_tracker_is_lost;
+	bool m_optZ;
+
+	ZGuesser* m_zGuess;
+
 
 private:
+
+	spot_tracker_XY  *create_appropriate_xytracker(double x, double y, double r);
+	spot_tracker_Z  *create_appropriate_ztracker(void);
+	void optimize_tracker(Spot_Information *tracker);
 
     void set_layout();
     void do_layout();
