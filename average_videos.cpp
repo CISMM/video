@@ -280,7 +280,7 @@ bool do_next_frame(void)
 
   // If the read fails, we're probably at the end of the video so go
   // ahead and store it, then return that we're done with this video.
-  if (!g_camera->read_image_to_memory(0,-1, 0,-1, g_exposure)) {
+  if (!g_camera->read_image_to_memory(1,0, 1,0, g_exposure)) {
     if (!g_video) {
       fprintf(stderr, "Can't read image to memory!\n");
       store_summed_image();

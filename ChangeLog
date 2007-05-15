@@ -1,3 +1,11 @@
+2007-05-15  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* cismm_video_optimizer.cpp : It now rewinds video files before trying
+		to read the first frame.  It also puts in all-positive defaults
+		for the frame size to match changes in the base classes.
+	* average_videos.cpp : Changed the defaults as with the video optimizer.
+	* SEM_camera_server.cpp : Added more info to error message.
+
 2007-05-14  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* cissm_video_optimizer.cpp : Changed path from D: drive to C: drive.

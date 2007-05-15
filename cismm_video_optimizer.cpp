@@ -60,7 +60,7 @@ static void dirtyexit();
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.12";
+const char *Version_string = "01.13";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -339,6 +339,7 @@ bool  get_camera(const char *type, base_camera_server **camera,
       SEM_Controllable_Video *s = new SEM_Controllable_Video(name);
       *camera = s;
       *video = s;
+      g_bitdepth = 16;
       delete [] name;
 
     // If the extension is ".tif" or ".tiff" or ".bmp" then we assume it is
@@ -824,7 +825,7 @@ void myIdleFunc(void)
   // end of a file.  We always read all of the image that we can:
   // cropping happens when the file is written to avoid missing pixels
   // that could have transformed to lie within the cropping region.
-  if (!g_camera->read_image_to_memory(0,-1, 0,-1, g_exposure)) {
+  if (!g_camera->read_image_to_memory(1,0, 1,0, g_exposure)) {
     if (!g_video) {
       fprintf(stderr, "Can't read image to memory!\n");
       cleanup();
@@ -835,7 +836,19 @@ void myIdleFunc(void)
     }
   } else {
     // Got a valid video frame.
-    
+
+    // Make a copy of the image if we don't yet have a "this" image.  Otherwise,
+    // it will be copied down below.
+    if (g_this_image == NULL) {
+      g_this_image = new copy_of_image(*g_camera);
+
+      if (g_this_image == NULL) {
+        fprintf(stderr,"Cannot create current-copy image\n");
+        cleanup();
+        exit(-1);
+      }
+    }
+  
     // Make a copy of "this" frame into the last frame.
     if (g_last_image == NULL) {
       //printf("XXX Creating g_last_image\n");
@@ -861,7 +874,7 @@ void myIdleFunc(void)
     if (g_next_image) {
       *g_next_image = *g_camera;
     } else {
-      if (g_camera->read_image_to_memory(0,-1, 0,-1, g_exposure)) {
+      if (g_camera->read_image_to_memory(1,0, 1,0, g_exposure)) {
 	g_next_image = new copy_of_image(*g_camera);
       }
     }
@@ -1757,14 +1770,6 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-  g_this_image = new copy_of_image(*g_camera);
-  if (g_this_image == NULL) {
-    fprintf(stderr,"Cannot create current-copy image\n");
-    if (g_camera) { delete g_camera; g_camera = NULL; }
-    cleanup();
-    exit(-1);
-  }
-
   if (g_video) {  // Put these in a separate control panel?
     // Start out paused at the beginning of the file.
     g_play = new Tclvar_int_with_button("play_video","",0);
@@ -1794,6 +1799,9 @@ int main(int argc, char *argv[])
 		    tk_control_interp->result);
 	    return(-1);
     }
+
+    // Cause the video to rewind, so we get a valid frame.
+    g_video->rewind();
   }
 
   //------------------------------------------------------------------

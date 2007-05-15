@@ -6,12 +6,12 @@ OperatingSystem=WinXP  5.1  2600 (Service Pack 2)
 
 [Project]
 ProjectName=cismm_video_optimizer
-ProjectDirectory=D:\temp\video\cismm_video_optimizer
-NonSFXDirectory=D:\temp\video\cismm_video_optimizer\NonSFX
-MediaFileName=cismm_video_optimizer_01_12
+ProjectDirectory=F:\temp\video\cismm_video_optimizer
+NonSFXDirectory=F:\temp\video\cismm_video_optimizer\NonSFX
+MediaFileName=cismm_video_optimizer_01_13
 CopyMediaToFName=
 ProgramDescriptiveName=CISMM Video Optimizer
-ProgramVersion=01.12
+ProgramVersion=01.13
 CompanyName=UNC Nanoscale Science Research Group
 ProgVerLiveUpdate=0
 RegisterAsApp=1
@@ -40,9 +40,9 @@ AddBottomColor=1
 DlgBmp3DFrame=1
 DialogStyle=Modern
 AddDialogBitmap=1
-DialogBitmapFileName=D:\temp\video\cismm_video_optimizer\icon64.bmp
+DialogBitmapFileName=F:\temp\video\cismm_video_optimizer\icon64.bmp
 AddBackgroundBitmap=1
-BackgroundBitmapFileName=D:\temp\video\cismm_video_optimizer\icon64.bmp
+BackgroundBitmapFileName=F:\temp\video\cismm_video_optimizer\icon64.bmp
 BackgroundBitmapLocation=|Top/Left|0|0|
 AddBackgroundWave=0
 BgBmpTransparent=0
@@ -62,7 +62,7 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|1|0|
 CompanyUrl=www.cs.unc.edu/nano
 
 [TargetExe]
-TargetDirectory=<AbsoluteDir>C:\NSRG\bin\cismm_video_optimizer_v01.12
+TargetDirectory=<AbsoluteDir>C:\NSRG\bin\cismm_video_optimizer_v01.13
 CommonDirectory=<AbsoluteDir>C:\NSRG\external
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\cismm_video_optimizer.bat
@@ -73,7 +73,7 @@ RunTimeDir_3=|||||||1||||1||1|<ProgramFilesDir>|||||
 [Dialogs]
 SelectedDialogs=Welcome,License,*Readme,User Information,Destination,*Setup Type,*Custom,Associate,*Shortcuts,*Confirm Setup,Copy Files,*Complete
 LicenseTextFile=
-ReadmeTextFile=D:\temp\video\cismm_video_optimizer\Installation_README.txt
+ReadmeTextFile=F:\temp\video\cismm_video_optimizer\Installation_README.txt
 ReadmeTextFile2=
 UseNotepad=0
 SpaceReqOnDriveCheckBox=0
@@ -106,7 +106,7 @@ ShowCopyrightWarning=0
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=NSRG\CISMM Video Optimizer v01.12
+ProgramLinkFolder=NSRG\CISMM Video Optimizer v01.13
 ProgramLinkName=Cismm_video_optimizer
 ProgramLinkParam=
 ProgramLinkWorkDir=<Application Folder>
@@ -114,7 +114,7 @@ ProgramLinkRun=Minimized
 ProgramLinkIconFile=<Application Folder>\cismm_video_optimizer.ico
 ProgramLinkIconNum=0
 StartMenuLinkName=CISMM Video Optimizer
-DesktopLinkName=CISMM Video Optimizer v01.12
+DesktopLinkName=CISMM Video Optimizer v01.13
 SendToLinkName=CISMM Video Optimizer
 StartUpLinkName=CISMM Video Optimizer
 QuickLaunchLinkName=CISMM Video Optimizer
@@ -213,7 +213,7 @@ Item-009=|ProductName||
 Item-010=|ProductVersion||
 CopyIconFromTargetExe=0
 CopyIconFromOtherApp=1
-OtherIconAppFileName=D:\temp\video\cismm_video_optimizer\cismm_video_optimizer.ico
+OtherIconAppFileName=F:\temp\video\cismm_video_optimizer\cismm_video_optimizer.ico
 Spin1=0
 Spin2=0
 
@@ -227,7 +227,7 @@ Arg-000-5=Do you want to install ImageMagick 5.5.7 16-bit version so that you ca
 Arg-000-6==
 Arg-000-10==
 Arg-000-13=<SrcDir>ImageMagick-5.5.7-Q16-windows-dll.exe
-Delivery-000=D:\temp\video\video_spot_tracker\ImageMagick-5.5.7-Q16-windows-dll.exe
+Delivery-000=F:\temp\video\video_spot_tracker\ImageMagick-5.5.7-Q16-windows-dll.exe
 
 [GroupNames]
 Group-000=Main Group
@@ -238,21 +238,21 @@ TypicalCompactData=15
 Description=This is the main group of files
 Item-000=Fol*<Application Folder>[0]
 Item-001=Fil*C:\nsrg\external\pc_win32\bin\glut32.dll
-Item-002=Fil*D:\temp\video\cismm_video_optimizer.tcl
-Item-003=Fil*D:\temp\video\cismm_video_optimizer\cismm_video_optimizer.bat
-Item-004=Fil*D:\temp\video\cismm_video_optimizer\cismm_video_optimizer.ico
-Item-005=Fil*D:\temp\video\Release\cismm_video_optimizer.exe
-Item-006=Fil*D:\temp\video\russ_widgets.tcl
+Item-002=Fil*F:\temp\video\cismm_video_optimizer.tcl
+Item-003=Fil*F:\temp\video\cismm_video_optimizer\cismm_video_optimizer.bat
+Item-004=Fil*F:\temp\video\cismm_video_optimizer\cismm_video_optimizer.ico
+Item-005=Fil*F:\temp\video\Release\cismm_video_optimizer.exe
+Item-006=Fil*F:\temp\video\russ_widgets.tcl
 
 [Group-001]
 TypicalCompactData=5
 Description=
 Item-000=Fol*<Application Folder>[0]
-Item-001=Fil*D:\temp\video\cismm_video_optimizer\cismm_video_optimizer.html
-Item-002=Fil*D:\temp\video\cismm_video_optimizer\crop.jpg
-Item-003=Fil*D:\temp\video\cismm_video_optimizer\gain_controls.jpg
-Item-004=Fil*D:\temp\video\cismm_video_optimizer\GUI.jpg
-Item-005=Fil*D:\temp\video\cismm_video_optimizer\imagemix_controls.jpg
-Item-006=Fil*D:\temp\video\cismm_video_optimizer\kernel.jpg
-Item-007=Fil*D:\temp\video\cismm_video_optimizer\log.jpg
-Item-008=Fil*D:\temp\video\cismm_video_optimizer\red_green_blue.jpg
+Item-001=Fil*F:\temp\video\cismm_video_optimizer\cismm_video_optimizer.html
+Item-002=Fil*F:\temp\video\cismm_video_optimizer\crop.jpg
+Item-003=Fil*F:\temp\video\cismm_video_optimizer\gain_controls.jpg
+Item-004=Fil*F:\temp\video\cismm_video_optimizer\GUI.jpg
+Item-005=Fil*F:\temp\video\cismm_video_optimizer\imagemix_controls.jpg
+Item-006=Fil*F:\temp\video\cismm_video_optimizer\kernel.jpg
+Item-007=Fil*F:\temp\video\cismm_video_optimizer\log.jpg
+Item-008=Fil*F:\temp\video\cismm_video_optimizer\red_green_blue.jpg

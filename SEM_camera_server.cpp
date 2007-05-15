@@ -354,7 +354,7 @@ bool  SEM_camera_server::read_image_to_memory(unsigned minX, unsigned maxX, unsi
   if (_minX < 0) { _minX = 0; };
   if (_minY < 0) { _minY = 0; };
   if (_maxX >= _num_columns) {	  // Uses _num_columns rather than get_num_columns() because it is in pre-binning space.
-    fprintf(stderr,"SEM_camera_server::read_image_to_memory(): Clipping maxX\n");
+    fprintf(stderr,"SEM_camera_server::read_image_to_memory(): Clipping maxX to %d from %d\n",_num_columns, _maxX);
     _maxX = _num_columns - 1;
   };
   if (_maxY >= _num_rows) {
