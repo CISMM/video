@@ -15,7 +15,7 @@
 #endif
 
 const int MAJOR_VERSION = 2;
-const int MINOR_VERSION = 6;
+const int MINOR_VERSION = 7;
 
 //-----------------------------------------------------------------
 // This section contains code to initialize the camera and read its
