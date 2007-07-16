@@ -86,7 +86,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.10";
+const char *Version_string = "05.11";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -106,6 +106,7 @@ public:
     d_tracker_Z = ztracker;
     d_index = d_static_index++;
     d_velocity[0] = d_acceleration[0] = d_velocity[1] = d_acceleration[1] = 0;
+    d_lost = false;
   }
 
   spot_tracker_XY *xytracker(void) const { return d_tracker_XY; }
@@ -120,12 +121,16 @@ public:
   void get_acceleration(double acceleration[2]) const { acceleration[0] = d_acceleration[0]; acceleration[1] = d_acceleration[1]; }
   void set_acceleration(const double acceleration[2]) { d_acceleration[0] = acceleration[0]; d_acceleration[1] = acceleration[1]; }
 
+  bool lost(void) const { return d_lost; };
+  void lost(bool l) { d_lost = l; };
+
 protected:
   spot_tracker_XY	*d_tracker_XY;	    //< The tracker we're keeping information for in XY
   spot_tracker_Z	*d_tracker_Z;	    //< The tracker we're keeping information for in Z
   unsigned		d_index;	    //< The index for this instance
   double		d_velocity[2];	    //< The velocity of the particle
   double		d_acceleration[2];  //< The acceleration of the particle
+  bool                  d_lost;             //< Am I lost?
   static unsigned	d_static_index;     //< The index to use for the next one (never to be re-used).
 };
 unsigned  Spot_Information::d_static_index = 0;	  //< Start the first instance of a Spot_Information index at zero.
@@ -341,6 +346,7 @@ Tclvar_float_with_scale	g_brighten("brighten", "", 0, 8, 0);
 Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_trackers);
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
 Tclvar_float_with_scale g_lossSensitivity("lost_tracking_sensitivity", "", 0.0, 1.0, 0.0);
+Tclvar_int_with_button	g_autoDeleteLost("autodelete_when_lost","",0);
 Tclvar_int_with_button	g_invert("dark_spot",NULL,0, rebuild_trackers);
 Tclvar_int_with_button	g_interpolate("interpolate",NULL,1, rebuild_trackers);
 Tclvar_int_with_button	g_parabolafit("parabolafit",NULL,0);
@@ -1503,6 +1509,52 @@ void mykymographDisplayFunc(void)
   glutSwapBuffers();
 }
 
+bool  delete_active_xytracker(void)
+{
+  if (!g_active_tracker) {
+    return false;
+  } else {
+    // Delete the entry in the list that corresponds to the active tracker.
+    list <Spot_Information *>::iterator loop;
+    list <Spot_Information *>::iterator next;
+    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+      if (*loop == g_active_tracker) {
+	next = loop; next++;
+	delete g_active_tracker->xytracker();
+	if ( g_active_tracker->ztracker() ) {
+	  delete g_active_tracker->ztracker();
+	}
+	delete *loop;
+	g_trackers.erase(loop);
+	break;
+      }
+    }
+
+    // Set the active tracker to the next one in the list if there is
+    // a next one.  Otherwise, try to set it to the first one on the list,
+    // if there is one.  Otherwise, set it to NULL.
+    if (next != g_trackers.end()) {
+      g_active_tracker = *next;
+    } else {
+      if (g_trackers.size() > 0) {
+	g_active_tracker = *g_trackers.begin();
+      } else {
+	g_active_tracker = NULL;
+      }
+    }
+
+    // Play the "deleted tracker" sound.
+#ifdef	_WIN32
+    if (!PlaySound("deleted_tracker.wav", NULL, SND_FILENAME | SND_ASYNC)) {
+      fprintf(stderr,"Cannot play sound %s\n", "deleted_tracker.wav");
+    }
+#endif
+
+    return true;
+  }
+}
+
+
 // Optimize to find the best fit starting from last position for a tracker.
 // Invert the Y values on the way in and out.
 // Don't let it adjust the radius here (otherwise it gets too jumpy).
@@ -1679,22 +1731,19 @@ static void optimize_tracker(Spot_Information *tracker)
       // causing trouble.
       double scale_factor = 1 + 9*g_lossSensitivity;
       if (starting_value * scale_factor < min_val) {
-        g_tracker_is_lost = true;
-        g_active_tracker = tracker;
+        tracker->lost(true);
       }
     } else if (g_kernel_type == KERNEL_CONE) {
       // Differences (not factors) of 0-5 seem more appropriate for a quick test of the cone kernel.
       double difference = 5*g_lossSensitivity;
       if (starting_value - min_val < difference) {
-        g_tracker_is_lost = true;
-        g_active_tracker = tracker;
+        tracker->lost(true);
       }
     } else {  // Must be a disk kernel
       // Differences (not factors) of 0-5 seem more appropriate for a quick test of the disk kernel.
       double difference = 5*g_lossSensitivity;
       if (starting_value - min_val < difference) {
-        g_tracker_is_lost = true;
-        g_active_tracker = tracker;
+        tracker->lost(true);
       }
     }
   }
@@ -2075,6 +2124,34 @@ void myIdleFunc(void)
       g_ready_tracker_semaphore->v();
     }
 
+    // Now that we are back in a single thread, run through the list of trackers
+    // and see if any of them are lost.  If so, what happens depends on whether
+    // the auto-deletion of lost trackers is enabled.  If so, then delete each
+    // lost tracker.  If not, then point at one of the lost trackers and
+    // set the global lost-tracker flag;
+
+    // If this tracker is lost, and we have the "autodelete lost tracker" feature
+    // turned on, then delete this tracker and say that we are no longer lost.
+    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+      if ((*loop)->lost()) {
+        // Set me to be the active tracker.
+        g_active_tracker = *loop;
+        if (g_autoDeleteLost) {
+          // Delete this tracker from the list (it was made active above)
+          delete_active_xytracker();
+
+          // Set the loop back to the beginning of the list of trackers
+          loop = g_trackers.begin();
+
+        } else {
+          // Make me the active tracker and set the global "lost tracker"
+          // flag.
+          g_tracker_is_lost = true;
+        }
+      }
+    }
+
+
     if (g_tracker_is_lost) {
       // If we have a playable video and the video is not paused, then say we're lost and pause it.
       if (g_play != NULL) {
@@ -2269,44 +2346,6 @@ void myIdleFunc(void)
 #else
   vrpn_SleepMsecs(1);
 #endif
-}
-
-bool  delete_active_xytracker(void)
-{
-  if (!g_active_tracker) {
-    return false;
-  } else {
-    // Delete the entry in the list that corresponds to the active tracker.
-    list <Spot_Information *>::iterator loop;
-    list <Spot_Information *>::iterator next;
-    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-      if (*loop == g_active_tracker) {
-	next = loop; next++;
-	delete g_active_tracker->xytracker();
-	if ( g_active_tracker->ztracker() ) {
-	  delete g_active_tracker->ztracker();
-	}
-	delete *loop;
-	g_trackers.erase(loop);
-	break;
-      }
-    }
-
-    // Set the active tracker to the next one in the list if there is
-    // a next one.  Otherwise, try to set it to the first one on the list,
-    // if there is one.  Otherwise, set it to NULL.
-    if (next != g_trackers.end()) {
-      g_active_tracker = *next;
-    } else {
-      if (g_trackers.size() > 0) {
-	g_active_tracker = *g_trackers.begin();
-      } else {
-	g_active_tracker = NULL;
-      }
-    }
-
-    return true;
-  }
 }
 
 // This routine finds the tracker whose coordinates are

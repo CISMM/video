@@ -1,3 +1,10 @@
+2007-07-16  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Version 5.11 has a button that lets
+		you cause lost spots to be autodeleted.  Had to redo the
+		"lost" code to be thread-safe.  Added a "pop" sound when
+		deleting beads.
+
 2007-05-22  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_imager_server.cpp : Changed the version number because I

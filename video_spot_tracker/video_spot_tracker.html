@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v05.10</title>
+<title>Video Spot Tracker v05.11</title>
 
-<h1>Video Spot Tracker version 05.10</h1>
+<h1>Video Spot Tracker version 05.11</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -50,13 +50,13 @@
   icon that was created when the program was installed. To select a stack of image 
   files that are numbered consecutively, drag any one of the files onto the icon. 
   It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
-  Menu/All Programs/NSRG/Video Spot Tracker v05.10</b></i>. If you run the program 
+  Menu/All Programs/NSRG/Video Spot Tracker v05.11</b></i>. If you run the program 
   directly by double-clicking on the icon, it will ask for a video or image file 
   (AVI, TIF, or BMP) that it should open.</p>
 
 <p><b><i>NOTE:</i></b> With Windows XP service pack 2 and with other firewall software, running the program causes a dialog box to appear asking whether to block the program; the program needs to be unblocked only if the program is to be connected to a local or remote feedback system that relies on the tracking data. This happens when the program opens the Internet port assigned to it (3883) by the Internet Domain Naming Authority to export the data through the standard VRPN protocol (<a href="http://www.vrpn.org">www.vrpn.org</a>).</p> 
 
-<h2><img src="GUI.jpg" width="161" height="752" align="right">Using the program</h2>
+<h2><img src="GUI.jpg" width="161" height="779" align="right">Using the program</h2>
 
 <p>When the program is run and a file is selected, four windows will appear. The image window that appears on the lower right contains the first image within the video file or a continually-updating image from a live camera feed. The control panel named <b><i>tk</i></b> that appears on the left when the program is run (shown here to the right) contains a number of interaction widgets that control the operation of the program. The <b><i>kernel</i></b> control panel that appears above the image window (described later) controls the type of tracking kernel being used. The <b><i>log</i></b> control panel is described later.</p>
 
@@ -181,6 +181,12 @@
   is met, the program may skip ahead a frame or two in video formats such as AVI 
   whose player provides buffered playout. It will then pause. Pressing &quot;Play&quot; 
   at this point will resume activity through the file.</p>
+<p>If the &quot;autodelete_when_lost&quot; check-box is checked, then any tracker 
+  that becomes lost will be automatically deleted. This is useful if you are tracking 
+  spots that go out of the window or when you have lots of beads and are looking 
+  for statistics because you can set the program running with a lot of beads tracking 
+  and then come back later without worrying about the program stopping or beads 
+  wandering around lost.</p>
 <p></p>
 <h3>Faster display update</h3>
 
@@ -278,6 +284,13 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 5.11:</h3>
+<ul>
+  <li>Added &quot;autodelete when lost&quot; checkbox that will delete a tracker 
+    when it exceeds the lost-tracking sensitivity level. This lets people put 
+    a lot of trackers going and then not have to stop every time one gets lost.</li>
+</ul>
+<h3></h3>
 <h3>Version 5.10:</h3>
 <ul>
   <li>Added support for multi-layer TIFF files. The previous versions would only 
