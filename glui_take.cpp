@@ -22,7 +22,7 @@
 #include "edtinc.h"
 #include "vrpn_shared.h"
 
-const char VERSION_STRING[] = "0.20";
+const char VERSION_STRING[] = "0.30";
 #define NUM_THREADS 2
 #define COLLECT 1
 #define DISPLAY 2
@@ -30,6 +30,7 @@ const char VERSION_STRING[] = "0.20";
 
 // function prototypes
 void start_collection();
+/*  This attempt to abort data collection is unstable  */
 void abort_collection();
 void collect(void *);
 void display(void *);
@@ -77,8 +78,8 @@ int width = 648;
 int height= 484;
 int depth = 8;
 int showframe = 4; // Display every i % showframe in GL window
-char *fps_list[] = {"120", "60", "40","30","24","20","15", "12", "10", "8", "5", "1"};
-int  skip_list[] = {   1,    2,    3,   4,   5,   6,   8,   10,   12,  15,  24,  120};
+char *fps_list[] = {"120", "60", "40","30","24","20","15", "12", "10", "8", "5", "1", "0.1", "0.01"};
+int  skip_list[] = {   1,    2,    3,   4,   5,   6,   8,   10,   12,  15,  24,  120, 1200, 12000};
 unsigned char *dispbuf = new unsigned char[height*width];
 unsigned char *GLdispbuf = new unsigned char[4*(height*width)];
 unsigned char *swapbuf = new unsigned char[width];
@@ -111,8 +112,15 @@ void myGlutIdle( void )
   // update the current desired framerate by changing value of skipframes via fps_idx
   skipframes = skip_list[fps_idx];
 
-  // set camera parameters when idle runs
-  pdv_set_gain(pdv_p, (255 - gain));
+  // set camera parameters when idle runs  !*! Can cause unstable behavior !*!
+  // We used a static var which is persistent and as such gain is updated on when it's value is changed.
+  {
+    static int old_gain = -5000;
+    if (old_gain != gain) {
+      pdv_set_gain(pdv_p, (255 - gain));
+      old_gain = gain;
+    }
+  }
 }
 
 
@@ -234,7 +242,7 @@ void main(int argc, char* argv[])
 
   GLUI_Listbox *fps_listbox =
 	glui->add_listbox( "fps:", &fps_idx);
-    for(int idx=0; idx<12; idx++ )
+    for(int idx=0; idx<14; idx++ )
       fps_listbox->add_item( idx, fps_list[idx] );	
 
   GLUI_EditText *filename_EditText =
@@ -243,8 +251,10 @@ void main(int argc, char* argv[])
   GLUI_Button *start_capture =
     glui->add_button( "Start Capture", 0, (GLUI_Update_CB) start_collection);
 
+  /* */
   GLUI_Button *cancel_capture =
     glui->add_button( "Abort Capture", 0, (GLUI_Update_CB) abort_collection);
+  
 
   GLUI_Button *quit =
     glui->add_button( "Quit", 0, (GLUI_Update_CB) close_and_exit);
@@ -268,11 +278,13 @@ void start_collection()
   close_camera();
 }
 
+/*  This attempt to abort data collection is unstable */
 void abort_collection()
 {
 	abort_acquisition = true;
 	fprintf(stderr, "\n** ACQUISITION ABORTED! **\n\n", VERSION_STRING);
 }
+
 
 ////////////////////
 void collect(void *)
@@ -397,10 +409,12 @@ void collect(void *)
 
      //  EnterCriticalSection(&hUpdateMutex); // threading
 
+/*  This attempt at abort functions is unstable */
 		// Check if the user wants to cancel current data collection
 		if (abort_acquisition)
 			break;
-		
+
+      
 		if (timestamps)  {
 	       image_p = pdv_wait_image_timed(pdv_p, timestamp);
            curtime = (double) timestamp[0] * 1000000000L + timestamp[1];

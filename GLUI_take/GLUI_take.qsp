@@ -8,10 +8,10 @@ OperatingSystem=WinXP  5.1  2600 (Service Pack 2)
 ProjectName=GLUI_take
 ProjectDirectory=D:\jcribb\video\GLUI_take
 NonSFXDirectory=D:\jcribb\video\GLUI_take\NonSFX
-MediaFileName=GLUI_take_v0_20
+MediaFileName=GLUI_take_v0_30
 CopyMediaToFName=
 ProgramDescriptiveName=GLUI_take Pulnix Frame Grabber
-ProgramVersion=0.20
+ProgramVersion=0.30
 CompanyName=UNC NSRG
 ProgVerLiveUpdate=0
 RegisterAsApp=1
@@ -62,7 +62,7 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|1|0|
 CompanyUrl=www.cs.unc.edu/nano
 
 [TargetExe]
-TargetDirectory=<ProgramFilesDir>NSRG\GLUI_take_v00.20
+TargetDirectory=<ProgramFilesDir>NSRG\GLUI_take_v00.30
 CommonDirectory=<CommonFilesDir>NSRG
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\GLUItake.bat

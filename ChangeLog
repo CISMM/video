@@ -1,3 +1,11 @@
+2007-07-20  Jeremy Cribb <jcribb@email.unc.edu>
+	* glui_take.cpp:
+		- added 0.1 and 0.01 frames per second to frame rate drop down.
+		- Increased version number to 0.30
+		- Fixed gain control.  Now it doesn't crash. 
+	* glui_take.qsp: updated installer file.
+	* GLUItake.dsp: updated project settings.
+	
 2007-07-16  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Version 5.11 has a button that lets

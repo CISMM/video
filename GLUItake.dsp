@@ -88,6 +88,15 @@ LINK32=link.exe
 # Begin Source File
 
 SOURCE=.\glui_take.cpp
+
+!IF  "$(CFG)" == "GLUItake - Win32 Release"
+
+# SUBTRACT CPP /I "../glui_v2_2"
+
+!ELSEIF  "$(CFG)" == "GLUItake - Win32 Debug"
+
+!ENDIF 
+
 # End Source File
 # End Group
 # Begin Group "Header Files"
