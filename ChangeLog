@@ -1,4 +1,18 @@
+2007-07-29  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video.sln : Removed obsolete project.
+	* *.vcproj : Added a definition to make the compiler not complain
+		about using printf() and friends.
+	* base_camera_server.cpp : Removing lint that is complained about by
+		the VS 2005 compiler.
+	* base_camera_server.h : Same.
+	* cooke_server.cpp : Same.
+	* diaginc_server.cpp : Same.
+	* roper_server.cpp : Same.
+	* stack_collector.cpp : Same.
+
 2007-07-20  Jeremy Cribb <jcribb@email.unc.edu>
+
 	* glui_take.cpp:
 		- added 0.1 and 0.01 frames per second to frame rate drop down.
 		- Increased version number to 0.30

@@ -40,7 +40,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;C:\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;.\;..\quat;..\vrpn;..\vrpn\server_src;&quot;..\wxWidgets-2.8.3\include\msvc&quot;;&quot;..\wxWidgets-2.8.3\include\&quot;;&quot;C:\Program Files\Roper Scientific\PVCAM&quot;"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
+				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -117,7 +117,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;C:\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;.\;..\quat;..\vrpn;..\vrpn\server_src;&quot;..\wxWidgets-2.8.3\include\msvc&quot;;&quot;..\wxWidgets-2.8.3\include\&quot;;&quot;C:\Program Files\Roper Scientific\PVCAM&quot;"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
+				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				RuntimeLibrary="2"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="false"

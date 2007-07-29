@@ -717,7 +717,7 @@ public:
     {
       result = 0;
       // Ignore RGB -- return greyscale image
-      if ( (x < 0) || (y < 0) || (x > d_radius) || (y >= d_lines.size()) ) {
+      if ( (x < 0) || (y < 0) || (x > static_cast<int>(d_radius)) || (y >= static_cast<int>(d_lines.size())) ) {
 	return false;
       }
       result = d_lines[y][x];

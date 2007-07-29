@@ -27,9 +27,9 @@ void EndOfProgram() {
   // in order to prevent the output window from disappearing.
   // Remove the #ifdef and #endif lines to unconditionally wait for a key press;
   // Remove all three lines to not wait:
-  #ifdef _GETCH_DEFINED_
-  getch();                             // wait for user to press a key
-  #endif
+//  #ifdef _GETCH_DEFINED_
+//  getch();                             // wait for user to press a key
+//  #endif
 
   // It may be necessary to end the program with a linefeed:
   #if defined (__unix__) || defined (_MSC_VER)

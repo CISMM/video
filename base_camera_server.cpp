@@ -640,14 +640,14 @@ bool image_wrapper::write_to_opengl_quad(double scale, double offset)
   // the requested one even for GL_LUMINANCE textures, because they get used.  Set the
   // Alpha ones to pass through unmodified because they eventually get used in the
   // pixel math for some cases.
-  glPixelTransferf(GL_RED_SCALE, scale);
-  glPixelTransferf(GL_GREEN_SCALE, scale);
-  glPixelTransferf(GL_BLUE_SCALE, scale);
-  glPixelTransferf(GL_ALPHA_SCALE, 1.0);
-  glPixelTransferf(GL_RED_BIAS, offset);
-  glPixelTransferf(GL_GREEN_BIAS, offset);
-  glPixelTransferf(GL_BLUE_BIAS, offset);
-  glPixelTransferf(GL_ALPHA_BIAS, 0.0);
+  glPixelTransferf(GL_RED_SCALE, static_cast<GLfloat>(scale));
+  glPixelTransferf(GL_GREEN_SCALE, static_cast<GLfloat>(scale));
+  glPixelTransferf(GL_BLUE_SCALE, static_cast<GLfloat>(scale));
+  glPixelTransferf(GL_ALPHA_SCALE, static_cast<GLfloat>(1.0));
+  glPixelTransferf(GL_RED_BIAS, static_cast<GLfloat>(offset));
+  glPixelTransferf(GL_GREEN_BIAS, static_cast<GLfloat>(offset));
+  glPixelTransferf(GL_BLUE_BIAS, static_cast<GLfloat>(offset));
+  glPixelTransferf(GL_ALPHA_BIAS, static_cast<GLfloat>(0.0));
 
   // Figure out the next power-of-two size up based on the current texture size.
   // This is because textures must be an even power of two size on each axis.

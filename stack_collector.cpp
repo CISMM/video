@@ -220,7 +220,7 @@ void  logfilename_changed(char *newvalue, void *)
       cleanup();
       exit(-1);
     }
-    strcpy(g_base_filename_char, newvalue);
+    strncpy(g_base_filename_char, newvalue, sizeof(g_base_filename_char));
     g_take_stack = 1;
   }
 }

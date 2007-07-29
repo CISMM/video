@@ -318,7 +318,7 @@ cooke_server::cooke_server(unsigned binning) :
 
   // Set the binning to what was requested.
   set_current_camera_parameters( 0,0, (d_standardMaxResX-1)/_binning,(d_standardMaxResY-1)/_binning,
-    binning, 10.0);
+    binning, 10);
 
   if (g_verbosity) { printf("cooke_server::cooke_server() exited\n"); };
   _status = true;
@@ -384,12 +384,12 @@ bool  cooke_server::set_current_camera_parameters(int newminX, int newminY,
   }
 
   // If the requested binning is different, request the new binning value.
-  if( newbinning != _binning ) {
+  if( static_cast<unsigned>(newbinning) != _binning ) {
     _binning = newbinning;
     if (g_verbosity) { printf("cooke_server::set_current_camera_parameters() set binning to %d\n", newbinning); };
 
     // check that the current resolution is reasonable with the new binning
-    if( newbinning > _binning ) {
+    if( static_cast<unsigned>(newbinning) > _binning ) {
       double resFactor = (double) newbinning / (double) _binning;
       int resX = _minX, resY = _minY;
       int maxXres = d_standardMaxResX;

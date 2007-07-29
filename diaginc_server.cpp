@@ -519,14 +519,14 @@ bool diaginc_server::write_to_opengl_texture(GLuint tex_id)
   glGetDoublev(GL_RED_BIAS, &offset);
   scale *= 16;
   offset *= 16;
-  glPixelTransferf(GL_RED_SCALE, scale);
-  glPixelTransferf(GL_GREEN_SCALE, scale);
-  glPixelTransferf(GL_BLUE_SCALE, scale);
-  glPixelTransferf(GL_ALPHA_SCALE, 1.0);
-  glPixelTransferf(GL_RED_BIAS, offset);
-  glPixelTransferf(GL_GREEN_BIAS, offset);
-  glPixelTransferf(GL_BLUE_BIAS, offset);
-  glPixelTransferf(GL_ALPHA_BIAS, 0.0);
+  glPixelTransferf(GL_RED_SCALE, static_cast<GLfloat>(scale));
+  glPixelTransferf(GL_GREEN_SCALE, static_cast<GLfloat>(scale));
+  glPixelTransferf(GL_BLUE_SCALE, static_cast<GLfloat>(scale));
+  glPixelTransferf(GL_ALPHA_SCALE, static_cast<GLfloat>(1.0));
+  glPixelTransferf(GL_RED_BIAS, static_cast<GLfloat>(offset));
+  glPixelTransferf(GL_GREEN_BIAS, static_cast<GLfloat>(offset));
+  glPixelTransferf(GL_BLUE_BIAS, static_cast<GLfloat>(offset));
+  glPixelTransferf(GL_ALPHA_BIAS, static_cast<GLfloat>(0.0));
 
   // Set the pixel storage parameters.
   // In this case, we need to invert the image in Y to make the display match
