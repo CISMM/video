@@ -12,8 +12,16 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SEM_library", "SEM_library.vcproj", "{16719A07-E7CF-46FD-B29D-8EFAF0174A03}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "add_noise_to_image", "add_noise_to_image.vcproj", "{3AE7A5B4-426D-4141-9063-69144EDEED77}"
+	ProjectSection(ProjectDependencies) = postProject
+		{D325000B-CF41-4D4D-AE44-4655383AA726} = {D325000B-CF41-4D4D-AE44-4655383AA726}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "airy_maker", "airy_maker.vcproj", "{73FEE2A2-5A0D-4CE5-8DF6-011B7CBDFA45}"
+	ProjectSection(ProjectDependencies) = postProject
+		{D325000B-CF41-4D4D-AE44-4655383AA726} = {D325000B-CF41-4D4D-AE44-4655383AA726}
+		{91C28129-4CA6-4833-88B5-25CCA8B16722} = {91C28129-4CA6-4833-88B5-25CCA8B16722}
+		{EBB6DEEB-7B41-4D5A-B0EA-D9AAE8BB69AB} = {EBB6DEEB-7B41-4D5A-B0EA-D9AAE8BB69AB}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "argonot", "argonot.vcproj", "{87C17DFB-2126-47F7-89BB-1582EF5D8CCE}"
 EndProject
@@ -58,9 +66,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "edt_raw_video_store", "edt_
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "file_stack_library", "file_stack_library.vcproj", "{3EC043E1-84AB-4975-8298-6AC796B6F406}"
-	ProjectSection(ProjectDependencies) = postProject
-		{91C28129-4CA6-4833-88B5-25CCA8B16722} = {91C28129-4CA6-4833-88B5-25CCA8B16722}
-	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "imager_directx_dll", "imager_directx_dll.vcproj", "{7C1DC199-B4CF-40D1-9334-C0CCDFD5D2E1}"
 EndProject

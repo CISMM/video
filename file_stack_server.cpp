@@ -6,9 +6,11 @@
 #include "file_list.h"
 
 #define QuantumLeap
-#include <magick/api.h>
-// When statically linking with ImageMagick, you need to define _LIB in the preprocessor so it knows to link correctly.
+// When statically linking with ImageMagick, you need to define _LIB here or
+// in the preprocessor so it knows to link correctly.
 // Then you also need to link with wsock32.lib.
+#define _LIB
+#include <magick/api.h>
 
 #include <list>
 using namespace std;

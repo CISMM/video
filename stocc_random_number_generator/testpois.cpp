@@ -41,7 +41,7 @@ int main() {
   int32 x1, x2;                        // category range
   
   // make random library
-  int32 seed = time(0);                // random seed
+  int32 seed = static_cast<int32>(time(0));                // random seed
   StochasticLib1 sto(seed);            // make instance of random library
 
   // calculate mean and variance

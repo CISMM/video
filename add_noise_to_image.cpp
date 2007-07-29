@@ -75,7 +75,7 @@ double	unit_random(void)
   return -1 + 2 * (val / RAND_MAX);
 }
 
-main (int argc, char * argv[])
+int main (int argc, char * argv[])
 {
   //------------------------------------------------------------------------
   // Parse the command line

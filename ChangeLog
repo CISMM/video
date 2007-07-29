@@ -1,5 +1,17 @@
 2007-07-29  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* add_noise_to_image.cpp : Moving the "_LIB" definition into
+		all of the locations that include magick/api.h to let
+		us link statically without defining things in the project
+		file.  Also fixing nits that let this compile without
+		warnings on VS 2005.
+	* airy_maker.vcproj : Same.
+	* base_camera_server.cpp : Same.
+	* file_stack_server.cpp : Same.
+	* video.sln : Same.
+
+2007-07-29  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* video.sln : Removed obsolete project.
 	* *.vcproj : Added a definition to make the compiler not complain
 		about using printf() and friends.

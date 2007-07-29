@@ -9,6 +9,10 @@
 #if !defined(_VISUALC_)
 #include <magick/magick-config.h>
 #endif
+// When statically linking with ImageMagick, you need to define _LIB here or
+// in the preprocessor so it knows to link correctly.
+// Then you also need to link with wsock32.lib.
+#define _LIB
 #include <magick/api.h>
 
 #ifndef	M_PI
