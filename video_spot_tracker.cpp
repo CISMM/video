@@ -26,7 +26,7 @@
 
 // This pragma tells the compiler not to tell us about truncated debugging info
 // due to name expansion within the string, list, and vector classes.
-#pragma warning( disable : 4786 )
+#pragma warning( disable : 4786 4995 4996 )
 
 #include <math.h>
 #include <stdio.h>

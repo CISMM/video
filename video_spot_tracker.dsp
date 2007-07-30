@@ -42,7 +42,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
-# ADD CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include" /I "C:\nsrg\external\pc_win32\include" /I "C:\Program Files\Roper Scientific\PVCAM" /I "..\vrpn" /I "..\quat" /I "C:\DXSDK\include" /I "C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses" /I "..\nano\src\app\nano\lib\nmSEM" /I "..\nano\src\lib\nmBase" /I "..\nano\src\lib\nmMP" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /Fr /YX /FD /c /Tp
+# ADD CPP /nologo /MD /W3 /GX /O2 /Ob2 /I "C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include" /I "C:\nsrg\external\pc_win32\include" /I "C:\Program Files\Roper Scientific\PVCAM" /I "..\vrpn" /I "..\quat" /I "C:\DXSDK\include" /I "..\nano\src\app\nano\lib\nmSEM" /I "..\nano\src\lib\nmBase" /I "..\nano\src\lib\nmMP" /I "C:\NSRG\external\pc_win32\3dfm\include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /Fr /YX /FD /c /Tp
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -66,7 +66,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c
-# ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include" /I "C:\nsrg\external\pc_win32\include" /I "C:\Program Files\Roper Scientific\PVCAM" /I "..\vrpn" /I "..\quat" /I "C:\DXSDK\include" /I "C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses" /I "..\nano\src\app\nano\lib\nmSEM" /I "..\nano\src\lib\nmBase" /I "..\nano\src\lib\nmMP" /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /Fr /YX /FD /GZ /c /Tp
+# ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include" /I "C:\nsrg\external\pc_win32\include" /I "C:\Program Files\Roper Scientific\PVCAM" /I "..\vrpn" /I "..\quat" /I "C:\DXSDK\include" /I "..\nano\src\app\nano\lib\nmSEM" /I "..\nano\src\lib\nmBase" /I "..\nano\src\lib\nmMP" /I "C:\NSRG\external\pc_win32\3dfm\include" /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /Fr /YX /FD /GZ /c /Tp
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe

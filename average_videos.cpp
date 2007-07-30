@@ -1,7 +1,7 @@
 // XXX Why is there a red line along the right border of the averaged image?
 //     This only seems to happen in the Cilia video, not when doing AVIs...
 
-#pragma comment(lib,"D:\\Program Files\\Roper Scientific\\PVCAM\\pvcam32.lib")
+#pragma comment(lib,"C:\\Program Files\\Roper Scientific\\PVCAM\\pvcam32.lib")
 
 #include <math.h>
 #include <stdio.h>
@@ -22,7 +22,7 @@
 #include <vrpn_Types.h>
 // This pragma tells the compiler not to tell us about truncated debugging info
 // due to name expansion within the string, list, and vector classes.
-#pragma warning( disable : 4786 )
+#pragma warning( disable : 4786 4995 )
 #include <list>
 #include <vector>
 using namespace std;
@@ -217,7 +217,7 @@ static	bool  store_summed_image(void)
   int bitshift_gain = 1;
   if (!do_sixteen) {
     bitshift_gain = 256;
-    bitshift_gain /= pow(2,g_bitdepth - 8);
+    bitshift_gain /= pow(2.0,g_bitdepth - 8);
   }
 
   if (!g_mean_image->write_to_tiff_file(filename, bitshift_gain, 0, do_sixteen)) {
@@ -298,7 +298,7 @@ bool do_next_frame(void)
 
   // If we've done enough frames, we're done.
   g_num_frames++;
-  if ( (g_max_frames) && (g_num_frames >= g_max_frames) ) {
+  if ( (g_max_frames) && (g_num_frames >= static_cast<unsigned>(g_max_frames)) ) {
     store_summed_image();
     return false;
   }

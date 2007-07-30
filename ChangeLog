@@ -1,3 +1,16 @@
+2007-07-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* average_videos.cpp : Compiles on Visual Studio 5.0 and
+		on version 6.  Moved all _LIB definitions into the files
+		and out of the projects to make them explicit.
+	* average_videos.vcproj : Same.
+	* base_camera_server.dsp : Same.
+	* file_stack_library.dsp : Same.
+	* video.sln : Same.
+	* video_spot_tracker.cpp : Same.
+	* video_spot_tracker.dsp : Same.
+	* video_spot_tracker.vcproj : Same.
+
 2007-07-29  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* add_noise_to_image.cpp : Moving the "_LIB" definition into

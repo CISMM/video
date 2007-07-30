@@ -69,11 +69,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="libtiff.lib SpotCamVC.lib glut32.lib opengl32.lib quat.lib odbc32.lib odbccp32.lib"
+				AdditionalDependencies="SpotCamVC.lib glut32.lib opengl32.lib quat.lib odbc32.lib odbccp32.lib"
 				OutputFile=".\Release/average_videos.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="../vrpn/pc_win32/Release,../quat/pc_win32/Release,C:\Program Files\GnuWin32\lib,D:\Program Files\GnuWin32\lib,C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib,C:\nsrg\external\pc_win32\lib"
+				AdditionalLibraryDirectories="../vrpn/pc_win32/Release;../quat/pc_win32/Release;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib&quot;;C:\nsrg\external\pc_win32\lib"
 				ProgramDatabaseFile=".\Release/average_videos.pdb"
 				SubSystem="1"
 				TargetMachine="1"
@@ -161,11 +161,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="libtiff.lib SpotCamVC.lib glut32.lib opengl32.lib quat.lib odbc32.lib odbccp32.lib"
+				AdditionalDependencies="SpotCamVC.lib glut32.lib opengl32.lib quat.lib odbc32.lib odbccp32.lib"
 				OutputFile=".\Debug/average_videos.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="../vrpn/pc_win32/Debug,../quat/pc_win32/Debug,C:\Program Files\GnuWin32\lib,D:\Program Files\GnuWin32\lib,C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib,C:\nsrg\external\pc_win32\lib"
+				AdditionalLibraryDirectories="../vrpn/pc_win32/Debug;../quat/pc_win32/Debug;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib&quot;;C:\nsrg\external\pc_win32\lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/average_videos.pdb"
 				SubSystem="1"
