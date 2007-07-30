@@ -39,6 +39,8 @@
 const unsigned FAKE_CAMERA_SIZE = 256;
 #define	FAKE_STAGE
 
+#pragma warning( disable : 4995 )
+
 //--------------------------------------------------------------------------
 // Version string for this program
 const char *Version_string = "02.05";

@@ -1,5 +1,15 @@
 2007-07-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* average_videos.vcproj : Making things compile with VC 2005
+		and the new version 2.0 of the NSRG buildtime.
+	* cismm_video_optimizer.cpp : Same.
+	* cismm_video_optimizer.vcproj : Same.
+	* stack_collector.cpp : Same.
+	* stack_collector.vcproj : Same.
+	* video.sln : Same.
+
+2007-07-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* average_videos.cpp : Compiles on Visual Studio 5.0 and
 		on version 6.  Moved all _LIB definitions into the files
 		and out of the projects to make them explicit.

@@ -48,7 +48,7 @@
 #include <vrpn_Types.h>
 // This pragma tells the compiler not to tell us about truncated debugging info
 // due to name expansion within the string, list, and vector classes.
-#pragma warning( disable : 4786 )
+#pragma warning( disable : 4786 4995 4996 )
 #include <list>
 #include <vector>
 using namespace std;
@@ -1288,8 +1288,8 @@ void motionCallbackForGLUT(int x, int y) {
   // on the press location, clipped to the boundaries of the video.
   case 1:
     {
-      int x_dist = (int)(fabs(x-g_mousePressX));
-      int y_dist = (int)(fabs(y-g_mousePressY));
+      int x_dist = (int)(fabs(static_cast<double>(x-g_mousePressX)));
+      int y_dist = (int)(fabs(static_cast<double>(y-g_mousePressY)));
 
       *g_minX = g_mousePressX - x_dist;
       *g_maxX = g_mousePressX + x_dist;
