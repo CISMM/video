@@ -1,5 +1,11 @@
 2007-07-31  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* video_z_tracker.vcproj : Removed file that is not needed (and no
+		longer exists).  Points to the correct version of a library
+		file in Debug mode.  Now compiles and runs in VC 2005.
+
+2007-07-31  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* GUItake.vcproj : Settings to make all of the programs
 		compile (or come closer to compiling) under VS 2005.
 		Some projects had to have msvcrt.dll explicitly

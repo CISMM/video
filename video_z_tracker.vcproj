@@ -59,7 +59,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="wxmsw27d_gl.lib comctl32.lib rpcrt4.lib file_stack_library.lib base_camera_server.lib vrpn.lib quat.lib"
+				AdditionalDependencies="wxmsw28d_gl.lib comctl32.lib rpcrt4.lib file_stack_library.lib base_camera_server.lib vrpn.lib quat.lib"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="../quat/pc_win32/Release;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib&quot;;&quot;..\wxWidgets-2.8.3\lib\vc_lib&quot;;&quot;C:\NSRG\external\pc_win32\wxWidgets-2.8.3\lib\vc_lib&quot;;..\vrpn\pc_win32\Debug;.\Debug;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib&quot;"
 				IgnoreDefaultLibraryNames="msvcrt.lib"
@@ -137,7 +137,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="wxmsw28_gl.lib comctl32.lib rpcrt4.lib file_stack_library.lib base_camera_server.lib libfftw3-3.lib vrpn.lib quat.lib"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="../quat/pc_win32/Release;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib&quot;;&quot;..\wxWidgets-2.8.3\lib\vc_lib&quot;;&quot;C:\NSRG\external\pc_win32\\wxWidgets-2.8.3\lib\vc_lib&quot;;..\vrpn\pc_win32\Release;.\Release;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib&quot;;.\video_z_tracker;C:\nsrg\external\pc_win32\lib"
+				AdditionalLibraryDirectories="../quat/pc_win32/Release;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib&quot;;&quot;..\wxWidgets-2.8.3\lib\vc_lib&quot;;&quot;C:\NSRG\external\pc_win32\wxWidgets-2.8.3\lib\vc_lib&quot;;..\vrpn\pc_win32\Release;.\Release;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib&quot;;.\video_z_tracker;C:\nsrg\external\pc_win32\lib"
 				GenerateDebugInformation="false"
 				SubSystem="1"
 				OptimizeReferences="2"
@@ -201,10 +201,22 @@
 			<File
 				RelativePath="..\vrpn\server_src\vrpn_Generic_server_object.C"
 				>
-			</File>
-			<File
-				RelativePath=".\video_z_tracker\wxDoubleSlider.cxx"
-				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\video_z_tracker\wxUtils.cxx"
