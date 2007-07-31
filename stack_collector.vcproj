@@ -71,11 +71,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="SpotCamVC.lib opengl32.lib pvcam32.lib vrpn.lib tcl83.lib tk83.lib wsock32.lib odbc32.lib odbccp32.lib"
+				AdditionalDependencies="SpotCamVC.lib opengl32.lib pvcam32.lib vrpn.lib quat.lib tcl83.lib tk83.lib wsock32.lib odbc32.lib odbccp32.lib"
 				OutputFile=".\Debug/stack_collector.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="../glut,../vrpn/pc_win32/Debug,$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib,C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib,C:\Program Files\Roper Scientific\PVCAM,C:\nsrg\external\pc_win32\lib"
+				AdditionalLibraryDirectories="../glut,../vrpn/pc_win32/Debug,../quat/pc_win32/Debug,$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib,C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib,C:\Program Files\Roper Scientific\PVCAM,C:\nsrg\external\pc_win32\lib"
 				IgnoreDefaultLibraryNames="msvcrt.lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/stack_collector.pdb"
@@ -165,7 +165,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="quat.lib glut32.lib SpotCamVC.lib opengl32.lib pvcam32.lib vrpn.lib tcl83.lib tk83.lib wsock32.lib odbc32.lib odbccp32.lib"
+				AdditionalDependencies="quat.lib glut32.lib SpotCamVC.lib opengl32.lib pvcam32.lib vrpn.lib quat.lib tcl83.lib tk83.lib wsock32.lib odbc32.lib odbccp32.lib"
 				OutputFile=".\Release/stack_collector.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"

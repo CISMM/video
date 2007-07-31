@@ -8,9 +8,6 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
-#define _LIB
-#define QuantumLeap
-#include <magick/api.h>
 #ifdef  _WIN32
 #include <process.h>
 #define getpid() _getpid()
@@ -18,6 +15,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 #endif
+
+#define _LIB
+#define QuantumLeap
+#include <magick/api.h>
 
 //--------------------------------------------------------------------------
 #include <time.h>

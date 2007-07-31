@@ -166,6 +166,7 @@
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="../glui_v2_2/msvc/lib,C:\nsrg\external\pc_win32\lib"
+				IgnoreDefaultLibraryNames="msvcrt.lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/GLUItake.pdb"
 				SubSystem="1"

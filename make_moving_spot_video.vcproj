@@ -166,6 +166,7 @@
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="..\vrpn\pc_win32\Debug"
+				IgnoreDefaultLibraryNames="msvcrt.lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/make_moving_spot_video.pdb"
 				SubSystem="1"

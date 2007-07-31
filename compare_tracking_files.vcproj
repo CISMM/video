@@ -72,6 +72,7 @@
 				OutputFile=".\Debug/compare_tracking_files.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
+				IgnoreDefaultLibraryNames="msvcrt.lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/compare_tracking_files.pdb"
 				SubSystem="1"

@@ -1,3 +1,21 @@
+2007-07-31  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* GUItake.vcproj : Settings to make all of the programs
+		compile (or come closer to compiling) under VS 2005.
+		Some projects had to have msvcrt.dll explicitly
+		removed from their Debug links (dunno why, but the
+		ones that worked already had this).  Some have new
+		include or link paths.
+	* add_noise_to_image.cpp : Same.
+	* add_noise_to_image.vcproj : Same.
+	* average_videos.vcproj : Same.
+	* compare_tracking_file.vcproj : Same.
+	* make_moving_spot_video.vcproj : Same.
+	* stack_collector.vcproj : Same.
+	* video_imager_server_directx_only.vcproj : Same.
+	* video_z_tracker.vcproj : Same.
+	* video.sln : Same.
+
 2007-07-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* average_videos.vcproj : Making things compile with VC 2005
