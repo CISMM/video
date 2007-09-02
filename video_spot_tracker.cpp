@@ -50,6 +50,7 @@
 #include "diaginc_server.h"
 #include "edt_server.h"
 #include "SEM_camera_server.h"
+#include "VRPN_Imager_camera_server.h"
 #include "file_stack_server.h"
 #include "image_wrapper.h"
 #include "spot_tracker.h"
@@ -185,6 +186,16 @@ public:
   void single_step(void) { SEM_camera_server::single_step(); }
 };
 #endif
+
+class VRPN_Imager_Controllable_Video : public Controllable_Video, public VRPN_Imager_camera_server {
+public:
+  VRPN_Imager_Controllable_Video(const char *filename) : VRPN_Imager_camera_server(filename) {};
+  virtual ~VRPN_Imager_Controllable_Video() {};
+  void play(void) { VRPN_Imager_camera_server::play(); }
+  void pause(void) { VRPN_Imager_camera_server::pause(); }
+  void rewind(void) { pause(); VRPN_Imager_camera_server::rewind(); }
+  void single_step(void) { VRPN_Imager_camera_server::single_step(); }
+};
 
 class Pulnix_Controllable_Video : public Controllable_Video, public edt_pulnix_raw_file_server {
 public:
@@ -446,11 +457,19 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
     *video = s;
     g_camera_bit_depth = 16;
 
+#endif  
+  // If this is a VRPN URL for a VRPN Imager device, then open the file and set up
+  // to read from that device.
+  } else if (strchr(type, '@')) {
+    VRPN_Imager_Controllable_Video  *s = new VRPN_Imager_Controllable_Video (type);
+    *camera = s;
+    *video = s;
+    g_camera_bit_depth = 16;
+
   // Unknown type, so we presume that it is a file.  Now we figure out what
   // kind of file based on the extension and open the appropriate type of
   // imager.
   } else
-#endif  
   {
     fprintf(stderr,"get_camera(): Assuming filename (%s)\n", type);
 
@@ -489,10 +508,28 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
       *camera = s;
       *video = s;
       delete [] name;
+#endif
+    // If the extension is ".vrpn" then we assume it is a VRPN-format file
+    // with an imager device in it, so we form the name of the device and open
+    // a VRPN Remote object to handle it.  We have to assume some name for the
+    // object, so we call it "Image0" and hope for the best.  If you know that
+    // you are connecting to a different name in a file, you can use the full
+    // DEVICENAME@file:// VRPN name and it will have been parsed above.
+    } else if (strcmp(".vrpn", &type[strlen(type)-5]) == 0) {
+      char *name;
+      if ( NULL == (name = new char[strlen(type) + 20]) ) {
+	fprintf(stderr,"Out of memory when allocating file name\n");
+	cleanup();
+        exit(-1);
+      }
+      sprintf(name, "Image0@file:%s", type);
+      VRPN_Imager_Controllable_Video *s = new VRPN_Imager_Controllable_Video(name);
+      *camera = s;
+      *video = s;
+      delete [] name;
 
     // If the extension is ".tif" or ".tiff" or ".bmp" then we assume it is
     // a file or stack of files to be opened by ImageMagick.
-#endif
     } else if (   (strcmp(".tif", &type[strlen(type)-4]) == 0) ||
 		  (strcmp(".TIF", &type[strlen(type)-4]) == 0) ||
 		  (strcmp(".bmp", &type[strlen(type)-4]) == 0) ||

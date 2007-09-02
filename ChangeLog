@@ -1,3 +1,18 @@
+2007-09-01  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* VRPN_Imager_camera_server.cpp : Adds a camera that can look at
+		either a live vrpn_Imager feed or a stored vrpn_Imager file.
+		Does not properly handle color images (just writes whichever
+		region came last into the buffer).  Does handle transcoding
+		from 8-bit to 16-bit images.  Does double-buffer to prevent
+		partial updates.
+	* VRPN_Imager_camera_server.h : Same.
+	* vrpn_Imager_library.vcproj: Adds library to build it.
+	* video.sln : Adds library to the project.
+	* video_spot_tracker.cpp : Adds ability to specify an imager
+		device or an imager device in a file (assumes Imager0)
+		and track from a vrpn_Imager.
+
 2007-07-31  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_z_tracker.vcproj : Removed file that is not needed (and no
