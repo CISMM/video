@@ -1,3 +1,6 @@
+#ifndef	EDT_SERVER_H
+#define	EDT_SERVER_H
+
 #include "base_camera_server.h"
 
 #ifdef _WIN32
@@ -108,3 +111,4 @@ protected:
   // don't use the base-class method.
   virtual bool write_opengl_texture_to_quad(double xfrac, double yfrac);
 };
+#endif

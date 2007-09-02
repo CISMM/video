@@ -1,3 +1,6 @@
+#ifndef	VRPN_IMAGER_CAMERA_SERVER_H
+#define	VRPN_IMAGER_CAMERA_SERVER_H
+
 #include <vrpn_Imager.h>
 #include <vrpn_FileConnection.h>
 #include "base_camera_server.h"
@@ -73,3 +76,4 @@ protected:
   // pixels we have.
   virtual bool write_to_opengl_texture(GLuint tex_id);
 };
+#endif

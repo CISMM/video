@@ -9,6 +9,10 @@
 
 #define	VST_USE_ROPER
 #define	VST_USE_COOKE
+#define	VST_USE_EDT
+#define	VST_USE_DIAGINC
+#define	VST_USE_SEM
+#define	VST_USE_DIRECTX
 //#define USE_METAMORPH	    // Metamorph reader not completed.
 
 #ifdef	VST_USE_ROPER
@@ -52,6 +56,7 @@
 #include <list>
 #include <vector>
 using namespace std;
+#include "controllable_video.h"
 
 //#define	DEBUG
 
@@ -100,72 +105,6 @@ protected:
 };
 unsigned  Spot_Information::d_static_index = 0;	  //< Start the first instance of a Spot_Information index at zero.
 
-class Controllable_Video {
-public:
-  /// Start the stored video playing.
-  virtual void play(void) = 0;
-
-  /// Pause the stored video
-  virtual void pause(void) = 0;
-
-  /// Rewind the stored video to the beginning (also pauses).
-  virtual void rewind(void) = 0;
-
-  /// Single-step the stored video for one frame.
-  virtual void single_step() = 0;
-};
-
-class Directx_Controllable_Video : public Controllable_Video , public directx_videofile_server {
-public:
-  Directx_Controllable_Video(const char *filename) : directx_videofile_server(filename) {};
-  virtual ~Directx_Controllable_Video() {};
-  void play(void) { directx_videofile_server::play(); }
-  void pause(void) { directx_videofile_server::pause(); }
-  void rewind(void) { pause(); directx_videofile_server::rewind(); }
-  void single_step(void) { directx_videofile_server::single_step(); }
-};
-
-class Pulnix_Controllable_Video : public Controllable_Video, public edt_pulnix_raw_file_server {
-public:
-  Pulnix_Controllable_Video(const char *filename) : edt_pulnix_raw_file_server(filename) {};
-  virtual ~Pulnix_Controllable_Video() {};
-  void play(void) { edt_pulnix_raw_file_server::play(); }
-  void pause(void) { edt_pulnix_raw_file_server::pause(); }
-  void rewind(void) { pause(); edt_pulnix_raw_file_server::rewind(); }
-  void single_step(void) { edt_pulnix_raw_file_server::single_step(); }
-};
-
-class FileStack_Controllable_Video : public Controllable_Video, public file_stack_server {
-public:
-  FileStack_Controllable_Video(const char *filename) : file_stack_server(filename, "C:/nsrg/external/pc_win32/bin/ImageMagick-5.5.7-Q16/MAGIC_DIR_PATH") {};
-  virtual ~FileStack_Controllable_Video() {};
-  void play(void) { file_stack_server::play(); }
-  void pause(void) { file_stack_server::pause(); }
-  void rewind(void) { pause(); file_stack_server::rewind(); }
-  void single_step(void) { file_stack_server::single_step(); }
-};
-
-#ifdef	USE_METAMORPH
-class MetamorphStack_Controllable_Video : public Controllable_Video, public Metamorph_stack_server {
-public:
-  MetamorphStack_Controllable_Video(const char *filename) : Metamorph_stack_server(filename) {};
-  virtual ~MetamorphStack_Controllable_Video() {};
-  void play(void) { Metamorph_stack_server::play(); }
-  void pause(void) { Metamorph_stack_server::pause(); }
-  void rewind(void) { pause(); Metamorph_stack_server::rewind(); }
-  void single_step(void) { Metamorph_stack_server::single_step(); }
-};
-#endif
-
-class SEM_Controllable_Video : public Controllable_Video, public SEM_camera_server {
-public:
-  SEM_Controllable_Video(const char *filename) : SEM_camera_server(filename) {};
-  virtual ~SEM_Controllable_Video() {};
-  void play(void) { SEM_camera_server::play(); }
-  void pause(void) { SEM_camera_server::pause(); }
-  void rewind(void) { pause(); SEM_camera_server::rewind(); }
-  void single_step(void) { SEM_camera_server::single_step(); }
-};
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -266,117 +205,6 @@ double	flip_y(double y)
 {
   return g_image_to_display->get_num_rows() - 1 - y;
 }
-
-/// Open the wrapped camera we want to use depending on the name of the
-//  camera we're trying to open.
-bool  get_camera(const char *type, base_camera_server **camera,
-			    Controllable_Video **video)
-{
-#ifdef VST_USE_ROPER
-  if (!strcmp(type, "roper")) {
-    // XXX Starts with binning of 2 to get the image size down so that
-    // it fits on the screen.
-    roper_server *r = new roper_server(2);
-    *camera = r;
-    g_bitdepth = 12;
-  } else
-#endif  
-#ifdef VST_USE_COOKE
-  if (!strcmp(type, "cooke")) {
-    // XXX Starts with binning of 2 to get the image size down so that
-    // it fits on the screen.
-    cooke_server *r = new cooke_server(2);
-    *camera = r;
-  } else
-#endif  
-  if (!strcmp(type, "diaginc")) {
-    // XXX Starts with binning of 2 to get the image size down so that
-    // it fits on the screen.
-    diaginc_server *r = new diaginc_server(2);
-    *camera = r;
-    g_exposure = 80;	// Seems to be the minimum exposure for the one we have
-    g_bitdepth = 12;
-  } else if (!strcmp(type, "directx")) {
-    // Passing width and height as zero leaves it open to whatever the camera has
-    directx_camera_server *d = new directx_camera_server(1,0,0);	// Use camera #1 (first one found)
-    *camera = d;
-  } else if (!strcmp(type, "directx640x480")) {
-    directx_camera_server *d = new directx_camera_server(1,640,480);	// Use camera #1 (first one found)
-    *camera = d;
-
-  // If this is a VRPN URL for an SEM device, then open the file and set up
-  // to read from that device.
-  } else if (!strncmp(type, "SEM@", 4)) {
-    SEM_Controllable_Video  *s = new SEM_Controllable_Video (type);
-    *camera = s;
-    *video = s;
-    g_bitdepth = 16;
-
-  // Unknown type, so we presume that it is a file.  Now we figure out what
-  // kind of file based on the extension and open the appropriate type of
-  // imager.
-  } else {
-    fprintf(stderr,"get_camera(): Assuming filename (%s)\n", type);
-
-    // If the extension is ".raw" then we assume it is a Pulnix file and open
-    // it that way.
-    if (strcmp(".raw", &type[strlen(type)-4]) == 0) {
-      Pulnix_Controllable_Video *f = new Pulnix_Controllable_Video(type);
-      *camera = f;
-      *video = f;
-
-    // If the extension is ".sem" then we assume it is a VRPN-format file
-    // with an SEM device in it, so we form the name of the device and open
-    // a VRPN Remote object to handle it.
-    } else if (strcmp(".sem", &type[strlen(type)-4]) == 0) {
-      char *name;
-      if ( NULL == (name = new char[strlen(type) + 20]) ) {
-	fprintf(stderr,"Out of memory when allocating file name\n");
-	cleanup();
-        exit(-1);
-      }
-      sprintf(name, "SEM@file:%s", type);
-      SEM_Controllable_Video *s = new SEM_Controllable_Video(name);
-      *camera = s;
-      *video = s;
-      g_bitdepth = 16;
-      delete [] name;
-
-    // If the extension is ".tif" or ".tiff" or ".bmp" then we assume it is
-    // a file or stack of files to be opened by ImageMagick.
-    } else if (   (strcmp(".tif", &type[strlen(type)-4]) == 0) ||
-		  (strcmp(".TIF", &type[strlen(type)-4]) == 0) ||
-		  (strcmp(".bmp", &type[strlen(type)-4]) == 0) ||
-		  (strcmp(".BMP", &type[strlen(type)-4]) == 0) ||
-		  (strcmp(".jpg", &type[strlen(type)-4]) == 0) ||
-		  (strcmp(".JPG", &type[strlen(type)-4]) == 0) ||
-		  (strcmp(".tiff", &type[strlen(type)-5]) == 0) || 
-		  (strcmp(".TIFF", &type[strlen(type)-5]) == 0) ) {
-      FileStack_Controllable_Video *s = new FileStack_Controllable_Video(type);
-      *camera = s;
-      *video = s;
-    g_bitdepth = 16;
-
-    // If the extension is ".stk"  then we assume it is a Metamorph file
-    // to be opened by the Metamorph reader.
-#ifdef	USE_METAMORPH
-    } else if (strcmp(".stk", &type[strlen(type)-4]) == 0) {
-      MetamorphStack_Controllable_Video *s = new MetamorphStack_Controllable_Video(type);
-      *camera = s;
-      *video = s;
-
-    // File of unknown type.  We assume that it is something that DirectX knows
-    // how to open.
-#endif
-    } else {
-      Directx_Controllable_Video *f = new Directx_Controllable_Video(type);
-      *camera = f;
-      *video = f;
-    }
-  }
-  return true;
-}
-
 
 /// Create a pointer to a new tracker of the appropriate type,
 // given the global settings for interpolation and inversion.
@@ -1756,12 +1584,17 @@ int main(int argc, char *argv[])
   //------------------------------------------------------------------
   // Open the camera and image wrapper.  If we have a video file, then
   // set up the Tcl controls to run it.  Also, report the frame number.
-  if (!get_camera(g_device_name, &g_camera, &g_video)) {
+  unsigned bitdepth = g_bitdepth;
+  float exposure = g_exposure;
+  if (!get_camera(g_device_name, &bitdepth, &exposure, &g_camera, &g_video)) {
     fprintf(stderr,"Cannot open camera/imager\n");
     if (g_camera) { delete g_camera; g_camera = NULL; }
     cleanup();
     exit(-1);
   }
+  g_bitdepth = bitdepth;
+  g_exposure = exposure;
+
   // Verify that the camera is working.
   if (!g_camera->working()) {
     fprintf(stderr,"Could not establish connection to camera\n");

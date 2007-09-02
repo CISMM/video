@@ -1,3 +1,6 @@
+#ifndef	FILE_STACK_SERVER_H
+#define	FILE_STACK_SERVER_H
+
 #include "base_camera_server.h"
 #pragma warning( disable : 4786 )
 #include <vector>
@@ -128,3 +131,4 @@ protected:
 
 #endif
 
+#endif

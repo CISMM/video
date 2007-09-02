@@ -1,5 +1,13 @@
+// XXX Why is there a failed endpoint message on quit?
 // XXX Why is there a red line along the right border of the averaged image?
 //     This only seems to happen in the Cilia video, not when doing AVIs...
+
+#define	VST_USE_ROPER
+#define	VST_USE_COOKE
+#define	VST_USE_EDT
+#define	VST_USE_DIAGINC
+#define	VST_USE_SEM
+#define	VST_USE_DIRECTX
 
 #pragma comment(lib,"C:\\Program Files\\Roper Scientific\\PVCAM\\pvcam32.lib")
 
@@ -26,73 +34,14 @@
 #include <list>
 #include <vector>
 using namespace std;
-
-//#define	DEBUG
+#include "controllable_video.h"
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.00";
+const char *Version_string = "02.00";
 
 //--------------------------------------------------------------------------
 // Global constants
-
-//--------------------------------------------------------------------------
-// Some classes needed for use in the rest of the program.
-
-class Controllable_Video {
-public:
-  /// Start the stored video playing.
-  virtual void play(void) = 0;
-
-  /// Pause the stored video
-  virtual void pause(void) = 0;
-
-  /// Rewind the stored video to the beginning (also pauses).
-  virtual void rewind(void) = 0;
-
-  /// Single-step the stored video for one frame.
-  virtual void single_step() = 0;
-};
-
-class Directx_Controllable_Video : public Controllable_Video , public directx_videofile_server {
-public:
-  Directx_Controllable_Video(const char *filename) : directx_videofile_server(filename) {};
-  virtual ~Directx_Controllable_Video() {};
-  void play(void) { directx_videofile_server::play(); }
-  void pause(void) { directx_videofile_server::pause(); }
-  void rewind(void) { pause(); directx_videofile_server::rewind(); }
-  void single_step(void) { directx_videofile_server::single_step(); }
-};
-
-class Pulnix_Controllable_Video : public Controllable_Video, public edt_pulnix_raw_file_server {
-public:
-  Pulnix_Controllable_Video(const char *filename) : edt_pulnix_raw_file_server(filename) {};
-  virtual ~Pulnix_Controllable_Video() {};
-  void play(void) { edt_pulnix_raw_file_server::play(); }
-  void pause(void) { edt_pulnix_raw_file_server::pause(); }
-  void rewind(void) { pause(); edt_pulnix_raw_file_server::rewind(); }
-  void single_step(void) { edt_pulnix_raw_file_server::single_step(); }
-};
-
-class FileStack_Controllable_Video : public Controllable_Video, public file_stack_server {
-public:
-  FileStack_Controllable_Video(const char *filename) : file_stack_server(filename, "C:/nsrg/external/pc_win32/bin/ImageMagick-5.5.7-Q16/MAGIC_DIR_PATH") {};
-  virtual ~FileStack_Controllable_Video() {};
-  void play(void) { file_stack_server::play(); }
-  void pause(void) { file_stack_server::pause(); }
-  void rewind(void) { pause(); file_stack_server::rewind(); }
-  void single_step(void) { file_stack_server::single_step(); }
-};
-
-class SEM_Controllable_Video : public Controllable_Video, public SEM_camera_server {
-public:
-  SEM_Controllable_Video(const char *filename) : SEM_camera_server(filename) {};
-  virtual ~SEM_Controllable_Video() {};
-  void play(void) { SEM_camera_server::play(); }
-  void pause(void) { SEM_camera_server::pause(); }
-  void rewind(void) { pause(); SEM_camera_server::rewind(); }
-  void single_step(void) { SEM_camera_server::single_step(); }
-};
 
 //--------------------------------------------------------------------------
 static void  dirtyexit(void);
@@ -102,98 +51,15 @@ char  *g_device_name = NULL;			  //< Name of the device to open
 base_camera_server  *g_camera = NULL;		  //< Camera used to get an image
 image_metric	    *g_mean_image = NULL;	  //< Accumulates mean of images
 Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
-int                 g_bitdepth = 8;               //< Bit depth of the input image
-
-int                 g_exposure = 0;               //< Exposure for live camera
+unsigned            g_bitdepth = 8;               //< Bit depth of the input image
+float               g_exposure = 0;               //< Exposure for live camera
 
 bool g_video_valid = false; // Do we have a valid video frame in memory?
 unsigned            g_num_frames = 0;             //< How many frames have we read?
 int                 g_max_frames = 0;             //< How many frames to average over at most?
 
-/// Open the wrapped camera we want to use depending on the name of the
-//  camera we're trying to open.
-bool  get_camera(const char *type, base_camera_server **camera,
-			    Controllable_Video **video)
-{
-  if (!strcmp(type, "roper")) {
-    // XXX Starts with binning of 2 to get the image size down so that
-    // it fits on the screen.
-    roper_server *r = new roper_server(2);
-    *camera = r;
-  } else
-  if (!strcmp(type, "diaginc")) {
-    // XXX Starts with binning of 2 to get the image size down so that
-    // it fits on the screen.
-    diaginc_server *r = new diaginc_server(2);
-    *camera = r;
-    g_exposure = 80;	// Seems to be the minimum exposure for the one we have
-  } else if (!strcmp(type, "directx")) {
-    // Passing width and height as zero leaves it open to whatever the camera has
-    directx_camera_server *d = new directx_camera_server(1,0,0);	// Use camera #1 (first one found)
-    *camera = d;
-  } else if (!strcmp(type, "directx640x480")) {
-    directx_camera_server *d = new directx_camera_server(1,640,480);	// Use camera #1 (first one found)
-    *camera = d;
-
-  // If this is a VRPN URL for an SEM device, then open the file and set up
-  // to read from that device.
-  } else if (!strncmp(type, "SEM@", 4)) {
-    SEM_Controllable_Video  *s = new SEM_Controllable_Video (type);
-    *camera = s;
-    *video = s;
-
-  // Unknown type, so we presume that it is a file.  Now we figure out what
-  // kind of file based on the extension and open the appropriate type of
-  // imager.
-  } else {
-    fprintf(stderr,"get_camera(): Assuming filename (%s)\n", type);
-
-    // If the extension is ".raw" then we assume it is a Pulnix file and open
-    // it that way.
-    if (strcmp(".raw", &type[strlen(type)-4]) == 0) {
-      Pulnix_Controllable_Video *f = new Pulnix_Controllable_Video(type);
-      *camera = f;
-      *video = f;
-
-    // If the extension is ".sem" then we assume it is a VRPN-format file
-    // with an SEM device in it, so we form the name of the device and open
-    // a VRPN Remote object to handle it.
-    } else if (strcmp(".sem", &type[strlen(type)-4]) == 0) {
-      char *name;
-      if ( NULL == (name = new char[strlen(type) + 20]) ) {
-	fprintf(stderr,"Out of memory when allocating file name\n");
-	cleanup();
-        exit(-1);
-      }
-      sprintf(name, "SEM@file:%s", type);
-      SEM_Controllable_Video *s = new SEM_Controllable_Video(name);
-      *camera = s;
-      *video = s;
-      delete [] name;
-
-    // If the extension is ".tif" or ".tiff" or ".bmp" then we assume it is
-    // a file or stack of files to be opened by ImageMagick.
-    } else if (   (strcmp(".tif", &type[strlen(type)-4]) == 0) ||
-		  (strcmp(".TIF", &type[strlen(type)-4]) == 0) ||
-		  (strcmp(".bmp", &type[strlen(type)-4]) == 0) ||
-		  (strcmp(".BMP", &type[strlen(type)-4]) == 0) ||
-		  (strcmp(".jpg", &type[strlen(type)-4]) == 0) ||
-		  (strcmp(".JPG", &type[strlen(type)-4]) == 0) ||
-		  (strcmp(".tiff", &type[strlen(type)-5]) == 0) || 
-		  (strcmp(".TIFF", &type[strlen(type)-5]) == 0) ) {
-      FileStack_Controllable_Video *s = new FileStack_Controllable_Video(type);
-      *camera = s;
-      *video = s;
-
-    } else {
-      Directx_Controllable_Video *f = new Directx_Controllable_Video(type);
-      *camera = f;
-      *video = f;
-    }
-  }
-  return true;
-}
-
+// This is called in dirtyexit() whenever the program quits, so does
+// not have to be called otherwise.
 static	bool  store_summed_image(void)
 {
   if (!g_mean_image) {
@@ -206,7 +72,22 @@ static	bool  store_summed_image(void)
     fprintf(stderr, "Out of memory!\n");
     return false;
   }
-  sprintf(filename, "%s.avg.tif", g_device_name);
+
+  // If the device name included "file://" then we should only use
+  // the portion after that because this was a VRPN object inside
+  // a file.  Same thing for "file:"
+  const char *temp = strstr(g_device_name, "file://");
+  if (temp) {
+    sprintf(filename, "%s.avg.tif", temp + strlen("file://"));
+  } else {
+    temp = strstr(g_device_name, "file:");
+    if (temp) {
+      sprintf(filename, "%s.avg.tif", temp + strlen("file:"));
+    } else {
+      sprintf(filename, "%s.avg.tif", g_device_name);
+    }
+  }
+  printf("Saving mean image to %s\n", filename);
 
   // Figure out whether the image will be sixteen bits, and also
   // the gain to apply (256 if 8-bit, 1 if 16-bit).  If it is 8-bit
@@ -217,7 +98,7 @@ static	bool  store_summed_image(void)
   int bitshift_gain = 1;
   if (!do_sixteen) {
     bitshift_gain = 256;
-    bitshift_gain /= pow(2.0,g_bitdepth - 8);
+    bitshift_gain /= pow(2.0,static_cast<double>(g_bitdepth - 8));
   }
 
   if (!g_mean_image->write_to_tiff_file(filename, bitshift_gain, 0, do_sixteen)) {
@@ -229,7 +110,7 @@ static	bool  store_summed_image(void)
   return true;
 }
 
-// This is called when someone kills the task by closing Glut or some
+// This is called when someone kills the task by ^C or some
 // other means we don't have control over.
 static void  dirtyexit(void)
 {
@@ -242,16 +123,12 @@ static void  dirtyexit(void)
   }
 
   // Save the output file
-  printf("Saving mean image...\n");
   if (!store_summed_image()) {
     fprintf(stderr,"dirtyexit(): Could not save mean image\n");
   }
 
   // Done with the camera and other objects.
   printf("Exiting\n");
-
-  if (g_camera) { delete g_camera; g_camera = NULL; }
-  if (g_mean_image) { delete g_mean_image; g_mean_image = NULL; }
 }
 
 static void  cleanup(void)
@@ -283,10 +160,8 @@ bool do_next_frame(void)
   if (!g_camera->read_image_to_memory(1,0, 1,0, g_exposure)) {
     if (!g_video) {
       fprintf(stderr, "Can't read image to memory!\n");
-      store_summed_image();
       return false;
     } else {
-      store_summed_image();
       return false;
     }
   }
@@ -299,7 +174,6 @@ bool do_next_frame(void)
   // If we've done enough frames, we're done.
   g_num_frames++;
   if ( (g_max_frames) && (g_num_frames >= static_cast<unsigned>(g_max_frames)) ) {
-    store_summed_image();
     return false;
   }
 
@@ -308,7 +182,7 @@ bool do_next_frame(void)
 
 void Usage(const char *s)
 {
-    fprintf(stderr, "Usage: %s [-f num] [roper|diaginc|directx|directx640x480|filename]\n", s);
+    fprintf(stderr, "Usage: %s [-f num] [roper|diaginc|directx|directx640x480|VRPN imager name|filename]\n", s);
     fprintf(stderr, "       -f: Number of frames to average over (0 means all, and is the default)\n");
     exit(-1);
 }
@@ -366,7 +240,7 @@ int main(int argc, char *argv[])
         //------------------------------------------------------------------
         // Open the camera and image wrapper.  If we have a video file, then
         // press play.
-        if (!get_camera(g_device_name, &g_camera, &g_video)) {
+        if (!get_camera(g_device_name, &g_bitdepth, &g_exposure, &g_camera, &g_video)) {
           fprintf(stderr,"Cannot open camera/imager\n");
           if (g_camera) { delete g_camera; g_camera = NULL; }
           exit(-1);
@@ -388,6 +262,7 @@ int main(int argc, char *argv[])
       }
     }
   }
-  
+
+  if (g_camera) { delete g_camera; g_camera = NULL; }
   return 0;
 }

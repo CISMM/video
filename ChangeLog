@@ -1,3 +1,22 @@
+2007-09-02  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* SEM_camera_server.h : Enabling multiple inclusion.
+	* VRPN_Imager_camera_server.h : same.
+	* cooke_server.h : same.
+	* diaginc_server.h : same.
+	* edt_server.h : same.
+	* file_stack_server.h : same.
+	* roper_server.h : same.
+	* VRPN_Imager_camera_server.cpp : Comment.
+	* controllable_video.h : Groups common camera-opening code from
+		VST, video optimizer, and average_videos into one file that
+		everyone can use to avoid code duplication.
+	* average_videos.cpp : Includes common camera-opening code.
+	* cismm_video_optimizer.cpp : same.
+	* video_spot_tracker.cpp : same.
+	* average_video.vcproj : Debug version compiles (something wrong
+		with release still).
+
 2007-09-01  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* VRPN_Imager_camera_server.cpp : Adds a camera that can look at

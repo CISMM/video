@@ -1,3 +1,6 @@
+#ifndef	DIAGINC_SERVER_H
+#define	DIAGINC_SERVER_H
+
 #ifdef _WIN32
 #include "base_camera_server.h"
 
@@ -59,3 +62,4 @@ protected:
 };
 #endif
 
+#endif

@@ -1,3 +1,4 @@
+/* XXX It seems to be herky-jerky on stored video */
 /* XXX What do to about RGB? */
 /* XXX We may we want to do source-quench on live cameras. */
 /* XXX Does not send the commands to reduce the region of interest */

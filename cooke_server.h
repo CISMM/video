@@ -1,3 +1,6 @@
+#ifndef	COOKE_SERVER_H
+#define	COOKE_SERVER_H
+
 #ifdef _WIN32
 #include <windows.h>
 #include "base_camera_server.h"
@@ -94,3 +97,4 @@ protected:
 };
 #endif
 
+#endif

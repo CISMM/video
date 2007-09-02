@@ -1,3 +1,6 @@
+#ifndef	ROPER_SERVER_H
+#define	ROPER_SERVER_H
+
 #ifdef _WIN32
 #include <windows.h>
 #include "base_camera_server.h"
@@ -121,3 +124,4 @@ protected:
 };
 #endif
 
+#endif

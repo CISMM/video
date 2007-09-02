@@ -1,3 +1,6 @@
+#ifndef	SEM_CAMERA_SERVER_H
+#define	SEM_CAMERA_SERVER_H
+
 // This can be added to Linux later if needed.
 #ifdef _WIN32
 #include <vrpn_FileConnection.h>
@@ -73,3 +76,4 @@ protected:
 };
 #endif
 
+#endif
