@@ -731,7 +731,7 @@ bool	directx_camera_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_u
   return true;
 }
 
-bool directx_camera_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans) const
+bool directx_camera_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans)
 {
     unsigned y;
 

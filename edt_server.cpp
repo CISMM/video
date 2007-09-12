@@ -12,7 +12,8 @@ d_buffer(NULL),
 d_swap_buffer(NULL),
 d_pdv_p(NULL),
 d_swap_lines(swap_lines),
-d_num_buffers(num_buffers)
+d_num_buffers(num_buffers),
+d_unreported_timeouts(0)
 {
   // In case we fail somewhere along the way
   _status = false;
@@ -175,6 +176,7 @@ bool  edt_server::read_image_to_memory(unsigned minX, unsigned maxX,
 
 	  pdv_start_images((PdvDev*)d_pdv_p, pending);
       }
+      d_unreported_timeouts += (timeouts - d_last_timeouts);
       d_last_timeouts = timeouts;
   }
 
@@ -230,12 +232,18 @@ bool  edt_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &val
 }
 
 /// Send in-memory image over a vrpn connection
-bool  edt_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int) const
+bool  edt_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int)
 {
   // Make sure we have a valid, open device
   if (!_status) { return false; };
 
   unsigned y;
+
+  // If we have unreported timeouts, send the discarded_frame message
+  if (d_unreported_timeouts) {
+    svr->send_discarded_frames(d_unreported_timeouts);
+    d_unreported_timeouts = 0;
+  }
 
   // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION).
   int nRowsPerRegion=vrpn_IMAGER_MAX_REGIONu8/_num_columns;
@@ -478,7 +486,7 @@ bool  edt_pulnix_raw_file_server::write_memory_to_ppm_file(const char *filename,
 }
 
 /// Send whole image over a vrpn connection
-bool  edt_pulnix_raw_file_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int) const
+bool  edt_pulnix_raw_file_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int)
 {
     // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION)
     unsigned  num_x = get_num_columns();

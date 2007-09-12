@@ -1,3 +1,23 @@
+2007-09-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* SEM_camera_server.h : Changed function to non-const so that it
+		can report skipped frames.
+	* SEM_camera_server.cpp : Same.
+	* VRPN_Imager_camera_server.h : same.
+	* VRPN_Imager_camera_server.cpp : same.
+	* cooke_server.h : same.
+	* cooke_server.cpp : same.
+	* diaginc_server.h : same.
+	* diaginc_server.cpp : same.
+	* edt_server.h : same.
+	* edt_server.cpp : same.
+	* file_stack_server.h : same.
+	* file_stack_server.cpp : same.
+	* roper_server.h : same.
+	* roper_server.cpp : same.
+	* video_imager_server.cpp : Adds error report if can't send a frame.
+		Asks for 10 buffers from EDT.
+
 2007-09-02  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* SEM_camera_server.h : Enabling multiple inclusion.

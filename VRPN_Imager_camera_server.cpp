@@ -418,7 +418,7 @@ bool	VRPN_Imager_camera_server::get_pixel_from_memory(unsigned X, unsigned Y, vr
 }
 
 // XXX This routine needs to be tested.
-bool VRPN_Imager_camera_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int) const
+bool VRPN_Imager_camera_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int)
 {
     // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION)
     unsigned  num_x = get_num_columns();

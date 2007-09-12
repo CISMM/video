@@ -159,7 +159,7 @@ public:
   /// Send in-memory image over a vrpn connection.  Number of channels is 3 for RGB cameras, but 1 for scientific cameras.
   // The channels to be used must have been pre-allocated by the application; three contiguous named "red" "green" "blue"
   // for an RGB (or BGR) camera.
-  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1) const {return false;};
+  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1) {return false;};
 
   /// Write the in-memory image into an OpenGL texture and then texture-map it onto a quad.  The scale and offset are used to set OpenGL transfer settings.
   // The quad will have its vertex coordinates going from -1 to 1 in X and Y and lie at Z=0.  Its texture coordinates will be

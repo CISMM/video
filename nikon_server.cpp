@@ -467,7 +467,7 @@ bool	roper_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint16 &va
   return true;
 }
 
-bool roper_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans) const
+bool roper_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans)
 {
     // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION)
     unsigned  num_x = get_num_columns();

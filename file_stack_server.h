@@ -47,7 +47,7 @@ public:
   virtual bool  write_memory_to_ppm_file(const char *filename, int gain = 1, bool sixteen_bits = false) const;
 
   /// Send in-memory image over a vrpn connection.
-  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1) const;
+  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1);
 
 protected:
   vrpn_uint16		      *d_buffer;	  //< Holds one frame of data from the file
@@ -116,7 +116,7 @@ public:
   virtual bool  write_memory_to_ppm_file(const char *filename, int gain = 1, bool sixteen_bits = false) const;
 
   /// Send in-memory image over a vrpn connection.
-  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1) const;
+  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Synchronized_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1);
 
 protected:
   vrpn_uint16		      *d_buffer;	  //< Holds one frame of data from the file

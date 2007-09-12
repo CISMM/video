@@ -73,8 +73,9 @@ bool  init_camera_code(const char *type, int which = 1)
       return false;
     }
   } else if (!strcmp(type, "edt")) {
-    printf("Opening ETD Camera\n");
-    g_camera = new edt_server(g_swap_edt);
+    static unsigned num_buffers = 10;
+    printf("Opening ETD Camera (using %d buffers)\n", num_buffers);
+    g_camera = new edt_server(g_swap_edt, num_buffers);
     g_numchannels = 1;
     g_maxval = 255;
     if (!g_camera->working()) {
@@ -258,7 +259,9 @@ int main(int argc, char *argv[])
   while (!g_done) {
     // Setting the min to be larger than the max means "the whole image"
     g_camera->read_image_to_memory(1,0,1,0,g_exposure);
-    g_camera->send_vrpn_image(svr,svrcon,g_exposure,svrchan, g_numchannels);
+    if (!g_camera->send_vrpn_image(svr,svrcon,g_exposure,svrchan, g_numchannels)) {
+      fprintf(stderr, "Could not send VRPN frame\n");
+    }
     svr->mainloop();
     svrcon->mainloop();
     svrcon->save_log_so_far();

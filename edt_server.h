@@ -27,7 +27,7 @@ public:
 
   /// Send in-memory image over a vrpn connection
   virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,
-    vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1) const;
+    vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1);
 
 protected:
   vrpn_uint8  *d_buffer;	  //< Points to current frame of data
@@ -38,6 +38,7 @@ protected:
   unsigned    d_started;	  //< How many acquisitions started?
   unsigned    d_last_timeouts;	  //< How many timeouts last time we read?
   unsigned    d_first_timeouts;	  //< How many timeouts when we opened the device?
+  unsigned    d_unreported_timeouts;  //< How many timeouts do we have that VRPN doesn't know about?
 
   virtual bool open_and_find_parameters(void);
 
@@ -90,7 +91,7 @@ public:
   virtual bool  write_memory_to_ppm_file(const char *filename, int gain = 1, bool sixteen_bits = false) const;
 
   /// Send in-memory image over a vrpn connection
-  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1) const;
+  virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1);
 
 protected:
   FILE *d_infile;		  //< File to read from
