@@ -73,7 +73,7 @@ bool  init_camera_code(const char *type, int which = 1)
       return false;
     }
   } else if (!strcmp(type, "edt")) {
-    static unsigned num_buffers = 10;
+    static unsigned num_buffers = 360;
     printf("Opening ETD Camera (using %d buffers)\n", num_buffers);
     g_camera = new edt_server(g_swap_edt, num_buffers);
     g_numchannels = 1;
@@ -265,6 +265,8 @@ int main(int argc, char *argv[])
     svr->mainloop();
     svrcon->mainloop();
     svrcon->save_log_so_far();
+    // We do want this process to eat a whole processor, so
+    // don't sleep.
 //    vrpn_SleepMsecs(1);
   }
 

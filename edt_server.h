@@ -10,7 +10,7 @@ public:
   // improperly on our Pulnix cameras, so I had this swap_lines
   // entry, and it defaulted to true.  Version 3335 of the
   // drivers fixes this, so the default is now false.
-  edt_server(bool swap_lines = false, unsigned num_buffers = 1);
+  edt_server(bool swap_lines = false, unsigned num_buffers = 10);
   virtual ~edt_server(void);
 
   /// Read an image to a memory buffer.  Exposure time is in milliseconds.
@@ -36,9 +36,15 @@ protected:
   bool	      d_swap_lines;	  //< Do we swap every other line in video (workaround for EDT bug in our system)
   unsigned    d_num_buffers;	  //< How many EDT-managed buffers to allocate in ring?
   unsigned    d_started;	  //< How many acquisitions started?
+
   unsigned    d_last_timeouts;	  //< How many timeouts last time we read?
   unsigned    d_first_timeouts;	  //< How many timeouts when we opened the device?
   unsigned    d_unreported_timeouts;  //< How many timeouts do we have that VRPN doesn't know about?
+  bool        d_missed_some_images; //< We've missed an unknown number of images due to buffers filling up
+
+  struct timeval d_pc_time_first_image;   //< PC clock's time at first image acquisition
+  struct timeval d_edt_time_first_image;  //< EDT time of first image acquisition
+  struct timeval d_timestamp;     //< When (in PC clock) the most recent image got to DMA
 
   virtual bool open_and_find_parameters(void);
 

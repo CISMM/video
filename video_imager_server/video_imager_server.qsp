@@ -137,6 +137,7 @@ Item-003=*|Video_imager_server for Cooke (bin 2x2)|<Application Folder>\video_im
 Item-004=*|Video_imager_server for Roper (bin 2x2)|<Application Folder>\video_imager_server.bat||-bin 2 roper|<Application Folder>|Normal Window||0|1||0|
 Item-005=*|Video Imager Client|<Application Folder>\testimager_client.exe|||<Application Folder>|Normal Window||0|1||0|
 Item-006=*|Video_imager_server for Pulnix Swap-lines|<Application Folder>\video_imager_server.bat||-swap_edt edt|<Application Folder>|Normal Window||0|1||0|
+Item-007=*|Setup EDT board to use Pulnix|<Application Folder>\setup_edt_for_pulnix.bat||||Normal Window||0|1||0|
 
 [Billboard]
 AddBillboard=1
@@ -235,5 +236,6 @@ TypicalCompactData=15
 Description=This is the main group of files
 Item-000=Fol*<Application Folder>[0]
 Item-001=Fil*F:\temp\video\Release\video_imager_server.exe
-Item-002=Fil*F:\Temp\video\video_imager_server\video_imager_server.bat
-Item-003=Fil*F:\Temp\vrpn\pc_win32\client_src\testimager_client\Release\testimager_client.exe
+Item-002=Fil*F:\temp\video\video_imager_server\setup_edt_for_pulnix.bat
+Item-003=Fil*F:\Temp\video\video_imager_server\video_imager_server.bat
+Item-004=Fil*F:\Temp\vrpn\pc_win32\client_src\testimager_client\Release\testimager_client.exe

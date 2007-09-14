@@ -1,3 +1,14 @@
+2007-09-14  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* edt_server.cpp : Modified so that it not only reports frames
+		lost due to bus contention but also possibly-lost frames
+		when all memory buffers fill up.
+	* edt_server.h : Same.
+	* video_imager_server.cpp : Made the default number of memory
+		buffers be 360 frames (so we can run 3 seconds behind)
+		to reduce the dropped frames during connect/drop handling
+		and to avoid losing frames to slow disk.
+
 2007-09-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* SEM_camera_server.h : Changed function to non-const so that it

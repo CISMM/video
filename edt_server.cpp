@@ -13,10 +13,15 @@ d_swap_buffer(NULL),
 d_pdv_p(NULL),
 d_swap_lines(swap_lines),
 d_num_buffers(num_buffers),
-d_unreported_timeouts(0)
+d_unreported_timeouts(0),
+d_missed_some_images(false)
 {
   // In case we fail somewhere along the way
   _status = false;
+
+  // No first image time yet
+  d_pc_time_first_image.tv_sec = 0;
+  d_pc_time_first_image.tv_usec = 0;
 
   // Open the device and find out what we need to know.
   _status = open_and_find_parameters();
@@ -88,18 +93,16 @@ bool edt_server::open_and_find_parameters(void)
    * images or that take a serial command to start every image) don't
    * tolerate queueing of multiple images
    */
-  if (((PdvDev*)d_pdv_p)->dd_p->force_single)
-  {
-      pdv_start_image((PdvDev*)d_pdv_p);
+  if (((PdvDev*)d_pdv_p)->dd_p->force_single) {
       d_started = 1;
-  }
-  else
-  {
-      pdv_start_images((PdvDev*)d_pdv_p, d_num_buffers);
+      pdv_start_image((PdvDev*)d_pdv_p);
+  } else {
+      // Request as many images as buffers, so we are always trying to
+      // fill all of them.  If we have gotten all we asked for, we
+      // may have missed some.
       d_started = d_num_buffers;
+      pdv_start_images((PdvDev*)d_pdv_p, d_started);
   }
-
-  (void) edt_dtime();		/* initialize time so that the later check will be zero-based. */
 
   // Read one frame when we start.
   _status = true;
@@ -148,11 +151,22 @@ bool  edt_server::read_image_to_memory(unsigned minX, unsigned maxX,
   if (_maxX >= _num_columns) { _maxX = _num_columns - 1; };
   if (_maxY >= _num_rows) { _maxY = _num_rows - 1; };
 
+  // If the in-memory buffers have all been filled up, assume
+  // that we have missed some unknown number of images.  Save this
+  // so that it can be reported if we're sending VRPN messages.
+  unsigned outstanding = edt_get_todo((PdvDev*)d_pdv_p) -
+                         edt_done_count((PdvDev*)d_pdv_p);
+  if ( outstanding == 0 ) {
+    d_missed_some_images = true;
+    static int missed = 0;
+  }
+
   /*
    * get the image and immediately start the next one. Processing
    * can then occur in parallel with the next acquisition
    */
-  image_p = pdv_wait_image((PdvDev*)d_pdv_p);
+  unsigned int sec_usec[2];
+  image_p = pdv_wait_image_timed((PdvDev*)d_pdv_p, sec_usec);
   if (image_p == NULL) {
     fprintf(stderr,"edt_server::read_image_to_memory(): Failed to read image\n");
     pdv_close((PdvDev*)d_pdv_p);
@@ -161,7 +175,30 @@ bool  edt_server::read_image_to_memory(unsigned minX, unsigned maxX,
     return false;
   }
 
+  //---------------------------------------------------------------------
+  // Time handling: We let the EDT board tell us what time each image
+  // was put into the DMA buffer.  We don't know how this compares to
+  // the absolute PC clock time, so we record the offset from the first
+  // time we got an image (clock reading and EDT reading), so that the
+  // time will be reported relative to the computer's clock.
+  // If we don't have a nonzero PC time, this is the first time through,
+  // so get both initial times.
+  struct timeval edt_now = { sec_usec[0], sec_usec[1] };
+  if ( d_pc_time_first_image.tv_sec == 0 ) {
+    vrpn_gettimeofday(&d_pc_time_first_image, NULL);
+    d_edt_time_first_image = edt_now;
+  }
+  struct timeval time_offset = vrpn_TimevalDiff(d_pc_time_first_image, d_edt_time_first_image);
+  d_timestamp = vrpn_TimevalSum( edt_now, time_offset );
+
   pdv_start_image((PdvDev*)d_pdv_p);
+
+  // Check for timeouts in image transer from the camera into a memory
+  // buffer.  This does NOT tell us when we ask for more images than will
+  // fit into buffers, but rather when there was a communication error or
+  // the system bus was too slow to pull the image off the camera.  We'll
+  // need to look at timestamps to determine whether we missed any images
+  // due to not having room in the buffers we allocated.
 
   unsigned timeouts = pdv_timeouts((PdvDev*)d_pdv_p);
   if (timeouts > d_last_timeouts)
@@ -173,7 +210,6 @@ bool  edt_server::read_image_to_memory(unsigned minX, unsigned maxX,
       if (d_num_buffers > 1)
       {
 	  int     pending = pdv_timeout_cleanup((PdvDev*)d_pdv_p);
-
 	  pdv_start_images((PdvDev*)d_pdv_p, pending);
       }
       d_unreported_timeouts += (timeouts - d_last_timeouts);
@@ -245,15 +281,22 @@ bool  edt_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrco
     d_unreported_timeouts = 0;
   }
 
+  // If we have missed some images, send the discarded_frame message
+  // with a count of zero to indicate we don't know how many we missed.
+  if (d_missed_some_images) {
+    svr->send_discarded_frames(0);
+    d_missed_some_images = false;
+  }
+
   // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION).
   int nRowsPerRegion=vrpn_IMAGER_MAX_REGIONu8/_num_columns;
-  svr->send_begin_frame(0, _num_columns-1, 0, _num_rows-1);
+  svr->send_begin_frame(0, _num_columns-1, 0, _num_rows-1, 0, 0, &d_timestamp);
   for(y=0; y<_num_rows; y+=nRowsPerRegion) {
     svr->send_region_using_base_pointer(svrchan,0,_num_columns-1,y,min(_num_rows,y+nRowsPerRegion)-1,
-      d_buffer, 1, _num_columns, _num_rows, true);
+      d_buffer, 1, _num_columns, _num_rows, true, 0, 0, 0, &d_timestamp);
     svr->mainloop();
   }
-  svr->send_end_frame(0, _num_columns-1, 0, _num_rows-1);
+  svr->send_end_frame(0, _num_columns-1, 0, _num_rows-1, 0, 0, &d_timestamp);
   svr->mainloop();
 
   // Mainloop the server connection (once per server mainloop, not once per object).
