@@ -88,7 +88,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.11";
+const char *Version_string = "05.12";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -293,6 +293,7 @@ Tclvar_int_with_button	g_quit("quit",NULL);
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
 Tclvar_int		g_log_relative("logging_relative");
+Tclvar_int		g_log_without_opt("logging_without_opt");
 double			g_log_offset_x, g_log_offset_y, g_log_offset_z;
 Tclvar_int              g_logging("logging"); //< Accessor for the GUI logging button so rewind can turn it off.
 bool g_video_valid = false; // Do we have a valid video frame in memory?
@@ -487,11 +488,18 @@ static	double	timediff(struct timeval t1, struct timeval t2)
 
 // XXX The start time needs to be reset whenever a new file is opened, probably,
 // rather than once at the first logged message.
+
 static	bool  save_log_frame(int frame_number)
 {
   static struct timeval start;
   static bool first_time = true;
   struct timeval now; gettimeofday(&now, NULL);
+
+  // If optimization is turned off, only log if the flag is set that lets us log
+  // when optimization is turned off.
+  if (!g_opt && !g_log_without_opt) {
+    return true;
+  }
 
   g_log_frame_number_last_logged = frame_number;
 
@@ -2591,6 +2599,7 @@ void  handle_optimize_z_change(int newvalue, void *)
 	}
       }
       g_psf_filename = "";
+      g_opt_z = 0;
     }
 
   // User is turning off Z tracking, so destroy any existing

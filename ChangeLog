@@ -1,3 +1,16 @@
+2007-10-15  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* controllable_video.h : Enable loading of PNG files with the
+		file stack loader.
+	* video_spot_tracker.cpp : Canceling the "Logging" dialog now
+		clears the logging checkbox.  Cancelling the "Optimize in Z"
+		dialog no longer crashes the program.  Added button to enable
+		not logging bead positions when optimization is not on, so
+		that people can skip frames where a single-fluorophore bead
+		has blinked off.
+	* file_list.cpp : Uses correct printf string description when making
+		file names (the old one only worked on Windows).
+
 2007-09-14  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* edt_server.cpp : Modified so that it not only reports frames

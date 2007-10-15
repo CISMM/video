@@ -168,10 +168,12 @@ set logfilename ""
 label .kernel.bottom.log.label -textvariable logfilename
 pack .kernel.bottom.log.label -side bottom -fill x
 trace variable logging w logging_changed
-checkbutton .kernel.bottom.log.button -text "Logging to file named below" -variable logging -anchor w
+checkbutton .kernel.bottom.log.button -text "Logging" -variable logging -anchor w
 pack .kernel.bottom.log.button -side left -fill x
 checkbutton .kernel.bottom.log.relative -text "Relative to active tracker start" -variable logging_relative -anchor w
 pack .kernel.bottom.log.relative -side left -fill x
+checkbutton .kernel.bottom.log.withoutopt -text "Log when not optimizing" -variable logging_without_opt -anchor w
+pack .kernel.bottom.log.withoutopt -side left -fill x
 
 proc logging_changed { varName index op } {
     global logging logfilename fileinfo
@@ -188,6 +190,9 @@ proc logging_changed { varName index op } {
 	    # dialog check whether file exists.
 	    set logfilename $filename
 	    set fileinfo(open_dir) [file dirname $filename]
+	} else {
+	  set logging 0
+	  .kernel.bottom.log.button deselect
 	}
     } else {
 	set logfilename ""

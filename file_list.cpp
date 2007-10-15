@@ -38,7 +38,7 @@ static string make_filename(const string file_name, string::size_type start, str
   // add the  u  that is written into the format descriptor.
   char	format_descriptor[6];
   char	num_as_chars[100];
-  sprintf(format_descriptor, "%%0%02uLu", len);
+  sprintf(format_descriptor, "%%0%02ulu", len);
   sprintf(num_as_chars, format_descriptor, value);
 
   string retval = file_name;

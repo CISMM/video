@@ -242,7 +242,7 @@ bool  get_camera(const char *name,
       *video = s;
       delete [] vrpnname;
 
-    // If the extension is ".tif" or ".tiff" or ".bmp" then we assume it is
+    // If the extension is ".tif" or ".tiff" or ".bmp" or ".png" then we assume it is
     // a file or stack of files to be opened by ImageMagick.
     } else if (   (strcmp(".tif", &name[strlen(name)-4]) == 0) ||
 		  (strcmp(".TIF", &name[strlen(name)-4]) == 0) ||
@@ -250,6 +250,8 @@ bool  get_camera(const char *name,
 		  (strcmp(".BMP", &name[strlen(name)-4]) == 0) ||
 		  (strcmp(".jpg", &name[strlen(name)-4]) == 0) ||
 		  (strcmp(".JPG", &name[strlen(name)-4]) == 0) ||
+		  (strcmp(".png", &name[strlen(name)-4]) == 0) ||
+		  (strcmp(".PNG", &name[strlen(name)-4]) == 0) ||
 		  (strcmp(".tiff", &name[strlen(name)-5]) == 0) || 
 		  (strcmp(".TIFF", &name[strlen(name)-5]) == 0) ) {
       FileStack_Controllable_Video *s = new FileStack_Controllable_Video(name);

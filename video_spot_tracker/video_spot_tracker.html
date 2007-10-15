@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v05.11</title>
+<title>Video Spot Tracker v05.12</title>
 
-<h1>Video Spot Tracker version 05.11</h1>
+<h1>Video Spot Tracker version 05.12</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -50,7 +50,7 @@
   icon that was created when the program was installed. To select a stack of image 
   files that are numbered consecutively, drag any one of the files onto the icon. 
   It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
-  Menu/All Programs/NSRG/Video Spot Tracker v05.11</b></i>. If you run the program 
+  Menu/All Programs/NSRG/Video Spot Tracker v05.12</b></i>. If you run the program 
   directly by double-clicking on the icon, it will ask for a video or image file 
   (AVI, TIF, or BMP) that it should open.</p>
 
@@ -222,7 +222,7 @@
   the center; the cone and disc trackers have a single sample in the center.</p>
 <h3>Recording the tracker motion</h3>
 
-<p><img src="log.jpg" width="348" height="80" align="right">You can record the 
+<p><img src="log.jpg" width="397" height="50" align="right">You can record the 
   motion of the trackers by checking the <b><i>Logging</i></b> checkbox within 
   the <b><i>log</i></b> control panel (shown to the right). This panel was moved 
   inside the <b><i>kernel</i></b> control panel in version 04.07. This will bring 
@@ -236,10 +236,26 @@
   to stop the logging. You can then go forward to another section, turn on logging, 
   and save a different file if you like.</p>
 
-<p>At the time logging is started, the value of the <b><i>Relative to active tracker start</i></b> check box is used to determine the origin of the reported positions (orientation and radius are always absolute). If the box is unchecked, the positions are in pixels with respect to the center of the pixel in the upper-left corner of the screen as the origin. If the box is checked, the positions are in pixels with respect to the location of the active tracker when logging was turned on.</p>
-
+<p>At the time logging is started, the value of the <b><i>Relative to active tracker 
+  start</i></b> check box is used to determine the origin of the reported positions 
+  (orientation and radius are always absolute). If the box is unchecked, the positions 
+  are in pixels with respect to the center of the pixel in the upper-left corner 
+  of the screen as the origin. If the box is checked, the positions are in pixels 
+  with respect to the location of the active tracker when logging was turned on.</p>
 <p>Logging will not occur while the file is paused, or when the end of the video 
-  has been reached (this also means that the positions of the trackers in the last frame of video will not be stored). This is done so that you can place the trackers back onto spots that have jumped too far between frames when single-stepping through the video and still get an accurate record of where the spots went.  There will be one entry in the file per tracker for each frame of video stepped through or played through. The time values associated with each record are the wall-clock time at which the particular frame left the screen (when the next frame appeared); this is probably not useful and so should be ignored. <b><i>Note</i></b>: Some video files have a 30 frame/second playback but have three copies of the same video frame to produce an overall update of 10 frames/second; this will produce repeated location reports for each of the identical frames.</p> 
+  has been reached (this also means that the positions of the trackers in the 
+  last frame of video will not be stored). This is done so that you can place 
+  the trackers back onto spots that have jumped too far between frames when single-stepping 
+  through the video and still get an accurate record of where the spots went. 
+  There will be one entry in the file per tracker for each frame of video stepped 
+  through or played through (unless optimization is turned off during that frame 
+  and the <i>Log when not optimizing</i> checkbox is not checked). The time values 
+  associated with each record are the wall-clock time at which the particular 
+  frame left the screen (when the next frame appeared); this is probably not useful 
+  and so should be ignored. <b><i>Note</i></b>: Some video files have a 30 frame/second 
+  playback but have three copies of the same video frame to produce an overall 
+  update of 10 frames/second; this will produce repeated location reports for 
+  each of the identical frames.</p> 
 
 <p>The motion of the trackers over time is stored into two log files. The first is a <b><i>Comma-Separated Values</i></b> format with the extension .csv. This text format can be viewed in a text editor or loaded by several spreadsheet and analysis programs. The reports are stored in the file in in frame order, with multiple tracker entries interleaved for each frame. If you want to view the individual traces, you should use the <i>Excel</i> data sorting tool to sort the list by the <i>Spot ID</i> column.</p>
 
@@ -284,6 +300,17 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 5.12:</h3>
+<ul>
+  <li>Added option to not log when optimization is turned off for a frame, so 
+    that people can skip frames where a single-fluorophore bead has blinked off.</li>
+  <li>Canceling the &quot;Logging&quot; dialog now clears the logging checkbox.</li>
+  <li>Cancelling the &quot;Optimize in Z&quot; dialog no longer crashes the program.</li>
+  <li>It is now possible to load PNG files directly by dragging them onto the 
+    spot-tracker program without having to first convert them to TIFF files (note; 
+    these are often compressed and so should not normally be used).</li>
+</ul>
+<h3></h3>
 <h3>Version 5.11:</h3>
 <ul>
   <li>Added &quot;autodelete when lost&quot; checkbox that will delete a tracker 
