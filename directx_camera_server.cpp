@@ -363,7 +363,7 @@ bool directx_camera_server::open_and_find_parameters(const int which, unsigned w
 
     // Make the call to actually set the video type to what we want.
     if (_pStreamConfig->SetFormat(&mt) != S_OK) {
-      fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't set resolution to %dx%d\n",
+      fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't set resolution to %dx%d using uncompressed 24-bit video\n",
 	pVideoHeader->bmiHeader.biWidth, pVideoHeader->bmiHeader.biHeight);
       return false;
     }
@@ -578,7 +578,7 @@ directx_camera_server::~directx_camera_server(void)
 {
   // Get the callback device to immediately return all samples
   // it has queued up, then shut down the filter graph.
-  _pCallback->shutdown();
+  if (_pCallback) { _pCallback->shutdown(); }
   close_device();
 
   if (_buffer != NULL) { delete [] _buffer; }
@@ -733,6 +733,8 @@ bool	directx_camera_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_u
 
 bool directx_camera_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans)
 {
+    if (!_status) { return false; }
+
     unsigned y;
 
     // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION).
@@ -773,6 +775,8 @@ bool directx_camera_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connect
 // pixels we have. Also note that we need to swap BGR format to RGB format.
 bool directx_camera_server::write_to_opengl_texture(GLuint tex_id)
 {
+  if (!_status) { return false; }
+
   // Note: Check the GLubyte or GLushort or whatever in the temporary buffer!
   const GLint   NUM_COMPONENTS = 3;
   const GLenum  FORMAT = GL_BGR_EXT;

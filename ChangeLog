@@ -1,3 +1,13 @@
+2007-10-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* VRPN_Imager_library.dsp : Project to include this in the Visual
+		Studio 6 build.  We can't use the VS 2005 build until we
+		figure out the manifest mangling that has to happen.
+	* directx_camera_server.cpp : Improved error message.  Made it not
+		crash when it fails to open a camera.
+	* video.dsw : Added project.
+	* video_spot_tracker.cpp : Incremented version number.
+
 2007-10-15  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* controllable_video.h : Enable loading of PNG files with the

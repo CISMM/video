@@ -81,6 +81,18 @@ Package=<4>
 
 ###############################################################################
 
+Project: "VRPN_Imager_library"=.\VRPN_Imager_library.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
 Project: "add_noise_to_image"=.\add_noise_to_image.dsp - Package Owner=<4>
 
 Package=<5>
@@ -703,6 +715,9 @@ Package=<4>
     End Project Dependency
     Begin Project Dependency
     Project_Dep_Name cooke_library
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name VRPN_Imager_library
     End Project Dependency
 }}}
 
