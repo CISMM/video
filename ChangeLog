@@ -1,3 +1,18 @@
+2007-10-21  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Fixed a bug in the lost-tracking code
+		that had been inserted when I added the "autodelete" function.
+		It is now possible for trackers to get un-lost without getting
+		deleted.  Added a "hover when lost" option that is supposed to
+		help keep FIONA kernels on blinking dots.  It does not log during
+		frames where the trackers are lost, but lets them pick up and
+		get un-lost later.
+	* spot_tracker.cpp : Made the FIONA kernel invertible, and made sure
+		that it never goes negative if it is not inverted (and never
+		positive if it is) to prevent getting stuck on the wrong side
+		of zero.  Changed the optimization for the FIONA kernel to not
+		try and move if it has no signal (zero summedarea).
+
 2007-10-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* VRPN_Imager_library.dsp : Project to include this in the Visual

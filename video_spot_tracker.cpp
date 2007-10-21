@@ -88,7 +88,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.13";
+const char *Version_string = "05.14";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -266,6 +266,7 @@ Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_t
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
 Tclvar_float_with_scale g_lossSensitivity("lost_tracking_sensitivity", "", 0.0, 1.0, 0.0);
 Tclvar_int_with_button	g_autoDeleteLost("autodelete_when_lost","",0);
+Tclvar_int_with_button	g_hoverWhenLost("hover_when_lost","",0);
 Tclvar_int_with_button	g_invert("dark_spot",NULL,0, rebuild_trackers);
 Tclvar_int_with_button	g_interpolate("interpolate",NULL,1, rebuild_trackers);
 Tclvar_int_with_button	g_parabolafit("parabolafit",NULL,0);
@@ -510,6 +511,10 @@ static	bool  save_log_frame(int frame_number)
   list<Spot_Information *>::iterator loop;
   unsigned last_tracker_number = 0;
   for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+    // If this tracker is lost, do not log its values (this can happen
+    // when we're in "Hover when lost" mode).
+    if ((*loop)->lost()) { continue; }
+
     vrpn_float64  pos[3] = {(*loop)->xytracker()->get_x() - g_log_offset_x,
 			    flip_y((*loop)->xytracker()->get_y()) - g_log_offset_y,
 			    0.0};
@@ -1474,7 +1479,63 @@ static void optimize_tracker(Spot_Information *tracker)
   //    Maximum at radius from center: How do you know what radius to select?
   //      Max at radius of the minimum value from center?
   //      Minimum of the maxima over a number of radii? -- Yep, we're trying this one.
+  // FIONA kernel operates differently; it looks to see if the value at the
+  //    center is more than the specified fraction of twice the standard deviation away
+  //    from the mean of the surrounding values.  For an inverted tracker, this
+  //    must be below; for a non-inverted tracker it is above.
   if (g_lossSensitivity > 0.0) {
+   if (g_kernel_type == KERNEL_FIONA) {
+     // Compute the mean of the values two radii out from the
+     // center of the tracker.
+     double mean = 0.0, value;
+     double theta;
+     unsigned count = 0;
+     double r = 2 * tracker->xytracker()->get_radius();
+     double start_x = tracker->xytracker()->get_x();
+     double start_y = tracker->xytracker()->get_y();
+     double x, y;
+     for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
+       x = start_x + r * cos(theta);
+       y = start_y + r * sin(theta);
+       if (g_image->read_pixel_bilerp(x, y, value, g_colorIndex)) {
+         mean += value;
+         count++;
+       }
+     }
+     if (count != 0) {
+       mean /= count;
+     }
+
+     // Compute the standard deviation of the values
+     double std_dev = 0.0;
+     count = 0;
+     for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
+       x = start_x + r * cos(theta);
+       y = start_y + r * sin(theta);
+       if (g_image->read_pixel_bilerp(x, y, value, g_colorIndex)) {
+         std_dev += (mean - value) * (mean - value);
+         count++;
+       }
+     }
+     if (count > 0) {
+       std_dev /= (count-1);
+     }
+     std_dev = sqrt(std_dev);
+
+     // Check to see if we're lost based on how far we are above/below the
+     // mean.
+     double threshold = g_lossSensitivity * (2 * std_dev);
+     if (g_image->read_pixel_bilerp(start_x, start_y, value, g_colorIndex)) {
+       double diff = value - mean;
+       if (g_invert) { diff *= -1; }
+       if (diff < threshold) {
+         tracker->lost(true);
+       } else {
+         tracker->lost(false);
+       }
+     }
+
+   } else {
     double min_val = 1e100; //< Min over all circles
     double start_x = tracker->xytracker()->get_x();
     double start_y = tracker->xytracker()->get_y();
@@ -1516,20 +1577,36 @@ static void optimize_tracker(Spot_Information *tracker)
       double scale_factor = 1 + 9*g_lossSensitivity;
       if (starting_value * scale_factor < min_val) {
         tracker->lost(true);
+      } else {
+        tracker->lost(false);
       }
     } else if (g_kernel_type == KERNEL_CONE) {
       // Differences (not factors) of 0-5 seem more appropriate for a quick test of the cone kernel.
       double difference = 5*g_lossSensitivity;
       if (starting_value - min_val < difference) {
         tracker->lost(true);
+      } else {
+        tracker->lost(false);
       }
     } else {  // Must be a disk kernel
       // Differences (not factors) of 0-5 seem more appropriate for a quick test of the disk kernel.
       double difference = 5*g_lossSensitivity;
       if (starting_value - min_val < difference) {
         tracker->lost(true);
+      } else {
+        tracker->lost(false);
       }
     }
+   }
+  } else {
+    // Not checking, so nobody is lost.
+    tracker->lost(false);
+  }
+
+  // If we're set to hover when lost and we are lost, then go back to where we
+  // started.
+  if (tracker->lost() && g_hoverWhenLost) {
+    tracker->xytracker()->set_location(last_pos[0], last_pos[1]);
   }
 
   // If we are optimizing in Z, then do it here.
@@ -1714,41 +1791,44 @@ void myIdleFunc(void)
   // from the camera.  This is intended to prevent us from going
   // past the frame before the problem is corrected, either by
   // moving the tracker back on or by adjusting the sensitivity.
+  // EXCEPTION: If we are using "Hover when lost", then the trackers
+  // should continue to move from frame to frame but just not save
+  // their position data to the file while they are lost.
 
-  if (g_tracker_is_lost) {
-	  g_video_valid = false;
+  if (g_tracker_is_lost && !g_hoverWhenLost) {
+    g_video_valid = false;
   } else {
-	  if (!g_camera->read_image_to_memory((int)(*g_minX),(int)(*g_maxX), (int)(*g_minY),(int)(*g_maxY), g_exposure)) {
-		  if (!g_video) {
-			  fprintf(stderr, "Can't read image to memory!\n");
-			  cleanup();
-			  exit(-1);
-		  } else {
-			  // We timed out; either paused or at the end.  Don't log in this case.
-			  g_video_valid = false;
+    if (!g_camera->read_image_to_memory((int)(*g_minX),(int)(*g_maxX), (int)(*g_minY),(int)(*g_maxY), g_exposure)) {
+      if (!g_video) {
+	fprintf(stderr, "Can't read image to memory!\n");
+	cleanup();
+	exit(-1);
+      } else {
+	// We timed out; either paused or at the end.  Don't log in this case.
+	g_video_valid = false;
 
-			  // If we are playing, then say that we've finished the run and
-			  // stop playing.
-			  if (((int)(*g_play)) != 0) {
-				  // If we are supposed to quit at the end of the video, do so.
-				  if (g_quit_at_end_of_video) {
-					  printf("Exiting at the end of the video\n");
-					  g_quit = 1;
-				  } else {
-#ifdef	_WIN32
-					  if (!PlaySound("end_of_video.wav", NULL, SND_FILENAME | SND_ASYNC)) {
-						  fprintf(stderr,"Cannot play sound %s\n", "end_of_video.wav");
-					  }
-#endif
-				  }
-				  *g_play = 0;
-			  }
-		  }
+	// If we are playing, then say that we've finished the run and
+	// stop playing.
+	if (((int)(*g_play)) != 0) {
+	  // If we are supposed to quit at the end of the video, do so.
+	  if (g_quit_at_end_of_video) {
+	    printf("Exiting at the end of the video\n");
+	    g_quit = 1;
 	  } else {
-		  // Got a valid video frame; can log it.  Add to the frame number.
-		  g_video_valid = true;
-		  g_frame_number++;
+#ifdef	_WIN32
+	    if (!PlaySound("end_of_video.wav", NULL, SND_FILENAME | SND_ASYNC)) {
+	      fprintf(stderr,"Cannot play sound %s\n", "end_of_video.wav");
+	    }
+#endif
 	  }
+	  *g_play = 0;
+	}
+      }
+    } else {
+      // Got a valid video frame; can log it.  Add to the frame number.
+      g_video_valid = true;
+      g_frame_number++;
+    }
   }
   // Point the image to use at the camera's image.
   g_image = g_camera;
@@ -1819,7 +1899,7 @@ void myIdleFunc(void)
 
     // Update the VRPN tracker position for each tracker and report it
     // using the same time value for each.  Don't do the update if we
-    // don't currently have a valid video frame or if we are lost.  Sensors are indexed
+    // don't currently have a valid video frame.  Sensors are indexed
     // by their position in the list.  Putting this here before the
     // optimize loop means that we're reporting the PREVIOUS values of
     // the optimizer (the ones for the frame just ending) rather than
@@ -1935,8 +2015,8 @@ void myIdleFunc(void)
       }
     }
 
-
-    if (g_tracker_is_lost) {
+    // Pause and say that we are lost unless we're in "Hover when lost" mode
+    if (g_tracker_is_lost && !g_hoverWhenLost) {
       // If we have a playable video and the video is not paused, then say we're lost and pause it.
       if (g_play != NULL) {
         if (*g_play) {

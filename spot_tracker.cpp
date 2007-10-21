@@ -1107,8 +1107,6 @@ double	Gaussian_spot_tracker::check_fitness(const image_wrapper &image, unsigned
   }
 }
 
-// Note that the FIONA tracker is never inverted.  Set the inverted flag to false in the
-// base class.
 FIONA_spot_tracker::FIONA_spot_tracker(double radius,
 		    bool inverted,
 		    double pixelaccuracy,
@@ -1116,7 +1114,7 @@ FIONA_spot_tracker::FIONA_spot_tracker(double radius,
 		    double sample_separation_in_pixels,
                     double background,
                     double summedvalue) :
-    spot_tracker_XY(radius, false, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels),
+    spot_tracker_XY(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels),
     _background(background), _summedvalue(summedvalue)
 {
   // Make sure the parameters make sense
@@ -1135,6 +1133,10 @@ FIONA_spot_tracker::FIONA_spot_tracker(double radius,
   if (_samplesep <= 0) {
     fprintf(stderr, "FIONA_spot_tracker::FIONA_spot_tracker(): Invalid sample spacing, using 1.00\n");
     _samplesep = 1.0;
+  }
+  if (_summedvalue < 0) {
+    fprintf(stderr, "FIONA_spot_tracker::FIONA_spot_tracker(): Negative summed value, using 0.00\n");
+    _summedvalue = 0.0;
   }
 
   // Set the initial step sizes for radius and pixels
@@ -1207,7 +1209,7 @@ double	FIONA_spot_tracker::check_fitness(const image_wrapper &image, unsigned rg
   }
 }
 
-// Optimize starting at the specified location to find the best-fit disk.
+// Optimize starting at the specified location to find the best-fit Gaussian.
 // Take only one optimization step.  Return whether we ended up finding a
 // better location or not.  Return new location in any case.  One step means
 // one step in X,Y, and radius space each.  The boolean parameters tell
@@ -1222,12 +1224,15 @@ bool  FIONA_spot_tracker::take_single_optimization_step(const image_wrapper &ima
   if (_pixelstep > 1.0) { _pixelstep = 1.0; }
   if (_radstep > 1.0) { _radstep = 1.0; }
 
-  // Call the base-class single-step routine.  Don't optimize the radius here, because we're
-  // going to completely optimize the radius next.
-  bool betterbase =  spot_tracker_XY::take_single_optimization_step(image, rgb, x, y, do_x, do_y, true);
+  // Unless our summedvalue is zero, call the base-class single-step routine
+  // to optimize the position and radius.
+  bool betterbase = false;
+  if (_summedvalue > 0) {
+    betterbase = spot_tracker_XY::take_single_optimization_step(image, rgb, x, y, do_x, do_y, true);
+  }
 
   // Try adjusting the background up and down by a number of counts that is equal to 10X the
-  // radius step size.  We use 4X to give the radius the chance to adjust itself faster.
+  // radius step size.  We use 10X to give the radius the chance to adjust itself faster.
   // XXX This should probably be a decoupled parameter.
   double v0, vplus, vminus;
   bool	  betterbackground = false; //< Do we find a better location?
@@ -1256,18 +1261,25 @@ bool  FIONA_spot_tracker::take_single_optimization_step(const image_wrapper &ima
   bool	  bettersummedvalue = false;//< Do we find a better radius?
   double starting_summedvalue = _summedvalue;
   v0 = _fitness;                                    // Value at start
-  _summedvalue = starting_summedvalue + 1000 * _radstep; // Try looking for larger summedvalue
+  double plusvalue = starting_summedvalue + 1000 * _radstep; // Try looking for larger summedvalue
+  double minusvalue = starting_summedvalue - 1000 * _radstep; // Try looking for smaller summedvalue
+
+  // Don't go below zero for a summed value (inversion takes place when the kernel is made).
+  if (plusvalue < 0) { plusvalue = 0; }
+  if (minusvalue < 0) { minusvalue = 0; }
+
+  _summedvalue = plusvalue;
   vplus = check_fitness(image, rgb);
-  _summedvalue = starting_summedvalue - 1000 * _radstep; // Try looking for smaller summedvalue
+  _summedvalue = minusvalue; // Try looking for smaller summedvalue
   vminus = check_fitness(image, rgb);
   new_fitness = max3(v0, vplus, vminus, which);
   switch (which) {
     case 0: _summedvalue = starting_summedvalue;
             break;
-    case 1: _summedvalue = starting_summedvalue + 1000 * _radstep;
+    case 1: _summedvalue = plusvalue;
             bettersummedvalue = true;
             break;
-    case 2: _summedvalue = starting_summedvalue - 1000 * _radstep;
+    case 2: _summedvalue = minusvalue;
             bettersummedvalue = true;
             break;
   }
