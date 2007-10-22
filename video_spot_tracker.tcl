@@ -156,6 +156,37 @@ proc update_clipping_window_visibility {nm el op} {
 }
 
 ###########################################################
+# Put the place for the controls for handling lost and found trackers.
+# This window should only be visible when show_lost_and_found is turned on.
+
+set lost_behavior 0
+toplevel .lost_and_found_controls
+frame .lost_and_found_controls.behavior -relief raised -borderwidth 1
+radiobutton .lost_and_found_controls.behavior.stop -variable lost_behavior -text Stop -value 0
+radiobutton .lost_and_found_controls.behavior.delete -variable lost_behavior -text Delete -value 1
+radiobutton .lost_and_found_controls.behavior.hover -variable lost_behavior -text Hover -value 2
+pack .lost_and_found_controls.behavior
+pack .lost_and_found_controls.behavior.stop -side left
+pack .lost_and_found_controls.behavior.delete -side left
+pack .lost_and_found_controls.behavior.hover -side left
+frame .lost_and_found_controls.top -relief raised -borderwidth 1
+pack .lost_and_found_controls.top -side top
+frame .lost_and_found_controls.bottom -relief raised -borderwidth 1
+pack .lost_and_found_controls.bottom
+wm withdraw .lost_and_found_controls
+set show_lost_and_found 0
+trace variable show_lost_and_found w update_lost_and_found_window_visibility
+
+proc update_lost_and_found_window_visibility {nm el op} {
+	global show_lost_and_found
+	if { $show_lost_and_found } {
+		wm deiconify .lost_and_found_controls
+	} else {
+		wm withdraw .lost_and_found_controls
+	}
+}
+
+###########################################################
 # Put the controls that will let the user store a log file.
 # It puts a checkbutton down at the bottom of the main menu
 # that causes a dialog box to come up when it is turned on.

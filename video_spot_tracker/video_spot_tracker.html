@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v05.13</title>
+<title>Video Spot Tracker v05.14</title>
 
-<h1>Video Spot Tracker version 05.13</h1>
+<h1>Video Spot Tracker version 05.14</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -50,13 +50,13 @@
   icon that was created when the program was installed. To select a stack of image 
   files that are numbered consecutively, drag any one of the files onto the icon. 
   It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
-  Menu/All Programs/NSRG/Video Spot Tracker v05.13</b></i>. If you run the program 
+  Menu/All Programs/NSRG/Video Spot Tracker v05.14</b></i>. If you run the program 
   directly by double-clicking on the icon, it will ask for a video or image file 
   (AVI, TIF, or BMP) that it should open.</p>
 
 <p><b><i>NOTE:</i></b> With Windows XP service pack 2 and with other firewall software, running the program causes a dialog box to appear asking whether to block the program; the program needs to be unblocked only if the program is to be connected to a local or remote feedback system that relies on the tracking data. This happens when the program opens the Internet port assigned to it (3883) by the Internet Domain Naming Authority to export the data through the standard VRPN protocol (<a href="http://www.vrpn.org">www.vrpn.org</a>).</p> 
 
-<h2><img src="GUI.jpg" width="161" height="779" align="right">Using the program</h2>
+<h2><img src="GUI.jpg" width="161" height="714" align="right">Using the program</h2>
 
 <p>When the program is run and a file is selected, four windows will appear. The image window that appears on the lower right contains the first image within the video file or a continually-updating image from a live camera feed. The control panel named <b><i>tk</i></b> that appears on the left when the program is run (shown here to the right) contains a number of interaction widgets that control the operation of the program. The <b><i>kernel</i></b> control panel that appears above the image window (described later) controls the type of tracking kernel being used. The <b><i>log</i></b> control panel is described later.</p>
 
@@ -167,26 +167,37 @@
 
 <h3>Checking for lost trackers</h3>
 <h3></h3>
-<p>There is a <i>lost_tracking_sensitivity</i> slider located on the main control 
-  panel that sets a threshold for detection of lost tracking. A threshold setting 
-  of zero disables this feature, and is the default. The actual threshold depends 
-  on the type of kernel you are using to track; this slider provides a normalized 
-  &quot;how sensitive&quot; control that should be approximately the same across 
-  types. If the threshold is exceeded while tracking, the program will say &quot;lost&quot; 
-  and will immediately stop going forward in the video until the problem is corrected. 
-  The tracker causing the problem is made active (red), so that you can find the 
-  troublemaker easily.</p>
-<p>The problem can be corrected by moving the tracker back onto the bead, or by 
-  reducing the sensitivity threshold so that the criterion is met. Once the threshold 
-  is met, the program may skip ahead a frame or two in video formats such as AVI 
-  whose player provides buffered playout. It will then pause. Pressing &quot;Play&quot; 
-  at this point will resume activity through the file.</p>
-<p>If the &quot;autodelete_when_lost&quot; check-box is checked, then any tracker 
-  that becomes lost will be automatically deleted. This is useful if you are tracking 
-  spots that go out of the window or when you have lots of beads and are looking 
-  for statistics because you can set the program running with a lot of beads tracking 
-  and then come back later without worrying about the program stopping or beads 
-  wandering around lost.</p>
+<p><img src="lost_and_found.jpg" width="191" height="131" align="right">There 
+  is a <i>show_lost_and_found</i> button on the main control panel that brings 
+  up a secondard control panel shown to the right. A<i>lost_tracking_sensitivity</i> 
+  slider located on this control panel sets a threshold for detection of lost 
+  tracking. A threshold setting of zero disables this feature, and is the default. 
+  The actual threshold depends on the type of kernel you are using to track; this 
+  slider provides a normalized &quot;how sensitive&quot; control that should be 
+  approximately the same across types (the FIONA tracker uses the whole range 
+  0-1, but the symmetric kernel needs only a very small number). If the threshold 
+  is exceeded by one or more beads while tracking, the program will do the following 
+  (depending on the setting for the radio buttons):</p>
+<ul>
+  <li><b>Stop</b>: say &quot;lost&quot; and immediately stop going forward in 
+    the video until the problem is corrected. The tracker causing the problem 
+    is made active (red), so that you can find the troublemaker easily. The problem 
+    can be corrected by moving the tracker back onto the bead, or by reducing 
+    the sensitivity threshold so that the criterion is met. Once the threshold 
+    is met, the program may skip ahead a frame or two in video formats such as 
+    AVI whose player provides buffered playout. It will then pause. Pressing &quot;Play&quot; 
+    at this point will resume activity through the file.</li>
+  <li><b>Delete</b>: the offending tracker will disappear and a &quot;pop&quot; 
+    sound will be made to let you know it has gone. This is useful if you are 
+    tracking spots that go out of the window or when you have lots of beads and 
+    are looking for statistics because you can set the program running with a 
+    lot of beads tracking and then come back later without worrying about the 
+    program stopping or beads wandering around lost.</li>
+  <li><b>Hover</b>: the offending tracker will sit at the location where it last 
+    had a bead and keep looking for it again. It will not log while it is lost 
+    (there will be no entry during those frames in the logging file). This mode 
+    was made to enable tracking of blinking spots with the FIONA kernel.</li>
+</ul>
 <p></p>
 <h3>Faster display update</h3>
 
@@ -300,6 +311,20 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 5.14:</h3>
+<ul>
+  <li>Reworked the &quot;lost tracking&quot; interface to be on a separate control 
+    panel that comes up when <i>show lost and found</i> is selected on the main 
+    GUI.</li>
+  <li>Added &quot;Hover&quot; option to the lost tracking choices, where the tracker 
+    will sit at the same location without recording its location to file until 
+    it is once again not lost. This makes it possible to track beads that blink 
+    out for a brief period and then reappear.</li>
+  <li>Changed the behavior of the FIONA kernel so that it will not go negative 
+    unless the <i>invert</i> button is pressed on the kernel controls. Also modified 
+    its lost-tracking sensitivity so that it works well with the range 0-1 on 
+    the slider.</li>
+</ul>
 <h3>Version 5.13:</h3>
 <ul>
   <li>Added option to not log when optimization is turned off for a frame, so 

@@ -1,5 +1,14 @@
 2007-10-21  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* video_spot_tracker.tcl : Changed the interface to group the lost-
+		tracker handling into a separate dialog box, and made the
+		boolean delete/hover into a radiobutton set so you can only
+		choose one.
+	* video_spot_tracker.cpp : Same.
+	* Version number change to 5.14 for new release.
+
+2007-10-21  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* video_spot_tracker.cpp : Fixed a bug in the lost-tracking code
 		that had been inserted when I added the "autodelete" function.
 		It is now possible for trackers to get un-lost without getting

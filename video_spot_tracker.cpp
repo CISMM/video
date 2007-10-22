@@ -98,6 +98,11 @@ const int KERNEL_CONE = 1;
 const int KERNEL_SYMMETRIC = 2;
 const int KERNEL_FIONA = 3;
 
+// How a tracker should behave when it is lost
+const int LOST_STOP = 0;
+const int LOST_DELETE = 1;
+const int LOST_HOVER = 2;
+
 //--------------------------------------------------------------------------
 // Some classes needed for use in the rest of the program.
 
@@ -264,9 +269,9 @@ Tclvar_float_with_scale	g_colorIndex("red_green_blue", NULL, 0, 2, 0);
 Tclvar_float_with_scale	g_brighten("brighten", "", 0, 8, 0);
 Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_trackers);
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
-Tclvar_float_with_scale g_lossSensitivity("lost_tracking_sensitivity", "", 0.0, 1.0, 0.0);
-Tclvar_int_with_button	g_autoDeleteLost("autodelete_when_lost","",0);
-Tclvar_int_with_button	g_hoverWhenLost("hover_when_lost","",0);
+Tclvar_float_with_scale g_lossSensitivity("lost_tracking_sensitivity", ".lost_and_found_controls.bottom", 0.0, 1.0, 0.0);
+Tclvar_int_with_button  g_lostBehavior("lost_behavior",NULL,0);
+Tclvar_int_with_button	g_showLostAndFound("show_lost_and_found","",0);
 Tclvar_int_with_button	g_invert("dark_spot",NULL,0, rebuild_trackers);
 Tclvar_int_with_button	g_interpolate("interpolate",NULL,1, rebuild_trackers);
 Tclvar_int_with_button	g_parabolafit("parabolafit",NULL,0);
@@ -1605,7 +1610,7 @@ static void optimize_tracker(Spot_Information *tracker)
 
   // If we're set to hover when lost and we are lost, then go back to where we
   // started.
-  if (tracker->lost() && g_hoverWhenLost) {
+  if (tracker->lost() && (g_lostBehavior == LOST_HOVER)) {
     tracker->xytracker()->set_location(last_pos[0], last_pos[1]);
   }
 
@@ -1795,7 +1800,7 @@ void myIdleFunc(void)
   // should continue to move from frame to frame but just not save
   // their position data to the file while they are lost.
 
-  if (g_tracker_is_lost && !g_hoverWhenLost) {
+  if (g_tracker_is_lost && (g_lostBehavior != LOST_HOVER)) {
     g_video_valid = false;
   } else {
     if (!g_camera->read_image_to_memory((int)(*g_minX),(int)(*g_maxX), (int)(*g_minY),(int)(*g_maxY), g_exposure)) {
@@ -2000,7 +2005,7 @@ void myIdleFunc(void)
       if ((*loop)->lost()) {
         // Set me to be the active tracker.
         g_active_tracker = *loop;
-        if (g_autoDeleteLost) {
+        if (g_lostBehavior == LOST_DELETE) {
           // Delete this tracker from the list (it was made active above)
           delete_active_xytracker();
 
@@ -2016,7 +2021,7 @@ void myIdleFunc(void)
     }
 
     // Pause and say that we are lost unless we're in "Hover when lost" mode
-    if (g_tracker_is_lost && !g_hoverWhenLost) {
+    if (g_tracker_is_lost && (g_lostBehavior != LOST_HOVER)) {
       // If we have a playable video and the video is not paused, then say we're lost and pause it.
       if (g_play != NULL) {
         if (*g_play) {
