@@ -28,13 +28,14 @@ static StochasticLib1 sto(seed);            // make instance of random library
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.06";
+const char *Version_string = "01.07";
 
 //--------------------------------------------------------------------------
 // Constants needed by the rest of the program
 
 const float	g_Window_Units = 1e9;
 
+// Used by mouse code
 enum { M_NOTHING, M_X_ONLY, M_Y_ONLY, M_X_AND_Y };
 
 //--------------------------------------------------------------------------
@@ -564,7 +565,7 @@ void myDisplayFunc(void)
       double x = num_x/2 + g_PixelXOffset;
       double y = num_y/2 + g_PixelYOffset;
 
-      fprintf(g_csv_file, "%d,0,%lg,%lg,0\n", g_basenum, x, y);
+      fprintf(g_csv_file, "%d,0,%lg,%lg,0.0,0.0,0.0\n", g_basenum, x, y);
     }
 
     // Then save the image file.
@@ -827,7 +828,7 @@ void  logfilename_changed(char *newvalue, void *)
   if ( NULL == (g_csv_file = fopen(csvname, "w")) ) {
     fprintf(stderr,"Cannot open CSV file for writing: %s\n", csvname);
   } else {
-    fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z\n");
+    fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius,Orientation\n");
   }
   delete [] csvname;
 }

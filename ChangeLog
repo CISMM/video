@@ -1,5 +1,11 @@
 2007-10-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* airy_maker.cpp : Puts out a format for its log files that is
+		compatible with the spot-tracker testing scripts.  Made
+		version 1.07 with the changes.
+
+2007-10-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* video_spot_tracker.cpp : Fixed a bug that caused it to crash when
 		a FIONA kernel was created at the command line.  Also added
 		a command-line parameter to set the default FIONA background

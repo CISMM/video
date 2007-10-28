@@ -8,10 +8,10 @@ OperatingSystem=WinXP  5.1  2600 (Service Pack 2)
 ProjectName=airy_maker
 ProjectDirectory=F:\taylorr\STM\src\video\airy_maker
 NonSFXDirectory=F:\taylorr\STM\src\video\airy_maker\NonSFX
-MediaFileName=airy_disk_installer_01_06
+MediaFileName=airy_disk_installer_01_07
 CopyMediaToFName=
 ProgramDescriptiveName=Airy disk maker
-ProgramVersion=01.06
+ProgramVersion=01.07
 CompanyName=UNC Nanoscale Science Research Group
 ProgVerLiveUpdate=0
 RegisterAsApp=1
@@ -62,7 +62,7 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|
 CompanyUrl=www.cs.unc.edu/nano
 
 [TargetExe]
-TargetDirectory=<AbsoluteDir>C:\NSRG\bin\airy_disk_maker_01.06
+TargetDirectory=<AbsoluteDir>C:\NSRG\bin\airy_disk_maker_01.07
 CommonDirectory=<CommonFilesDir>UNC Nanoscale Science Research Group
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\airy_maker.bat
@@ -106,7 +106,7 @@ ShowCopyrightWarning=1
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=NSRG\airy_maker_01.06
+ProgramLinkFolder=NSRG\airy_maker_01.07
 ProgramLinkName=Airy_maker
 ProgramLinkParam=
 ProgramLinkWorkDir=<Application Folder>
