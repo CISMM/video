@@ -1,3 +1,10 @@
+2007-10-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Fixed a bug that caused it to crash when
+		a FIONA kernel was created at the command line.  Also added
+		a command-line parameter to set the default FIONA background
+		level.  Changed version number to 5.15.  Made installer.
+
 2007-10-21  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.tcl : Changed the interface to group the lost-

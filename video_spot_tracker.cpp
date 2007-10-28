@@ -88,7 +88,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.14";
+const char *Version_string = "05.15";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -215,6 +215,8 @@ int		    g_kymograph_center_window;	  //< Glut window showing kymograph center-t
 int		    g_kymograph_filled = 0;	  //< How many lines of data are in there now.
 
 bool                g_quit_at_end_of_video = false; //< When we reach the end of the video, should we quit?
+
+double              g_FIONA_background = 0.0;     //< Can be specified on the command line.
 
 //-----------------------------------------------------------------
 // This section deals with providing multiple threads for tracking.
@@ -349,29 +351,35 @@ spot_tracker_XY  *create_appropriate_xytracker(double x, double y, double r)
   // Not building a compound kernel, so just make a simple kernel of the appropriate type.
   } else {
     if (g_kernel_type == KERNEL_FIONA) {
-      // Estimate the background value as the minimum pixel value within a square that is 2*diameter (4*radius)
-      // on a side.  Estimate the total volume as the sum over this same region with the background subtracted
-      // from it.
+      // If we have an image, estimate the background value as the minimum pixel value within a square
+      // that is 2*diameter (4*radius) on a side.  Estimate the total volume as the sum over this
+      // same region with the background subtracted from it.
+      // If we don't have an image, then set some default parameters for the kernel.
       double background = 1e50;
       double volume = 0.0;
-      unsigned count = 0;
-      int i,j;
-      for (i = x - 2*r; i <= x + 2*r; i++) {
-        for (j = y - 2*r; j <= y + 2*r; j++) {
-          double value;
-	  if (g_image->read_pixel(i, j, value, g_colorIndex)) {
-            volume += value;
-            if (value < background) { background = value; }
-            count++;
+      if (g_image) {
+        unsigned count = 0;
+        int i,j;
+        for (i = x - 2*r; i <= x + 2*r; i++) {
+          for (j = y - 2*r; j <= y + 2*r; j++) {
+            double value;
+	    if (g_image->read_pixel(i, j, value, g_colorIndex)) {
+              volume += value;
+              if (value < background) { background = value; }
+              count++;
+            }
           }
         }
-      }
-      if (count == 0) {
-        background = 0.0;
+        if (count == 0) {
+          background = 0.0;
+        } else {
+          volume -= count*background;
+        }
       } else {
-        volume -= count*background;
+        background = g_FIONA_background;
+        volume = 100;
       }
-      printf("XXX FIONA kernel: background = %lg, volume = %lg\n", background, volume);
+      //fprintf(stderr,"XXX FIONA kernel at %lg,%lg radius %lg: background = %lg, volume = %lg\n", x, y, r, background, volume);
       tracker = new FIONA_spot_tracker(r, (g_invert != 0), g_precision, 0.1, g_sampleSpacing, background, volume);
     } else if (g_kernel_type == KERNEL_SYMMETRIC) {
       g_interpolate = 1;
@@ -1932,7 +1940,7 @@ void myIdleFunc(void)
   // Nobody is known to be lost yet...
   g_tracker_is_lost = false;
 
-  // Optimize all trackers and see if they are lost.
+  // Optimize all trackers and see if they are lost, if we have trackers.
   if (g_opt && g_active_tracker) {
 
     int kymocount = 0;
@@ -2707,7 +2715,7 @@ void Usage(const char *progname)
 {
     fprintf(stderr, "Usage: %s [-kernel disc|cone|symmetric|FIONA] [-dark_spot] [-follow_jumps]\n", progname);
     fprintf(stderr, "           [-rod3 LENGTH ORIENT] [-outfile NAME] [-precision P] [-sample_spacing S]\n");
-    fprintf(stderr, "           [-tracker X Y R] [-tracker X Y R] ...\n");
+    fprintf(stderr, "           [-tracker X Y R] [-tracker X Y R] [-FIONA_background BG] ...\n");
     fprintf(stderr, "           [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n");
     fprintf(stderr, "       -kernel: Use kernels of the specified type (default symmetric)\n");
     fprintf(stderr, "       -rod3: Make a rod3 kernel of specified LENGTH (pixels) and ORIENT (degrees)\n");
@@ -2718,6 +2726,7 @@ void Usage(const char *progname)
     fprintf(stderr, "       -sample_spacing: Set the sample spacing for created trackers to S (default 1)\n");
     fprintf(stderr, "       -tracker: Create a tracker with radius R at pixel X,Y and initiate optimization\n");
     fprintf(stderr, "                 Multiple trackers can be created\n");
+    fprintf(stderr, "       -FIONA_background: Set the default background for FIONA trackers to BG (default 0)\n");
     fprintf(stderr, "       source: The source file for tracking can be specified here (default is a dialog box)\n");
     exit(-1);
 }
@@ -2945,6 +2954,9 @@ int main(int argc, char *argv[])
     } else if (!strncmp(argv[i], "-sample_spacing", strlen("-sample_spacing"))) {
       if (++i > argc) { Usage(argv[0]); }
       g_sampleSpacing = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-FIONA_background", strlen("-FIONA_background"))) {
+      if (++i > argc) { Usage(argv[0]); }
+      g_FIONA_background = atof(argv[i]);
     } else if (!strncmp(argv[i], "-tracker", strlen("-tracker"))) {
       if (++i > argc) { Usage(argv[0]); }
       g_X = atof(argv[i]);
