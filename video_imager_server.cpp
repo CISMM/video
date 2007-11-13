@@ -15,7 +15,7 @@
 #endif
 
 const int MAJOR_VERSION = 2;
-const int MINOR_VERSION = 7;
+const int MINOR_VERSION = 9;
 
 //-----------------------------------------------------------------
 // This section contains code to initialize the camera and read its
@@ -25,7 +25,7 @@ const int MINOR_VERSION = 7;
 base_camera_server  *g_camera;	    //< The camera we're going to read from
 int		    g_bincount = 1; //< How many pixels to average into one bin in X and Y
 double		    g_exposure = 250.0;	//< How long to expose in milliseconds
-unsigned	    g_width = 320, g_height = 240;  //< Resolution for DirectX cameras
+unsigned	    g_width = 0, g_height = 0;  //< Resolution for DirectX cameras (use default)
 int                 g_numchannels = 1;  //< How many channels to send (3 for RGB cameras, 1 otherwise)
 int                 g_maxval = 4095;    //< Maximum value available in a channel for this device
 bool                g_swap_edt = false; //< Swap lines in EDT to fix bug in driver

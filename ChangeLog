@@ -1,3 +1,7 @@
+2007-11-13  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_imager_server.cpp : New version of video_imager_server built with the latest VRPN.
+
 2007-10-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* airy_maker.cpp : Puts out a format for its log files that is
