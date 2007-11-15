@@ -22,7 +22,7 @@ bool zTrackApp::OnInit()
 	    stage_name = argv[1];
 		if (strchr(stage_name, '@') != NULL)
 		{
-			
+			// for now we can just assume it's a valid server address
 		}
 		else
 		{

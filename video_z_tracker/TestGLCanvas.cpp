@@ -1,11 +1,20 @@
 #include "TestGLCanvas.h"
-
+#include "GL/glut.h"
 
 
 // some helper functions that may be usefull
 
 // toGLCoords : converts from int wxwindows coords in frame to corresponding OpenGL coords
 void toGLCoords(float &x, float &y, wxSize sz);
+
+
+static void gprintf(char *str)
+{
+   int l=strlen(str);
+
+   for(int i = 0; i < l; ++i)
+      glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *str++);
+}
 
 
 
@@ -97,6 +106,8 @@ void TestGLCanvas::OnPaint( wxPaintEvent& WXUNUSED(event) )
 
 		m_image->write_to_opengl_quad();
 	}
+
+	DrawHUD();
 	
     // Flush
     glFlush();
@@ -158,6 +169,36 @@ void TestGLCanvas::DrawSelectionBox()
 
 
 
+}
+
+void TestGLCanvas::DrawHUD()
+{
+	char buf[80];
+
+	int w, h;
+    GetClientSize(&w, &h);
+
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	
+	glOrtho(0, w, 0, h, -1, 1);
+
+	glDisable(GL_TEXTURE_2D);
+	glDisable(GL_LIGHTING);
+
+	int y = h - 12;
+	int x = 3;
+	glColor4f(0.0, 0.0, 0.0, 0.7);
+
+	glRasterPos2i(x,y);
+	gprintf("Stage");
+	y -= 14;
+		
+	glRasterPos2i(x,y);
+	sprintf(buf,"z: %f", m_z);
+	gprintf(buf);
+
+	glPopMatrix();
 }
 
 void TestGLCanvas::OnSize(wxSizeEvent& event)

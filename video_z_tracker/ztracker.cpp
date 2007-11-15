@@ -58,6 +58,8 @@ enum
 
 	BIT_DEPTH,
 
+	CALIBRATE_STAGE_Z,
+
 	DO,
 
 	LAST_LOCAL_ID
@@ -94,6 +96,8 @@ BEGIN_EVENT_TABLE(zTracker, wxFrame)
 	EVT_BUTTON(NEW_PLOT_ARRAY, zTracker::OnNewPlotArray)
 
 	EVT_CHECKBOX(BIT_DEPTH, zTracker::On8BitsCheck)
+
+	EVT_BUTTON(CALIBRATE_STAGE_Z, zTracker::OnCalibrateStageZ)
 
 	EVT_BUTTON(DO, zTracker::OnDo)
 
@@ -224,6 +228,7 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 	m_8Bits = new wxCheckBox(m_panel, BIT_DEPTH, "8 bits");
 	m_8Bits->SetValue(false);
 
+	m_calibrateStageZ = new wxButton(m_panel, CALIBRATE_STAGE_Z, "Stage Calibration");
 
 	m_Do = new wxButton(m_panel, DO, "Do!");
 
@@ -269,8 +274,12 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 	m_optZ = false;
 
 	m_spotTracker = new Spot_Information(create_appropriate_xytracker(m_canvas->GetSelectX(), m_canvas->GetSelectY(),
-		m_canvas->GetRadius()), create_appropriate_ztracker());
+		m_canvas->GetRadius() / 2.0f), create_appropriate_ztracker());
 
+
+
+	m_targetOOF = 0;
+	m_micronsPerFocus = 0;
 
 
 
@@ -431,7 +440,7 @@ void zTracker::OnSelectPulnix(wxCommandEvent& WXUNUSED(event))
 }
 
 
-// Roper camera support is NOT tested!
+// *** Roper camera support is NOT tested!
 void zTracker::OnSelectRoper(wxCommandEvent& WXUNUSED(event))
 {
 	if (!get_camera("roper", &g_camera, &g_video)) 
@@ -638,6 +647,8 @@ bool zTracker::UpdateSpotTracker()
 
 void zTracker::CalcFocus()
 {
+	m_lastFocus = m_focus; // save the previous focus measure in case we want it
+
 	float smd1, smd2;
 
 	if (m_logging)
@@ -662,72 +673,11 @@ void zTracker::CalcFocus()
 
 	smd1 = m_horizPixels->calcFocus(m_channel, method, weight);
 	smd2 = m_vertPixels->calcFocus(m_channel, method, weight);
-	float focusMeasure = smd1 + smd2;
+	m_focus = smd1 + smd2;
 
 
-	double stageX, stageY, stageZ;
-	m_stage->GetPosition(stageX, stageY, stageZ);
-
-	
-	if (m_Ztracking->GetValue()) // if we're doing active, automatic tracking
-	{
-		float delta = focusMeasure - m_lastFocus;
-
-		double z_percision = 0.0001;
-
-		//if (abs(delta) 
-		if (delta > 0)
-		{
-			// we seem to have gone in the right direction!
-			if (m_zVel > 0)
-				m_zVel += z_percision;
-			else
-				m_zVel -= z_percision;
-
-//			printf("right dir...\n");
-		}
-		else if (delta < 0)
-		{
-			// we got worse!
-			if (m_zVel > 0)
-				m_zVel -= z_percision*2;
-			else
-				m_zVel += z_percision*2;
-
-//			printf("wrong dir...\n");
-		}
-		else
-		{
-			m_zVel += 0.1 * z_percision * ((rand()/(float)RAND_MAX) - 0.5); // wiggle a bit just in case :)
-//			printf("random...\n");
-		}
-
-//		printf("\tdelta = %f\t", delta);
-//		printf("m_zVel = %f\n", m_zVel);
-		if (m_zVel > 0)
-		{
-			m_zUpText->SetValue("/\\");
-			m_zDownText->SetValue("");
-		}
-		else if (m_zVel < 0)
-		{
-			m_zUpText->SetValue("");
-			m_zDownText->SetValue("\\/");
-		}
-		else
-		{
-			m_zUpText->SetValue("");
-			m_zDownText->SetValue("");
-		}
-
-//		printf("moving stage to: (%f, %f, %f)\n", stageX, stageY, stageZ + m_zVel);
-
-		m_stage->MoveTo(stageX, stageY, stageZ + m_zVel);
-
-	}
-
-
-	m_lastFocus = focusMeasure;
+//	double stageX, stageY, stageZ;
+//	m_stage->GetPosition(stageX, stageY, stageZ);
 }
 
 void zTracker::OnDo(wxCommandEvent& event)
@@ -781,14 +731,93 @@ void zTracker::OnDo(wxCommandEvent& event)
 	fftw_free(in); fftw_free(out);
 	*/
 
+	
+}
+
+void zTracker::OnCalibrateStageZ(wxCommandEvent& event)
+{
+
 	double x, y, z;
 	m_stage->GetPosition(x, y, z);
 	m_stage->CalculateOffset(z * METERS_PER_MICRON);
+
+	m_stageX = x;
+	m_stageY = y;
+	m_stageZ = z;
+
+	printf("stage position = (%f, %f, %f)\n", x, y, z);
+
+	// assume we're starting in focus?  *** TODO have actual auto-focus here :)
+	int method = m_focusMethodRadio->GetSelection();
+	int weight = m_focusWeightRadio->GetSelection();
+
+	float smd1 = m_horizPixels->calcFocus(m_channel, method, weight);
+	float smd2 = m_vertPixels->calcFocus(m_channel, method, weight);
+	float focus = smd1 + smd2; 
+	float initialFocus = focus;
+	float focusRatio = 0;
+
+	double initialZ = z;
+
+	static int N = 3;
+	float* lastN = new float[N];
+	int i = 0;
+	
+	bool done = false;
+	while (!done)
+	{
+		lastN[i] = focus;
+		++i;
+		i = i % N;
+
+		/*
+		// calc avg focus ratio (cur / max) over last N frames
+		avgFocus = 0;
+		for (int j = 0; j < N; ++j)
+			avgFocus += lastN[j];
+		avgFocus = avgFocus / N;
+		*/
+
+
+		z = z + 0.1; // move up 0.1 microns
+		m_stage->MoveTo(x, y, z);
+		printf("moving stage to z = %f\t", z);
+		m_stage->Update(); // update our stage
+		if (g_camera != NULL)
+		{
+			g_image = g_camera;
+			if (!g_camera->read_image_to_memory())
+				printf("*** WARNING: FAILED TO GET A NEW IMAGE WHILE CALIBRATING ***\n");
+		}
+		m_canvas->UpdateSlices(); // update the pixel slices from which we get the SMDs
+
+		// TODO average pixel slices before calculating a single SMD!
+		smd1 = m_horizPixels->calcFocus(m_channel, method, weight);
+		smd2 = m_vertPixels->calcFocus(m_channel, method, weight);
+		focus = smd1 + smd2;
+		printf("focus = %f\t", focus);
+
+		int j = (i + 1) % N;
+		focusRatio = lastN[j] / focus; // focusRatio is measure compared to N measures prior
+		printf("focusRatio = %f\n", focusRatio);
+		if ((0.9f < focusRatio && focusRatio < 1.1f) && (focus < (initialFocus * 0.8)))
+		{
+			done = true;
+		}
+	}
+	printf("Lost signal at z offset of +%f, focus from %f to %f (diff of %f)\n", 
+		z - initialZ, initialFocus, focus, initialFocus - focus);
+
+	m_targetOOF = focus + 0.5 * (initialFocus - focus);
+	printf("m_targetOOF set to %f\n", m_targetOOF);
+
+	m_micronsPerFocus = (z - initialZ) / (initialFocus - focus);
+	printf("m_MicronsPerFocus = %f\n", m_micronsPerFocus);
 }
 
 void zTracker::Idle(wxIdleEvent& WXUNUSED(event))
 {
-	// optimize our spot tracker!
+	// optimize our spot tracker if we're tracking XY!
 	if (m_XYtracking->GetValue())
 	{
 //		printf("loc = (%f, %f)\n", m_canvas->GetSelectX(), m_canvas->GetSelectYflip());
@@ -814,14 +843,12 @@ void zTracker::Idle(wxIdleEvent& WXUNUSED(event))
 		m_videoMode = PAUSED; // stop 'playing' or 'single stepping' if we're auto-Z-tracking
 	}
 
-
 	double x, y, z;
 	m_stage->GetPosition(x, y, z);
 
 	if (m_logging)
 	{
-		//printf("Moving from:\nz = %f to\nz = %f\n", z, z+0.1);
-		m_stage->MoveTo(x, y, z+0.1);
+		;// do nothing
 	}
 
 #ifdef FAKE_STAGE
@@ -836,12 +863,6 @@ void zTracker::Idle(wxIdleEvent& WXUNUSED(event))
 		g_video->jump_to_frame(m_frame_number - 1);
 
 #endif
-
-	char buffer[20] = "";
-	sprintf(buffer, "%.3f", z);	
-	m_zText->SetValue(buffer);
-	sprintf(buffer, "%.3f", m_zVel);	
-	m_zVelText->SetValue(buffer);
 
 	if (g_camera != NULL)
 	{
@@ -867,8 +888,6 @@ void zTracker::Idle(wxIdleEvent& WXUNUSED(event))
 			m_frameSlider->SetValue(m_frame_number);
 			delete frame;
 
-			CalcFocus();
-
 			if (m_videoMode == SINGLE_STEPPING)
 				m_videoMode = PAUSED;
 		}
@@ -889,6 +908,34 @@ void zTracker::Idle(wxIdleEvent& WXUNUSED(event))
 		m_canvas->Refresh();
 	}
 
+	CalcFocus();
+	
+	// STARTZTRACKING
+	if (m_Ztracking->GetValue()) // if we're doing active, automatic tracking
+	{
+		// calculate the focus measure offset to OOF target
+		float focusDiff = m_focus - m_targetOOF;
+
+		// multiply this by microns per focus to get estimated offset from OOF target
+		float estimatedMovement = focusDiff * m_micronsPerFocus;
+		//printf("estimatedMovement = %f\n", estimatedMovement);
+
+		
+		m_stage->MoveTo(x, y, z - estimatedMovement);
+
+		
+		m_zVel = estimatedMovement;
+		
+	}
+
+	char buffer[20] = "";
+	sprintf(buffer, "%.3f", z);	
+	m_zText->SetValue(buffer);
+	sprintf(buffer, "%.3f", m_zVel);	
+	m_zVelText->SetValue(buffer);
+
+	m_canvas->SetZ(z);
+
 	for (int i = 0; i < m_plotWindows.size(); ++i)
 	{
 		if (m_plotWindows[i] != NULL)
@@ -898,7 +945,7 @@ void zTracker::Idle(wxIdleEvent& WXUNUSED(event))
 	}
 
 
-	m_stage->Update(); // update our virtual stage
+	m_stage->Update(); // update our stage
 }
 
 
@@ -950,6 +997,7 @@ void zTracker::set_layout()
 
 	m_advancedSizer->Add(m_newPlotSizer, 0, 0, 0);
 	m_advancedSizer->Add(m_focusMethodSizer, 0, 0, 0);
+	m_advancedSizer->Add(m_calibrateStageZ, 0, wxALL, 3);
 	m_advancedSizer->Add(m_Do, 0, wxALL, 3);
 
 	m_manualFocusSizer->Add(m_manualFocusSlider, 0, wxALL, 3);

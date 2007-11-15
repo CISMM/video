@@ -74,6 +74,8 @@ public:
 
 	void On8BitsCheck(wxCommandEvent& event);
 
+	void OnCalibrateStageZ(wxCommandEvent& event);
+
 	void OnDo(wxCommandEvent& event);
 
 	void Idle(wxIdleEvent& event);
@@ -152,7 +154,10 @@ protected:
 
 	wxCheckBox* m_8Bits;
 
+	wxButton* m_calibrateStageZ;
+
 	wxButton* m_Do;
+	
 
 	int m_channel;
 
@@ -164,6 +169,9 @@ protected:
 	// calibration numbers -- these should be moved into ZGuesser class
 	float m_maxFocus;
 	float m_minFocus;
+
+	float m_targetOOF;
+	float m_micronsPerFocus;
 
 	wxBoxSizer* m_zSizer;
 	wxStaticText* m_zLabel;
@@ -193,6 +201,8 @@ protected:
 	bool m_optZ;
 
 	ZGuesser* m_zGuess;
+
+	float m_stageX, m_stageY, m_stageZ;
 
 
 private:

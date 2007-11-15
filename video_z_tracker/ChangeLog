@@ -1,3 +1,10 @@
+2007-11-15  Ryan Schubert  <res@cs.unc.edu>
+
+	* TestGLCanvas.* : Added a HUD for the preview window to display 
+		information (such as current stage Z height)
+	* ztracker.* : Added calibration for OOF focusing, and OOF
+		tracking algorithm for z tracking
+
 2007-05-11  Ryan Schubert  <res@cs.unc.edu>
 
 	* Lots of code cleanup.

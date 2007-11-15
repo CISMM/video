@@ -53,6 +53,10 @@ public:
 
 	int GetRadius()	{	return m_pixelRadius;	}
 
+	void UpdateSlices();
+
+	void SetZ(float z) {	m_z = z;	}
+
 protected:
     void OnPaint(wxPaintEvent& event);
     void OnSize(wxSizeEvent& event);
@@ -60,8 +64,7 @@ protected:
     void OnMouse(wxMouseEvent& event);
 
 	void DrawSelectionBox();
-
-	void UpdateSlices();
+	void DrawHUD();
 
 	base_camera_server* m_image;
 
@@ -79,6 +82,7 @@ private:
 
 	int m_bits;
 
+	float m_z;
 
 
     void InitGL();
