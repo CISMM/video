@@ -1,3 +1,9 @@
+2007-11-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* roper_server.cpp : Fixed a type-cast problem where unsigned chars
+		were being converted into ints rather than the pointers being
+		converted into pointers to ints.
+
 2007-11-13  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_imager_server.cpp : New version of video_imager_server built with the latest VRPN.

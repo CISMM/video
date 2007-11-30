@@ -688,9 +688,9 @@ d_numFrames(0)
     fprintf(stderr,"spe_file_server::spe_file_server: Could not read header\n");
     return;
   }
-  _num_columns = static_cast<vrpn_uint16>(header[SPE_XDIM_OFFSET]);
-  _num_rows = static_cast<vrpn_uint16>(header[SPE_YDIM_OFFSET]);
-  d_numFrames = static_cast<vrpn_uint32>(header[SPE_NUMFRAMES_OFFSET]);
+  _num_columns = *reinterpret_cast<vrpn_uint16 *>(&header[SPE_XDIM_OFFSET]);
+  _num_rows = *reinterpret_cast<vrpn_uint16 *>(&header[SPE_YDIM_OFFSET]);
+  d_numFrames = *reinterpret_cast<vrpn_uint32 *>(&header[SPE_NUMFRAMES_OFFSET]);
 
   // Allocate space to read a frame from the file
   if ( (d_buffer = new vrpn_uint16[_num_columns * _num_rows]) == NULL) {
