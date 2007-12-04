@@ -137,18 +137,18 @@ inline double	ComputeGaussianAtPoint(
 inline double	ComputeGaussianVolume(
   double m,             //< Magnitude (summed volume under curve over all space)
   double s_meters,      //< standard deviation (square root of variance)
-  double x0,		//< Low end of X integration range in Airy-disk coordinates
+  double x0,		//< Low end of X integration range in Gaussian-centered coordinates
   double x1,		//< High end of X integration range
   double y0,		//< Low end of Y integration range
   double y1,		//< High end of Y integration range
   int samples)		//< How many samples to take in each of X and Y
 {
   double variance = s_meters * s_meters;
-  int count = 0;	//< How many pixels we have summed up
+  double count = 0;	//< How many pixels we have summed up; double to avoid conversions during math
   double x;		//< Steps through X
   double y;		//< Steps through Y
-  double sx = (x1 - x0) / (samples + 1);
-  double sy = (y1 - y0) / (samples + 1);
+  double sx = (x1 - x0) / (samples);  // Step size to go from the center of first to center of last subdivision in x
+  double sy = (y1 - y0) / (samples);  // Step size to go from the center of first to center of last subdivision in y
   double sum = 0;
 
   const double twoPI = 2*M_PI;
@@ -163,6 +163,7 @@ inline double	ComputeGaussianVolume(
       sum += exp(B * R_squared);
     }
   }
+  //printf("XXX count = %g\n", count);
 
   return A * (sum / count) * (x1-x0) * (y1-y0);
 }

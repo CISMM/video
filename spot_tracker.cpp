@@ -1172,7 +1172,7 @@ double	FIONA_spot_tracker::check_fitness(const image_wrapper &image, unsigned rg
 
   // Figure out how far to check.  This should be 4 times the radius of the kernel.  In
   // Selvin's code, they pick a 15-pixel square around the code, but this causes interference
-  // from nearby spots that cause optimization to fail.
+  // from nearby spots that causes optimization to fail.
   int halfwidth = static_cast<int>(4*_rad);
   //if (halfwidth < 15) { halfwidth = 15; }
 
@@ -1184,12 +1184,20 @@ double	FIONA_spot_tracker::check_fitness(const image_wrapper &image, unsigned rg
   // image is).  WE DO NOT BILERP either image, we read its pixels directly
   // because we've shifted the Gaussian within the _testimage and resampled
   // at the same resolution as the image we're optimizing against.
+
+  // To avoid causing sudden discontinuities at the pixel boundaries, where a
+  // new set of pixels coming in/out produces a sudden cliff in the value and thus
+  // makes the tracker prefer not to cross pixel boundaries, we do the core of the
+  // pixels at full strength but then do the edge pixels in a separate step, with
+  // their errors weighted by their fractional pixel coverage.  We then do the
+  // corner pixels, with their appropriate bilerp weight, so that they don't pop
+  // in and out suddenly.
   int x,y;
-  int pixels = 0;
+  unsigned pixels = 0;
   double val, myval;
   double fitness = 0.0;
-  for (x = -halfwidth; x <= halfwidth; x++) {
-    for (y = -halfwidth; y <= halfwidth; y++) {
+  for (x = -halfwidth+1; x < halfwidth; x++) {
+    for (y = -halfwidth+1; y < halfwidth; y++) {
       if (image.read_pixel(x_int+x,y_int+y,val, rgb)) {
         _testimage.read_pixel(x, y, myval, 0);
 	double squarediff = (val-myval) * (val-myval);
@@ -1197,6 +1205,69 @@ double	FIONA_spot_tracker::check_fitness(const image_wrapper &image, unsigned rg
 	pixels++;
       }
     }
+  }
+  // Boundaries along the sides
+  int xmin = x_int - halfwidth;
+  double xminweight = (1 - x_frac);
+  int xmax = x_int + halfwidth;
+  double xmaxweight = x_frac;
+  for (y = -halfwidth+1; y < halfwidth; y++) {
+    if (image.read_pixel(xmin,y_int+y,val, rgb)) {
+      _testimage.read_pixel(-halfwidth, y, myval, 0);
+	double squarediff = (val-myval) * (val-myval);
+	fitness -= squarediff * xminweight;
+	pixels++;
+    }
+    if (image.read_pixel(xmax,y_int+y,val, rgb)) {
+      _testimage.read_pixel(+halfwidth, y, myval, 0);
+	double squarediff = (val-myval) * (val-myval);
+	fitness -= squarediff * xmaxweight;
+	pixels++;
+    }
+  }
+  int ymin = y_int - halfwidth;
+  double yminweight = (1 - y_frac);
+  int ymax = y_int + halfwidth;
+  double ymaxweight = y_frac;
+  // Boundaries at the top and bottom
+  for (x = -halfwidth+1; x < halfwidth; x++) {
+    if (image.read_pixel(x_int+x,ymin,val, rgb)) {
+      _testimage.read_pixel(x, -halfwidth, myval, 0);
+	double squarediff = (val-myval) * (val-myval);
+	fitness -= squarediff * yminweight;
+	pixels++;
+    }
+    if (image.read_pixel(x_int+x,ymax,val, rgb)) {
+      _testimage.read_pixel(x, +halfwidth, myval, 0);
+	double squarediff = (val-myval) * (val-myval);
+	fitness -= squarediff * ymaxweight;
+	pixels++;
+    }
+  }
+  // Four corners
+  if (image.read_pixel(xmin,ymin,val, rgb)) {
+    _testimage.read_pixel(-halfwidth, -halfwidth, myval, 0);
+	double squarediff = (val-myval) * (val-myval);
+	fitness -= squarediff * xminweight * yminweight;
+	pixels++;
+  }
+  if (image.read_pixel(xmax,ymin,val, rgb)) {
+    _testimage.read_pixel(+halfwidth, -halfwidth, myval, 0);
+	double squarediff = (val-myval) * (val-myval);
+	fitness -= squarediff * xmaxweight * yminweight;
+	pixels++;
+  }
+  if (image.read_pixel(xmin,ymax,val, rgb)) {
+    _testimage.read_pixel(-halfwidth, +halfwidth, myval, 0);
+	double squarediff = (val-myval) * (val-myval);
+	fitness -= squarediff * xminweight * ymaxweight;
+	pixels++;
+  }
+  if (image.read_pixel(xmax,ymax,val, rgb)) {
+    _testimage.read_pixel(+halfwidth, +halfwidth, myval, 0);
+	double squarediff = (val-myval) * (val-myval);
+	fitness -= squarediff * xmaxweight * ymaxweight;
+	pixels++;
   }
 
   if (pixels == 0) {

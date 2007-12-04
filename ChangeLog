@@ -1,3 +1,20 @@
+2007-12-03  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* image_wrapper.h : Whitespace changes.
+	* spot_math.h : Corrected step size in Gaussian integrator.
+		Comment changes.
+	* spot_tracker.cpp : Changed the FIONA tracker's error
+		calculation routine to not be averse to switching between
+		pixels.  The old version hopped from one row to the next
+		all at once, pulling in a whole new set of pixels.  This
+		version interpolates the weighting from the edge pixels
+		along each direction, so that there is not a sudden change
+		going from pixel to pixel.  This fixes a bug pointed out
+		by Yuval Ebenstein where the FIONA tracker favored moving
+		along the pixel boundaries.
+	* spot_tracker.h : Whitespace changes.
+	* video_spot_tracker.cpp : Version 5.16.
+
 2007-11-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* roper_server.cpp : Fixed a type-cast problem where unsigned chars
