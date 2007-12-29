@@ -402,6 +402,9 @@ public:
   virtual bool	take_single_optimization_step(const image_wrapper &image, unsigned rgb, double &x, double &y,
 				      bool do_x, bool do_y, bool do_r);
 
+  double get_background(void) const { return _background; };
+  double get_summedvalue(void) const { return _summedvalue; };
+
   //------------------------------------------------
 
   // Debugging method.  Remember that the check_fitness() function has to

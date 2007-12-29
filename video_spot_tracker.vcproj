@@ -262,6 +262,10 @@
 			Filter="h;hpp;hxx;hm;inl"
 			>
 			<File
+				RelativePath=".\controllable_video.h"
+				>
+			</File>
+			<File
 				RelativePath="Tcl_Linkvar.h"
 				>
 			</File>

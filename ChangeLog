@@ -1,3 +1,10 @@
+2007-12-29  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Version 5.17.  Records the background and
+		summed value for FIONA trackers in the CSV log file.
+	* spot_tracker.h : Added accessor methods for background and
+		summed value for FIONA trackers.
+
 2007-12-03  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* image_wrapper.h : Whitespace changes.

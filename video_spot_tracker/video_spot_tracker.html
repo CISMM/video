@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v05.16</title>
+<title>Video Spot Tracker v05.17</title>
 
-<h1>Video Spot Tracker version 05.16</h1>
+<h1>Video Spot Tracker version 05.17</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -50,7 +50,7 @@
   icon that was created when the program was installed. To select a stack of image 
   files that are numbered consecutively, drag any one of the files onto the icon. 
   It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
-  Menu/All Programs/NSRG/Video Spot Tracker v05.16</b></i>. If you run the program 
+  Menu/All Programs/NSRG/Video Spot Tracker v05.17</b></i>. If you run the program 
   directly by double-clicking on the icon, it will ask for a video or image file 
   (AVI, TIF, or BMP) that it should open.</p>
 
@@ -280,7 +280,15 @@
 
 <p><strong>Data description:</strong> Positions and radii are reported in units of pixels, with the origin at the upper-right corner of the screen. +X is towards the right on the displayed window and +Y is towards the bottom.</p>
 
-<p>Orientation assumes square pixels and is reported in degrees in the range [0,360) where zero degrees has the rod aligned with the X axis, 45 degrees when it is along +X, -Y (slanting to the upper-right on the display), and 90 degrees when aligned with Y.</p>
+<p>Orientation assumes square pixels and is reported in degrees in the range [0,360) 
+  where zero degrees has the rod aligned with the X axis, 45 degrees when it is 
+  along +X, -Y (slanting to the upper-right on the display), and 90 degrees when 
+  aligned with Y.</p>
+<p>When the FIONA tracking kernel is used, the <i>radius</i> field refers to the 
+  standard deviation of the Gaussian that is being fit. The <i>background</i> 
+  field refers to the pixel-intensity count of the background value added to the 
+  Gaussian at the best fit. The <i>summed value</i> field refers to the volume 
+  under the Gaussian (in units of square pixels times intensity units).</p>
 
 <h3>Controlling playback</h3>
 
@@ -311,6 +319,10 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 5.17:</h3>
+<ul>
+  <li>Added reporting of background value and summed value for FIONA tracker output.</li>
+</ul>
 <h3>Version 5.16:</h3>
 <ul>
   <li>Fixed bug that kept the program from opening large SPE-format files (taken 

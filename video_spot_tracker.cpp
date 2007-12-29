@@ -88,7 +88,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.16";
+const char *Version_string = "05.17";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -535,12 +535,20 @@ static	bool  save_log_frame(int frame_number)
     vrpn_float64  quat[4] = { 0, 0, 0, 1};
     double orient = 0.0;
     double length = 0.0;
+    double background = 0.0;
+    double summedvalue = 0.0;
 
     // If we are tracking rods, then we adjust the orientation to match.
     if (g_rod) {
       // Horrible hack to make this work with rod type
-      orient = static_cast<rod3_spot_tracker_interp*>((*loop)->xytracker())->get_orientation();
-      length = static_cast<rod3_spot_tracker_interp*>((*loop)->xytracker())->get_length();
+      orient = reinterpret_cast<rod3_spot_tracker_interp*>((*loop)->xytracker())->get_orientation();
+      length = reinterpret_cast<rod3_spot_tracker_interp*>((*loop)->xytracker())->get_length();
+    }
+
+    if (g_kernel_type == KERNEL_FIONA) {
+      // Horrible hack to make this export extra stuff for a FIONA kernel
+      background = reinterpret_cast<FIONA_spot_tracker*>((*loop)->xytracker())->get_background();
+      summedvalue = reinterpret_cast<FIONA_spot_tracker*>((*loop)->xytracker())->get_summedvalue();
     }
 
     // Rotation about the Z axis, reported in radians.
@@ -557,7 +565,12 @@ static	bool  save_log_frame(int frame_number)
 	first_time = false;
       }
       double interval = timediff(now, start);
-      fprintf(g_csv_file, "%d, %d, %lf,%lf,%lf, %lf, %lf,%lf\n", frame_number, (*loop)->index(), pos[0], pos[1], pos[2], (*loop)->xytracker()->get_radius(), orient, length);
+      fprintf(g_csv_file, "%d, %d, %lf,%lf,%lf, %lf, %lf,%lf, %lf,%lf\n",
+        frame_number, (*loop)->index(),
+        pos[0], pos[1], pos[2],
+        (*loop)->xytracker()->get_radius(),
+        orient, length,
+        background, summedvalue);
 
       // Make sure there are enough vectors to store all available trackers, then
       // store a new entry for each tracker that currently exists.
@@ -2495,7 +2508,7 @@ void  logfilename_changed(const char *newvalue, void *)
     if ( NULL == (g_csv_file = fopen(csvname, "w")) ) {
       fprintf(stderr,"Cannot open CSV file for writing: %s\n", csvname);
     } else {
-      fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius,Orientation (if meaningful),Length (if meaningful)\n");
+      fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius,Orientation (if meaningful),Length (if meaningful), Background (for FIONA), Summed Value (for FIONA)\n");
     }
     delete [] csvname;
   }
