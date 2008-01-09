@@ -1,3 +1,11 @@
+2008-01-09  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_imager_server.cpp : Version 3.0.  Runs a separate thread
+		for a video imager server on a local loopback (port 9999).
+		In the main thread, it runs an imager forwarder on port 3883
+		so that clients can connect and preview as well as request
+		full-rate logging.
+
 2007-12-29  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Version 5.17.  Records the background and
