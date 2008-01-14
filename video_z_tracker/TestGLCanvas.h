@@ -10,7 +10,10 @@
 
 #include "GL/glu.h"
 
-#include "fileToTexture.h"
+#include <vrpn_Imager.h>
+#include <VRPN_Imager_camera_server.h>
+
+//#include "fileToTexture.h"
 #include "PixelLine.h"
 
 class TestGLCanvas: public wxGLCanvas
@@ -23,7 +26,7 @@ public:
 
     ~TestGLCanvas();
 
-	void SetInput(base_camera_server* newInput);
+	void SetInput(vrpn_Imager_Remote* newInput);
 
 	void SetHPixRef(PixelLine* ref)	{	m_hPixRef = ref;	}
 	void SetVPixRef(PixelLine* ref)	{	m_vPixRef = ref;	}
@@ -57,6 +60,10 @@ public:
 
 	void SetZ(float z) {	m_z = z;	}
 
+	int rows, cols;
+
+	void Update();
+
 protected:
     void OnPaint(wxPaintEvent& event);
     void OnSize(wxSizeEvent& event);
@@ -66,7 +73,21 @@ protected:
 	void DrawSelectionBox();
 	void DrawHUD();
 
-	base_camera_server* m_image;
+	//base_camera_server* m_image;
+	vrpn_Imager_Remote* m_imager;
+	unsigned char* m_image;
+
+	//VRPN_Imager_camera_server* m_camera;
+
+	int m_xDim;
+	int m_yDim;
+	bool m_already_posted;
+	bool m_ready_for_region;
+	bool m_draining;
+
+	static void VRPN_CALLBACK handle_description_message(void *, const struct timeval);
+	static void VRPN_CALLBACK handle_end_of_frame(void *,const struct _vrpn_IMAGERENDFRAMECB);
+	static void  VRPN_CALLBACK handle_region_change(void *userdata, const vrpn_IMAGERREGIONCB info);
 
 	PixelLine* m_hPixRef;
 	PixelLine* m_vPixRef;
@@ -83,6 +104,8 @@ private:
 	int m_bits;
 
 	float m_z;
+
+	bool m_got_dimensions;
 
 
     void InitGL();

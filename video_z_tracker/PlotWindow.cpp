@@ -64,7 +64,7 @@ void PlotWindow::Update()
 
 	m_plot->setVals(pvals, vals.size(), min, max);
 
-	m_plot->Update();
+	m_plot->Refresh();
 }
 
 float PlotWindow::GetMax()

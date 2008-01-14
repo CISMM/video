@@ -81,7 +81,6 @@ public:
 	void Idle(wxIdleEvent& event);
 
 	void CalcFocus();
-	bool UpdateSpotTracker();
 
 protected:
 
@@ -138,9 +137,9 @@ protected:
 
 	bool m_logging;
 
-	base_camera_server  *g_camera;	//< Camera used to get an image
+//	base_camera_server  *g_camera;	//< Camera used to get an image
 	image_wrapper       *g_image;	//< Image, possibly from camera and possibly computed
-	Controllable_Video  *g_video;	//< Video controls, if we have them
+//	Controllable_Video  *g_video;	//< Video controls, if we have them
 
 	wxBoxSizer* m_advancedSizer;
 
@@ -187,6 +186,7 @@ protected:
 	wxCheckBox* m_XYtracking;
 
 
+	// spot tracker stuff
 	Spot_Information* m_spotTracker;
 	bool m_predict;
 	bool m_newTrackingData;

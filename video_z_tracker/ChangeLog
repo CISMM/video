@@ -1,3 +1,13 @@
+2008-01-14  Ryan Schubert  <res@cs.unc.edu>
+
+	* PlotWindow.cpp : Fixed updating by using Refresh()
+		instead of Update() on the PlotGLCanvas.
+	* TestGLCanvas.* : Now uses a vrpn_Imager_Remote for handling
+		all camera connections.  This requires a vrpn imager server
+		be running (currently on the same machine).
+	* ztracker.* : removed camera support
+
+
 2007-11-15  Ryan Schubert  <res@cs.unc.edu>
 
 	* TestGLCanvas.* : Added a HUD for the preview window to display 

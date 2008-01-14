@@ -17,7 +17,7 @@
 
 
 // forward declarations
-bool  get_camera(const char *type, base_camera_server **camera, Controllable_Video **video);
+//bool  get_camera(const char *type, base_camera_server **camera, Controllable_Video **video);
 
 
 
@@ -108,8 +108,8 @@ END_EVENT_TABLE()
 zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoint& pos, const wxSize& size, long style, char* stage_name):
     wxFrame(parent, id, title, pos, size, wxDEFAULT_FRAME_STYLE)
 {
-	g_video = NULL;
-	g_camera = NULL;
+//	g_video = NULL;
+//	g_camera = NULL;
 	g_image = NULL;
 
 	m_frame_number = -1;
@@ -162,6 +162,7 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 
 	m_canvas = new TestGLCanvas(m_panel, wxID_ANY, wxDefaultPosition,
         wxSize(200, 200), wxNO_BORDER);
+	m_canvas->SetSize(m_canvas->cols, m_canvas->rows);
 
 	m_horizLabel = new wxStaticText(m_panel, wxID_ANY, wxT("Horizontal"), wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL | wxNO_BORDER);
 	m_horizPixels = new PixelLine(m_panel, wxID_ANY, wxDefaultPosition, wxSize(160, 10), wxNO_BORDER, "Horiz", true);
@@ -226,7 +227,8 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 
 
 	m_8Bits = new wxCheckBox(m_panel, BIT_DEPTH, "8 bits");
-	m_8Bits->SetValue(false);
+	m_8Bits->SetValue(true);
+	m_canvas->SetNumBits(8);
 
 	m_calibrateStageZ = new wxButton(m_panel, CALIBRATE_STAGE_Z, "Stage Calibration");
 
@@ -306,7 +308,7 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 // File|Open... command
 void zTracker::OnMenuFileOpen( wxCommandEvent& WXUNUSED(event) )
 {
-
+/* *** OPENING OF IMAGE STACKS CURRENTLY DISABLED ***
     wxString filename = wxFileSelector(wxT("Select input image."), wxT(""), wxT(""), wxT(""),
         wxT("All files (*.*)|*.*"),
 		wxFD_OPEN);
@@ -364,6 +366,7 @@ void zTracker::OnMenuFileOpen( wxCommandEvent& WXUNUSED(event) )
 
 		do_layout();
 	}
+	*/
 }
 
 // File|Exit command
@@ -381,6 +384,7 @@ void zTracker::OnMenuHelpAbout( wxCommandEvent& WXUNUSED(event) )
 
 void zTracker::OnSelectDirectX(wxCommandEvent& WXUNUSED(event))
 {
+	/*
 	// let's look for a simple directx camera
 	if (!get_camera("directx", &g_camera, &g_video)) 
 	{
@@ -408,10 +412,12 @@ void zTracker::OnSelectDirectX(wxCommandEvent& WXUNUSED(event))
 	m_sizer->Show(m_videoControlSizer, false, true);
 
 	do_layout();
+	*/
 }
 
 void zTracker::OnSelectPulnix(wxCommandEvent& WXUNUSED(event))
 {
+	/*
 	if (!get_camera("edt", &g_camera, &g_video)) 
 	{
 		if (g_camera) { delete g_camera; g_camera = NULL; }
@@ -437,12 +443,14 @@ void zTracker::OnSelectPulnix(wxCommandEvent& WXUNUSED(event))
 	m_sizer->Show(m_videoControlSizer, false, true);
 
 	do_layout();
+	*/
 }
 
 
 // *** Roper camera support is NOT tested!
 void zTracker::OnSelectRoper(wxCommandEvent& WXUNUSED(event))
 {
+	/*
 	if (!get_camera("roper", &g_camera, &g_video)) 
 	{
 		fprintf(stderr,"Cannot open camera\n");
@@ -470,32 +478,40 @@ void zTracker::OnSelectRoper(wxCommandEvent& WXUNUSED(event))
 	m_sizer->Show(m_videoControlSizer, false, true);
 
 	do_layout();
+	*/
 }
 
 
 void zTracker::OnVideoPlay( wxCommandEvent& WXUNUSED(event) )
 {
+	/*
 	if (g_video != NULL)
 		g_video->play();
 	m_videoMode = PLAYING;
+	*/
 }
 
 void zTracker::OnVideoPause( wxCommandEvent& WXUNUSED(event) )
 {
+	/*
 	if (g_video != NULL)
 		g_video->pause();
 	m_videoMode = PAUSED;
+	*/
 }
 
 void zTracker::OnVideoSingle( wxCommandEvent& WXUNUSED(event) )
 {
+	/*
 	if (g_video != NULL)
 		g_video->single_step();
 	m_videoMode = SINGLE_STEPPING;
+	*/
 }
 
 void zTracker::OnVideoRewind( wxCommandEvent& WXUNUSED(event) )
 {
+	/*
 	if (g_video != NULL)
 		g_video->rewind();
 	m_frame_number = -1;
@@ -507,6 +523,7 @@ void zTracker::OnVideoRewind( wxCommandEvent& WXUNUSED(event) )
 	// do a single step to update displayed image to the first frame
 	m_videoMode = SINGLE_STEPPING;
 	m_logging = false;
+	*/
 }
 
 void zTracker::OnMenuShowAdv( wxCommandEvent& WXUNUSED(event) )
@@ -637,14 +654,6 @@ void zTracker::OnNewPlotArray(wxCommandEvent& event)
 	}
 }
 
-bool zTracker::UpdateSpotTracker()
-{
-
-	bool awesome = true; // well, duh!
-
-	return awesome;
-}
-
 void zTracker::CalcFocus()
 {
 	m_lastFocus = m_focus; // save the previous focus measure in case we want it
@@ -674,10 +683,6 @@ void zTracker::CalcFocus()
 	smd1 = m_horizPixels->calcFocus(m_channel, method, weight);
 	smd2 = m_vertPixels->calcFocus(m_channel, method, weight);
 	m_focus = smd1 + smd2;
-
-
-//	double stageX, stageY, stageZ;
-//	m_stage->GetPosition(stageX, stageY, stageZ);
 }
 
 void zTracker::OnDo(wxCommandEvent& event)
@@ -783,12 +788,14 @@ void zTracker::OnCalibrateStageZ(wxCommandEvent& event)
 		m_stage->MoveTo(x, y, z);
 		printf("moving stage to z = %f\t", z);
 		m_stage->Update(); // update our stage
+		/*
 		if (g_camera != NULL)
 		{
 			g_image = g_camera;
 			if (!g_camera->read_image_to_memory())
 				printf("*** WARNING: FAILED TO GET A NEW IMAGE WHILE CALIBRATING ***\n");
 		}
+		*/
 		m_canvas->UpdateSlices(); // update the pixel slices from which we get the SMDs
 
 		// TODO average pixel slices before calculating a single SMD!
@@ -815,7 +822,7 @@ void zTracker::OnCalibrateStageZ(wxCommandEvent& event)
 	printf("m_MicronsPerFocus = %f\n", m_micronsPerFocus);
 }
 
-void zTracker::Idle(wxIdleEvent& WXUNUSED(event))
+void zTracker::Idle(wxIdleEvent& event)
 {
 	// optimize our spot tracker if we're tracking XY!
 	if (m_XYtracking->GetValue())
@@ -838,18 +845,8 @@ void zTracker::Idle(wxIdleEvent& WXUNUSED(event))
 		SetStatusText("", 1);
 	}
 
-	if (m_Ztracking->GetValue())
-	{
-		m_videoMode = PAUSED; // stop 'playing' or 'single stepping' if we're auto-Z-tracking
-	}
-
 	double x, y, z;
 	m_stage->GetPosition(x, y, z);
-
-	if (m_logging)
-	{
-		;// do nothing
-	}
 
 #ifdef FAKE_STAGE
 	// update "image" (i.e. frame_number) based on z position of stage! (unless we're playing/stepping)
@@ -864,48 +861,12 @@ void zTracker::Idle(wxIdleEvent& WXUNUSED(event))
 
 #endif
 
-	if (g_camera != NULL)
-	{
-		g_image = g_camera;
-
-		if (g_camera->read_image_to_memory()) 
-		{
-			if (m_videoMode == SINGLE_STEPPING || m_videoMode == PLAYING)
-			{
-				++m_frame_number;
-				m_stage->SetPosition(x, y, m_frame_number / 10.0f);
-			}
-			for (int i = 0; i < m_plotWindows.size(); ++i)
-			{
-				m_plotWindows[i]->SetIndicator(m_frame_number);
-			}
-
-//			printf("frame: %i\n", m_frame_number);
-
-			char* frame = new char[8];
-			itoa(m_frame_number, frame, 10);
-			m_curFrameLabel->SetLabel(frame);
-			m_frameSlider->SetValue(m_frame_number);
-			delete frame;
-
-			if (m_videoMode == SINGLE_STEPPING)
-				m_videoMode = PAUSED;
-		}
-		else
-		{
-			//fprintf(stderr, "Something incredibly wrong happened in zTracker::Idle...\t\n");
-			if (m_videoMode == PLAYING || m_videoMode == SINGLE_STEPPING)
-			{
-				CalcFocus();
-				m_logging = false;
-				m_videoMode = PAUSED;
-			}
-		}
-	}
-
 	if (m_canvas != NULL)
 	{
-		m_canvas->Refresh();
+		m_canvas->Update();
+		
+		//if(!m_canvas->m_already_posted)
+		//	m_canvas->Refresh();
 	}
 
 	CalcFocus();
@@ -936,6 +897,7 @@ void zTracker::Idle(wxIdleEvent& WXUNUSED(event))
 
 	m_canvas->SetZ(z);
 
+	/***
 	for (int i = 0; i < m_plotWindows.size(); ++i)
 	{
 		if (m_plotWindows[i] != NULL)
@@ -943,9 +905,12 @@ void zTracker::Idle(wxIdleEvent& WXUNUSED(event))
 			m_plotWindows[i]->Refresh();
 		}
 	}
+	*/
 
 
 	m_stage->Update(); // update our stage
+
+	event.RequestMore();
 }
 
 
@@ -1021,6 +986,8 @@ void zTracker::set_layout()
 // updates the layout whenever things change
 void zTracker::do_layout()
 {
+	m_sizer->Show(m_frameSizer, false, true);
+	m_sizer->Show(m_videoControlSizer, false, true);
 
 	m_sizer->SetSizeHints(m_panel);
 
@@ -1342,7 +1309,7 @@ zTracker::~zTracker()
 
 
 
-
+/*
 /// Open the wrapped camera we want to use depending on the name of the
 //  camera we're trying to open.
 bool  get_camera(const char *type, base_camera_server **camera, Controllable_Video **video)
@@ -1484,4 +1451,4 @@ bool  get_camera(const char *type, base_camera_server **camera, Controllable_Vid
   }
   return true;
 }
-
+*/
