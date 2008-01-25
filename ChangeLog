@@ -1,3 +1,9 @@
+2008-01-25  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_imager_server.cpp : Adds a command-line option to tell
+		how many camera buffers to use.  Currently only implemented
+		on the EDT camera.
+
 2008-01-09  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_imager_server.cpp : Version 3.0.  Runs a separate thread

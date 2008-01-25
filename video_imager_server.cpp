@@ -43,11 +43,12 @@ void handle_cntl_c(int) {
 
 void  Usage(const char *s)
 {
-  fprintf(stderr,"Usage: %s [-expose msecs] [-bin count] [-res x y] [-swap_edt] [devicename [devicenum]]\n",s);
+  fprintf(stderr,"Usage: %s [-expose msecs] [-bin count] [-res x y] [-swap_edt] [-buffers N] [devicename [devicenum]]\n",s);
   fprintf(stderr,"       -expose: Exposure time in milliseconds (default 250)\n");
   fprintf(stderr,"       -bin: How many pixels to average in x and y (default 1)\n");
   fprintf(stderr,"       -res: Resolution in x and y (default 320 200)\n");
   fprintf(stderr,"       -swap_edt: Swap lines to fix a bug in the EDT camera\n");
+  fprintf(stderr,"       -buffers: use N camera (may only work with the EDT camera) (default 360)\n");
   fprintf(stderr,"       devicename: roper, edt, cooke, diaginc, or directx (default is directx)\n");
   fprintf(stderr,"       devicenum: Which (starting with 1) if there are multiple (default 1)\n");
   fprintf(stderr,"       logfilename: Name of file to store outgoing log in (default NULL)\n");
@@ -66,6 +67,7 @@ unsigned	    g_width = 0, g_height = 0;  //< Resolution for DirectX cameras (use
 int                 g_numchannels = 1;  //< How many channels to send (3 for RGB cameras, 1 otherwise)
 int                 g_maxval = 4095;    //< Maximum value available in a channel for this device
 bool                g_swap_edt = false; //< Swap lines in EDT to fix bug in driver
+unsigned            g_camera_buffers = 360; //< How many camera buffers to ask for
 
 /// Open the camera we want to use (the type is based on the name passed in)
 bool  init_camera_code(const char *type, int which = 1)
@@ -110,9 +112,8 @@ bool  init_camera_code(const char *type, int which = 1)
       return false;
     }
   } else if (!strcmp(type, "edt")) {
-    static unsigned num_buffers = 360;
-    printf("Opening ETD Camera (using %d buffers)\n", num_buffers);
-    g_camera = new edt_server(g_swap_edt, num_buffers);
+    printf("Opening ETD Camera (using %d buffers)\n", g_camera_buffers);
+    g_camera = new edt_server(g_swap_edt, g_camera_buffers);
     g_numchannels = 1;
     g_maxval = 255;
     if (!g_camera->working()) {
@@ -276,6 +277,13 @@ int main(int argc, char *argv[])
       g_exposure = atof(argv[i]);
       if ( (g_exposure < 1) || (g_exposure > 4000) ) {
 	fprintf(stderr,"Invalid exposure (1-4000 allowed, %f entered)\n", g_exposure);
+	exit(-1);
+      }
+    } else if (!strncmp(argv[i], "-buffers", strlen("-buffers"))) {
+      if (++i > argc) { Usage(argv[0]); }
+      g_camera_buffers = atoi(argv[i]);
+      if ( (g_camera_buffers < 1) || (g_camera_buffers > 1000) ) {
+	fprintf(stderr,"Invalid exposure (1-1000 allowed, %d entered)\n", g_camera_buffers);
 	exit(-1);
       }
     } else if (!strncmp(argv[i], "-res", strlen("-res"))) {
