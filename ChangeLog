@@ -1,3 +1,7 @@
+2008-02-13  David Marshburn  <marshbur@cs.unc.edu>
+	* .cvsignore:  tells cvs to ignore several types of
+	automatically generated files.
+
 2008-01-25  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_imager_server.cpp : Adds a command-line option to tell
