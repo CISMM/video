@@ -156,10 +156,11 @@ int			      svrchan;	//< Server channel index for image data
 vrpn_Connection               *strcon;	//< Connection for stream server to talk on
 vrpn_Imager_Stream_Buffer     *str;     //< Stream server that listens to the imager server
 
-// The function that is called to become the logging thread.  It is passed
-// a pointer to "this" so that it can acces the object that created it.
-// The static function basically just unpacks the "this" pointer and
-// then calls the non-static function.
+// The function that is called to become the logging thread.
+// It reads from the camera and sends to the imager server as
+// fast as it can.  It tears down the camera code and deletes
+// the server object and connection when the global g_done flag
+// is set.
 void imager_server_thread_func(vrpn_ThreadData &threadData)
 {
   // Mainloop the server and its connection until it is time to quit.

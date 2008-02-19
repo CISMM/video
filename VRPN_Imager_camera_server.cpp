@@ -1,3 +1,4 @@
+/* XXX It is monochrome on stored video, overwriting all with the blue channel */
 /* XXX It seems to be herky-jerky on stored video */
 /* XXX What do to about RGB? */
 /* XXX We may we want to do source-quench on live cameras. */

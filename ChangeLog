@@ -1,4 +1,11 @@
+2008-02-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* VRPN_Imager_camera_server.cpp : Comment changes.
+	* edt_server.cpp : Same.
+	* video_imager_server.cpp : Same.
+
 2008-02-13  David Marshburn  <marshbur@cs.unc.edu>
+
 	* .cvsignore:  tells cvs to ignore several types of
 	automatically generated files.
 

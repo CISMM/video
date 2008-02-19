@@ -78,7 +78,7 @@ bool edt_server::open_and_find_parameters(void)
   }
 
   /*
-   * allocate four buffers for optimal pdv ring buffer pipeline (reduce if
+   * allocate buffers for optimal pdv ring buffer pipeline (reduce if
    * memory is at a premium)
    */
   pdv_multibuf((PdvDev*)d_pdv_p, d_num_buffers);
@@ -154,12 +154,26 @@ bool  edt_server::read_image_to_memory(unsigned minX, unsigned maxX,
   // If the in-memory buffers have all been filled up, assume
   // that we have missed some unknown number of images.  Save this
   // so that it can be reported if we're sending VRPN messages.
+  // Actually, we report this if we drop down to 1 buffer because
+  // this was where the version running on one of our computers
+  // hit the floor at and started losing frames.
   unsigned outstanding = edt_get_todo((PdvDev*)d_pdv_p) -
                          edt_done_count((PdvDev*)d_pdv_p);
-  if ( outstanding == 0 ) {
+  if ( outstanding <= 1 ) {
     d_missed_some_images = true;
-    static int missed = 0;
   }
+
+/*
+  // Once a second, tell how many buffers have been filled and are waiting
+  // for us to process.
+  static struct timeval last = { 0, 0 };
+  struct timeval now;
+  vrpn_gettimeofday(&now, NULL);
+  if (now.tv_sec > last.tv_sec) {
+    last = now;
+    printf("XXX EDT: %d outstanding buffers\n", outstanding );
+  }
+*/
 
   /*
    * get the image and immediately start the next one. Processing
@@ -174,6 +188,7 @@ bool  edt_server::read_image_to_memory(unsigned minX, unsigned maxX,
     _status = false;
     return false;
   }
+  pdv_start_image((PdvDev*)d_pdv_p);
 
   //---------------------------------------------------------------------
   // Time handling: We let the EDT board tell us what time each image
@@ -190,8 +205,6 @@ bool  edt_server::read_image_to_memory(unsigned minX, unsigned maxX,
   }
   struct timeval time_offset = vrpn_TimevalDiff(d_pc_time_first_image, d_edt_time_first_image);
   d_timestamp = vrpn_TimevalSum( edt_now, time_offset );
-
-  pdv_start_image((PdvDev*)d_pdv_p);
 
   // Check for timeouts in image transer from the camera into a memory
   // buffer.  This does NOT tell us when we ask for more images than will
