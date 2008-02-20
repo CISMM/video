@@ -88,7 +88,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.17";
+const char *Version_string = "05.18";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -535,8 +535,9 @@ static	bool  save_log_frame(int frame_number)
     vrpn_float64  quat[4] = { 0, 0, 0, 1};
     double orient = 0.0;
     double length = 0.0;
-    double background = 0.0;
-    double summedvalue = 0.0;
+    double background = 0.0;      // Best-fit background
+    double mean_background= 0.0;  // Computed background
+    double gaussiansummedvalue = 0.0, computedsummedvalue = 0.0;
 
     // If we are tracking rods, then we adjust the orientation to match.
     if (g_rod) {
@@ -548,7 +549,49 @@ static	bool  save_log_frame(int frame_number)
     if (g_kernel_type == KERNEL_FIONA) {
       // Horrible hack to make this export extra stuff for a FIONA kernel
       background = reinterpret_cast<FIONA_spot_tracker*>((*loop)->xytracker())->get_background();
-      summedvalue = reinterpret_cast<FIONA_spot_tracker*>((*loop)->xytracker())->get_summedvalue();
+      gaussiansummedvalue = reinterpret_cast<FIONA_spot_tracker*>((*loop)->xytracker())->get_summedvalue();
+
+      // Calculate the background as the mean of the pixels around a 5-pixel radius
+      // surrounding the tracker center.
+      {
+        double theta;
+        unsigned count = 0;
+        double r = 5;
+        double start_x = (*loop)->xytracker()->get_x();
+        double start_y = (*loop)->xytracker()->get_y();
+        double x, y, value;
+        for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
+         x = start_x + r * cos(theta);
+         y = start_y + r * sin(theta);
+         if (g_image->read_pixel_bilerp(x, y, value, g_colorIndex)) {
+           mean_background += value;
+           count++;
+         }
+        }
+        if (count != 0) {
+         mean_background /= count;
+        }
+      }
+
+      // Calculate the summed value above background in a 5-pixel-radius region around the center
+      // of the Gaussian.  This is chosen to always be the same size to avoid variance based on
+      // radius.  It is chosen on integer lattice to avoid interpolation artifacts.  It is round
+      // to avoid getting things in the corners.  Subtract the analytic background signal from each
+      // pixel's value.
+      double x = (*loop)->xytracker()->get_x();
+      double y = (*loop)->xytracker()->get_y();
+      int ix = static_cast<unsigned>(floor(x+0.5));
+      int iy = static_cast<unsigned>(floor(y+0.5));
+      int loopx, loopy;
+      for (loopx = -5; loopx <= 5; loopx++) {
+        for (loopy = -5; loopy <= 5; loopy++) {
+          if ( (loopx*loopx + loopy*loopy) <= 5*5 ) {
+            double val;
+            g_image->read_pixel(ix+loopx, iy+loopy, val, g_colorIndex);
+            computedsummedvalue += val - mean_background;
+          }
+        }
+      }
     }
 
     // Rotation about the Z axis, reported in radians.
@@ -565,12 +608,12 @@ static	bool  save_log_frame(int frame_number)
 	first_time = false;
       }
       double interval = timediff(now, start);
-      fprintf(g_csv_file, "%d, %d, %lf,%lf,%lf, %lf, %lf,%lf, %lf,%lf\n",
+      fprintf(g_csv_file, "%d, %d, %lf,%lf,%lf, %lf, %lf,%lf, %lf,%lf, %lf,%lf\n",
         frame_number, (*loop)->index(),
         pos[0], pos[1], pos[2],
         (*loop)->xytracker()->get_radius(),
         orient, length,
-        background, summedvalue);
+        background, gaussiansummedvalue, mean_background,computedsummedvalue);
 
       // Make sure there are enough vectors to store all available trackers, then
       // store a new entry for each tracker that currently exists.
@@ -2508,7 +2551,7 @@ void  logfilename_changed(const char *newvalue, void *)
     if ( NULL == (g_csv_file = fopen(csvname, "w")) ) {
       fprintf(stderr,"Cannot open CSV file for writing: %s\n", csvname);
     } else {
-      fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius,Orientation (if meaningful),Length (if meaningful), Background (for FIONA), Summed Value (for FIONA)\n");
+      fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius,Orientation (if meaningful),Length (if meaningful), Fit Background (for FIONA), Gaussian Summed Value (for FIONA), Mean Background (FIONA), Summed Value (for FIONA)\n");
     }
     delete [] csvname;
   }

@@ -1,3 +1,8 @@
+2008-02-20  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Added a calculation and storage of the
+		summed value above background for FIONA kernels.
+
 2008-02-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* VRPN_Imager_camera_server.cpp : Comment changes.
