@@ -23,8 +23,8 @@ static const double MIN_X = 0;
 static const double MIN_Y = 0;
 static const double MIN_Z = 0;
 
-static const double MAX_X = 1000;
-static const double MAX_Y = 1000;
+static const double MAX_X = 100;
+static const double MAX_Y = 100;
 static const double MAX_Z = 100;
 
 // units in microns/sec (?)
@@ -50,6 +50,8 @@ public:
 	void SetPosition(double x, double y, double z);
 	void GetTargetPosition(double &x, double &y, double &z);
 
+	void SetX(double x) { m_x = x; }
+	void SetY(double y) { m_y = y; }
 	void SetZ(double z) { m_z = z; }
 	void SetFocusChanged(bool changed) { m_focus_changed = changed; }
 
@@ -68,7 +70,7 @@ protected:
 
 	bool m_focus_changed;
 
-	double m_zOffset;
+	double m_zOffset, m_xOffset, m_yOffset;
 
 #ifndef FAKE_STAGE
 	// vrpn stuff for controlling the MCL stage

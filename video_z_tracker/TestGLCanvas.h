@@ -12,9 +12,10 @@
 
 #include <vrpn_Imager.h>
 #include <VRPN_Imager_camera_server.h>
+#include "vrpn_Auxiliary_Logger.h"
 
-//#include "fileToTexture.h"
 #include "PixelLine.h"
+#include "cameraImage.h"
 
 class TestGLCanvas: public wxGLCanvas
 {
@@ -27,6 +28,8 @@ public:
     ~TestGLCanvas();
 
 	void SetInput(vrpn_Imager_Remote* newInput);
+
+	void LogToFile(char* filename);
 
 	void SetHPixRef(PixelLine* ref)	{	m_hPixRef = ref;	}
 	void SetVPixRef(PixelLine* ref)	{	m_vPixRef = ref;	}
@@ -59,10 +62,30 @@ public:
 	void UpdateSlices();
 
 	void SetZ(float z) {	m_z = z;	}
+	void SetX(float x) {	m_x = x;	}
+	void SetY(float y) {	m_y = y;	}
 
 	int rows, cols;
 
 	void Update();
+
+	image_wrapper* GetWrappedImage() {	return m_image;	}
+
+	bool m_newImage;
+
+	char	*device_name;
+
+	bool m_imagelogging;
+
+
+
+	int m_middleMouseDragX;
+	int m_middleMouseDragY;
+	float m_micronsPerPixel;
+	float m_mouseWheelDelta;
+	float m_micronsPerMouseWheel;
+
+	bool m_middleMouseDown;
 
 protected:
     void OnPaint(wxPaintEvent& event);
@@ -75,7 +98,10 @@ protected:
 
 	//base_camera_server* m_image;
 	vrpn_Imager_Remote* m_imager;
-	unsigned char* m_image;
+	//unsigned char* m_image;
+	CameraImage* m_image;
+
+	vrpn_Auxiliary_Logger_Remote* m_logger;
 
 	//VRPN_Imager_camera_server* m_camera;
 
@@ -94,6 +120,9 @@ protected:
 
 	bool m_showCross;
 
+
+	//vrpn_Connection *m_connection; // we were using this for oldschool logging
+
 private:
 
 	int m_mouseX, m_mouseY;
@@ -103,7 +132,7 @@ private:
 
 	int m_bits;
 
-	float m_z;
+	float m_z, m_x, m_y;
 
 	bool m_got_dimensions;
 

@@ -17,6 +17,17 @@ unsigned long	duration(struct timeval t1, struct timeval t2)
 }
 
 
+double clamp(double val, double min, double max)
+{
+	if (val < min)
+		val = min;
+	else if (val > max)
+		val = max;
+
+	return val;
+}
+
+
 Stage::Stage(char* Stage_name)
 {
 	m_x = m_y = m_z = 0;
@@ -26,6 +37,8 @@ Stage::Stage(char* Stage_name)
 	vrpn_gettimeofday(&m_lastTime, NULL);
 
 	m_zOffset = 0;
+	m_xOffset = 0;
+	m_yOffset = 0;
 
 #ifndef	FAKE_STAGE
 
@@ -165,8 +178,12 @@ void Stage::Update()
 
 bool Stage::MoveTo(double x, double y, double z)
 {
-	if (x < MIN_X || x > MAX_X || y < MIN_Y || y > MAX_Y || z < MIN_Z || z > MAX_Z)
-		return false; // illegal stage position
+	//if (x < MIN_X || x > MAX_X || y < MIN_Y || y > MAX_Y || z < MIN_Z || z > MAX_Z)
+	//	return false; // illegal stage position
+	
+	x = clamp(x, MIN_X, MAX_X);
+	y = clamp(y, MIN_Y, MAX_Y);
+	z = clamp(z, MIN_Z, MAX_Z);
 
 	m_targetX = x;
 	m_targetY = y;
@@ -174,7 +191,9 @@ bool Stage::MoveTo(double x, double y, double z)
 
 #ifndef FAKE_STAGE
 	// Send the request for a new position in meters to the Poser.
-	vrpn_float64  pos[3] = { 0, 0, (z - m_zOffset) * METERS_PER_MICRON };
+	vrpn_float64  pos[3] = { (x - m_xOffset) * METERS_PER_MICRON,
+							 (y - m_yOffset) * METERS_PER_MICRON,
+							 (z - m_zOffset) * METERS_PER_MICRON };
 	vrpn_float64  quat[4] = { 0, 0, 0, 1 };
 	struct timeval now;
 	gettimeofday(&now, NULL);
@@ -216,8 +235,9 @@ void Stage::GetTargetPosition(double &x, double &y, double &z)
 void Stage::CalculateOffset(double where_to_go_meters) 
 {
 #ifndef	FAKE_STAGE
+	double x = 0, y = 0;
   // Request that the camera focus go where we want it to
-  vrpn_float64  pos[3] = { 0, 0, where_to_go_meters };
+  vrpn_float64  pos[3] = { x * METERS_PER_MICRON, y * METERS_PER_MICRON, where_to_go_meters };
   vrpn_float64  quat[4] = { 0, 0, 0, 1 };
   struct timeval now;
   gettimeofday(&now, NULL);
@@ -245,9 +265,14 @@ void Stage::CalculateOffset(double where_to_go_meters)
     vrpn_SleepMsecs(1);
 
     m_zOffset = m_z - where_to_go_meters / METERS_PER_MICRON;
+
+	m_xOffset = m_x - (x / METERS_PER_MICRON);
+	m_yOffset = m_y - (y / METERS_PER_MICRON);
+
   } while (!m_focus_changed);
 
-  printf("Estimated focus offset at %f\n", m_zOffset);
+  //printf("Estimated focus offset at %f\n", m_zOffset);
+  printf("Estimated stage offsets: (%f, %f, %f)\n", m_xOffset, m_yOffset, m_zOffset);
 #endif
 }
 
@@ -260,11 +285,20 @@ void VRPN_CALLBACK Stage::handle_vrpn_focus_change(void *stg, const vrpn_TRACKER
 {
 	if (info.sensor == 0) {
 		double sensedZ = info.pos[2] / METERS_PER_MICRON;
+		double sensedX = info.pos[0] / METERS_PER_MICRON;
+		double sensedY = info.pos[1] / METERS_PER_MICRON;
+
 //		printf("sensedZ = %f\n", sensedZ);
 		if (sensedZ < 65535)
 		{
 			((Stage*)stg)->SetZ( sensedZ );
 			((Stage*)stg)->SetFocusChanged(true);
 		}
+
+		if (sensedX < 65535)
+			((Stage*)stg)->SetX(sensedX);
+
+		if (sensedY < 65535)
+			((Stage*)stg)->SetY(sensedY);
 	}
 }

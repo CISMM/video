@@ -30,15 +30,6 @@
 #include <vector>
 
 
-enum VideoMode
-{
-	PLAYING,
-	PAUSED,
-	SINGLE_STEPPING
-};
-
-
-
 class zTracker : public wxFrame {
 public:
     zTracker(wxWindow* parent, int id, const wxString& title, const wxPoint& pos=wxDefaultPosition, 
@@ -49,10 +40,6 @@ public:
 	void OnMenuFileOpen(wxCommandEvent& event);
     void OnMenuFileExit(wxCommandEvent& event);
     void OnMenuHelpAbout(wxCommandEvent& event);
-	void OnVideoPlay(wxCommandEvent& event);
-	void OnVideoPause(wxCommandEvent& event);
-	void OnVideoSingle(wxCommandEvent& event);
-	void OnVideoRewind(wxCommandEvent& event);
 
 	void OnMenuShowAdv(wxCommandEvent& event);
 	void OnMenuFocusStart(wxCommandEvent& event);
@@ -78,15 +65,20 @@ public:
 
 	void OnDo(wxCommandEvent& event);
 
+	void OnLoggingButton(wxCommandEvent& event);
+
+	void OnUpdateStageCheck(wxCommandEvent& event);
+
 	void Idle(wxIdleEvent& event);
 
 	void CalcFocus();
+
+	void CalculateZOffset();
 
 protected:
 
 	wxPanel* m_panel;
 
-	wxBoxSizer* m_videoControlSizer;
 	wxBoxSizer* m_assortedSizer;
 
 	wxBoxSizer* m_rootSizer;
@@ -98,12 +90,12 @@ protected:
 
 	wxBoxSizer* m_canvasSizer;
 
-	wxBoxSizer* m_frameSizer;
-	wxBoxSizer* m_frameLabelSizer;
+	//wxBoxSizer* m_frameSizer;
+	//wxBoxSizer* m_frameLabelSizer;
 
-	wxStaticText* m_minFrameLabel;
-	wxStaticText* m_maxFrameLabel;
-	wxStaticText* m_curFrameLabel;
+	//wxStaticText* m_minFrameLabel;
+	//wxStaticText* m_maxFrameLabel;
+	//wxStaticText* m_curFrameLabel;
 
 
 	wxBoxSizer* m_manualFocusSizer;
@@ -112,11 +104,9 @@ protected:
 
 	wxCheckBox* m_showCrossCheck;
 
-	wxSlider* m_frameSlider;
+	//wxSlider* m_frameSlider;
 
 	std::vector<PlotWindow*> m_plotWindows;
-
-	wxPanel* m_video_control_panel;
 
 	TestGLCanvas *m_canvas;
 
@@ -126,20 +116,16 @@ protected:
 	wxStaticText* m_vertLabel;
 	PixelLine* m_vertPixels;
 
-	wxButton* m_play;
-	wxButton* m_pause;
-	wxButton* m_step;
-	wxButton* m_rewind;
 
-	int m_frame_number;
+	//int m_frame_number;
 
-	VideoMode m_videoMode;
 
 	bool m_logging;
 
 //	base_camera_server  *g_camera;	//< Camera used to get an image
-	image_wrapper       *g_image;	//< Image, possibly from camera and possibly computed
+//	image_wrapper       *g_image;	//< Image, possibly from camera and possibly computed
 //	Controllable_Video  *g_video;	//< Video controls, if we have them
+	image_wrapper		*m_image; // actually, we're gonna point this at a CameraImage
 
 	wxBoxSizer* m_advancedSizer;
 
@@ -157,6 +143,7 @@ protected:
 
 	wxButton* m_Do;
 	
+	wxCheckBox* m_updateStage;
 
 	int m_channel;
 
@@ -185,6 +172,9 @@ protected:
 	wxCheckBox* m_Ztracking;
 	wxCheckBox* m_XYtracking;
 
+	wxTextCtrl* m_logfileText;
+	wxButton* m_loggingButton;
+
 
 	// spot tracker stuff
 	Spot_Information* m_spotTracker;
@@ -206,6 +196,9 @@ protected:
 
 
 private:
+
+	// these are used to hold stage position for updating stage positions in Idle()
+	double x, y, z;
 
 	spot_tracker_XY  *create_appropriate_xytracker(double x, double y, double r);
 	spot_tracker_Z  *create_appropriate_ztracker(void);

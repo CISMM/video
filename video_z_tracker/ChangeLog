@@ -1,3 +1,13 @@
+2008-02-21  Ryan Schubert  <res@cs.unc.edu>
+
+	* Stage.* : Enabled XY movement capabilities for stage
+	* TestGLCanvas.* : Switched to use video imager server;
+		added middle-mouse-button MCL navigation (for XY);
+		added support for video logging
+	* ztracker.* : GUI updates for navigation, logging, removed
+		old GUI components;
+		added XY MCL offset calibration;
+
 2008-01-14  Ryan Schubert  <res@cs.unc.edu>
 
 	* PlotWindow.cpp : Fixed updating by using Refresh()
@@ -6,7 +16,6 @@
 		all camera connections.  This requires a vrpn imager server
 		be running (currently on the same machine).
 	* ztracker.* : removed camera support
-
 
 2007-11-15  Ryan Schubert  <res@cs.unc.edu>
 

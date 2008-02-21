@@ -36,11 +36,6 @@ int g_kernel_type = KERNEL_SYMMETRIC;
 // Application IDs used
 enum 
 {
-	PLAY = 100,
-	PAUSE,
-	SINGLE,
-	REWIND,
-
 	MENU_SHOW_ADV,
 	MENU_START_LOG,
 	MENU_STOP_LOG,
@@ -62,7 +57,11 @@ enum
 
 	DO,
 
-	LAST_LOCAL_ID
+	LOG_VIDEO,
+
+	UPDATE_STAGE,
+
+	LAST_LOCAL_ID,
 };
 
 
@@ -80,11 +79,6 @@ BEGIN_EVENT_TABLE(zTracker, wxFrame)
 	EVT_MENU(MENU_PULNIX, zTracker::OnSelectPulnix)
 	EVT_MENU(MENU_ROPER, zTracker::OnSelectRoper)
 
-	EVT_BUTTON(PLAY, zTracker::OnVideoPlay)
-	EVT_BUTTON(PAUSE, zTracker::OnVideoPause)
-	EVT_BUTTON(SINGLE, zTracker::OnVideoSingle)
-	EVT_BUTTON(REWIND, zTracker::OnVideoRewind)
-
 	EVT_SCROLL_THUMBTRACK(zTracker::OnFrameScroll)
 	// EVT_SCROLL_CHANGED will also take into account keyboard controlling of the
 	//		slider as well as clicking on the slider, but not at the current position
@@ -101,6 +95,10 @@ BEGIN_EVENT_TABLE(zTracker, wxFrame)
 
 	EVT_BUTTON(DO, zTracker::OnDo)
 
+	EVT_CHECKBOX(UPDATE_STAGE, zTracker::OnUpdateStageCheck)
+
+	EVT_BUTTON(LOG_VIDEO, zTracker::OnLoggingButton)
+
 	EVT_IDLE(zTracker::Idle)
 
 END_EVENT_TABLE()
@@ -110,13 +108,14 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 {
 //	g_video = NULL;
 //	g_camera = NULL;
-	g_image = NULL;
+//	g_image = NULL;
+	m_image = NULL;
 
-	m_frame_number = -1;
+//	m_frame_number = -1;
 
 	m_channel = 0;			// Red
 
-	m_logging = false;
+	m_logging = false; // THIS IS FOR FOCUS PLOT LOGGING, NOT IMAGE LOGGING!
 
 	SetIcon(wxIcon(sample_xpm));
 
@@ -173,31 +172,26 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 	m_canvas->SetVPixRef(m_vertPixels);
 	m_canvas->SetHPixRef(m_horizPixels);
 
-	m_frameSlider = new wxSlider(m_panel, wxID_ANY, 0, 0, 299, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL | wxNO_BORDER);
+//	m_frameSlider = new wxSlider(m_panel, wxID_ANY, 0, 0, 299, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL | wxNO_BORDER);
 
-	m_minFrameLabel = new wxStaticText(m_panel, wxID_ANY, wxT("0"));
-	m_maxFrameLabel = new wxStaticText(m_panel, wxID_ANY, wxT("max"));
-	m_curFrameLabel = new wxStaticText(m_panel, wxID_ANY, wxT("cur"));
+//	m_minFrameLabel = new wxStaticText(m_panel, wxID_ANY, wxT("0"));
+//	m_maxFrameLabel = new wxStaticText(m_panel, wxID_ANY, wxT("max"));
+//	m_curFrameLabel = new wxStaticText(m_panel, wxID_ANY, wxT("cur"));
 
 	// Make all our sizers we'll need for a nice layout
 	m_rootSizer = new wxBoxSizer(wxVERTICAL);
 	m_zSizer = new wxBoxSizer(wxVERTICAL);
-	m_frameSizer = new wxBoxSizer(wxVERTICAL);
-	m_frameLabelSizer = new wxBoxSizer(wxHORIZONTAL);
+//	m_frameSizer = new wxBoxSizer(wxVERTICAL);
+//	m_frameLabelSizer = new wxBoxSizer(wxHORIZONTAL);
 	m_sizer = new wxBoxSizer(wxVERTICAL);
 	m_vertSizer = new wxBoxSizer(wxVERTICAL);
 	m_horizSizer = new wxBoxSizer(wxVERTICAL);
 	m_canvasSizer = new wxBoxSizer(wxHORIZONTAL);
 
-	m_frameSlider->Disable();
+//	m_frameSlider->Disable();
 
 	m_assortedSizer = new wxBoxSizer(wxHORIZONTAL);
-	m_videoControlSizer = new wxBoxSizer(wxHORIZONTAL);
-
-	m_play = new wxButton(m_panel, PLAY, "play");
-	m_pause = new wxButton(m_panel, PAUSE, "pause");
-	m_step = new wxButton(m_panel, SINGLE, "single step");
-	m_rewind = new wxButton(m_panel, REWIND, "rewind");
+//	m_videoControlSizer = new wxBoxSizer(wxHORIZONTAL);
 
 	m_showCrossCheck = new wxCheckBox(m_panel, SHOW_CROSS, "Show crosshairs");
 	m_showCrossCheck->SetValue(true);
@@ -251,6 +245,10 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 	m_manualFocusSlider = new wxSlider(m_panel, wxID_ANY, 0, 0, 100, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL | wxNO_BORDER);
 
 
+	// video logging controls
+	m_logfileText = new wxTextCtrl(m_panel, wxID_ANY, "", wxDefaultPosition, wxSize(200, 20));
+	m_loggingButton = new wxButton(m_panel, LOG_VIDEO, "Log Video To:");
+
 
 	// kinda arbitrary default values!
 	m_minFocus = 0;
@@ -276,7 +274,7 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 	m_optZ = false;
 
 	m_spotTracker = new Spot_Information(create_appropriate_xytracker(m_canvas->GetSelectX(), m_canvas->GetSelectY(),
-		m_canvas->GetRadius() / 2.0f), create_appropriate_ztracker());
+		m_canvas->GetRadius() * 0.75f), create_appropriate_ztracker());
 
 
 
@@ -290,10 +288,15 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 
 
 
+	m_updateStage = new wxCheckBox(m_panel, UPDATE_STAGE, "Update stage");
 
 
 
 	m_stage = new Stage(stage_name);
+	// stage position vars -- these shouldn't really need to be initialized, but we will anyway
+	x = 0;
+	y = 0;
+	z = 0;
 
 
 
@@ -302,6 +305,11 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 	// ****************************************
 	set_layout();
 	do_layout();
+
+
+	// hope everything is initialized at this point...
+	// *** WE CAN'T DO THIS WHEN WE'RE NOT ACTUALLY CONNECTING TO A STAGE OR WE HANG!
+	//CalculateZOffset();
 }
 
 
@@ -481,55 +489,14 @@ void zTracker::OnSelectRoper(wxCommandEvent& WXUNUSED(event))
 	*/
 }
 
-
-void zTracker::OnVideoPlay( wxCommandEvent& WXUNUSED(event) )
-{
-	/*
-	if (g_video != NULL)
-		g_video->play();
-	m_videoMode = PLAYING;
-	*/
-}
-
-void zTracker::OnVideoPause( wxCommandEvent& WXUNUSED(event) )
-{
-	/*
-	if (g_video != NULL)
-		g_video->pause();
-	m_videoMode = PAUSED;
-	*/
-}
-
-void zTracker::OnVideoSingle( wxCommandEvent& WXUNUSED(event) )
-{
-	/*
-	if (g_video != NULL)
-		g_video->single_step();
-	m_videoMode = SINGLE_STEPPING;
-	*/
-}
-
-void zTracker::OnVideoRewind( wxCommandEvent& WXUNUSED(event) )
-{
-	/*
-	if (g_video != NULL)
-		g_video->rewind();
-	m_frame_number = -1;
-
-	double x, y, z;
-	m_stage->GetPosition(x, y, z);
-	m_stage->SetPosition(x, y, m_frame_number / 10.0f);
-
-	// do a single step to update displayed image to the first frame
-	m_videoMode = SINGLE_STEPPING;
-	m_logging = false;
-	*/
-}
-
 void zTracker::OnMenuShowAdv( wxCommandEvent& WXUNUSED(event) )
 {
 	// hierarchically show/hide everything in m_advancedSizer
-	m_sizer->Show(m_advancedSizer, !m_sizer->IsShown(m_advancedSizer), true);
+	bool show = !m_sizer->IsShown(m_advancedSizer);
+	m_sizer->Show(m_advancedSizer, show, true);
+	m_canvasSizer->Show(m_vertSizer, show, true);
+	m_sizer->Show(m_horizSizer, show, true);
+
 	// update the gui layout accordingly
 	do_layout();
 }
@@ -540,10 +507,10 @@ void zTracker::OnMenuFocusStart( wxCommandEvent& WXUNUSED(event) )
 {
 	if (!m_logging)
 	{
-		for (int i = 0; i < m_plotWindows.size(); ++i)
+		for (unsigned int i = 0; i < m_plotWindows.size(); ++i)
 		{
 			m_plotWindows[i]->vals.clear();
-			m_plotWindows[i]->SetOffset(m_frame_number);
+			m_plotWindows[i]->SetOffset(0);
 		}
 	}
 	m_logging = true;
@@ -563,7 +530,8 @@ void zTracker::OnFrameScroll(wxScrollEvent& event)
 
 	double x, y, z;
 	m_stage->GetPosition(x, y, z);
-	m_stage->MoveTo(x, y, newZ);
+	if (!m_stage->MoveTo(x, y, newZ))
+		printf("Illegal movement command sent to stage: (%f, %f, %f)!\n", x, y, newZ);
 	
 
 	/* *** FIX THIS TO WORK WITH MULTIPLE SCROLLERS! ***
@@ -662,7 +630,7 @@ void zTracker::CalcFocus()
 
 	if (m_logging)
 	{
-		for (int i = 0; i < m_plotWindows.size(); ++i)
+		for (unsigned int i = 0; i < m_plotWindows.size(); ++i)
 		{
 			smd1 = m_horizPixels->calcFocus(m_channel, m_plotWindows[i]->method, m_plotWindows[i]->weightedMethod);
 			smd2 = m_vertPixels->calcFocus(m_channel, m_plotWindows[i]->method, m_plotWindows[i]->weightedMethod);
@@ -685,8 +653,29 @@ void zTracker::CalcFocus()
 	m_focus = smd1 + smd2;
 }
 
+void zTracker::OnLoggingButton(wxCommandEvent& event)
+{
+	m_canvas->LogToFile((char*)(m_logfileText->GetValue().c_str()));
+}
+
 void zTracker::OnDo(wxCommandEvent& event)
 {
+	CalculateZOffset();
+
+	/*
+	if (!m_canvas->m_imagelogging)
+	{
+		printf("starting image logging...\n");
+		m_canvas->m_imagelogging = true;
+	}
+	else
+	{
+		printf("stopping image logging.\n");
+		m_canvas->m_imagelogging = false;
+	}
+	*/
+
+
 	/*
 	if (m_zGuess == NULL)
 	{
@@ -739,6 +728,17 @@ void zTracker::OnDo(wxCommandEvent& event)
 	
 }
 
+// This function calculates a fixed Z offset value for the difference
+//  between a given Z movement command and the resulting sensor Z value
+void zTracker::CalculateZOffset()
+{
+	double x, y, z;
+	m_stage->GetPosition(x, y, z);
+	m_stage->CalculateOffset(z * METERS_PER_MICRON);
+}
+
+// This function first calculates a new Z offset, and then determines
+//  a value for m_micronsPerFocus to be used in Z tracking
 void zTracker::OnCalibrateStageZ(wxCommandEvent& event)
 {
 
@@ -769,8 +769,15 @@ void zTracker::OnCalibrateStageZ(wxCommandEvent& event)
 	int i = 0;
 	
 	bool done = false;
-	while (!done)
+	int safetyCount = 0; // This is here simply so that we won't end up stuck in an infinite loop
+						 // in the event of trying to calibrate on 'emtpy' background, or in case
+						 // our image is not correctly updating and we're getting the exact same
+						 // focus measure at every z step!
+	int safetyCountReached = 120; // limit to 120 iterations for now
+	while (!done && safetyCount < safetyCountReached)
 	{
+		++safetyCount;
+
 		lastN[i] = focus;
 		++i;
 		i = i % N;
@@ -788,7 +795,8 @@ void zTracker::OnCalibrateStageZ(wxCommandEvent& event)
 		m_stage->MoveTo(x, y, z);
 		printf("moving stage to z = %f\t", z);
 		m_stage->Update(); // update our stage
-		/*
+
+		/* this is where we would get a new image from the new stage height
 		if (g_camera != NULL)
 		{
 			g_image = g_camera;
@@ -796,22 +804,44 @@ void zTracker::OnCalibrateStageZ(wxCommandEvent& event)
 				printf("*** WARNING: FAILED TO GET A NEW IMAGE WHILE CALIBRATING ***\n");
 		}
 		*/
+
+		// add some delay before+after this update to allow the stage to settle?
+		// *** TODO remove this HORRIBLE HORRIBLE HACK!! ***
+		for (int tmp = 0; tmp < 10; ++tmp)
+		{
+			m_canvas->Update(); // hopefully this will update the image...
+			vrpn_SleepMsecs(5);
+		}
+
+
+		if (m_canvas != NULL)
+		{
+			m_image = m_canvas->GetWrappedImage();
+		}
+		
 		m_canvas->UpdateSlices(); // update the pixel slices from which we get the SMDs
 
 		// TODO average pixel slices before calculating a single SMD!
 		smd1 = m_horizPixels->calcFocus(m_channel, method, weight);
 		smd2 = m_vertPixels->calcFocus(m_channel, method, weight);
 		focus = smd1 + smd2;
-		printf("focus = %f\t", focus);
+		printf("focus = %f\t", focus); 
 
 		int j = (i + 1) % N;
 		focusRatio = lastN[j] / focus; // focusRatio is measure compared to N measures prior
 		printf("focusRatio = %f\n", focusRatio);
 		if ((0.9f < focusRatio && focusRatio < 1.1f) && (focus < (initialFocus * 0.8)))
 		{
-			done = true;
+			done = true; 
 		}
 	}
+
+	if (safetyCount == safetyCountReached)
+	{
+		printf("Infinite loop detected in calibration step!\n");
+		printf("Make sure we're correctly receiving images from the camera and that we're trying to calibrate on an actual bead!\n");
+	}
+
 	printf("Lost signal at z offset of +%f, focus from %f to %f (diff of %f)\n", 
 		z - initialZ, initialFocus, focus, initialFocus - focus);
 
@@ -822,17 +852,32 @@ void zTracker::OnCalibrateStageZ(wxCommandEvent& event)
 	printf("m_MicronsPerFocus = %f\n", m_micronsPerFocus);
 }
 
+
+
+void zTracker::OnUpdateStageCheck(wxCommandEvent& WXUNUSED(event))
+{
+	// do nothing -- we can just query the checkbox state
+}
+
+
+
 void zTracker::Idle(wxIdleEvent& event)
 {
 	// optimize our spot tracker if we're tracking XY!
-	if (m_XYtracking->GetValue())
+	if (!m_image)
+		m_image = m_canvas->GetWrappedImage();
+	
+	if (m_XYtracking->GetValue() && m_canvas->m_newImage)
 	{
-//		printf("loc = (%f, %f)\n", m_canvas->GetSelectX(), m_canvas->GetSelectYflip());
+		m_canvas->m_newImage = false;	// We do this because otherwise we might optimize our 2D 
+										//   position more often than we even have a new video frame.
+
+		//printf("loc = (%f, %f)\n", m_canvas->GetSelectX(), m_canvas->GetSelectYflip());
 		m_spotTracker->xytracker()->set_location(m_canvas->GetSelectX(), m_canvas->GetSelectYflip());
-		if (g_image)
+		if (m_image)
 			optimize_tracker(m_spotTracker);
 		m_canvas->SetSelectYflip(m_spotTracker->xytracker()->get_x(), m_spotTracker->xytracker()->get_y());
-//		printf("new loc = (%f, %f)\n", m_spotTracker->xytracker()->get_x(), m_spotTracker->xytracker()->get_y());
+		//printf("new loc = (%f, %f)\n", m_spotTracker->xytracker()->get_x(), m_spotTracker->xytracker()->get_y());
 	}
 
 
@@ -845,21 +890,16 @@ void zTracker::Idle(wxIdleEvent& event)
 		SetStatusText("", 1);
 	}
 
-	double x, y, z;
-	m_stage->GetPosition(x, y, z);
+	// read back the sensor positions for the MCL stage,
+	//  unless the user is currently panning around
+	if (!m_canvas->m_middleMouseDown)
+		m_stage->GetPosition(x, y, z);
 
-#ifdef FAKE_STAGE
-	// update "image" (i.e. frame_number) based on z position of stage! (unless we're playing/stepping)
-	if (m_videoMode == PAUSED)
-	{
-		m_frame_number = z * 10;
-//		printf("simulated frame num!\n");
-	}
 
-	if (g_video != NULL && m_videoMode == PAUSED)
-		g_video->jump_to_frame(m_frame_number - 1);
+	m_canvas->SetZ(z);
+	m_canvas->SetX(x);
+	m_canvas->SetY(y);
 
-#endif
 
 	if (m_canvas != NULL)
 	{
@@ -882,11 +922,37 @@ void zTracker::Idle(wxIdleEvent& event)
 		//printf("estimatedMovement = %f\n", estimatedMovement);
 
 		
-		m_stage->MoveTo(x, y, z - estimatedMovement);
+		//m_stage->MoveTo(x, y, z - estimatedMovement);
+		z = z - estimatedMovement;
 
-		
 		m_zVel = estimatedMovement;
-		
+	}
+
+	double dragX = (double)m_canvas->m_middleMouseDragX;
+	double dragY = (double)m_canvas->m_middleMouseDragY;
+
+	if (dragX != 0 && dragY != 0)
+		printf("moving stag frm: (%f, %f, %f)\n", x, y, z);
+
+	if (dragX != 0)
+	{
+		x = x + (dragX * m_canvas->m_micronsPerPixel);
+		m_canvas->m_middleMouseDragX = 0;
+	}
+
+	if (dragY != 0)
+	{
+		y = y + (dragY * m_canvas->m_micronsPerPixel);
+		m_canvas->m_middleMouseDragY = 0;
+	}
+
+	if (dragX != 0 && dragY != 0)
+		printf("moving stage to: (%f, %f, %f)\n", x, y, z);
+
+	if(m_updateStage->GetValue())
+	{
+		if (!m_stage->MoveTo(x, y, z))
+			printf("Illegal movement command sent to stage: (%f, %f, %f)!\n", x, y, z);
 	}
 
 	char buffer[20] = "";
@@ -894,8 +960,6 @@ void zTracker::Idle(wxIdleEvent& event)
 	m_zText->SetValue(buffer);
 	sprintf(buffer, "%.3f", m_zVel);	
 	m_zVelText->SetValue(buffer);
-
-	m_canvas->SetZ(z);
 
 	/***
 	for (int i = 0; i < m_plotWindows.size(); ++i)
@@ -935,21 +999,14 @@ void zTracker::set_layout()
 	m_horizSizer->Add(m_horizLabel, 0, wxALIGN_CENTER | wxALL, 3);
 	m_horizSizer->Add(m_horizPixels, 0, wxALIGN_CENTER | wxALL, 3);
 
-	m_frameLabelSizer->Add(m_minFrameLabel, 0, wxLEFT | wxRIGHT, 3);
-	m_frameLabelSizer->Add(0, 0, 1);
-	m_frameLabelSizer->Add(m_curFrameLabel, 0, 0, 0);
-	m_frameLabelSizer->Add(0, 0, 1);
-	m_frameLabelSizer->Add(m_maxFrameLabel, 0, wxLEFT | wxRIGHT, 3);
+//	m_frameLabelSizer->Add(m_minFrameLabel, 0, wxLEFT | wxRIGHT, 3);
+//	m_frameLabelSizer->Add(0, 0, 1);
+//	m_frameLabelSizer->Add(m_curFrameLabel, 0, 0, 0);
+//	m_frameLabelSizer->Add(0, 0, 1);
+//	m_frameLabelSizer->Add(m_maxFrameLabel, 0, wxLEFT | wxRIGHT, 3);
 
-	m_frameSizer->Add(m_frameSlider, 0, wxEXPAND | wxLEFT | wxRIGHT, 3);
-	m_frameSizer->Add(m_frameLabelSizer, 0, wxEXPAND | wxLEFT | wxRIGHT, 3);
-
-	m_videoControlSizer->Add(0, 0, 1);
-	m_videoControlSizer->Add(m_play, 0, wxEXPAND | wxTOP | wxBOTTOM, 3);
-	m_videoControlSizer->Add(m_step, 0, wxEXPAND | wxTOP | wxBOTTOM, 3);
-	m_videoControlSizer->Add(m_pause, 0, wxEXPAND | wxTOP | wxBOTTOM, 3);
-	m_videoControlSizer->Add(m_rewind, 0, wxEXPAND | wxTOP | wxBOTTOM, 3);
-	m_videoControlSizer->Add(0, 0, 1);
+//	m_frameSizer->Add(m_frameSlider, 0, wxEXPAND | wxLEFT | wxRIGHT, 3);
+//	m_frameSizer->Add(m_frameLabelSizer, 0, wxEXPAND | wxLEFT | wxRIGHT, 3);
 
 	m_trackingSizer->Add(m_Ztracking, 0, wxALL, 3);
 	m_trackingSizer->Add(m_XYtracking, 0, wxALL, 3);
@@ -969,13 +1026,16 @@ void zTracker::set_layout()
 
 	m_assortedSizer->Add(m_showCrossCheck, 0, wxALL, 3);
 	m_assortedSizer->Add(m_8Bits, 0, wxALL, 3);
+	m_assortedSizer->Add(m_updateStage, 0, wxALL, 3);
 	m_assortedSizer->Add(m_trackingSizer, 0, 0, 0);
 	m_assortedSizer->Add(m_manualFocusSizer, 0, 0, 0);
+	m_assortedSizer->Add(m_loggingButton, 0, wxALL, 3);
+	m_assortedSizer->Add(m_logfileText, 0, wxALL, 3);
 
 	m_sizer->Add(m_canvasSizer, 0, 0, 0);
 	m_sizer->Add(m_horizSizer, 0, wxLEFT, 3);
-	m_sizer->Add(m_frameSizer, 0, wxEXPAND, 0);
-	m_sizer->Add(m_videoControlSizer, 0, wxEXPAND | wxLEFT | wxRIGHT, 3);
+//	m_sizer->Add(m_frameSizer, 0, wxEXPAND, 0);
+//	m_sizer->Add(m_videoControlSizer, 0, wxEXPAND | wxLEFT | wxRIGHT, 3);
 	m_sizer->Add(m_assortedSizer, 0, wxEXPAND, 0);
 	m_sizer->Add(m_advancedSizer, 0, wxEXPAND, 0);
 	m_sizer->Show(m_advancedSizer, false, true); // hide the advanced controls by default
@@ -986,8 +1046,7 @@ void zTracker::set_layout()
 // updates the layout whenever things change
 void zTracker::do_layout()
 {
-	m_sizer->Show(m_frameSizer, false, true);
-	m_sizer->Show(m_videoControlSizer, false, true);
+//	m_sizer->Show(m_frameSizer, false, true);
 
 	m_sizer->SetSizeHints(m_panel);
 
@@ -1091,6 +1150,7 @@ void zTracker::optimize_tracker(Spot_Information *tracker)
 	}
 
 
+	/*
 	// If the frame number has changed, and we are doing global searches
 	// within a radius, then create an image-based tracker at the last
 	// location for the current tracker on the last frame; scan all locations
@@ -1149,27 +1209,25 @@ void zTracker::optimize_tracker(Spot_Information *tracker)
 		// total maximum when it finds the local maximum.
 		tracker->xytracker()->set_location(x_base + best_x_offset, y_base + best_y_offset);
 	}
+	*/
 
 
 	// Here's where the tracker is optimized to its new location.
 	// FIONA trackers always try to optimize radius along with XY.
 	if (m_parabolafit) 
 	{
-		tracker->xytracker()->optimize_xy_parabolafit(*g_image, m_channel, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
+		tracker->xytracker()->optimize_xy_parabolafit(*m_image, m_channel, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
 	} 
 	else 
 	{
 		if (g_kernel_type == KERNEL_FIONA) {
-			tracker->xytracker()->optimize(*g_image, m_channel, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
+			tracker->xytracker()->optimize(*m_image, m_channel, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
 		} 
 		else
 		{
-			tracker->xytracker()->optimize_xy(*g_image, m_channel, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
+			tracker->xytracker()->optimize_xy(*m_image, m_channel, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
 		}
 	}
-
-	printf("(x, y) = (%f, %f)\n", x, y);
-
 
 	// If we are doing prediction, update the estimated velocity based on the
 	// step taken.
@@ -1229,7 +1287,7 @@ void zTracker::optimize_tracker(Spot_Information *tracker)
 				x = r * cos(theta);
 				y = r * sin(theta);
 				tracker->xytracker()->set_location(x + start_x, y + start_y);
-				this_val = tracker->xytracker()->check_fitness(*g_image, m_channel);
+				this_val = tracker->xytracker()->check_fitness(*m_image, m_channel);
 				if (this_val > max_val) { max_val = this_val; }
 			}
 			if (max_val < min_val) { min_val = max_val; }
@@ -1241,7 +1299,7 @@ void zTracker::optimize_tracker(Spot_Information *tracker)
 		// on the type of kernel we are using.  It also depends on the setting of
 		// the "lost sensitivity" parameter, which varies from 0 (not sensitive at
 		// all) to 1 (most sensitive).
-		double starting_value = tracker->xytracker()->check_fitness(*g_image, m_channel);
+		double starting_value = tracker->xytracker()->check_fitness(*m_image, m_channel);
 		//printf("XXX Center = %lg, min of maxes = %lg, scale = %lg\n", starting_value, min_val, min_val/starting_value);
 		if (g_kernel_type == KERNEL_SYMMETRIC) {
 			// The symmetric kernel reports values that are strictly non-positive for
@@ -1278,8 +1336,8 @@ void zTracker::optimize_tracker(Spot_Information *tracker)
 	// If we are optimizing in Z, then do it here.
 	if (m_optZ) {
 		double  z = 0;
-		tracker->ztracker()->locate_close_fit_in_depth(*g_image, m_channel, tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), z);
-		tracker->ztracker()->optimize(*g_image, m_channel, tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), z);
+		tracker->ztracker()->locate_close_fit_in_depth(*m_image, m_channel, tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), z);
+		tracker->ztracker()->optimize(*m_image, m_channel, tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), z);
 	}
 }
 

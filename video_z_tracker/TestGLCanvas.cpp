@@ -73,22 +73,36 @@ TestGLCanvas::TestGLCanvas(wxWindow *parent, wxWindowID id,
 	m_mouseX = m_mouseY = -1000;
 	m_selectX = m_selectY = -1000;
 	m_radius = 0.05;
-	m_pixelRadius = 10;
+	m_pixelRadius = 15;
 
 	m_bits = 16;  // default to 16 bits
 
 	m_showCross = true;
 
-//	m_image = NULL;
+	m_image = NULL;
 
 	m_xDim = 0;
 	m_yDim = 0;
+
+	m_middleMouseDragX = 0;
+	m_middleMouseDragY = 0;
+	m_micronsPerPixel = 0.152f; // *** THIS SHOULDN'T BE HARD CODED
+
+	m_mouseWheelDelta = 0;
+	m_micronsPerMouseWheel = 1;
+
+	m_middleMouseDown = false;
 
 	m_already_posted = false;
 	m_ready_for_region = false;
 	m_draining = true;
 
-	char	*device_name = "TestImage@localhost";
+	m_imagelogging = false;
+	//m_connection = NULL;
+
+	m_logger = NULL;
+
+	device_name = "TestImage@localhost";
 	printf("Opening %s\n", device_name);
 	m_imager = new vrpn_Imager_Remote(device_name);
 	m_imager->register_description_handler(this, handle_description_message);
@@ -106,7 +120,8 @@ TestGLCanvas::TestGLCanvas(wxWindow *parent, wxWindowID id,
 		vrpn_SleepMsecs(1);
 	}
 
-	//m_imager->connectionPtr()->Jane_stop_this_crazy_thing(50);
+	// attempt to fix horrible video logging rates?
+	m_imager->connectionPtr()->Jane_stop_this_crazy_thing(50);
 
 	printf("got image dimensions!\n");
 	cols = m_imager->nCols();
@@ -115,17 +130,10 @@ TestGLCanvas::TestGLCanvas(wxWindow *parent, wxWindowID id,
 	m_xDim = cols;
 	m_yDim = rows;
 
-	m_image = new unsigned char[rows * cols * 3];
+	//m_image = new unsigned char[rows * cols * 3];
+	m_image = new CameraImage(cols, rows);
+
 	printf("image dimensions: %i by %i\n", cols, rows);
-	for (int x = 0; x < cols; ++x)
-	{
-		for (int y = 0; y < rows; ++y)
-		{
-			m_image[3 * (x + cols * y) + 0] = 0;
-			m_image[3 * (x + cols * y) + 1] = 0;
-			m_image[3 * (x + cols * y) + 2] = 255;
-		}
-	}
 
 	// now we can safely use our image!
 	m_ready_for_region = true;
@@ -144,6 +152,9 @@ TestGLCanvas::TestGLCanvas(wxWindow *parent, wxWindowID id,
 			m_draining = false;
 	}
 	m_imager->throttle_sender(1);
+
+	// setup logging now!
+	m_logger = new vrpn_Auxiliary_Logger_Remote(device_name);
 	
 }
 
@@ -153,16 +164,26 @@ TestGLCanvas::~TestGLCanvas()
 		delete m_imager;
 
 	if (m_image != NULL)
-		{
-			delete [] m_image;
-			m_image = NULL;
-		}
+	{
+		delete m_image;
+	}
+
+	if (m_logger != NULL)
+		delete m_logger;
+}
+
+
+void TestGLCanvas::LogToFile(char* filename)
+{
+	if (!m_logger->send_logging_request(filename, "", "", ""))
+		printf("Logging request failed!\n");
 }
 
 
 void TestGLCanvas::Update()
 {
 	m_imager->mainloop();
+	m_logger->mainloop();
 	//vrpn_SleepMsecs(5);
 }
 
@@ -216,8 +237,9 @@ void TestGLCanvas::OnPaint( wxPaintEvent& WXUNUSED(event) )
 	//printf("drawing current image...\n");
 	// draw current image frame
 	
-	if (m_imager != NULL)
+	if (m_imager != NULL && m_image != NULL)
 	{
+		/*
 		// set up the projection matrix 
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();	
@@ -229,6 +251,8 @@ void TestGLCanvas::OnPaint( wxPaintEvent& WXUNUSED(event) )
 		
 		glRasterPos2f(-1, -1);
 		glDrawPixels(m_imager->nCols(),m_imager->nRows(), GL_RGB, GL_UNSIGNED_BYTE, m_image);
+		*/
+		m_image->write_to_opengl_quad(1, 1);
 	}
 	
 	//m_camera->write_opengl_texture_to_quad(1, 1);
@@ -319,10 +343,15 @@ void TestGLCanvas::DrawHUD()
 
 	glRasterPos2i(x,y);
 	gprintf("Stage");
-	y -= 14;
-		
+	
+	y -= 14;	
 	glRasterPos2i(x,y);
 	sprintf(buf,"z: %f", m_z);
+	gprintf(buf);
+
+	y -= 14;
+	glRasterPos2i(x,y);
+	sprintf(buf,"(%f, %f)", m_x, m_y);
 	gprintf(buf);
 
 	glPopMatrix();
@@ -345,6 +374,8 @@ void TestGLCanvas::OnEraseBackground(wxEraseEvent& WXUNUSED(event))
 void TestGLCanvas::OnMouse(wxMouseEvent& event)
 {
 	// update mouse position for use otherwhere
+	int lastX = m_mouseX;
+	int lastY = m_mouseY;
 	m_mouseX = event.GetX();
 	m_mouseY = event.GetY();
 //	printf("mouse (x, y) = (%i, %i)\n", m_mouseX, m_mouseY);
@@ -388,13 +419,36 @@ void TestGLCanvas::OnMouse(wxMouseEvent& event)
 		Update();
 	}
 
-	/*
-	if (event.LeftIsDown() || event.RightIsDown())
+	// handle XY stage movement with middle dragging
+	if (event.MiddleIsDown())
 	{
+		m_middleMouseDown = true;
+		int xDiff = m_mouseX - lastX;
+		int yDiff = m_mouseY - lastY;
 		
-		UpdateSlices(pixelX, pixelY);		
+		m_middleMouseDragX += xDiff;
+		/*if (m_middleMouseDragX < 0)
+			m_middleMouseDragX = 0;
+		else if (m_middleMouseDragX > 200)
+			m_middleMouseDragX = 200;*/
+
+		m_middleMouseDragY += yDiff;
+		/*if (m_middleMouseDragY < 0)
+			m_middleMouseDragY = 0;
+		else if (m_middleMouseDragY > 200)
+			m_middleMouseDragY = 200;*/
 	}
-	*/
+	else
+	{
+		m_middleMouseDown = false;
+	}
+
+	// if we have some mouse wheel rotation, then change Z (think, focus knob)
+	int rotation = event.GetWheelRotation();
+	if (rotation != 0)
+	{
+		m_mouseWheelDelta += (m_micronsPerMouseWheel * rotation);
+	}
 
 }
 
@@ -420,12 +474,12 @@ void TestGLCanvas::UpdateSlices()
 		int e = 0;
 		for (int i = m_selectX - m_pixelRadius; i <= m_selectX + m_pixelRadius; ++i)
 		{
-			r = m_image[3 * (i + m_imager->nCols() * pixelY) + 0];
-			g = m_image[3 * (i + m_imager->nCols() * pixelY) + 1];
-			b = m_image[3 * (i + m_imager->nCols() * pixelY) + 2];
-			//m_imager->read_pixel(i, pixelY, r, 0);
-			//m_imager->read_pixel(i, pixelY, g, 1);
-			//m_imager->read_pixel(i, pixelY, b, 2);
+			//r = m_image[3 * (i + m_imager->nCols() * pixelY) + 0];
+			//g = m_image[3 * (i + m_imager->nCols() * pixelY) + 1];
+			//b = m_image[3 * (i + m_imager->nCols() * pixelY) + 2];
+			m_image->read_pixel(i, pixelY, r, 0);
+			m_image->read_pixel(i, pixelY, g, 1);
+			m_image->read_pixel(i, pixelY, b, 2);
 //			printf("(%f, %f, %f)\n", r, g, b);
 			m_hPixRef->R[e] = r * scale;
 			m_hPixRef->G[e] = g * scale;
@@ -444,12 +498,12 @@ void TestGLCanvas::UpdateSlices()
 		e = 0;
 		for (int i = (sz.GetHeight() - m_selectY) - m_pixelRadius; i <= (sz.GetHeight() - m_selectY) + m_pixelRadius; ++i)
 		{
-			r = m_image[3 * (pixelX + m_imager->nCols() * i) + 0];
-			g = m_image[3 * (pixelX + m_imager->nCols() * i) + 1];
-			b = m_image[3 * (pixelX + m_imager->nCols() * i) + 2];
-			//m_imager->read_pixel(pixelX, i, r, 0);
-			//m_imager->read_pixel(pixelX, i, g, 1);
-			//m_imager->read_pixel(pixelX, i, b, 2);
+			//r = m_image[3 * (pixelX + m_imager->nCols() * i) + 0];
+			//g = m_image[3 * (pixelX + m_imager->nCols() * i) + 1];
+			//b = m_image[3 * (pixelX + m_imager->nCols() * i) + 2];
+			m_image->read_pixel(pixelX, i, r, 0);
+			m_image->read_pixel(pixelX, i, g, 1);
+			m_image->read_pixel(pixelX, i, b, 2);
 			m_vPixRef->R[e] = r * scale;
 			m_vPixRef->G[e] = g * scale;
 			m_vPixRef->B[e] = b * scale;
@@ -514,7 +568,7 @@ void  VRPN_CALLBACK TestGLCanvas::handle_region_change(void *testglcanvas, const
 {
 	const vrpn_Imager_Region  *region=info.region;
     const vrpn_Imager_Remote  *imager = ((TestGLCanvas*)testglcanvas)->m_imager;
-	unsigned char* image = ((TestGLCanvas*)testglcanvas)->m_image;
+	unsigned char* image = (((TestGLCanvas*)testglcanvas)->m_image)->getRawImagePointer();
 	int xDim = ((TestGLCanvas*)testglcanvas)->m_xDim;
 	int yDim = ((TestGLCanvas*)testglcanvas)->m_yDim;
 
@@ -546,9 +600,21 @@ void  VRPN_CALLBACK TestGLCanvas::handle_region_change(void *testglcanvas, const
       region->decode_unscaled_region_using_base_pointer(image, 3, 3*xDim, 0, yDim, true, 3);
     }
 
+	/* OLDSCHOOL LOGGING!!
     // If we're logging, save to disk.  This is needed to keep up with
     // logging and because the program is killed to exit.
-    //***if (g_connection) { g_connection->save_log_so_far(); }
+	if (((TestGLCanvas*)testglcanvas)->m_imagelogging)
+	{
+		printf("checking to see if we have a logable connection yet...\n");
+		if (!((TestGLCanvas*)testglcanvas)->m_connection) // this is the first time we've logged!
+		{
+			printf("intantiating a loggable connection!\n");
+			((TestGLCanvas*)testglcanvas)->m_connection = vrpn_get_connection_by_name(((TestGLCanvas*)testglcanvas)->device_name, ((TestGLCanvas*)testglcanvas)->logfile_name);
+		}
+		printf("saving log file so far...\n");
+		((TestGLCanvas*)testglcanvas)->m_connection->save_log_so_far();
+	}
+	*/
 
     // We do not post a redisplay here, because we want to do that only
     // when we've gotten the end of a frame.  It is done in the
@@ -575,6 +641,8 @@ void  VRPN_CALLBACK TestGLCanvas::handle_end_of_frame(void *thisCanvas,const str
     // rendering a textured polygon.
 
 	//printf("handling end of frame...\n");
+	
+	((TestGLCanvas*)thisCanvas)->m_newImage = true;
 
 	if (!((TestGLCanvas*)thisCanvas)->m_already_posted) {
 		//printf("we have not already posted--so let's do it!\n");
