@@ -20,7 +20,7 @@
 #endif
 
 const int MAJOR_VERSION = 3;
-const int MINOR_VERSION = 0;
+const int MINOR_VERSION = 1;
 
 //-----------------------------------------------------------------
 // g_done gets set when the user presses ^C to exit the program.

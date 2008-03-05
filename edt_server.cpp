@@ -206,6 +206,12 @@ bool  edt_server::read_image_to_memory(unsigned minX, unsigned maxX,
   struct timeval time_offset = vrpn_TimevalDiff(d_pc_time_first_image, d_edt_time_first_image);
   d_timestamp = vrpn_TimevalSum( edt_now, time_offset );
 
+  // XXX The EDT-board time handling seems to be broken, so for now we just
+  // put on the current time for the frame.
+  struct timeval now;
+  vrpn_gettimeofday(&now, NULL);
+  d_timestamp = now;
+
   // Check for timeouts in image transer from the camera into a memory
   // buffer.  This does NOT tell us when we ask for more images than will
   // fit into buffers, but rather when there was a communication error or
