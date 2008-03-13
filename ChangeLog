@@ -1,3 +1,11 @@
+2008-03-13  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Fixed the bug the right way so it
+		would not miss deleting any beads that have gotten
+		lost; due to the increment of the loop counter in all
+		cases in the previous version, it could miss one for
+		every deleted one.  Version 5.20.
+
 2008-03-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Fixed crash bug when the last tracker is

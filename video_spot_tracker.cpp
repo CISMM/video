@@ -88,7 +88,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.19";
+const char *Version_string = "05.20";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -2065,7 +2065,8 @@ void myIdleFunc(void)
 
     // If this tracker is lost, and we have the "autodelete lost tracker" feature
     // turned on, then delete this tracker and say that we are no longer lost.
-    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+    loop = g_trackers.begin();
+    while (loop != g_trackers.end()) {
       if ((*loop)->lost()) {
         // Set me to be the active tracker.
         g_active_tracker = *loop;
@@ -2074,19 +2075,19 @@ void myIdleFunc(void)
           delete_active_xytracker();
 
           // Set the loop back to the beginning of the list of trackers
+          // so we don't miss a lost one by incrementing the loop counter.
           loop = g_trackers.begin();
 
-          // If we just deleted the last element in the list, we're done.
-          // This prevents the loop++ in the for() above from crashing.
-          if (loop == g_trackers.end()) {
-            break;
-          }
-
         } else {
-          // Make me the active tracker and set the global "lost tracker"
+          // Make me the active tracker (above) and set the global "lost tracker"
           // flag.
+          // Then go to the next tracker in the list.
           g_tracker_is_lost = true;
+          loop++;
         }
+      } else {
+        // Not lost, go to the next tracker in the list.
+        loop++;
       }
     }
 
