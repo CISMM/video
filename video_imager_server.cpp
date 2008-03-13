@@ -184,7 +184,7 @@ bool  init_server_code(const char *outgoing_logfile_name, bool do_color)
 {
   const int svrPORT = 9999;
   const int strPORT = vrpn_DEFAULT_LISTEN_PORT_NO;
-  if ( (svrcon = new vrpn_Connection(svrPORT, NULL, outgoing_logfile_name)) == NULL) {
+  if ( (svrcon = vrpn_create_server_connection(svrPORT, NULL, outgoing_logfile_name)) == NULL) {
     fprintf(stderr, "Could not open imager server connection\n");
     return false;
   }
@@ -229,7 +229,7 @@ bool  init_server_code(const char *outgoing_logfile_name, bool do_color)
 
   // Now handle the main thread's code, which will run an
   // imager forwarder.
-  if ( (strcon = new vrpn_Connection(strPORT)) == NULL) {
+  if ( (strcon = vrpn_create_server_connection(strPORT)) == NULL) {
     fprintf(stderr, "Could not open imager stream buffer connection\n");
     return false;
   }

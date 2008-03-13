@@ -105,6 +105,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "make_moving_spot_video", "m
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "make_test_image", "make_test_image.vcproj", "{D600D7F2-B55B-4B79-B001-39453EA96AB6}"
 	ProjectSection(ProjectDependencies) = postProject
+		{EBB6DEEB-7B41-4D5A-B0EA-D9AAE8BB69AB} = {EBB6DEEB-7B41-4D5A-B0EA-D9AAE8BB69AB}
 		{91C28129-4CA6-4833-88B5-25CCA8B16722} = {91C28129-4CA6-4833-88B5-25CCA8B16722}
 	EndProjectSection
 EndProject
@@ -120,6 +121,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nmSEM", "..\nano\src\app\nano\lib\nmSEM\nmSEM.vcproj", "{66492EFA-0424-49C0-8A53-7A659E35EFBD}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "roper_example", "roper_example.vcproj", "{6C262B40-41A0-40D0-B297-DBF0EE4D3C42}"
+	ProjectSection(ProjectDependencies) = postProject
+		{3EC043E1-84AB-4975-8298-6AC796B6F406} = {3EC043E1-84AB-4975-8298-6AC796B6F406}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "roper_library", "roper_library.vcproj", "{B14D45A3-AFC9-4142-B872-6F38E18649AE}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -128,8 +132,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "roper_library", "roper_libr
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "roper_spot_tracker", "roper_spot_tracker.vcproj", "{C6E2CF59-1860-4F86-91B5-17402AFAE939}"
 	ProjectSection(ProjectDependencies) = postProject
-		{B14D45A3-AFC9-4142-B872-6F38E18649AE} = {B14D45A3-AFC9-4142-B872-6F38E18649AE}
 		{91C28129-4CA6-4833-88B5-25CCA8B16722} = {91C28129-4CA6-4833-88B5-25CCA8B16722}
+		{EBB6DEEB-7B41-4D5A-B0EA-D9AAE8BB69AB} = {EBB6DEEB-7B41-4D5A-B0EA-D9AAE8BB69AB}
+		{B14D45A3-AFC9-4142-B872-6F38E18649AE} = {B14D45A3-AFC9-4142-B872-6F38E18649AE}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "spot_tracker_library", "spot_tracker_library.vcproj", "{EBB6DEEB-7B41-4D5A-B0EA-D9AAE8BB69AB}"

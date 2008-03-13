@@ -126,12 +126,12 @@ int main(unsigned argc, char *argv[])
       // If the user has requested a global search, do this once and then reset the
       // checkbox.
       if (g_globalopt) {
-	tracker.locate_good_fit_in_image(*roper, x,y);
+	tracker.locate_good_fit_in_image(*roper, 0, x,y);
 	g_globalopt = 0;
       }
 
       // Optimize to find the best fit in the image.
-      tracker.optimize(*roper, x, y);
+      tracker.optimize(*roper, 0, x, y);
 
       // Show the result
       g_X = (float)x;

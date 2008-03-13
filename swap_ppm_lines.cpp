@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include "ppm.h"
 
 bool  swap_lines_for_file(const char *name)

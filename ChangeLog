@@ -1,5 +1,17 @@
 2008-03-13  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* average_videos.dsp : Making it compile under VS6.0 and/or
+		VS 2005.  Or at least come closer.
+	* make_test_image.cpp : Same.
+	* roper_example.vcproj : Same.
+	* roper_spot_tracker.cpp : Same.
+	* roper_spot_tracker.vcproj : Same.
+	* swap_ppm_lines.cpp : Same.
+	* video.sln : Same.
+	* video_imager_server.cpp : Same.
+
+2008-03-13  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* video_spot_tracker.cpp : Fixed the bug the right way so it
 		would not miss deleting any beads that have gotten
 		lost; due to the increment of the loop counter in all

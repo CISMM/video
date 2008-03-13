@@ -44,7 +44,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;C:\Program Files\Roper Scientific\PVCAM&quot;;..\roper_camera_server;..\vrpn;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include&quot;;..\external\pc_win32\include"
+				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;C:\Program Files\Roper Scientific\PVCAM&quot;;..\roper_camera_server;..\vrpn;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include&quot;;C:\nsrg\external\pc_win32\include"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="2"
@@ -69,7 +69,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="pvcam32.lib tcl83.lib tk83.lib odbc32.lib odbccp32.lib"
+				AdditionalDependencies="pvcam32.lib tcl83.lib tk83.lib odbc32.lib odbccp32.lib opengl32.lib"
 				OutputFile=".\Release/roper_spot_tracker.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
@@ -135,7 +135,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;C:\Program Files\Roper Scientific\PVCAM&quot;;..\roper_camera_server;..\vrpn;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include&quot;;..\external\pc_win32\include"
+				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;C:\Program Files\Roper Scientific\PVCAM&quot;;..\roper_camera_server;..\vrpn;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include&quot;;C:\nsrg\external\pc_win32\include"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -161,7 +161,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="pvcam32.lib tcl83.lib tk83.lib odbc32.lib odbccp32.lib"
+				AdditionalDependencies="pvcam32.lib tcl83.lib tk83.lib odbc32.lib odbccp32.lib opengl32.lib"
 				OutputFile=".\Debug/roper_spot_tracker.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
