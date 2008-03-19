@@ -55,7 +55,7 @@ public:
 	void SetZ(double z) { m_z = z; }
 	void SetFocusChanged(bool changed) { m_focus_changed = changed; }
 
-	void CalculateOffset(double where_to_go_meters);
+	void CalculateOffset(double z_meters, double x_meters, double y_meters);
 
 protected:
 

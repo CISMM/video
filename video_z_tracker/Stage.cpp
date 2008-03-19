@@ -232,12 +232,11 @@ void Stage::GetTargetPosition(double &x, double &y, double &z)
 }
 
 
-void Stage::CalculateOffset(double where_to_go_meters) 
+void Stage::CalculateOffset(double z_meters, double x_meters = 0, double y_meters = 0) 
 {
 #ifndef	FAKE_STAGE
-	double x = 0, y = 0;
   // Request that the camera focus go where we want it to
-  vrpn_float64  pos[3] = { x * METERS_PER_MICRON, y * METERS_PER_MICRON, where_to_go_meters };
+  vrpn_float64  pos[3] = { x_meters, y_meters, z_meters };
   vrpn_float64  quat[4] = { 0, 0, 0, 1 };
   struct timeval now;
   gettimeofday(&now, NULL);
@@ -264,10 +263,10 @@ void Stage::CalculateOffset(double where_to_go_meters)
     read_z->mainloop();
     vrpn_SleepMsecs(1);
 
-    m_zOffset = m_z - where_to_go_meters / METERS_PER_MICRON;
+    m_zOffset = m_z - (z_meters / METERS_PER_MICRON);
 
-	m_xOffset = m_x - (x / METERS_PER_MICRON);
-	m_yOffset = m_y - (y / METERS_PER_MICRON);
+	m_xOffset = m_x - (x_meters / METERS_PER_MICRON);
+	m_yOffset = m_y - (y_meters / METERS_PER_MICRON);
 
   } while (!m_focus_changed);
 

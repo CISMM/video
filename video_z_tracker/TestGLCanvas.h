@@ -92,6 +92,7 @@ protected:
     void OnSize(wxSizeEvent& event);
     void OnEraseBackground(wxEraseEvent& event);
     void OnMouse(wxMouseEvent& event);
+	void OnMouseWheel(wxMouseEvent& event);
 
 	void DrawSelectionBox();
 	void DrawHUD();
@@ -127,7 +128,7 @@ private:
 
 	int m_mouseX, m_mouseY;
 	double m_selectX, m_selectY;
-	float m_radius;
+	//float m_radius;
 	int m_pixelRadius;
 
 	int m_bits;

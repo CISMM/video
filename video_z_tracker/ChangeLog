@@ -1,3 +1,15 @@
+2008-03-19  Ryan Schubert  <res@cs.unc.edu>
+
+	* Stage.* : Updated offset calculation to X, Y, and Z offsets
+	* TestGLCanvas.* : Moved mousewheel event into its own function
+		for doing mousewheel focus control of MCL.
+	* ztracker.* : Updated app icon; added mousewheel focus control;
+		added stage logging; some other GUI updates
+	* ztrackmain.cpp : Changed default MCL server name
+	* cameraImage.* : Added these files to CVS.  This class is an
+		image wrapper that allows the vrpn video server and
+		spot tracker lib to work nicely with each other.
+
 2008-02-21  Ryan Schubert  <res@cs.unc.edu>
 
 	* Stage.* : Enabled XY movement capabilities for stage

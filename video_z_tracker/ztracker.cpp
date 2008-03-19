@@ -79,10 +79,10 @@ BEGIN_EVENT_TABLE(zTracker, wxFrame)
 	EVT_MENU(MENU_PULNIX, zTracker::OnSelectPulnix)
 	EVT_MENU(MENU_ROPER, zTracker::OnSelectRoper)
 
-	EVT_SCROLL_THUMBTRACK(zTracker::OnFrameScroll)
+//	EVT_SCROLL_THUMBTRACK(zTracker::OnFrameScroll)
 	// EVT_SCROLL_CHANGED will also take into account keyboard controlling of the
 	//		slider as well as clicking on the slider, but not at the current position
-	EVT_SCROLL_CHANGED(zTracker::OnFrameScroll) 
+//	EVT_SCROLL_CHANGED(zTracker::OnFrameScroll) 
 
 	EVT_CHECKBOX(SHOW_CROSS, zTracker::OnCrossCheck)
 
@@ -116,6 +116,13 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 	m_channel = 0;			// Red
 
 	m_logging = false; // THIS IS FOR FOCUS PLOT LOGGING, NOT IMAGE LOGGING!
+
+
+	// set up stage logging now!
+	m_stageLogger = new vrpn_Auxiliary_Logger_Remote(stage_name);
+
+	m_videoAndStageLogging = false;
+
 
 	SetIcon(wxIcon(sample_xpm));
 
@@ -235,17 +242,18 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 
 
 	m_zLabel = new wxStaticText(m_panel, wxID_ANY, "Z");
-	m_zText = new wxTextCtrl(m_panel, wxID_ANY, "0", wxDefaultPosition, wxSize(50, 20), wxTE_CENTER | wxTE_READONLY);
+	m_zText = new wxTextCtrl(m_panel, wxID_ANY, "0", wxDefaultPosition, wxSize(50, 20), wxTE_CENTER);
 	m_zUpText = new wxTextCtrl(m_panel, wxID_ANY, " ", wxDefaultPosition, wxSize(20, 20), wxTE_CENTER | wxTE_READONLY);
 	m_zVelText = new wxTextCtrl(m_panel, wxID_ANY, "0", wxDefaultPosition, wxSize(50, 20), wxTE_CENTER | wxTE_READONLY);
 	m_zDownText = new wxTextCtrl(m_panel, wxID_ANY, " ", wxDefaultPosition, wxSize(20, 20), wxTE_CENTER | wxTE_READONLY);
 
 
-	m_manualFocusSizer = new wxBoxSizer(wxVERTICAL);
-	m_manualFocusSlider = new wxSlider(m_panel, wxID_ANY, 0, 0, 100, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL | wxNO_BORDER);
+//	m_manualFocusSizer = new wxBoxSizer(wxVERTICAL);
+//	m_manualFocusSlider = new wxSlider(m_panel, wxID_ANY, 0, 0, 100, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL | wxNO_BORDER);
 
 
 	// video logging controls
+	m_loggingSizer = new wxBoxSizer(wxHORIZONTAL);
 	m_logfileText = new wxTextCtrl(m_panel, wxID_ANY, "", wxDefaultPosition, wxSize(200, 20));
 	m_loggingButton = new wxButton(m_panel, LOG_VIDEO, "Log Video To:");
 
@@ -258,7 +266,7 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 
 	// spot tracker stuff
 	m_invert = 0;
-	m_precision = 0.25;
+	m_precision = 1.0;
 	m_sampleSpacing = 1;
 
 	m_optZ = false;
@@ -289,7 +297,7 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 
 
 	m_updateStage = new wxCheckBox(m_panel, UPDATE_STAGE, "Update stage");
-
+//	m_updateStage->SetValue(true);
 
 
 	m_stage = new Stage(stage_name);
@@ -305,6 +313,11 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 	// ****************************************
 	set_layout();
 	do_layout();
+
+	// initially turn off the pixel slice opengl canvases
+	bool show = m_sizer->IsShown(m_advancedSizer);
+	m_canvasSizer->Show(m_vertSizer, show, true);
+	m_sizer->Show(m_horizSizer, show, true);
 
 
 	// hope everything is initialized at this point...
@@ -525,29 +538,14 @@ void zTracker::OnMenuFocusStop( wxCommandEvent& WXUNUSED(event) )
 // *** THERE IS ONLY A SINGLE CALLBACK FOR ALL SCROLL EVENTS--THIS IS IT ***
 void zTracker::OnFrameScroll(wxScrollEvent& event)
 {
-	double newZ = m_manualFocusSlider->GetValue();
+/*	double newZ = m_manualFocusSlider->GetValue();
 	printf("changing z to %f\n", newZ);
 
 	double x, y, z;
 	m_stage->GetPosition(x, y, z);
 	if (!m_stage->MoveTo(x, y, newZ))
 		printf("Illegal movement command sent to stage: (%f, %f, %f)!\n", x, y, newZ);
-	
-
-	/* *** FIX THIS TO WORK WITH MULTIPLE SCROLLERS! ***
-	m_logging = false; // stop logging since we're jumping anyway
-
-	int curFrame = m_frameSlider->GetValue();
-	if (g_video->jump_to_frame(curFrame))
-	{
-		m_frame_number = curFrame - 1;
-	}
-	double x, y, z;
-	m_stage.GetPosition(x, y, z);
-	m_stage.SetPosition(x, y, m_frame_number / 10.0f);
-
-	m_videoMode = SINGLE_STEPPING;
-	*/
+*/
 }
 
 void zTracker::OnResize(wxSizeEvent& event)
@@ -655,7 +653,28 @@ void zTracker::CalcFocus()
 
 void zTracker::OnLoggingButton(wxCommandEvent& event)
 {
-	m_canvas->LogToFile((char*)(m_logfileText->GetValue().c_str()));
+	if (!m_videoAndStageLogging)
+	{
+		string filename = m_logfileText->GetValue();
+		char videologfile[80];
+		char stagelogfile[80];
+
+		sprintf(videologfile, "%s.vrpn", filename.c_str());
+		sprintf(stagelogfile, "%s_stage.vrpn", filename.c_str());
+
+		printf("logging to: %s and %s\n", videologfile, stagelogfile);
+
+		m_canvas->LogToFile(videologfile);
+		if (!m_stageLogger->send_logging_request("", "", "", stagelogfile))
+			printf("Stage logging request failed!\n");
+	}
+	else
+	{
+		// stop logging!
+		m_canvas->LogToFile("");
+		if (!m_stageLogger->send_logging_request("", "", "", ""))
+			printf("Stage logging request failed!\n");
+	}
 }
 
 void zTracker::OnDo(wxCommandEvent& event)
@@ -732,19 +751,15 @@ void zTracker::OnDo(wxCommandEvent& event)
 //  between a given Z movement command and the resulting sensor Z value
 void zTracker::CalculateZOffset()
 {
-	double x, y, z;
 	m_stage->GetPosition(x, y, z);
-	m_stage->CalculateOffset(z * METERS_PER_MICRON);
+	m_stage->CalculateOffset(z * METERS_PER_MICRON, x * METERS_PER_MICRON, y * METERS_PER_MICRON);
 }
 
 // This function first calculates a new Z offset, and then determines
 //  a value for m_micronsPerFocus to be used in Z tracking
 void zTracker::OnCalibrateStageZ(wxCommandEvent& event)
 {
-
-	double x, y, z;
-	m_stage->GetPosition(x, y, z);
-	m_stage->CalculateOffset(z * METERS_PER_MICRON);
+	CalculateZOffset(); // this will also update our x, y, z vars
 
 	m_stageX = x;
 	m_stageY = y;
@@ -850,6 +865,8 @@ void zTracker::OnCalibrateStageZ(wxCommandEvent& event)
 
 	m_micronsPerFocus = (z - initialZ) / (initialFocus - focus);
 	printf("m_MicronsPerFocus = %f\n", m_micronsPerFocus);
+
+	m_stage->GetPosition(x, y, z); // get a final sync of our virtual x y z vars
 }
 
 
@@ -892,8 +909,8 @@ void zTracker::Idle(wxIdleEvent& event)
 
 	// read back the sensor positions for the MCL stage,
 	//  unless the user is currently panning around
-	if (!m_canvas->m_middleMouseDown)
-		m_stage->GetPosition(x, y, z);
+	//if (!m_canvas->m_middleMouseDown)
+	//	m_stage->GetPosition(x, y, z);
 
 
 	m_canvas->SetZ(z);
@@ -927,6 +944,16 @@ void zTracker::Idle(wxIdleEvent& event)
 
 		m_zVel = estimatedMovement;
 	}
+	else // otherwise we can update z from any mousewheel 'focus knob' change
+	{
+		float delta = m_canvas->m_mouseWheelDelta;
+		if (delta != 0)
+		{
+			z += delta;
+			printf("delta = %f\tmoving z to: %f\n", delta, z);
+			m_canvas->m_mouseWheelDelta = 0;
+		}
+	}
 
 	double dragX = (double)m_canvas->m_middleMouseDragX;
 	double dragY = (double)m_canvas->m_middleMouseDragY;
@@ -949,11 +976,14 @@ void zTracker::Idle(wxIdleEvent& event)
 	if (dragX != 0 && dragY != 0)
 		printf("moving stage to: (%f, %f, %f)\n", x, y, z);
 
+
 	if(m_updateStage->GetValue())
 	{
 		if (!m_stage->MoveTo(x, y, z))
 			printf("Illegal movement command sent to stage: (%f, %f, %f)!\n", x, y, z);
 	}
+
+
 
 	char buffer[20] = "";
 	sprintf(buffer, "%.3f", z);	
@@ -1022,21 +1052,23 @@ void zTracker::set_layout()
 	m_advancedSizer->Add(m_calibrateStageZ, 0, wxALL, 3);
 	m_advancedSizer->Add(m_Do, 0, wxALL, 3);
 
-	m_manualFocusSizer->Add(m_manualFocusSlider, 0, wxALL, 3);
+//	m_manualFocusSizer->Add(m_manualFocusSlider, 0, wxALL, 3);
 
 	m_assortedSizer->Add(m_showCrossCheck, 0, wxALL, 3);
 	m_assortedSizer->Add(m_8Bits, 0, wxALL, 3);
 	m_assortedSizer->Add(m_updateStage, 0, wxALL, 3);
 	m_assortedSizer->Add(m_trackingSizer, 0, 0, 0);
-	m_assortedSizer->Add(m_manualFocusSizer, 0, 0, 0);
-	m_assortedSizer->Add(m_loggingButton, 0, wxALL, 3);
-	m_assortedSizer->Add(m_logfileText, 0, wxALL, 3);
+	//m_assortedSizer->Add(m_manualFocusSizer, 0, 0, 0);
+	
+	m_loggingSizer->Add(m_loggingButton, 0, wxALL, 3);
+	m_loggingSizer->Add(m_logfileText, 0, wxALL, 3);
 
 	m_sizer->Add(m_canvasSizer, 0, 0, 0);
 	m_sizer->Add(m_horizSizer, 0, wxLEFT, 3);
 //	m_sizer->Add(m_frameSizer, 0, wxEXPAND, 0);
 //	m_sizer->Add(m_videoControlSizer, 0, wxEXPAND | wxLEFT | wxRIGHT, 3);
 	m_sizer->Add(m_assortedSizer, 0, wxEXPAND, 0);
+	m_sizer->Add(m_loggingSizer, 0, wxEXPAND, 0);
 	m_sizer->Add(m_advancedSizer, 0, wxEXPAND, 0);
 	m_sizer->Show(m_advancedSizer, false, true); // hide the advanced controls by default
 

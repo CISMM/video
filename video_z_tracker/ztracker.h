@@ -26,6 +26,7 @@
 
 #include "ZGuesser.h"
 
+#include "vrpn_Auxiliary_Logger.h"
 
 #include <vector>
 
@@ -98,8 +99,8 @@ protected:
 	//wxStaticText* m_curFrameLabel;
 
 
-	wxBoxSizer* m_manualFocusSizer;
-	wxSlider* m_manualFocusSlider;
+//	wxBoxSizer* m_manualFocusSizer;
+//	wxSlider* m_manualFocusSlider;
 
 
 	wxCheckBox* m_showCrossCheck;
@@ -172,6 +173,7 @@ protected:
 	wxCheckBox* m_Ztracking;
 	wxCheckBox* m_XYtracking;
 
+	wxBoxSizer* m_loggingSizer;
 	wxTextCtrl* m_logfileText;
 	wxButton* m_loggingButton;
 
@@ -194,6 +196,8 @@ protected:
 
 	float m_stageX, m_stageY, m_stageZ;
 
+	vrpn_Auxiliary_Logger_Remote* m_stageLogger;
+	bool m_videoAndStageLogging;
 
 private:
 
@@ -216,45 +220,29 @@ private:
 /* XPM */
 static const char *sample_xpm[] = {
 /* columns rows colors chars-per-pixel */
-"32 32 6 1",
+"16 16 6 1",
 "  c black",
 ". c navy",
 "X c red",
-"o c yellow",
+"o c green",
 "O c gray100",
 "+ c None",
 /* pixels */
-"++++++++++++++++++++++++++++++++",
-"++++++++++++oooooooooooooooooo++",
-"++++++++++oooXXXXXXXXXXXXXXXXo++",
-"+++++++++ooXXXXXXXXXXXXXXXXXoo++",
-"++++++++ooXXXXXXXXXXXXXXXXooo+++",
-"+++++++ooXXXXXXXXXXXXXXXXoo+++++",
-"+++++++oXXXXXXXooooooooooo++++++",
-"++++++ooXXXXXXoo++++++++++++++++",
-"+++++ooXXXXXXoo+++++++++++++++++",
-"+++++oXXXXXXoo++++++++++++++++++",
-"+++++oXXXXXXoo++++++++++++++++++",
-"+++++oXXXXXXoooooooooooo++++++++",
-"++++ooXXXXXXXXXXXXXXXXXo++++++++",
-"++++oXXXXXXXXXXXXXXXXXoo++++++++",
-"+++ooXXXXXXXXXXXXXXXXoo+++++++++",
-"+++oXXXXXXoooooooooooo++++++++++",
-"+++oXXXXXoo+++++++++++++++++++++",
-"+++oXXXXXo++++++++++++++++++++++",
-"+++oXXXXXo++++++++++++++++++++++",
-"++ooXXXXXo++++++++++++++++++++++",
-"++oXXXXXoo++++++++++++++++++++++",
-"++oXXXXXo+++++++++++++++++++++++",
-"++oXXXXXo+++++++++++++++++++++++",
-"+ooXXXXXo+++++++++++++++++++++++",
-"+oXXXXXoo+++++++++++++++++++++++",
-"+oXXXXXo++++++++++++++++++++++++",
-"+oXXXXXo++++++++++++++++++++++++",
-"+oXXXXXo++++++++++++++++++++++++",
-"+oXXXXXo++++++++++++++++++++++++",
-"+ooooooo++++++++++++++++++++++++",
-"++++++++++++++++++++++++++++++++",
-"++++++++++++++++++++++++++++++++"
+"++++++++++++++++",
+"++ooooooooooooo+",
+"oooooo+++ooooooo",
+"+ooo+++++++oooo+",
+"++++++++++ooo+++",
+"+++++++++ooo++++",
+"++++++++ooo+++++",
+"+++ooooooooooo++",
+"++ooooooooooo+++",
+"+++++ooo++++++++",
+"++++ooo+++++++++",
+"+++ooo++++++++++",
+"+oooo+++++++ooo+",
+"ooooooo+++oooooo",
+"+ooooooooooooo++",
+"++++++++++++++++"
 };
 

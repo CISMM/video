@@ -57,7 +57,24 @@ BEGIN_EVENT_TABLE(TestGLCanvas, wxGLCanvas)
     EVT_SIZE(TestGLCanvas::OnSize)
     EVT_PAINT(TestGLCanvas::OnPaint)
     EVT_ERASE_BACKGROUND(TestGLCanvas::OnEraseBackground)
-    EVT_MOUSE_EVENTS(TestGLCanvas::OnMouse)
+
+	EVT_MOUSE_EVENTS(TestGLCanvas::OnMouse)
+/*
+	EVT_LEFT_DOWN(TestGLCanvas::OnMouse)
+	EVT_LEFT_UP(TestGLCanvas::OnMouse)
+	EVT_LEFT_DCLICK(TestGLCanvas::OnMouse)
+	EVT_RIGHT_DOWN(TestGLCanvas::OnMouse)
+	EVT_RIGHT_UP(TestGLCanvas::OnMouse)
+	EVT_RIGHT_DCLICK(TestGLCanvas::OnMouse)
+	EVT_MIDDLE_DOWN(TestGLCanvas::OnMouse)
+	EVT_MIDDLE_UP(TestGLCanvas::OnMouse)
+	EVT_MIDDLE_DCLICK(TestGLCanvas::OnMouse)
+	EVT_MOTION(TestGLCanvas::OnMouse)
+	EVT_ENTER_WINDOW(TestGLCanvas::OnMouse)
+	EVT_LEAVE_WINDOW(TestGLCanvas::OnMouse)
+*/	
+	EVT_MOUSEWHEEL(TestGLCanvas::OnMouseWheel)
+
 END_EVENT_TABLE()
 
 TestGLCanvas::TestGLCanvas(wxWindow *parent, wxWindowID id,
@@ -72,8 +89,8 @@ TestGLCanvas::TestGLCanvas(wxWindow *parent, wxWindowID id,
 
 	m_mouseX = m_mouseY = -1000;
 	m_selectX = m_selectY = -1000;
-	m_radius = 0.05;
-	m_pixelRadius = 15;
+//	m_radius = 0.05;
+	m_pixelRadius = 10;
 
 	m_bits = 16;  // default to 16 bits
 
@@ -370,6 +387,16 @@ void TestGLCanvas::OnEraseBackground(wxEraseEvent& WXUNUSED(event))
     // Do nothing, to avoid flashing on MSW
 }
 
+void TestGLCanvas::OnMouseWheel(wxMouseEvent& event)
+{
+	// if we have some mouse wheel rotation, then change Z (think: focus knob)
+	int rotation = event.GetWheelRotation() / (float)event.GetWheelDelta();
+	if (rotation != 0)
+	{
+		m_mouseWheelDelta += (m_micronsPerMouseWheel * rotation);
+	}
+}
+
 
 void TestGLCanvas::OnMouse(wxMouseEvent& event)
 {
@@ -443,13 +470,9 @@ void TestGLCanvas::OnMouse(wxMouseEvent& event)
 		m_middleMouseDown = false;
 	}
 
-	// if we have some mouse wheel rotation, then change Z (think, focus knob)
-	int rotation = event.GetWheelRotation();
-	if (rotation != 0)
-	{
-		m_mouseWheelDelta += (m_micronsPerMouseWheel * rotation);
-	}
-
+	// we still need to pass this event on, so things like focus are
+	//  changed correctly!!
+	event.Skip();
 }
 
 void TestGLCanvas::UpdateSlices()
