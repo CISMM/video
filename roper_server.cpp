@@ -569,7 +569,7 @@ bool roper_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrc
     //XXX This is hacked to send the upper 8 bits of each value. Need to modify reader to handle 16-bit ints.
     // For these, stride will be 1 and offset will be 0, and the code will use memcpy() to copy the values.
     const int stride = 2;
-    const int offset = 1;
+    const int offset = 0;
     svr->send_begin_frame(0, cols-1, 0, rows-1);
     for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
       svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1,

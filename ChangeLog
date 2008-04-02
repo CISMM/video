@@ -1,3 +1,10 @@
+2008-04-02  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* roper_server.cpp : Switched which byte gets sent from the
+		Roper camera; it seems to have been sending the lower-
+		order byte, based on the fact that it wrapped around
+		in Ryan's code.
+
 2008-03-13  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* average_videos.dsp : Making it compile under VS6.0 and/or
