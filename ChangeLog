@@ -1,3 +1,8 @@
+2008-04-03  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* roper_server.cpp : Switched it back... the code was right
+		but there was a bug in VRPN.  Version 03_03.
+
 2008-04-02  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* roper_server.cpp : Switched which byte gets sent from the
