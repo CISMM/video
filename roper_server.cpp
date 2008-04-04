@@ -561,11 +561,13 @@ bool roper_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrc
     //XXX This is hacked to optimize the value in the upper 8 bits to be the most-significant bits
     // of the 12 bits.  I thought this should depend on binning, but it seems like it does not.
     // Strange.
+    // XXX Actually, it seemed to wrap when we shifted left, so now removing that.  Stranger.
+/*XXX
     unsigned loop;
     for (loop = 0; loop < num_x*num_y; loop++) {
-	((vrpn_uint16*)_memory)[loop] = ((vrpn_uint16*)_memory)[loop] << 4;
+	((vrpn_uint16*)_memory)[loop] = reinterpret_cast<vrpn_uint16*>(_memory)[loop];
     }
-
+*/
     //XXX This is hacked to send the upper 8 bits of each value. Need to modify reader to handle 16-bit ints.
     // For these, stride will be 1 and offset will be 0, and the code will use memcpy() to copy the values.
     const int stride = 2;

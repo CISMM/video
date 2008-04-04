@@ -1,3 +1,8 @@
+2008-04-04  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* roper_server.cpp : Switched to not shifting left the bytes, which
+		were wrapping.  Version 03_04.
+
 2008-04-03  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* roper_server.cpp : Switched it back... the code was right
