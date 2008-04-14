@@ -250,7 +250,7 @@ bool  roper_server::read_one_frame(const int16 camera_handle,
 bool roper_server::open_and_find_parameters(void)
 {
   // Find out how many cameras are on the system, then get the
-  // name of the first cam`era, open it, and make sure that it has
+  // name of the LAST camera, open it, and make sure that it has
   // no critical failures.
   int16	  num_cameras;
   int16	  num_rows, num_columns;
@@ -261,7 +261,7 @@ bool roper_server::open_and_find_parameters(void)
     fprintf(stderr, "No cameras found\n");
     return false;
   }
-  PL_CHECK_EXIT(pl_cam_get_name(0, camera_name), "pl_cam_get_name");
+  PL_CHECK_EXIT(pl_cam_get_name(num_cameras-1, camera_name), "pl_cam_get_name");
   PL_CHECK_EXIT(pl_cam_open(camera_name, &_camera_handle, OPEN_EXCLUSIVE),
     "pl_cam_open");
   PL_CHECK_EXIT(pl_cam_get_diags(_camera_handle), "pl_cam_get_diags");
@@ -574,8 +574,7 @@ bool roper_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrc
     const int offset = 1;
     svr->send_begin_frame(0, cols-1, 0, rows-1);
     for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
-      svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1,
-	reinterpret_cast<vrpn_uint8 *>(_memory) + offset, stride, num_x * stride);
+      svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1, reinterpret_cast<vrpn_uint8 *>(_memory) + offset, stride, num_x * stride);
       svr->mainloop();
     }
     svr->send_end_frame(0, cols-1, 0, rows-1);

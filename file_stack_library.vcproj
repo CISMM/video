@@ -221,14 +221,14 @@
 			Filter="h;hpp;hxx;hm;inl"
 			>
 			<File
-				RelativePath="file_list.h"
-				>
-			</File>
-			<File
 				RelativePath="file_stack_server.h"
 				>
 			</File>
 		</Filter>
+		<File
+			RelativePath="file_list.h"
+			>
+		</File>
 	</Files>
 	<Globals>
 	</Globals>

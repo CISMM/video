@@ -35,9 +35,9 @@
 #include <GL/gl.h>
 #include <GL/glut.h>
 
-#define	FAKE_CAMERA
+//#define	FAKE_CAMERA
 const unsigned FAKE_CAMERA_SIZE = 256;
-#define	FAKE_STAGE
+//#define	FAKE_STAGE
 
 #pragma warning( disable : 4995 )
 
@@ -222,7 +222,7 @@ void  logfilename_changed(char *newvalue, void *)
       cleanup();
       exit(-1);
     }
-    strncpy(g_base_filename_char, newvalue, sizeof(g_base_filename_char));
+    strcpy(g_base_filename_char, newvalue);
     g_take_stack = 1;
   }
 }
@@ -803,7 +803,7 @@ int main(int argc, char *argv[])
     // meters and a Poser whose job it is to move the stage in Z in
     // meters.  Both servers should have the name "Focus".  Other
     // auxilliary servers may be needed as well.
-    con = new vrpn_Connection();
+    con = vrpn_create_server_connection();
 
     svr = new vrpn_Generic_Server_Object(con, config_file_name);
     Stage_name = "Focus";
