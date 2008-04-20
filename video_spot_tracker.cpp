@@ -88,7 +88,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.20";
+const char *Version_string = "05.21";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -272,6 +272,7 @@ Tclvar_float_with_scale	g_brighten("brighten", "", 0, 8, 0);
 Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_trackers);
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
 Tclvar_float_with_scale g_lossSensitivity("lost_tracking_sensitivity", ".lost_and_found_controls.bottom", 0.0, 1.0, 0.0);
+Tclvar_float_with_scale g_findThisManyBeads("maintain_this_many_beads", ".lost_and_found_controls.bottom", 0.0, 100.0, 0.0);
 Tclvar_int_with_button  g_lostBehavior("lost_behavior",NULL,0);
 Tclvar_int_with_button	g_showLostAndFound("show_lost_and_found","",0);
 Tclvar_int_with_button	g_invert("dark_spot",NULL,0, rebuild_trackers);
@@ -1721,6 +1722,188 @@ void tracking_thread_function(void *pvThreadData)
   }
 }
 
+// Helper function for the next routine; it fills in the region of the
+// image around the specified tracer with the specified value.  It fills
+// the image in to twice the specified radius, to keep spots from overlapping.
+void fill_around_tracker_with_value(double_image &im, spot_tracker_XY *t, double v)
+{
+  int i,j;
+  int r = 2 * t->get_radius();
+  int x = t->get_x();
+  int y = t->get_y();
+  for (i = -r; i <= r; i++) {
+    for (j = -r; j <= r; j++) {
+      if (i*i+j*j <= r*r) {
+        im.write_pixel_nocheck(x+i, y+j, v);
+      }
+    }
+  }
+}
+
+// Find the specified number of additional trackers, which should be placed
+// at the highest-response locations in the image that is not within one
+// tracker radius of an existing tracker or within one tracker radius of the
+// border.  Create new trackers at those locations.  Returns true if it was
+// able to find them, false if not (or error).
+bool find_more_trackers(unsigned how_many_more)
+{
+  int i,j, radius;
+  double value;
+  int minx, maxx, miny, maxy;
+  g_image->read_range(minx, maxx, miny, maxy);
+
+  // Create a tracker whose job it is to probe the global image to
+  // find out how good a fit we find at each pixel.  XXX Later, make
+  // this a set of them, one per available thread, so we can do this
+  // calculation faster.
+  spot_tracker_XY *t = create_appropriate_xytracker(minx, miny, g_Radius);
+  if (t == NULL) {
+    fprintf(stderr,"find_more_trackers(): Could not create tracker\n");
+    return false;
+  }
+
+  // If the kernel type is symmetric, then we need to run another
+  // pass with a 2-pixel white-centered cone filter so that we get
+  // a measure of how well each works compared to the background;
+  // otherwise, we'll get high results all over the flat regions of
+  // the image.  If this is the case, then we just fill in the center
+  // part of the image and then switch to a different tracker for the
+  // following parts.  We also point to the new image we've created
+  // as the one to make the data from.
+  image_wrapper *im = g_image;
+  double_image *second_image = NULL;
+  if (g_kernel_type == KERNEL_SYMMETRIC) {
+
+    // Make the new image and fill its middle with the symmetric tracker's
+    // values.  Then point the image to be used for the next part to this
+    // image.
+    second_image = new double_image(minx, maxx, miny, maxy);
+    if (second_image == NULL) {
+      fprintf(stderr,"find_more_trackers(): Could not create image\n");
+      return false;
+    }
+    radius = static_cast<unsigned>(t->get_radius());
+    double maxval = -1e60;
+    for (i = minx + radius; i <= maxx - radius; i++) {
+      for (j = miny + radius; j <= maxy - radius; j++) {
+        t->set_location(i, j);
+        value = t->check_fitness(*im, g_colorIndex);
+        second_image->write_pixel_nocheck(i, j, value);
+        if (value > maxval) { maxval = value; }
+      }
+    }
+    im = second_image;
+
+    // Fill in the border region with the maximum value in the
+    // image so the cone tracker doesn't prefer points near the
+    // edge in the next step.
+    for (i = 0; i < radius; i++) {
+      for (j = miny; j < maxy; j++) {
+        second_image->write_pixel_nocheck(minx + i, j, maxval);
+        second_image->write_pixel_nocheck(maxx - i, j, maxval);
+      }
+    }
+    for (j = 0; j < radius; j++) {
+      for (i = minx; i < maxx; i++) {
+        second_image->write_pixel_nocheck(i, miny + j, maxval);
+        second_image->write_pixel_nocheck(i, maxy - j, maxval);
+      }
+    }
+
+    // Make a new tracker that is a bright-centered cone tracker that will match
+    // the peaks we expect in the centers of the dark spots better than it will
+    // match the flat areas.
+    delete t;
+    t = new cone_spot_tracker_interp(2);
+    if (t == NULL) {
+      fprintf(stderr,"find_more_trackers(): Could not create tracker\n");
+      return false;
+    }
+  }
+
+  // Create a floating-point image that stores the tracker response
+  // for the current tracker type at every pixel that is more than one
+  // radius away from the border.
+  double_image  kernel_response_image(minx, maxx, miny, maxy);
+  double minval = 1e50;
+  radius = static_cast<unsigned>(t->get_radius());
+  for (i = minx + radius; i <= maxx - radius; i++) {
+    for (j = miny + radius; j < maxy - radius; j++) {
+      t->set_location(i, j);
+      value = t->check_fitness(*im, g_colorIndex);
+      if (value < minval) { minval = value; }
+      kernel_response_image.write_pixel_nocheck(i, j, value);
+    }
+  }
+
+  // Fill in the minimum value to
+  // all pixels within one radius of the border and within twp radii
+  // of each existing tracker, so that we don't go finding trackers
+  // that are too near either.
+  for (i = 0; i < radius; i++) {
+    for (j = miny; j < maxy; j++) {
+      kernel_response_image.write_pixel_nocheck(minx + i, j, minval);
+      kernel_response_image.write_pixel_nocheck(maxx - i, j, minval);
+    }
+  }
+  for (j = 0; j < radius; j++) {
+    for (i = minx; i < maxx; i++) {
+      kernel_response_image.write_pixel_nocheck(i, miny + j, minval);
+      kernel_response_image.write_pixel_nocheck(i, maxy - j, minval);
+    }
+  }
+  list<Spot_Information *>::iterator  loop;
+  for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+    fill_around_tracker_with_value(kernel_response_image, (*loop)->xytracker(), minval);
+  }
+
+  // Look for the highest value in the image and put a tracker there;
+  // then fill in around the radius with the minimum value so we don't
+  // put another tracker there.  Repeat this until we've got as many
+  // trackers as were asked for.
+  double maxval;
+  unsigned x_of_max, y_of_max;
+  while (how_many_more > 0) {
+
+    // Find the largest value.
+    maxval = kernel_response_image.read_pixel_nocheck(minx, miny, 0);
+    x_of_max = minx;
+    y_of_max = miny;
+    for (i = minx; i <= maxx; i++) {
+      for (j = miny; j <= maxy; j++) {
+        value = kernel_response_image.read_pixel_nocheck(i,j, 0);
+        if (value > maxval) {
+          maxval = value;
+          x_of_max = i;
+          y_of_max = j;
+        }
+      }
+    }
+
+    // Put a new tracker there.
+    if (g_trackers.size() >= vrpn_TRACKER_MAX_SENSORS) {
+      fprintf(stderr, "find_more_trackers(): Too many trackers, only %d allowed\n", vrpn_TRACKER_MAX_SENSORS);
+    } else {
+
+      g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(x_of_max,y_of_max,g_Radius),create_appropriate_ztracker()));
+      g_active_tracker = g_trackers.back();
+      if (g_active_tracker->ztracker()) { g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
+
+      // Fill in around it with the minimum value so we don't look here
+      // again.
+      fill_around_tracker_with_value(kernel_response_image, g_active_tracker->xytracker(), minval);
+    }
+
+    // One less to do.
+    how_many_more--;
+  }
+
+  if (second_image != NULL) { delete second_image; }
+  if (t = NULL) { delete t; }
+  return true;
+}
+
+
 void myIdleFunc(void)
 {
   list<Spot_Information *>::iterator loop;
@@ -1991,6 +2174,17 @@ void myIdleFunc(void)
 	exit(-1);
       }
     }
+  }
+
+  // If we are trying to maintain a minimum number of beads, and we don't have enough,
+  // then call the auto-find routine to add more.  We do this before the code that
+  // checks for lost beads because it may be the case that the new "beads" we find
+  // are not high-enough quality to even survive one frame; we don't want to log
+  // them if they are not real.  Also do this before optimization step, so that we
+  // can leave the trackers not completely optimized when creating them (just
+  // finding the closest pixel value).
+  if (g_findThisManyBeads > g_trackers.size()) {
+    find_more_trackers(g_findThisManyBeads - g_trackers.size());
   }
 
   // Nobody is known to be lost yet...

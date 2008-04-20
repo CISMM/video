@@ -192,6 +192,62 @@ bool  image_wrapper::write_to_grayscale_tiff_file(const char *filename, unsigned
   return true;
 }
 
+double_image::double_image(int minx, int maxx, int miny, int maxy) :
+  _minx(minx), _maxx(maxx), _miny(miny), _maxy(maxy),
+  _image(NULL)
+{
+  // Make sure the parameters are meaningful
+  if ( (_minx >= _maxx) || (_miny >= _maxy) || (_minx < 0) || (_miny < 0) ) {
+    fprintf(stderr,"double_image::double_image(): Bad min/max coordinates\n");
+    _minx = _maxy = _minx = _maxx = 0;
+    return;
+  }
+
+  // Try to allocate a large enough array to hold all of the values.
+  if ( (_image = new double[(_maxx-_minx+1) * (_maxy-_miny+1)]) == NULL) {
+    fprintf(stderr,"double_image::double_image(): Out of memory\n");
+    _minx = _maxy = _minx = _maxx = 0;
+    return;
+  }
+}
+
+double_image::~double_image()
+{
+  if (_image != NULL) {
+    delete [] _image;
+    _image = NULL;
+  }
+}
+
+void double_image::read_range(int &minx, int &maxx, int &miny, int &maxy) const
+{
+  minx = _minx; maxx = _maxx; miny = _miny; maxy = _maxy;
+};
+
+// Read a pixel from the image into a double; return true if the pixel
+// was in the image, false if it was not.
+bool double_image::read_pixel(int x, int y, double &result, unsigned /* RGB ignored */) const
+{
+  int index;
+  if (find_index(x,y, index)) {
+    result = _image[index];
+    return true;
+  }
+  // Didn't find it, return false.
+  return false;
+}
+
+double double_image::read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) const
+{
+  int index;
+  if (find_index(x,y, index)) {
+    return _image[index];
+  }
+
+  // Didn't find the index, return zero.
+  return 0.0;
+}
+
 copy_of_image::copy_of_image(const image_wrapper &copyfrom) :
   _minx(-1), _maxx(-1), _miny(-1), _maxy(-1),
   _numx(-1), _numy(-1), _image(NULL), _numcolors(0)

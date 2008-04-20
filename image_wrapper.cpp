@@ -7,28 +7,15 @@ disc_image::disc_image(int minx, int maxx, int miny, int maxy,
 		       double background, double noise,
 		       double diskx, double disky, double diskr,
 		       double diskintensity, int oversample) :
-  _minx(minx), _maxx(maxx), _miny(miny), _maxy(maxy),
-  _oversample(oversample),
-  _image(NULL)
+  double_image(minx, maxx, miny, maxy),
+  _oversample(oversample)
 {
   int i,j, index;
   double oi,oj;	  //< Oversample steps
 
   // Make sure the parameters are meaningful
-  if ( (_minx >= _maxx) || (_miny >= _maxy) || (_minx < 0) || (_miny < 0) ) {
-    fprintf(stderr,"disc_image::disc_image(): Bad min/max coordinates\n");
-    _minx = _maxy = _minx = _maxx = 0;
-    return;
-  }
   if ( (_oversample <= 0) ) {
     fprintf(stderr,"disc_image::disc_image(): Bad oversample\n");
-    _minx = _maxy = _minx = _maxx = 0;
-    return;
-  }
-
-  // Try to allocate a large enough array to hold all of the values.
-  if ( (_image = new double[(_maxx-_minx+1) * (_maxy-_miny+1)]) == NULL) {
-    fprintf(stderr,"disc_image::disc_image(): Out of memory\n");
     _minx = _maxy = _minx = _maxx = 0;
     return;
   }
@@ -36,9 +23,7 @@ disc_image::disc_image(int minx, int maxx, int miny, int maxy,
   // Fill in the background intensity.
   for (i = _minx; i <= _maxx; i++) {
     for (j = _miny; j <= _maxy; j++) {
-      if (find_index(i,j,index)) {
-	_image[index] = background;
-      }
+      write_pixel_nocheck(i, j, background);
     }
   }
 
@@ -86,71 +71,20 @@ disc_image::disc_image(int minx, int maxx, int miny, int maxy,
   }  
 }
 
-disc_image::~disc_image()
-{
-  delete [] _image;
-}
-
-void disc_image::read_range(int &minx, int &maxx, int &miny, int &maxy) const
-{
-  minx = _minx; maxx = _maxx; miny = _miny; maxy = _maxy;
-};
-
-// Read a pixel from the image into a double; return true if the pixel
-// was in the image, false if it was not.
-bool disc_image::read_pixel(int x, int y, double &result, unsigned /* RGB ignored */) const
-{
-  int index;
-  if (find_index(x,y, index)) {
-    result = _image[index];
-    return true;
-  } else {
-    return false;
-  }
-}
-
-double disc_image::read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) const
-{
-  int index;
-  if (find_index(x,y, index)) {
-    return _image[index];
-  } else {
-    return 0.0;
-  }
-
-}
-
-
 cone_image::cone_image(int minx, int maxx, int miny, int maxy,
 		       double background, double noise,
 		       double diskx, double disky, double diskr,
 		       double centeritensity, int oversample) :
-  _minx(minx), _maxx(maxx), _miny(miny), _maxy(maxy),
-  _image(NULL), _oversample(oversample)
+  double_image(minx, maxx, miny, maxy),
+  _oversample(oversample)
 {
   int i,j, index;
   int oi,oj;	  //< Oversample steps
 
-  // Make sure the parameters are meaningful
-  if ( (_minx >= _maxx) || (_miny >= _maxy) || (_minx < 0) || (_miny < 0) ) {
-    fprintf(stderr,"cone_image::cone_image(): Bad min/max coordinates\n");
-    _minx = _maxy = _minx = _maxx = 0;
-    return;
-  }
-
-  // Try to allocate a large enough array to hold all of the values.
-  if ( (_image = new double[(_maxx-_minx+1) * (_maxy-_miny+1)]) == NULL) {
-    fprintf(stderr,"cone_image::cone_image(): Out of memory\n");
-    _minx = _maxy = _minx = _maxx = 0;
-    return;
-  }
-
   // Fill in the background intensity.
   for (i = _minx; i <= _maxx; i++) {
     for (j = _miny; j <= _maxy; j++) {
-      if (find_index(i,j,index)) {
-	_image[index] = background;
-      }
+      write_pixel_nocheck(i, j, background);
     }
   }
 
@@ -208,62 +142,14 @@ cone_image::cone_image(int minx, int maxx, int miny, int maxy,
   }  
 }
 
-cone_image::~cone_image()
-{
-  delete [] _image;
-}
-
-void cone_image::read_range(int &minx, int &maxx, int &miny, int &maxy) const
-{
-  minx = _minx; maxx = _maxx; miny = _miny; maxy = _maxy;
-};
-
-// Read a pixel from the image into a double; return true if the pixel
-// was in the image, false if it was not.
-bool cone_image::read_pixel(int x, int y, double &result, unsigned /* RGB ignored */) const
-{
-  int index;
-  if (find_index(x,y, index)) {
-    result = _image[index];
-    return true;
-  } else {
-    return false;
-  }
-}
-
-double cone_image::read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) const
-{
-  int index;
-  if (find_index(x,y, index)) {
-    return _image[index];
-  } else {
-    return 0.0;
-  }
-
-}
-
 Integrated_Gaussian_image::Integrated_Gaussian_image(int minx, int maxx, int miny, int maxy,
 	     double background, double noise,
 	     double centerx, double centery, double std_dev,
 	     double summedvolume, int oversample) :
-  _minx(minx), _maxx(maxx), _miny(miny), _maxy(maxy),
-  _image(NULL), _oversample(oversample),
+  double_image(minx, maxx, miny, maxy),
+  _oversample(oversample),
   _background(background)
 {
-  // Make sure the parameters are meaningful
-  if ( (_minx >= _maxx) || (_miny >= _maxy) ) {
-    fprintf(stderr,"Integrated_Gaussian_image::Integrated_Gaussian_image(): Bad min/max coordinates\n");
-    _minx = _maxy = _minx = _maxx = 0;
-    return;
-  }
-
-  // Try to allocate a large enough array to hold all of the values.
-  if ( (_image = new double[(_maxx-_minx+1) * (_maxy-_miny+1)]) == NULL) {
-    fprintf(stderr,"Integrated_Gaussian_image::Integrated_Gaussian_image(): Out of memory\n");
-    _minx = _maxy = _minx = _maxx = 0;
-    return;
-  }
-
   recompute(background, noise, centerx, centery, std_dev, summedvolume, oversample);
 }
 
@@ -313,40 +199,6 @@ void Integrated_Gaussian_image::recompute(double background, double noise,
   }
 }
 
-Integrated_Gaussian_image::~Integrated_Gaussian_image()
-{
-  delete [] _image;
-}
-
-void Integrated_Gaussian_image::read_range(int &minx, int &maxx, int &miny, int &maxy) const
-{
-  minx = _minx; maxx = _maxx; miny = _miny; maxy = _maxy;
-};
-
-// Read a pixel from the image into a double; return true if the pixel
-// was in the image, false if it was not.
-bool Integrated_Gaussian_image::read_pixel(int x, int y, double &result, unsigned /* RGB ignored */) const
-{
-  int index;
-  if (find_index(x,y, index)) {
-    result = _image[index];
-    return true;
-  } else {
-    result = _background;
-    return false;
-  }
-}
-
-double Integrated_Gaussian_image::read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) const
-{
-  int index;
-  if (find_index(x,y, index)) {
-    return _image[index];
-  } else {
-    return _background;
-  }
-}
-
 Point_sampled_Gaussian_image::Point_sampled_Gaussian_image(
 	     double background, double noise,
 	     double centerx, double centery, double std_dev,
@@ -378,28 +230,15 @@ rod_image::rod_image(int minx, int maxx, int miny, int maxy,
 		       double rodx, double rody, double rodr,
 		       double rodlength, double rodangleradians,
                        double rodintensity, int oversample) :
-  _minx(minx), _maxx(maxx), _miny(miny), _maxy(maxy),
-  _oversample(oversample),
-  _image(NULL)
+  double_image(minx, maxx, miny, maxy),
+  _oversample(oversample)
 {
   int i,j, index;
   double oi,oj;	  //< Oversample steps
 
   // Make sure the parameters are meaningful
-  if ( (_minx >= _maxx) || (_miny >= _maxy) || (_minx < 0) || (_miny < 0) ) {
-    fprintf(stderr,"rod_image::rod_image(): Bad min/max coordinates\n");
-    _minx = _maxy = _minx = _maxx = 0;
-    return;
-  }
   if ( (_oversample <= 0) ) {
     fprintf(stderr,"rod_image::rod_image(): Bad oversample\n");
-    _minx = _maxy = _minx = _maxx = 0;
-    return;
-  }
-
-  // Try to allocate a large enough array to hold all of the values.
-  if ( (_image = new double[(_maxx-_minx+1) * (_maxy-_miny+1)]) == NULL) {
-    fprintf(stderr,"rod_image::rod_image(): Out of memory\n");
     _minx = _maxy = _minx = _maxx = 0;
     return;
   }
@@ -407,9 +246,7 @@ rod_image::rod_image(int minx, int maxx, int miny, int maxy,
   // Fill in the background intensity.
   for (i = _minx; i <= _maxx; i++) {
     for (j = _miny; j <= _maxy; j++) {
-      if (find_index(i,j,index)) {
-	_image[index] = background;
-      }
+      write_pixel_nocheck(i, j, background);
     }
   }
 
@@ -490,37 +327,4 @@ rod_image::rod_image(int minx, int maxx, int miny, int maxy,
       }
     }
   }  
-}
-
-rod_image::~rod_image()
-{
-  delete [] _image;
-}
-
-void rod_image::read_range(int &minx, int &maxx, int &miny, int &maxy) const
-{
-  minx = _minx; maxx = _maxx; miny = _miny; maxy = _maxy;
-};
-
-// Read a pixel from the image into a double; return true if the pixel
-// was in the image, false if it was not.
-bool rod_image::read_pixel(int x, int y, double &result, unsigned /* RGB ignored */) const
-{
-  int index;
-  if (find_index(x,y, index)) {
-    result = _image[index];
-    return true;
-  } else {
-    return false;
-  }
-}
-
-double rod_image::read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) const
-{
-  int index;
-  if (find_index(x,y, index)) {
-    return _image[index];
-  } else {
-    return 0.0;
-  }
 }

@@ -1,3 +1,21 @@
+2008-04-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* base_camera_server.cpp : Added a new double_image class that
+		stores an image in doubles and lets you write to the
+		pixels.  Changed several other classes (disc, cone, Gaussian)
+		to derive from this base class.
+	* base_camera_server.h : Same.
+	* image_wrapper.cpp : Same.
+	* image_wrapper.h : Same.
+	* spot_tracker.cpp : Changed the cone kernel to penalize (-1 weight)
+		bright areas outside of the center, rather than just weighting
+		them at zero.
+	* video_spot_tracker.cpp : Added automatic tracker initialization
+		to keep a certain number of active beads in the image.  This
+		works well with disc and cone kernels, but tends to find
+		flat spots with the symmetric kernel despite putting in a
+		second step to the algorithm.  Version 5.21.
+
 2008-04-14  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* roper_server.cpp : Makes it open the last available camera rather than

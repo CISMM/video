@@ -605,7 +605,7 @@ cone_spot_tracker_interp::cone_spot_tracker_interp(double radius, bool inverted,
 
 // Check the fitness of the disk against an image, at the current parameter settings.
 // Return the fitness value there.  This is done by multiplying the image values within
-// one radius of the center by a value the falls off from 1 at the center to 0 at the
+// one radius of the center by a value the falls off from 1 at the center to -1 at the
 // radius.  If the test is inverted, then the fitness value
 // is inverted before returning it.  The fitness is normalized by the number of pixels
 // tested (pixels both within the radii and within the image).
@@ -634,12 +634,12 @@ double	cone_spot_tracker_interp::check_fitness(const image_wrapper &image, unsig
   }
 
   // Pixels within the radius have positive weights that fall off from 1
-  // in the center to 0 at the radius.
+  // in the center to -1 at the radius.
   // Shift the start location by 1/2 pixel on each outgoing ring, to
   // keep them from lining up with each other.
   for (r = 1; r <= _rad; r += _samplesep) {
     double rads_per_step  = 1 / r * _samplesep;
-    double weight = 1 - (r / _rad);
+    double weight = 1 - 2*(r / _rad);
     for (theta = r*rads_per_step*0.5; theta <= 2*M_PI + r*rads_per_step*0.5; theta += rads_per_step) {
       if (image.read_pixel_bilerp(get_x()+r*cos(theta),get_y()+r*sin(theta),val, rgb)) {
 	pixels++;
