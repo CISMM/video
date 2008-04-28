@@ -1,3 +1,15 @@
+2008-04-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* controllable_video.h : Changing the bit depth of the Roper cameras
+		to 16 bits.  This matches the present cameras we have.
+	* roper_server.cpp : Various changes to get this to work, mostly
+		dealing with changing the bit depth from 12 to 16.  Also
+		changed the way things are set up in memory for the new version
+		of the Roper code.  Also tried to make it exit without
+		hanging; it happens less frequently now and also in a slightly
+		better state, but it still happens.
+	* roper_server.h : Same.
+
 2008-04-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* base_camera_server.cpp : Added a new double_image class that

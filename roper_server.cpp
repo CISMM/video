@@ -50,16 +50,13 @@ bool  roper_server::read_continuous(const int16 camera_handle,
 		       const rgn_type &region_description,
 		       const uns32 exposure_time_millisecs)
 {
-  static uns32 last_buffer_cnt = 0; //< How many buffers have been read?
   int16	progress;	//< Progress made in getting the current frame
   uns32	buffer_size;	//< Size required to hold the data
 
   //--------------------------------------------------------------------
   // See if the parameters have changed or if the circular buffer has not
   // yet been set up to run..  If so, then we need to stop any previous
-  // acquisition and then restart a new set of acquisitions.  Otherwise,
-  // we must have already acquired a buffer so we want to free it up
-  // to be re-filled next time.
+  // acquisition and then restart a new set of acquisitions.
   if ( !_circbuffer_run || (exposure_time_millisecs != _last_exposure) ||
        (region_description.s1 != _last_region.s1) ||
        (region_description.s2 != _last_region.s2) ||
@@ -73,14 +70,15 @@ bool  roper_server::read_continuous(const int16 camera_handle,
     if (_circbuffer_run) {
       int retval1;
       _circbuffer_run = false;
-      if (!(retval1 = pl_exp_stop_cont(_camera_handle, CCS_HALT))) {
+      if (FALSE == (retval1 = pl_exp_stop_cont(_camera_handle, CCS_HALT))) {
 	fprintf(stderr,"roper_server::read_continuous(): Cannot stop acquisition\n");
       }
       if (_circbuffer) {
 	delete [] _circbuffer;
+        _circbuffer = NULL;
 	_circbuffer_len = 0;
       }
-      if (retval1) { return false; }
+      if (retval1 == FALSE) { return FALSE; }
     }
 
     // Allocate a new circular buffer that is large enough to hold the number
@@ -90,7 +88,7 @@ bool  roper_server::read_continuous(const int16 camera_handle,
     if ( (_circbuffer = new uns16[_circbuffer_len]) == NULL) {
       fprintf(stderr,"roper_server::read_continuous(): Out of memory\n");
       _circbuffer_len = 0;
-      return false;
+      return FALSE;
     }
 
     // Setup and start a continuous acquisition.
@@ -101,16 +99,13 @@ bool  roper_server::read_continuous(const int16 camera_handle,
     if (buffer_size / 2 != _circbuffer_len / _circbuffer_num) {
       fprintf(stderr,"roper_server::read_continuous(): Unexpected buffer size (got %u, expected %u)\n",
 	buffer_size, _circbuffer_len / _circbuffer_num * 2);
-      return false;
+      return FALSE;
     }
     PL_CHECK_RETURN(pl_exp_start_cont(camera_handle, _circbuffer, _circbuffer_len),
       "pl_exp_start_cont");
 
     // No buffers have been read yet.
-    last_buffer_cnt = 0;
-  } else {
-    // Free up the buffer used last time
-    pl_exp_unlock_oldest_frame(camera_handle);
+    _last_buffer_cnt = 0;
   }
   _last_exposure = exposure_time_millisecs;
   _last_region = region_description;
@@ -129,18 +124,17 @@ bool  roper_server::read_continuous(const int16 camera_handle,
        return FALSE;
      }
 
-     // See how many buffers have been filled (XXX times the buffer has been filled?).
+     // See how many buffers have been filled.
      // Each time we get another one, we go ahead and read it (set progress to READOUT_COMPLETE)
-     if (buffer_cnt > last_buffer_cnt) {
+     if (buffer_cnt > _last_buffer_cnt) {
        progress = READOUT_COMPLETE;
-       last_buffer_cnt ++;
+       _last_buffer_cnt += (buffer_cnt - _last_buffer_cnt);
      }
 
      // Check for a timeout; if we haven't heard anything for a second longer than exposure,
      // abort the read and restart it.
      gettimeofday(&now, NULL);
      if (duration(now, start) / 1.0e6 > READ_TIMEOUT) {
-//XXX       send_text_message("Timeout when reading, retrying", vrpn_TEXT_WARNING, 0);
        // XXX Should return an error and let the above code decide to retry
        fprintf(stderr,"roper_server::read_continuous(): Timeout, retrying\n");
        switch (progress) {
@@ -176,7 +170,10 @@ bool  roper_server::read_continuous(const int16 camera_handle,
   PL_CHECK_RETURN(pl_exp_get_oldest_frame(camera_handle, &_memory),
     "pl_exp_get_latest_frame");
 
-  return TRUE;
+  // Free up the buffer used last time
+  PL_CHECK_RETURN(pl_exp_unlock_oldest_frame(camera_handle), "pl_exp_unlock_oldest_frame");
+
+  return true;
 }
 
 
@@ -184,12 +181,13 @@ bool  roper_server::read_continuous(const int16 camera_handle,
 
 bool  roper_server::read_one_frame(const int16 camera_handle,
 		       const rgn_type &region_description,
-		       const uns32 exposure_time_millisecs) {
+		       const uns32 exposure_time_millisecs)
+{
   int16	progress = EXPOSURE_IN_PROGRESS;
   uns32	trash;
   uns32	buffer_size;	// Size required to hold the data
 
-  // Initialize the sequence and set the parameters.  Also
+  // Set up the sequence and set the parameters.  Also
   // check to make sure that the buffer passed in is large
   // enough to hold the image.  Only do this if the parameters
   // have changed since the last time through.
@@ -229,7 +227,6 @@ bool  roper_server::read_one_frame(const int16 camera_handle,
      // abort the read and restart it.
      gettimeofday(&now, NULL);
      if (duration(now, start) / 1.0e6 > READ_TIMEOUT) {
-//XXX       send_text_message("Timeout when reading, retrying", vrpn_TEXT_WARNING, 0);
        // XXX Should return an error and let the above code decide to retry
        fprintf(stderr,"roper_server::read_one_frame(): Timeout, retrying\n");
        PL_CHECK_WARN(pl_exp_abort(camera_handle, CCS_HALT), "pl_exp_abort");
@@ -240,6 +237,8 @@ bool  roper_server::read_one_frame(const int16 camera_handle,
      vrpn_SleepMsecs(1);
 
   } while (progress != READOUT_COMPLETE);
+
+  PL_CHECK_RETURN(pl_exp_finish_seq(camera_handle, _buffer, 0), "pl_exp_finish_seq");
 
   return TRUE;
 }
@@ -276,8 +275,9 @@ bool roper_server::open_and_find_parameters(void)
   _num_rows = num_rows;
   _num_columns = num_columns;
   _circbuffer_on = avail_flag;
-  //XXX Circular-buffer code times out in acquisition mode, also in sample code from
-  // Roper. Have asked them how to fix this.
+  //XXX If we don't have anywhere to store the image, the continuous-read code fails.
+  // Need to make that a soft-failure that reports lost frames.  For now, turn off
+  // circular buffering.
   _circbuffer_on = false;
   if (!_circbuffer_on) {
     fprintf(stderr,"roper_server::open_and_find_parameters(): Does not support circular buffers (using single-capture mode)\n");
@@ -294,7 +294,8 @@ roper_server::roper_server(unsigned binning) :
   _circbuffer_run(false),
   _circbuffer(NULL),
   _circbuffer_len(0),
-  _circbuffer_num(3)	  //< Use this many buffers in the circular buffer
+  _circbuffer_num(3),	  //< Use this many buffers in the circular buffer
+  _last_buffer_cnt(0)
 {
   //---------------------------------------------------------------------
   // Initialize the PVCAM software, open the camera, and find out what its
@@ -311,16 +312,13 @@ roper_server::roper_server(unsigned binning) :
   // Allocate a buffer that is large enough to read the maximum-sized
   // image with no binning.
   _buflen = (uns32)(_num_rows * _num_columns * 2);	// Two bytes per pixel
-  if ( (_buffer = GlobalAlloc( GMEM_ZEROINIT, _buflen)) == NULL) {
+
+  if ( (_buffer = new uns16[_buflen]) == NULL) {
     fprintf(stderr,"roper_server::roper_server(): Cannot allocate enough locked memory for buffer\n");
     _status = false;
     return;
   }
-  if ( (_memory = GlobalLock(_buffer)) == NULL) {
-    fprintf(stderr, "roper_server::roper_server(): Cannot lock memory buffer\n");
-    _status = false;
-    return;
-  }
+  _memory = _buffer;
 
   //---------------------------------------------------------------------
   // Initialize the acquisition sequence.
@@ -338,6 +336,9 @@ roper_server::roper_server(unsigned binning) :
 
 roper_server::~roper_server(void)
 {
+  //XXX This sometimes leaves the program hung open until IPlab or some
+  // other program opens and closes the camera.
+
   //---------------------------------------------------------------------
   // If the circular-buffer mode is supported, shut that down here.
   if (_circbuffer_run) {
@@ -347,20 +348,25 @@ roper_server::~roper_server(void)
     if (!pl_exp_finish_seq(_camera_handle, _buffer, 0)) {
       fprintf(stderr,"roper_server::~roper_server(): Cannot finish sequence\n");
     }
-    if (_circbuffer) {
-      delete [] _circbuffer;
-      _circbuffer_len = 0;
-    }
   }
 
   // Uninitialize the acquisition sequence
   PL_CHECK_WARN(pl_exp_uninit_seq(), "pl_exp_uninit_seq");
 
   //---------------------------------------------------------------------
-  // Shut down the PVCAM software and free the global memory buffer.
+  // Shut down the PVCAM software.
+  PL_CHECK_WARN(pl_cam_close(_camera_handle), "pl_pvcam_close");
   PL_CHECK_WARN(pl_pvcam_uninit(), "pl_pvcam_uninit");
-  GlobalUnlock(_buffer );
-  GlobalFree(_buffer );
+
+  if (_circbuffer) {
+    delete [] _circbuffer;
+    _circbuffer = NULL;
+    _circbuffer_len = 0;
+  }
+  if (_buffer) {
+    delete [] _buffer;
+    _buffer = NULL;
+  }
 }
 
 bool  roper_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned minY, unsigned maxY,
@@ -435,7 +441,7 @@ bool  roper_server::write_memory_to_ppm_file(const char *filename, int gain, boo
   }
 
   //---------------------------------------------------------------------
-  // If we are not doing 16 bits, map the 12 bits to the range 0-255, and then write out an
+  // If we are not doing 16 bits, map the 16 bits to the range 0-255, and then write out an
   // uncompressed 8-bit grayscale PPM file with the values scaled to this range.
   if (!sixteen_bits) {
     uns16	  *vals = (uns16 *)_memory;
@@ -452,8 +458,8 @@ bool  roper_server::write_memory_to_ppm_file(const char *filename, int gain, boo
     uns16 rows = (_maxY - _minY)/_binning + 1;
     for (r = 0; r < rows; r++) {
       for (c = 0; c < cols; c++) {
-	if (clamp_gain(vals[r*cols + c],gain) < minimum) { minimum = clamp_gain(vals[r*cols+c],gain, 4095); }
-	if (clamp_gain(vals[r*cols + c],gain) > maximum) { maximum= clamp_gain(vals[r*cols+c],gain, 4095); }
+	if (clamp_gain(vals[r*cols + c],gain) < minimum) { minimum = clamp_gain(vals[r*cols+c],gain, 65535); }
+	if (clamp_gain(vals[r*cols + c],gain) > maximum) { maximum= clamp_gain(vals[r*cols+c],gain, 65535); }
       }
     }
     printf("Minimum = %d, maximum = %d\n", minimum, maximum);
@@ -461,7 +467,7 @@ bool  roper_server::write_memory_to_ppm_file(const char *filename, int gain, boo
     double scale = gain;
     for (r = 0; r < rows; r++) {
       for (c = 0; c < cols; c++) {
-	pixels[r*cols + c] = clamp_gain(vals[r*cols+c] - offset, scale, 4095) >> 4;
+	pixels[r*cols + c] = clamp_gain(vals[r*cols+c] - offset, scale, 65535) >> 8;
       }
     }
     FILE *of = fopen(filename, "wb");
@@ -508,7 +514,7 @@ bool  roper_server::write_memory_to_ppm_file(const char *filename, int gain, boo
 }
 
 //---------------------------------------------------------------------
-// Map the 12 bits to the range 0-255, and return the result
+// Map the 16 bits to the range 0-255, and return the result
 bool	roper_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint8 &val, int RGB) const
 {
   if ( (_maxX <= _minX) || (_maxY <= _minY) ) {
@@ -524,7 +530,7 @@ bool	roper_server::get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint8 &val
   }
   uns16	*vals = (uns16 *)_memory;
   uns16	cols = (_maxX - _minX + 1)/_binning;
-  val = (vrpn_uint8)(vals[(Y-_minY/_binning)*cols + (X-_minX/_binning)] >> 4);
+  val = (vrpn_uint8)(vals[(Y-_minY/_binning)*cols + (X-_minX/_binning)] >> 8);
   return true;
 }
 
@@ -558,18 +564,11 @@ bool roper_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrc
     int nRowsPerRegion = vrpn_IMAGER_MAX_REGIONu8/(num_x*sizeof(vrpn_uint8)) - 1;
     unsigned y;
 
-    //XXX This is hacked to optimize the value in the upper 8 bits to be the most-significant bits
-    // of the 12 bits.  I thought this should depend on binning, but it seems like it does not.
-    // Strange.
-    // XXX Actually, it seemed to wrap when we shifted left, so now removing that.  Stranger.
-/*XXX
-    unsigned loop;
-    for (loop = 0; loop < num_x*num_y; loop++) {
-	((vrpn_uint16*)_memory)[loop] = reinterpret_cast<vrpn_uint16*>(_memory)[loop];
-    }
-*/
+    //XXX Check for lost frames in continuous mode and report them if they are found.
+
     //XXX This is hacked to send the upper 8 bits of each value. Need to modify reader to handle 16-bit ints.
     // For these, stride will be 1 and offset will be 0, and the code will use memcpy() to copy the values.
+    // Later, it should send 16 bits.
     const int stride = 2;
     const int offset = 1;
     svr->send_begin_frame(0, cols-1, 0, rows-1);
@@ -618,26 +617,6 @@ bool roper_server::write_to_opengl_texture(GLuint tex_id)
     delete [] tempimage;
     _opengl_texture_have_written = true;
   }
-
-  // Set the offset and scale parameters for the transfer.  Set all of the RGB ones to
-  // the requested one even for GL_LUMINANCE textures, because they get used.  Set the
-  // Alpha ones to pass through unmodified because they eventually get used in the
-  // pixel math for some cases.  We multiply the existing scales and offsets by
-  // 2^4 = 16 because we encode a 12-bit value in a 16-bit variable.  We read the
-  // red scale that was set before and set them all to 16 times that.
-  double scale, offset;
-  glGetDoublev(GL_RED_SCALE, &scale);
-  glGetDoublev(GL_RED_BIAS, &offset);
-  scale *= 16;
-  offset *= 16;
-  glPixelTransferf(GL_RED_SCALE, static_cast<GLfloat>(scale));
-  glPixelTransferf(GL_GREEN_SCALE, static_cast<GLfloat>(scale));
-  glPixelTransferf(GL_BLUE_SCALE, static_cast<GLfloat>(scale));
-  glPixelTransferf(GL_ALPHA_SCALE, static_cast<GLfloat>(1.0));
-  glPixelTransferf(GL_RED_BIAS, static_cast<GLfloat>(offset));
-  glPixelTransferf(GL_GREEN_BIAS, static_cast<GLfloat>(offset));
-  glPixelTransferf(GL_BLUE_BIAS, static_cast<GLfloat>(offset));
-  glPixelTransferf(GL_ALPHA_BIAS, static_cast<GLfloat>(0.0));
 
   // Set the pixel storage parameters.
   // In this case, we need to invert the image in Y to make the display match
@@ -875,26 +854,6 @@ bool spe_file_server::write_to_opengl_texture(GLuint tex_id)
     delete [] tempimage;
     _opengl_texture_have_written = true;
   }
-
-  // Set the offset and scale parameters for the transfer.  Set all of the RGB ones to
-  // the requested one even for GL_LUMINANCE textures, because they get used.  Set the
-  // Alpha ones to pass through unmodified because they eventually get used in the
-  // pixel math for some cases.  We multiply the existing scales and offsets by
-  // 2^4 = 16 because we encode a 12-bit value in a 16-bit variable.  We read the
-  // red scale that was set before and set them all to 16 times that.
-  double scale, offset;
-  glGetDoublev(GL_RED_SCALE, &scale);
-  glGetDoublev(GL_RED_BIAS, &offset);
-  scale *= 16;
-  offset *= 16;
-  glPixelTransferf(GL_RED_SCALE, static_cast<GLfloat>(scale));
-  glPixelTransferf(GL_GREEN_SCALE, static_cast<GLfloat>(scale));
-  glPixelTransferf(GL_BLUE_SCALE, static_cast<GLfloat>(scale));
-  glPixelTransferf(GL_ALPHA_SCALE, static_cast<GLfloat>(1.0));
-  glPixelTransferf(GL_RED_BIAS, static_cast<GLfloat>(offset));
-  glPixelTransferf(GL_GREEN_BIAS, static_cast<GLfloat>(offset));
-  glPixelTransferf(GL_BLUE_BIAS, static_cast<GLfloat>(offset));
-  glPixelTransferf(GL_ALPHA_BIAS, static_cast<GLfloat>(0.0));
 
   // Set the pixel storage parameters.
   // In this case, we need to invert the image in Y to make the display match

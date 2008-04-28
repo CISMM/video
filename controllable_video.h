@@ -120,11 +120,9 @@ bool  get_camera(const char *name,
 {
 #ifdef VST_USE_ROPER
   if (!strcmp(name, "roper")) {
-    // XXX Starts with binning of 2 to get the image size down so that
-    // it fits on the screen.
-    roper_server *r = new roper_server(2);
+    roper_server *r = new roper_server(1);
     *camera = r;
-    *bit_depth = 12;
+    *bit_depth = 16;
   } else
 #endif  
 #ifdef VST_USE_COOKE

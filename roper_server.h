@@ -41,9 +41,10 @@ protected:
   unsigned  _circbuffer_len;  //< Length of the circular buffer memory
   unsigned  _circbuffer_num;  //< Number of images in the circular buffer
   uns16	    *_circbuffer;     //< Buffer to hold the images from the camera
+  uns32     _last_buffer_cnt; //< How many buffers read continuously before?
 
-  // Global Memory Pointers used to get non-virtual memory
-  HGLOBAL   _buffer;  //< Global memory-locked buffer
+  // Buffers and pointers to the image data.
+  uns16     *_buffer;  //< Global memory-locked buffer
   uns32	    _buflen;  //< Length of that buffer
   void	    *_memory; //< Pointer to either the global buffer (for single-frame) or the circular buffer
 
