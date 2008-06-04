@@ -87,6 +87,8 @@ public:
 
 	bool m_middleMouseDown;
 
+	int m_imageGain;
+
 protected:
     void OnPaint(wxPaintEvent& event);
     void OnSize(wxSizeEvent& event);
@@ -121,7 +123,6 @@ protected:
 
 	bool m_showCross;
 
-
 	//vrpn_Connection *m_connection; // we were using this for oldschool logging
 
 private:
@@ -136,6 +137,8 @@ private:
 	float m_z, m_x, m_y;
 
 	bool m_got_dimensions;
+
+	bool m_logging;
 
 
     void InitGL();

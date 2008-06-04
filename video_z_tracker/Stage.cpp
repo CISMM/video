@@ -47,6 +47,8 @@ Stage::Stage(char* Stage_name)
 	bool	use_local_server = false;
 	con = NULL;
 	svr = NULL;
+	read_z = NULL;
+	set_z = NULL;
 
 	if (use_local_server) {
 /* *** NOT SUPPORTED YET ***
@@ -63,13 +65,16 @@ Stage::Stage(char* Stage_name)
 */
 	}
 
-	printf("Connecting to stage control server: %s...\n", Stage_name);
+	if (Stage_name != "")
+	{
+		printf("Connecting to stage control server: %s...\n", Stage_name);
 
-	read_z = new vrpn_Tracker_Remote(Stage_name, con);
-	set_z = new vrpn_Poser_Remote(Stage_name, con);
-	read_z->register_change_handler(this, handle_vrpn_focus_change);
+		read_z = new vrpn_Tracker_Remote(Stage_name, con);
+		set_z = new vrpn_Poser_Remote(Stage_name, con);
+		read_z->register_change_handler(this, handle_vrpn_focus_change);
 
-	printf("Done.\n");
+		printf("Done.\n");
+	}
 
 #endif
 
@@ -171,7 +176,7 @@ void Stage::Update()
 	// update vrpn stuff
 	if (svr) { svr->mainloop(); }
 	if (con) { con->mainloop(); }
-	read_z->mainloop();
+	if (read_z) { read_z->mainloop(); }
 
 #endif
 }
@@ -197,7 +202,10 @@ bool Stage::MoveTo(double x, double y, double z)
 	vrpn_float64  quat[4] = { 0, 0, 0, 1 };
 	struct timeval now;
 	gettimeofday(&now, NULL);
-	set_z->request_pose(now, pos, quat);
+	if (set_z)
+	{
+		set_z->request_pose(now, pos, quat);
+	}
 #endif
 
 	return true;
@@ -235,43 +243,46 @@ void Stage::GetTargetPosition(double &x, double &y, double &z)
 void Stage::CalculateOffset(double z_meters, double x_meters = 0, double y_meters = 0) 
 {
 #ifndef	FAKE_STAGE
-  // Request that the camera focus go where we want it to
-  vrpn_float64  pos[3] = { x_meters, y_meters, z_meters };
-  vrpn_float64  quat[4] = { 0, 0, 0, 1 };
-  struct timeval now;
-  gettimeofday(&now, NULL);
-  set_z->request_pose(now, pos, quat);
+	if (set_z)
+	{
+		// Request that the camera focus go where we want it to
+		vrpn_float64  pos[3] = { x_meters, y_meters, z_meters };
+		vrpn_float64  quat[4] = { 0, 0, 0, 1 };
+		struct timeval now;
+		gettimeofday(&now, NULL);
+		set_z->request_pose(now, pos, quat);
 
-  // Wait at least a quarter of a second and then get a new focus report.
-  // Subtract it from the requested focus each time when we ask
-  // for one later.  This is to deal with an offset between
-  // the requested position and the found position because the
-  // Mad City Labs stage (at least) has an offset between them.
-  set_z->mainloop();
-  if (svr) 
-  { 
-	  svr->mainloop(); 
-  }
-  vrpn_SleepMsecs(250);
+		// Wait at least a quarter of a second and then get a new focus report.
+		// Subtract it from the requested focus each time when we ask
+		// for one later.  This is to deal with an offset between
+		// the requested position and the found position because the
+		// Mad City Labs stage (at least) has an offset between them.
+		set_z->mainloop();
+		if (svr) 
+		{ 
+			svr->mainloop(); 
+		}
+		vrpn_SleepMsecs(250);
 
-  // Wait until we get at least one reponse for focus.
-  m_focus_changed = false;
-  do {
-    if (svr) { svr->mainloop(); }
-    if (con) { con->mainloop(); }
-    set_z->mainloop();
-    read_z->mainloop();
-    vrpn_SleepMsecs(1);
+		// Wait until we get at least one reponse for focus.
+		m_focus_changed = false;
+		do {
+			if (svr) { svr->mainloop(); }
+			if (con) { con->mainloop(); }
+			set_z->mainloop();
+			read_z->mainloop();
+			vrpn_SleepMsecs(1);
 
-    m_zOffset = m_z - (z_meters / METERS_PER_MICRON);
+			m_zOffset = m_z - (z_meters / METERS_PER_MICRON);
 
-	m_xOffset = m_x - (x_meters / METERS_PER_MICRON);
-	m_yOffset = m_y - (y_meters / METERS_PER_MICRON);
+			m_xOffset = m_x - (x_meters / METERS_PER_MICRON);
+			m_yOffset = m_y - (y_meters / METERS_PER_MICRON);
 
-  } while (!m_focus_changed);
+		} while (!m_focus_changed);
 
-  //printf("Estimated focus offset at %f\n", m_zOffset);
-  printf("Estimated stage offsets: (%f, %f, %f)\n", m_xOffset, m_yOffset, m_zOffset);
+		//printf("Estimated focus offset at %f\n", m_zOffset);
+		printf("Estimated stage offsets: (%f, %f, %f)\n", m_xOffset, m_yOffset, m_zOffset);
+	}
 #endif
 }
 

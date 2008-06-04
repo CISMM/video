@@ -15,7 +15,8 @@ bool zTrackApp::OnInit()
 	wxSize appSize(640, 480);
 //    wxInitAllImageHandlers();
 
-	char* stage_name = "Focus@aurum-cs.cs.unc.edu";
+	//char* stage_name = "Focus@aurum-cs.cs.unc.edu";
+	char* stage_name = "";
 
 	if (argc > 1) // get stage control specification
 	{

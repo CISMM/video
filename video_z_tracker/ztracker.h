@@ -70,6 +70,8 @@ public:
 
 	void OnUpdateStageCheck(wxCommandEvent& event);
 
+	void OnZTrackDampingText(wxCommandEvent& event);
+
 	void Idle(wxIdleEvent& event);
 
 	void CalcFocus();
@@ -159,7 +161,9 @@ protected:
 
 	float m_targetOOF;
 	float m_micronsPerFocus;
+	float m_zTrackDamping;
 
+	wxTextCtrl* m_zTrackDampingText;
 	wxBoxSizer* m_zSizer;
 	wxStaticText* m_zLabel;
 	wxTextCtrl* m_zText;
@@ -176,6 +180,8 @@ protected:
 	wxBoxSizer* m_loggingSizer;
 	wxTextCtrl* m_logfileText;
 	wxButton* m_loggingButton;
+
+	wxIntSlider* m_imageGainSlider;
 
 
 	// spot tracker stuff

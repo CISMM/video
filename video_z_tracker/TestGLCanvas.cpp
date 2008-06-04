@@ -114,6 +114,8 @@ TestGLCanvas::TestGLCanvas(wxWindow *parent, wxWindowID id,
 	m_ready_for_region = false;
 	m_draining = true;
 
+	m_imageGain = 1;
+
 	m_imagelogging = false;
 	//m_connection = NULL;
 
@@ -172,7 +174,7 @@ TestGLCanvas::TestGLCanvas(wxWindow *parent, wxWindowID id,
 
 	// setup logging now!
 	m_logger = new vrpn_Auxiliary_Logger_Remote(device_name);
-	
+	m_logging = false;
 }
 
 TestGLCanvas::~TestGLCanvas()
@@ -192,6 +194,12 @@ TestGLCanvas::~TestGLCanvas()
 
 void TestGLCanvas::LogToFile(char* filename)
 {
+	m_logging = (filename != "");
+	if (m_logging)
+		printf("Start logging!\n");
+	else
+		printf("Stop logging!\n");
+
 	if (!m_logger->send_logging_request(filename, "", "", ""))
 		printf("Logging request failed!\n");
 }
@@ -269,7 +277,7 @@ void TestGLCanvas::OnPaint( wxPaintEvent& WXUNUSED(event) )
 		glRasterPos2f(-1, -1);
 		glDrawPixels(m_imager->nCols(),m_imager->nRows(), GL_RGB, GL_UNSIGNED_BYTE, m_image);
 		*/
-		m_image->write_to_opengl_quad(1, 1);
+		m_image->write_to_opengl_quad(m_imageGain, 1);
 	}
 	
 	//m_camera->write_opengl_texture_to_quad(1, 1);
@@ -370,6 +378,18 @@ void TestGLCanvas::DrawHUD()
 	glRasterPos2i(x,y);
 	sprintf(buf,"(%f, %f)", m_x, m_y);
 	gprintf(buf);
+
+	// draw a nice red dot if we're logging!
+	if (m_logging)
+	{
+		glPointSize(10);
+		glEnable(GL_POINT_SMOOTH);
+		glBegin(GL_POINTS);
+		glColor4f(1.0, 0, 0, 0.5);
+		glVertex3f(w - 15, h - 15, 0.1);
+		glEnd();
+
+	}
 
 	glPopMatrix();
 }
@@ -553,6 +573,9 @@ void TestGLCanvas::InitGL()
 	*/
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
 	glDisable(GL_DEPTH_TEST);
+
+	glEnable(GL_POINT_SMOOTH);
+	glPointSize(10);
 
 }
 

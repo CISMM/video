@@ -61,6 +61,8 @@ enum
 
 	UPDATE_STAGE,
 
+	Z_DAMPING,
+
 	LAST_LOCAL_ID,
 };
 
@@ -99,6 +101,8 @@ BEGIN_EVENT_TABLE(zTracker, wxFrame)
 
 	EVT_BUTTON(LOG_VIDEO, zTracker::OnLoggingButton)
 
+	EVT_TEXT(Z_DAMPING, zTracker::OnZTrackDampingText)
+
 	EVT_IDLE(zTracker::Idle)
 
 END_EVENT_TABLE()
@@ -119,7 +123,11 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 
 
 	// set up stage logging now!
-	m_stageLogger = new vrpn_Auxiliary_Logger_Remote(stage_name);
+	m_stageLogger = NULL;
+	if (stage_name != "")
+		m_stageLogger = new vrpn_Auxiliary_Logger_Remote(stage_name);
+	else
+		printf("Warning: No stage logger initialized\n");
 
 	m_videoAndStageLogging = false;
 
@@ -153,7 +161,7 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 	// Make it happen!
     wxMenuBar *menuBar = new wxMenuBar;
     menuBar->Append(fileMenu, wxT("&File"));
-	menuBar->Append(cameraMenu, wxT("&Camera"));
+//	menuBar->Append(cameraMenu, wxT("&Camera"));
 	menuBar->Append(advancedMenu, wxT("&Advanced"));
     menuBar->Append(helpMenu, wxT("&Help"));
     SetMenuBar(menuBar);
@@ -289,6 +297,15 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 	m_targetOOF = 0;
 	m_micronsPerFocus = 0;
 
+	m_zTrackDamping = 1.0;
+	m_zTrackDampingText = NULL; // for some reason the wx text event callback was happening
+								// when this was still uninitialized!
+	m_zTrackDampingText = new wxTextCtrl(m_panel, Z_DAMPING, "1.0", wxDefaultPosition, wxSize(30, 20));
+
+
+	m_imageGainSlider = new wxIntSlider(m_panel, wxID_ANY, 1, 1, 16);
+
+
 
 
 
@@ -314,15 +331,19 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 	set_layout();
 	do_layout();
 
-	// initially turn off the pixel slice opengl canvases
+	// initially turn off 'advanced' things
 	bool show = m_sizer->IsShown(m_advancedSizer);
 	m_canvasSizer->Show(m_vertSizer, show, true);
 	m_sizer->Show(m_horizSizer, show, true);
+	m_assortedSizer->Show(m_8Bits, show, true);
+	m_canvasSizer->Show(m_zSizer, show, true);
 
 
 	// hope everything is initialized at this point...
 	// *** WE CAN'T DO THIS WHEN WE'RE NOT ACTUALLY CONNECTING TO A STAGE OR WE HANG!
 	//CalculateZOffset();
+
+	printf("Finished initializing GUI.\n");
 }
 
 
@@ -509,6 +530,8 @@ void zTracker::OnMenuShowAdv( wxCommandEvent& WXUNUSED(event) )
 	m_sizer->Show(m_advancedSizer, show, true);
 	m_canvasSizer->Show(m_vertSizer, show, true);
 	m_sizer->Show(m_horizSizer, show, true);
+	m_assortedSizer->Show(m_8Bits, show, true);
+	m_canvasSizer->Show(m_zSizer, show, true);
 
 	// update the gui layout accordingly
 	do_layout();
@@ -665,15 +688,28 @@ void zTracker::OnLoggingButton(wxCommandEvent& event)
 		printf("logging to: %s and %s\n", videologfile, stagelogfile);
 
 		m_canvas->LogToFile(videologfile);
-		if (!m_stageLogger->send_logging_request("", "", "", stagelogfile))
-			printf("Stage logging request failed!\n");
+
+		if (m_stageLogger)
+		{
+			if (!m_stageLogger->send_logging_request("", "", "", stagelogfile))
+				printf("Stage logging request failed!\n");
+		}
+		else
+		{
+			printf("WARNING: NOT LOGGING STAGE POSITION!\n");
+		}
+		m_videoAndStageLogging = true;
 	}
 	else
 	{
 		// stop logging!
 		m_canvas->LogToFile("");
-		if (!m_stageLogger->send_logging_request("", "", "", ""))
-			printf("Stage logging request failed!\n");
+		if (m_stageLogger)
+		{
+			if (!m_stageLogger->send_logging_request("", "", "", ""))
+				printf("Stage logging request failed!\n");
+		}
+		m_videoAndStageLogging = false;
 	}
 }
 
@@ -876,10 +912,22 @@ void zTracker::OnUpdateStageCheck(wxCommandEvent& WXUNUSED(event))
 	// do nothing -- we can just query the checkbox state
 }
 
+void zTracker::OnZTrackDampingText(wxCommandEvent& WXUNUSED(event))
+{
+	double val = 1.0;
+	if (!m_zTrackDampingText)
+		return;
+
+	if(m_zTrackDampingText->GetValue().ToDouble(&val))
+	{
+		m_zTrackDamping = val;
+	}
+}
 
 
 void zTracker::Idle(wxIdleEvent& event)
 {
+
 	// optimize our spot tracker if we're tracking XY!
 	if (!m_image)
 		m_image = m_canvas->GetWrappedImage();
@@ -897,7 +945,6 @@ void zTracker::Idle(wxIdleEvent& event)
 		//printf("new loc = (%f, %f)\n", m_spotTracker->xytracker()->get_x(), m_spotTracker->xytracker()->get_y());
 	}
 
-
 	if (m_logging)
 	{
 		SetStatusText("Logging...", 1);
@@ -912,22 +959,22 @@ void zTracker::Idle(wxIdleEvent& event)
 	//if (!m_canvas->m_middleMouseDown)
 	//	m_stage->GetPosition(x, y, z);
 
-
-	m_canvas->SetZ(z);
-	m_canvas->SetX(x);
-	m_canvas->SetY(y);
-
+	if (z > 100)
+		z = 100;
+	if (z < 0)
+		z = 0;
 
 	if (m_canvas != NULL)
 	{
+		m_canvas->SetZ(z);
+		m_canvas->SetX(x);
+		m_canvas->SetY(y);
+
 		m_canvas->Update();
-		
-		//if(!m_canvas->m_already_posted)
-		//	m_canvas->Refresh();
 	}
 
 	CalcFocus();
-	
+
 	// STARTZTRACKING
 	if (m_Ztracking->GetValue()) // if we're doing active, automatic tracking
 	{
@@ -940,7 +987,7 @@ void zTracker::Idle(wxIdleEvent& event)
 
 		
 		//m_stage->MoveTo(x, y, z - estimatedMovement);
-		z = z - estimatedMovement;
+		z = z - (estimatedMovement * m_zTrackDamping);
 
 		m_zVel = estimatedMovement;
 	}
@@ -984,7 +1031,6 @@ void zTracker::Idle(wxIdleEvent& event)
 	}
 
 
-
 	char buffer[20] = "";
 	sprintf(buffer, "%.3f", z);	
 	m_zText->SetValue(buffer);
@@ -1005,6 +1051,7 @@ void zTracker::Idle(wxIdleEvent& event)
 	m_stage->Update(); // update our stage
 
 	event.RequestMore();
+
 }
 
 
@@ -1021,6 +1068,7 @@ void zTracker::set_layout()
 	m_zSizer->Add(m_zUpText, 0, wxALIGN_CENTER);
 	m_zSizer->Add(m_zVelText, 0, wxALIGN_CENTER);
 	m_zSizer->Add(m_zDownText, 0, wxALIGN_CENTER);
+	m_zSizer->Add(m_zTrackDampingText, 0, wxALIGN_CENTER);
 
 	m_canvasSizer->Add(m_canvas, 0, wxALL, 3);
 	m_canvasSizer->Add(m_vertSizer, 0, 0, 0);
@@ -1059,6 +1107,7 @@ void zTracker::set_layout()
 	m_assortedSizer->Add(m_updateStage, 0, wxALL, 3);
 	m_assortedSizer->Add(m_trackingSizer, 0, 0, 0);
 	//m_assortedSizer->Add(m_manualFocusSizer, 0, 0, 0);
+	m_assortedSizer->Add(m_imageGainSlider, 0, wxALL, 3);
 	
 	m_loggingSizer->Add(m_loggingButton, 0, wxALL, 3);
 	m_loggingSizer->Add(m_logfileText, 0, wxALL, 3);

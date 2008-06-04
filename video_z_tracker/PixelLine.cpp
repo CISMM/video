@@ -185,7 +185,7 @@ float PixelLine::calcFocus(int channel, int method, int weightedMethod)
 
 			if (Ia + Ib != 0)
 			{
-				val = abs(Ia - Ib) / (Ia + Ib);
+				val = abs(Ia - Ib);// / (Ia + Ib);
 				float weight = 1.0f;
 				if (weightedMethod == 1)
 				{

@@ -1,3 +1,17 @@
+2008-06-04  Ryan Schubert  <res@cs.unc.edu>
+
+	* PixelLine.cpp : Removed SMD modification that scaled by the
+		inverse of the pixel intensities in preperation for doing
+		fluroescence experiments.
+	* Stage.cpp : Added handling for empty stage server; added
+		offset calculations for X and Y.
+	* TestGLCanvas.* : Added initial support for image gain;
+		added logging toggle and logging indicator.
+	* ztracker.* : Added z tracking damping for a stability/speed
+		tradeoff if desired; removed camera GUI menu; made changes
+		to stage logging code.
+	* ztrackmain.cpp : Removed default stage name.
+
 2008-03-19  Ryan Schubert  <res@cs.unc.edu>
 
 	* Stage.* : Updated offset calculation to X, Y, and Z offsets
