@@ -1,3 +1,9 @@
+2008-07-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* Makefile : Makes it compile on the BASS system.
+	* VRPN_Imager_camera_serer.cpp : Same.
+	* controllable_video.h : Same.
+
 2008-04-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* controllable_video.h : Changing the bit depth of the Roper cameras

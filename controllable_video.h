@@ -169,11 +169,11 @@ bool  get_camera(const char *name,
     *camera = s;
     *video = s;
     *bit_depth = 16;
-
+  } else
 #endif  
   // If this is a VRPN URL for a VRPN Imager device, then open the file and set up
   // to read from that device.
-  } else if (strchr(name, '@')) {
+  if (strchr(name, '@')) {
     VRPN_Imager_Controllable_Video  *s = new VRPN_Imager_Controllable_Video (name);
     *camera = s;
     *video = s;

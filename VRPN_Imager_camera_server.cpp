@@ -7,6 +7,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "VRPN_Imager_camera_server.h"
+#ifndef __min
+#define __min(a,b)  (((a) < (b)) ? (a) : (b))
+#endif
 
 //#define	DEBUG
 

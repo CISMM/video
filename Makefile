@@ -18,6 +18,9 @@
 #HW_OS := powerpc_macosx
 ##########################
 
+IMAGEMAGIC_INCLUDE := ../External/pc_linux64/include/ImageMagick
+IMAGEMAGIC_LIB := ../External/pc_linux64/lib
+
 ##########################
 # Directories for installation
 
@@ -111,16 +114,16 @@ OBJ_DIR := $(HW_OS)$(OBJECT_DIR_SUFFIX)
 LIB_DIR := ../$(OBJ_DIR)
 
 CFLAGS = -g -I./ -Istocc_random_number_generator -I../quat -I../vrpn \
-	-I../nano/src/lib/nmMP -I/usr/local/include
+	-I../nano/src/lib/nmMP -I/usr/local/include -I$(IMAGEMAGIC_INCLUDE)
 
 # The -rpath command specifies that the system should look for shared objects in
 # the specified location.  In our case, this is an attempt to get ImageMagick
 # shared objects to load.
-LFLAGS = -L$(LIB_DIR) -L../quat/$(HW_OS)$(OBJECT_DIR_SUFFIX) -L../vrpn/$(HW_OS)$(OBJECT_DIR_SUFFIX) -L$(HW_OS)$(OBJECT_DIR_SUFFIX) -L../nano/obj/$(HW_OS)/lib/nmMP -W1,-rpath,/usr/local/lib
+LFLAGS = -L$(LIB_DIR) -L../quat/$(HW_OS)$(OBJECT_DIR_SUFFIX) -L../vrpn/$(HW_OS)$(OBJECT_DIR_SUFFIX) -L$(HW_OS)$(OBJECT_DIR_SUFFIX) -L../nano/obj/$(HW_OS)/lib/nmMP -L$(IMAGEMAGIC_LIB) -W1,-rpath,/usr/local/lib
 
 TCLLIBS = -ltk8.5 -ltcl8.5 -lXss
 
-MAGICLIBS = -lMagick -ltiff -lfreetype -ljpeg -lpng -lfontconfig -lXext -lXt -lSM -lICE -lX11 -lbz2 -lrsvg-2 -lgdk_pixbuf-2.0 -lgobject-2.0 -lgmodule-2.0 -ldl -lglib-2.0 -lxml2 -lz -lpthread -lpthread 
+MAGICLIBS = -lMagickCore -ltiff -lfreetype -ljpeg -lpng -lfontconfig -lXext -lXt -lSM -lICE -lX11 -lbz2 -lrsvg-2 -lgdk_pixbuf-2.0 -lgobject-2.0 -lgmodule-2.0 -ldl -lglib-2.0 -lxml2 -lz -lpthread -lpthread 
 
 VRPNLIBS = -lvrpn -lquat
 
@@ -150,7 +153,7 @@ $(OBJ_DIR)/%.o:	%.cpp
 STOCC_LIB_FILES = stocc_random_number_generator/mersenne.cpp stocc_random_number_generator/stoc1.cpp stocc_random_number_generator/userintf.cpp
 STOCC_LIB_OBJECTS = $(patsubst %,%,$(STOCC_LIB_FILES:.cpp=.o))
 
-SPOT_TRACKER_LIB_FILES = spot_math.cpp spot_tracker.cpp image_wrapper.cpp base_camera_server.cpp file_stack_server.cpp file_list.cpp
+SPOT_TRACKER_LIB_FILES = spot_math.cpp spot_tracker.cpp image_wrapper.cpp base_camera_server.cpp file_stack_server.cpp file_list.cpp VRPN_Imager_camera_server.cpp
 SPOT_TRACKER_LIB_OBJECTS = $(patsubst %,$(OBJ_DIR)/%,$(SPOT_TRACKER_LIB_FILES:.cpp=.o))
 
 TCL_LINKVAR_LIB_FILES = Tcl_Linkvar85.C
