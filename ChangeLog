@@ -1,3 +1,9 @@
+2008-08-11  Ryan Schubert  <res@cs.unc.edu>
+
+	* video_spot_tracker.* : Adding improved bead auto-finding code.
+		Also fixed a bug that allowed more trackers than the declared
+		vrpn max.
+
 2008-07-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* Makefile : Makes it compile on the BASS system.

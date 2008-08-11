@@ -4,6 +4,7 @@
 	Version="8.00"
 	Name="video_spot_tracker"
 	ProjectGUID="{04742E5F-FD68-4746-81EE-CD6BE17E6CB3}"
+	RootNamespace="video_spot_tracker"
 	>
 	<Platforms>
 		<Platform
@@ -43,7 +44,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\vrpn;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include&quot;;C:\nsrg\external\pc_win32\include;&quot;C:\Program Files\Roper Scientific\PVCAM&quot;;..\quat;C:\DXSDK\include;C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses;..\nano\src\app\nano\lib\nmSEM;..\nano\src\lib\nmBase;..\nano\src\lib\nmMP"
+				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\OpenCV\otherlibs\highgui&quot;;&quot;$(SYSTEMDRIVE)\Program Files\OpenCV\cxcore\include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\OpenCV\cv\include&quot;;..\vrpn;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include&quot;;C:\nsrg\external\pc_win32\include;&quot;C:\Program Files\Roper Scientific\PVCAM&quot;;..\quat;C:\DXSDK\include;C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses;..\nano\src\app\nano\lib\nmSEM;..\nano\src\lib\nmBase;..\nano\src\lib\nmMP"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -71,11 +72,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="SpotCamVC.lib glut32.lib opengl32.lib tcl83.lib tk83.lib odbc32.lib odbccp32.lib quat.lib"
+				AdditionalDependencies="SpotCamVC.lib glut32.lib opengl32.lib tcl83.lib tk83.lib odbc32.lib odbccp32.lib quat.lib cxcore.lib cv.lib highgui.lib"
 				OutputFile=".\Debug/video_spot_tracker.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="../vrpn/pc_win32/Debug,../quat/pc_win32/Debug,$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib,$(SYSTEMDRIVE)\Program Files\GnuWin32\lib,C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib,C:\nsrg\external\pc_win32\lib"
+				AdditionalLibraryDirectories="&quot;$(SYSTEMDRIVE)\Program Files\OpenCV\lib&quot;;../vrpn/pc_win32/Debug;../quat/pc_win32/Debug;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib&quot;;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib&quot;;C:\nsrg\external\pc_win32\lib"
 				IgnoreDefaultLibraryNames="msvcrt.lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/video_spot_tracker.pdb"
@@ -140,7 +141,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="2"
-				AdditionalIncludeDirectories="..\vrpn;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include&quot;;C:\nsrg\external\pc_win32\include;&quot;C:\Program Files\Roper Scientific\PVCAM&quot;;..\quat;C:\DXSDK\include;C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses;..\nano\src\app\nano\lib\nmSEM;..\nano\src\lib\nmBase;..\nano\src\lib\nmMP"
+				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\OpenCV\otherlibs\highgui&quot;;&quot;$(SYSTEMDRIVE)\Program Files\OpenCV\cxcore\include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\OpenCV\cv\include&quot;;..\vrpn;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include&quot;;C:\nsrg\external\pc_win32\include;&quot;C:\Program Files\Roper Scientific\PVCAM&quot;;..\quat;C:\DXSDK\include;C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses;..\nano\src\app\nano\lib\nmSEM;..\nano\src\lib\nmBase;..\nano\src\lib\nmMP"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="2"
@@ -167,11 +168,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="SpotCamVC.lib glut32.lib opengl32.lib tcl83.lib tk83.lib odbc32.lib odbccp32.lib quat.lib"
+				AdditionalDependencies="SpotCamVC.lib glut32.lib opengl32.lib tcl83.lib tk83.lib odbc32.lib odbccp32.lib quat.lib cxcore.lib cv.lib highgui.lib"
 				OutputFile=".\Release/video_spot_tracker.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="../vrpn/pc_win32/Release,../quat/pc_win32/Release,$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib,$(SYSTEMDRIVE)\Program Files\GnuWin32\lib,C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib,C:\nsrg\external\pc_win32\lib"
+				AdditionalLibraryDirectories="&quot;$(SYSTEMDRIVE)\Program Files\OpenCV\lib&quot;;../vrpn/pc_win32/Release;../quat/pc_win32/Release;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib&quot;;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib&quot;;C:\nsrg\external\pc_win32\lib"
 				SubSystem="1"
 				TargetMachine="1"
 			/>

@@ -70,8 +70,16 @@
 //NMmp source files (nanoManipulator project).
 #include <thread.h>
 
+
+// OpenCV includes
+#include <cv.h>
+#include <cxcore.h>
+#include <highgui.h>
+
+
 #include <list>
 #include <vector>
+#include <algorithm>
 using namespace std;
 
 //#define	DEBUG
@@ -108,10 +116,13 @@ const int LOST_HOVER = 2;
 
 class Spot_Information {
 public:
-  Spot_Information(spot_tracker_XY *xytracker, spot_tracker_Z *ztracker) {
+  Spot_Information(spot_tracker_XY *xytracker, spot_tracker_Z *ztracker, bool unofficial = false) {
     d_tracker_XY = xytracker;
     d_tracker_Z = ztracker;
-    d_index = d_static_index++;
+	if (!unofficial)
+		d_index = d_static_index++;
+	else
+		d_index = -1;
     d_velocity[0] = d_acceleration[0] = d_velocity[1] = d_acceleration[1] = 0;
     d_lost = false;
   }
@@ -131,6 +142,8 @@ public:
   bool lost(void) const { return d_lost; };
   void lost(bool l) { d_lost = l; };
 
+  static unsigned get_static_index();
+
 protected:
   spot_tracker_XY	*d_tracker_XY;	    //< The tracker we're keeping information for in XY
   spot_tracker_Z	*d_tracker_Z;	    //< The tracker we're keeping information for in Z
@@ -141,6 +154,8 @@ protected:
   static unsigned	d_static_index;     //< The index to use for the next one (never to be re-used).
 };
 unsigned  Spot_Information::d_static_index = 0;	  //< Start the first instance of a Spot_Information index at zero.
+
+unsigned Spot_Information::get_static_index() { return d_static_index; };
 
 // Used to keep track of the past traces of spots that have been tracked.
 typedef struct { double x; double y; } Position_XY;
@@ -240,6 +255,10 @@ public:
   ThreadUserData  *d_thread_user_data; //< The user data to pass to the thread, protected by the semaphore in d_thread_data.
 };
 vector<ThreadInfo *>    g_tracking_threads;           //< The threads to use for tracking
+
+vector<int> vertCandidates;
+vector<int> horiCandidates;
+bool g_gotNewFrame = false;
 
 //--------------------------------------------------------------------------
 // Tcl controls and displays
@@ -964,6 +983,30 @@ void myDisplayFunc(void)
 	glVertex2f(cxcenter - 500 * cpx, cycenter - 500 * cpy);
       glEnd();
     }
+  }
+
+
+  // For debug info, let's draw the horizontal and vertical lines of our
+  //  candidate SMD auto-find locations.
+  if (g_show_debug)
+  {
+	double x, y;
+	glBegin(GL_LINES);
+	glColor4f(1, 0, 0, 0.8);
+	for (int i = 0; i < vertCandidates.size(); ++i) {
+		x = -1.0 + vertCandidates[i] * (2.0/g_image->get_num_columns());
+		glVertex2f(x, -1);
+		glVertex2f(x, 1);
+	}
+
+	glColor4f(0, 0, 1, 0.8);
+	for (int i = 0; i < horiCandidates.size(); ++i) {
+		y = -1.0 + horiCandidates[i] * (2.0/g_image->get_num_rows());
+		glVertex2f(-1, y);
+		glVertex2f(1, y);
+	}
+	glEnd();
+
   }
 
   // Swap buffers so we can see it.
@@ -1722,6 +1765,39 @@ void tracking_thread_function(void *pvThreadData)
   }
 }
 
+
+// Helper function for find_more_trackers.
+// Computes a local SMD measure (cross) at the location (x,y) with
+//  the specified radius.
+double localSMD(int x, int y, int radius)
+{
+	double Ia, Ib;
+	double xSMD = 0;
+	int n = 0;
+	for (int lx = x - radius; lx < x + radius; ++lx)
+	{
+		g_image->read_pixel(lx, y, Ia, g_colorIndex);
+		g_image->read_pixel(lx + 1, y, Ib, g_colorIndex);
+		xSMD += abs(Ia - Ib);
+		++n;
+	}
+	xSMD = xSMD / (double)n;
+
+	double ySMD = 0;
+	n = 0;
+	for (int ly = y - radius; ly < y + radius; ++ly)
+	{
+		g_image->read_pixel(x, ly, Ia, g_colorIndex);
+		g_image->read_pixel(x, ly + 1, Ib, g_colorIndex);
+		ySMD += abs(Ia - Ib);
+		++n;
+	}
+	ySMD = ySMD / (double)n;
+
+	return (xSMD + ySMD);
+}
+
+
 // Helper function for the next routine; it fills in the region of the
 // image around the specified tracer with the specified value.  It fills
 // the image in to twice the specified radius, to keep spots from overlapping.
@@ -1747,159 +1823,364 @@ void fill_around_tracker_with_value(double_image &im, spot_tracker_XY *t, double
 // able to find them, false if not (or error).
 bool find_more_trackers(unsigned how_many_more)
 {
+	// make sure we only try to auto-find once per new frame of video
+	if (!g_gotNewFrame)
+		return true;
+	else
+		g_gotNewFrame = false;
+
+	// empty out our candidate vectors...
+	vertCandidates.clear();
+	horiCandidates.clear();
+
   int i,j, radius;
   double value;
   int minx, maxx, miny, maxy;
   g_image->read_range(minx, maxx, miny, maxy);
 
-  // Create a tracker whose job it is to probe the global image to
-  // find out how good a fit we find at each pixel.  XXX Later, make
-  // this a set of them, one per available thread, so we can do this
-  // calculation faster.
-  spot_tracker_XY *t = create_appropriate_xytracker(minx, miny, g_Radius);
-  if (t == NULL) {
-    fprintf(stderr,"find_more_trackers(): Could not create tracker\n");
-    return false;
-  }
+  int x, y;
 
-  // If the kernel type is symmetric, then we need to run another
-  // pass with a 2-pixel white-centered cone filter so that we get
-  // a measure of how well each works compared to the background;
-  // otherwise, we'll get high results all over the flat regions of
-  // the image.  If this is the case, then we just fill in the center
-  // part of the image and then switch to a different tracker for the
-  // following parts.  We also point to the new image we've created
-  // as the one to make the data from.
-  image_wrapper *im = g_image;
-  double_image *second_image = NULL;
-  if (g_kernel_type == KERNEL_SYMMETRIC) {
 
-    // Make the new image and fill its middle with the symmetric tracker's
-    // values.  Then point the image to be used for the next part to this
-    // image.
-    second_image = new double_image(minx, maxx, miny, maxy);
-    if (second_image == NULL) {
-      fprintf(stderr,"find_more_trackers(): Could not create image\n");
-      return false;
-    }
-    radius = static_cast<unsigned>(t->get_radius());
-    double maxval = -1e60;
-    for (i = minx + radius; i <= maxx - radius; i++) {
-      for (j = miny + radius; j <= maxy - radius; j++) {
-        t->set_location(i, j);
-        value = t->check_fitness(*im, g_colorIndex);
-        second_image->write_pixel_nocheck(i, j, value);
-        if (value > maxval) { maxval = value; }
-      }
-    }
-    im = second_image;
+  // We'll do a simple gaussian filter on our image before looking for beads.
+  // For this we'll use OpenCV.
 
-    // Fill in the border region with the maximum value in the
-    // image so the cone tracker doesn't prefer points near the
-    // edge in the next step.
-    for (i = 0; i < radius; i++) {
-      for (j = miny; j < maxy; j++) {
-        second_image->write_pixel_nocheck(minx + i, j, maxval);
-        second_image->write_pixel_nocheck(maxx - i, j, maxval);
-      }
-    }
-    for (j = 0; j < radius; j++) {
-      for (i = minx; i < maxx; i++) {
-        second_image->write_pixel_nocheck(i, miny + j, maxval);
-        second_image->write_pixel_nocheck(i, maxy - j, maxval);
-      }
-    }
+	CvSize imgSize;
+	imgSize.width = maxx - minx + 1;
+	imgSize.height = maxy - miny + 1;
+	IplImage* src = cvCreateImage(imgSize, 8, 1);
 
-    // Make a new tracker that is a bright-centered cone tracker that will match
-    // the peaks we expect in the centers of the dark spots better than it will
-    // match the flat areas.
-    delete t;
-    t = new cone_spot_tracker_interp(2);
-    if (t == NULL) {
-      fprintf(stderr,"find_more_trackers(): Could not create tracker\n");
-      return false;
-    }
-  }
+	// first, find the max pixel value so we can scale our double intensities
+	//  effectively into our 0-255 single byte values
+	double maxi = 0;
+	double curi;
+	for (y = miny; y <= maxy; ++y)
+	{
+		for (x = minx; x <= maxx; ++x)
+		{
+			curi = g_image->read_pixel_nocheck(x, y);
+			if (curi > maxi)
+				maxi = curi;
+		}
+	}
 
-  // Create a floating-point image that stores the tracker response
-  // for the current tracker type at every pixel that is more than one
-  // radius away from the border.
-  double_image  kernel_response_image(minx, maxx, miny, maxy);
-  double minval = 1e50;
-  radius = static_cast<unsigned>(t->get_radius());
-  for (i = minx + radius; i <= maxx - radius; i++) {
-    for (j = miny + radius; j < maxy - radius; j++) {
-      t->set_location(i, j);
-      value = t->check_fitness(*im, g_colorIndex);
-      if (value < minval) { minval = value; }
-      kernel_response_image.write_pixel_nocheck(i, j, value);
-    }
-  }
+	// Write the current image values into our temporary IplImage
+	for (y = miny; y <= maxy; ++y)
+	{
+		for (x = minx; x <= maxx; ++x)
+		{
+			curi = g_image->read_pixel_nocheck(x, y);
+			((uchar*)(src->imageData + src->widthStep*(y-miny)))[x - minx] = (curi / maxi) * 255;
+		}
+	}
 
-  // Fill in the minimum value to
-  // all pixels within one radius of the border and within twp radii
-  // of each existing tracker, so that we don't go finding trackers
-  // that are too near either.
-  for (i = 0; i < radius; i++) {
-    for (j = miny; j < maxy; j++) {
-      kernel_response_image.write_pixel_nocheck(minx + i, j, minval);
-      kernel_response_image.write_pixel_nocheck(maxx - i, j, minval);
-    }
-  }
-  for (j = 0; j < radius; j++) {
-    for (i = minx; i < maxx; i++) {
-      kernel_response_image.write_pixel_nocheck(i, miny + j, minval);
-      kernel_response_image.write_pixel_nocheck(i, maxy - j, minval);
-    }
-  }
-  list<Spot_Information *>::iterator  loop;
-  for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-    fill_around_tracker_with_value(kernel_response_image, (*loop)->xytracker(), minval);
-  }
+	IplImage* img = cvCreateImage(cvGetSize(src), src->depth, src->nChannels);
 
-  // Look for the highest value in the image and put a tracker there;
-  // then fill in around the radius with the minimum value so we don't
-  // put another tracker there.  Repeat this until we've got as many
-  // trackers as were asked for.
-  double maxval;
-  unsigned x_of_max, y_of_max;
-  while (how_many_more > 0) {
+	cvSmooth(src, img, CV_GAUSSIAN, 9, 9, 5);
 
-    // Find the largest value.
-    maxval = kernel_response_image.read_pixel_nocheck(minx, miny, 0);
-    x_of_max = minx;
-    y_of_max = miny;
-    for (i = minx; i <= maxx; i++) {
-      for (j = miny; j <= maxy; j++) {
-        value = kernel_response_image.read_pixel_nocheck(i,j, 0);
-        if (value > maxval) {
-          maxval = value;
-          x_of_max = i;
-          y_of_max = j;
-        }
-      }
-    }
+	/* this was to check if we were even doing anything right!
+	cvNamedWindow("Image:", 1);
+	cvShowImage("Image:", img);
+	cvWaitKey();
+	cvDestroyWindow("Image:");
+	//*/
 
-    // Put a new tracker there.
-    if (g_trackers.size() >= vrpn_TRACKER_MAX_SENSORS) {
-      fprintf(stderr, "find_more_trackers(): Too many trackers, only %d allowed\n", vrpn_TRACKER_MAX_SENSORS);
-    } else {
+	// first, we calculate horizontal and vertical SMDs on the global image
+	double SMD = 0;
+	double Ia, Ib;
 
-      g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(x_of_max,y_of_max,g_Radius),create_appropriate_ztracker()));
-      g_active_tracker = g_trackers.back();
-      if (g_active_tracker->ztracker()) { g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
+	double sum = 0, max = -1, min = -1;
 
-      // Fill in around it with the minimum value so we don't look here
-      // again.
-      fill_around_tracker_with_value(kernel_response_image, g_active_tracker->xytracker(), minval);
-    }
+	// vertical SMDs
+	double* vertSMDs = new double[maxx - minx + 1];
+	for (x = minx; x <= maxx; ++x)
+	{
+		SMD = 0;
+		// calcualte one SMD
+		for (y = miny + 1; y <= maxy; ++y)
+		{
+			Ia = ((uchar*)(img->imageData + img->widthStep*y))[x];
+			Ib = ((uchar*)(img->imageData + img->widthStep*(y-1)))[x];
+			SMD += (abs(Ia - Ib));
+		}
+		// normalize by dividing by the number of pairwise computations
+		SMD = SMD / (float)(maxy - miny);
+		vertSMDs[x] = SMD;
 
-    // One less to do.
-    how_many_more--;
-  }
+		if (max == -1)
+			max = SMD;
+		if (min == -1)
+			min = SMD;
+		
+		if (SMD > max)
+			max = SMD;
+		if (SMD < min)
+			min = SMD;		
 
-  if (second_image != NULL) { delete second_image; }
-  if (t = NULL) { delete t; }
+		sum += SMD;
+	}
+
+	double vertAvg = sum / ((float)maxx - minx + 1);
+	//printf("min = %f, max = %f, vertAvg = %f\n", min, max, vertAvg);
+	double vertThresh = 0;
+	//printf("using a vertThresh = %f\n", vertThresh);
+
+	sum = 0;
+	max = -1;
+	min = -1;
+
+	// horizontal SMDs
+	double* horiSMDs = new double[maxy - miny + 1];
+	for (y = miny; y <= maxy; ++y)
+	{
+		SMD = 0;
+		// calcualte one SMD
+		for (x = minx + 1; x <= maxx; ++x)
+		{
+			Ia = ((uchar*)(img->imageData + img->widthStep*y))[x];
+			Ib = ((uchar*)(img->imageData + img->widthStep*y))[x-1];
+			SMD += (abs(Ia - Ib));
+		}
+		// normalize by dividing by the number of pairwise computations
+		SMD = SMD / (float)(maxx - minx);
+		horiSMDs[y] = SMD;
+
+		if (max == -1)
+			max = SMD;
+		if (min == -1)
+			min = SMD;
+		
+		if (SMD > max)
+			max = SMD;
+		if (SMD < min)
+			min = SMD;		
+
+		sum += SMD;
+	}
+
+	double horiAvg = sum / ((float)maxx - minx + 1);
+	//printf("min = %f, max = %f, horiAvg = %f\n", min, max, horiAvg);
+	double horiThresh = 0;
+	//printf("using a horiThresh = %f\n", horiThresh);
+
+	// now we need to pick out the local maxes in our SMDs as candidate bead positions
+
+	int windowRadius = 9;
+	double curMax = 0;
+
+	// pick out local maxes on our vertical SMDs
+	for (x = minx + windowRadius; x <= maxx - windowRadius; ++x)
+	{
+		curMax = 0;
+		// check for the max SMD value within our window size that's > thresh
+		for (i = x - windowRadius; i < x + windowRadius; ++i)
+		{
+			if (vertSMDs[i] > curMax && vertSMDs[i] > vertThresh)
+			{
+				curMax = vertSMDs[i];
+			}
+		}
+		// if we were the max SMD value in our window, then we're a candidate!
+		if (curMax == vertSMDs[x] && curMax != 0)
+		{
+			vertCandidates.push_back(x);
+			x = x + (windowRadius - 1);
+		}
+	}
+
+	// pick out local maxes on our horizontal SMDs
+	for (y = miny + windowRadius; y <= maxy - windowRadius; ++y)
+	{
+		curMax = 0;
+		// check for the max SMD value within our window size that's > thresh
+		for (i = y - windowRadius; i < y + windowRadius; ++i)
+		{
+			if (horiSMDs[i] > curMax && horiSMDs[i] > horiThresh)
+			{
+				curMax = horiSMDs[i];
+			}
+		}
+		// if we were the max SMD value in our window, then we're a candidate!
+		if (curMax == horiSMDs[y] && curMax != 0)
+		{
+			horiCandidates.push_back(y);
+			y = y + (windowRadius - 1);
+		}
+	}
+
+	// Calculate all candidate spot locations (intersections of horizontal and
+	//  vertical candidate scan lines).
+	vector<double> candidateSpotsX;
+	vector<double> candidateSpotsY;
+	vector<double> candidateSpotsSMD;
+
+	double tooClose = 5;
+	double curX, curY;
+	bool safe = false;
+	spot_tracker_XY* curTracker;
+	for each (int cy in horiCandidates)
+	{
+		for each (int cx in vertCandidates)
+		{
+			safe = true;
+			// check to make sure we don't already have a tracker too close
+			for each (Spot_Information* si in g_trackers)
+			{
+				curTracker = si->xytracker();
+				curX = curTracker->get_x();
+				curY = curTracker->get_y();
+				if (cx >= curX - tooClose && cx <= curX + tooClose &&
+					cy >= curY - tooClose && cy <= curY + tooClose )
+				{
+					safe = false;
+				}
+			}
+			if (safe)
+			{
+				candidateSpotsX.push_back(cx);
+				candidateSpotsY.push_back(cy);
+			}
+		}
+	}
+
+	//printf("%i valid candidateSpots to check\n", candidateSpotsX.size());
+
+	// now do local SMDs at candidate spots to determine if they're actually spots.
+	double maxSMD = 0;
+	double minSMD = 1e50;
+	double avgSMD = 0;
+	SMD = 0;
+	radius = 7;
+	for (i = 0; i < candidateSpotsX.size(); ++i)
+	{
+		x = candidateSpotsX[i];
+		y = candidateSpotsY[i];
+		SMD = localSMD(x, y, radius);
+		avgSMD += SMD;
+		if (SMD > maxSMD)
+			maxSMD = SMD;
+		if (SMD < minSMD)
+			minSMD = SMD;
+		candidateSpotsSMD.push_back(SMD);
+	}
+	avgSMD /= candidateSpotsX.size();
+
+
+	//printf("minSMD = %f, maxSMD = %f, avgSMD = %f\n", minSMD, maxSMD, avgSMD);
+	double SMDthresh = avgSMD * 5.0f;
+
+	list<Spot_Information*> potentialTrackers;
+
+	int newTrackers = 0;
+	for (i = 0; i < candidateSpotsSMD.size(); ++i)
+	{
+		if (candidateSpotsSMD[i] > SMDthresh)
+		{
+			// add a new potential tracker!
+			++newTrackers;
+
+			// last argument = true tells Spot_Information that this isn't an official, logged tracker
+			potentialTrackers.push_back(new Spot_Information(create_appropriate_xytracker(candidateSpotsX[i],candidateSpotsY[i],g_Radius),create_appropriate_ztracker(), true));
+
+		}
+	}
+	//printf("%i potential new trackers added!\n", newTrackers);
+
+/*
+	// let's take a look at the distribution of our local SMDs
+	std::sort(candidateSpotsSMD.begin(), candidateSpotsSMD.end());
+
+
+	for each (double localSMDval in candidateSpotsSMD)
+	{
+		printf("%f\n", localSMDval);
+	}
+
+	printf("candidateSpotsSMD.size() = %i\n", candidateSpotsSMD.size());
+
+	CvSize smdImgSize;
+	smdImgSize.width = 600;
+	smdImgSize.height = 100;
+	IplImage* plot = cvCreateImage(smdImgSize, 8, 1);
+
+	for (y = 0; y <= 100; ++y)
+	{
+		for (x = 0; x <= 600; ++x)
+		{
+			((uchar*)(plot->imageData + plot->widthStep*(y)))[x] = 0;
+		}
+	}
+
+	// generate our crude plot in the image we just made
+	int plotX = 0;
+	double plotYscale = 100.0f / maxSMD;
+	int plotY;
+	for each (double localSMDval in candidateSpotsSMD)
+	{
+		plotY = plotYscale * localSMDval;
+		((uchar*)(plot->imageData + plot->widthStep*plotY))[plotX] = 255;
+		plotX = plotX + 1;
+	}
+
+	cvNamedWindow("SMD_dist:", 1);
+	cvShowImage("SMD_dist:", plot);
+	cvWaitKey();
+	cvDestroyWindow("SMD_dist:");
+
+	cvReleaseImage( &plot );
+*/
+
+	int numlost = 0;
+	int numnotlost = 0;
+
+	// check to see which candidate spots aren't already lost
+	for each (Spot_Information* si in potentialTrackers)
+	{
+		// if our candidate tracker isn't lost, then we add it to our list of real trackers
+		optimize_tracker(si);
+		if (!si->lost() && si->xytracker()->get_fitness() < 0)
+		{
+			++numnotlost;
+			if (Spot_Information::get_static_index() >= vrpn_TRACKER_MAX_SENSORS) {
+				fprintf(stderr, "find_more_trackers(): Too many trackers, only %d allowed\n", vrpn_TRACKER_MAX_SENSORS);
+			} else {
+				g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(si->xytracker()->get_x(),si->xytracker()->get_y(),g_Radius),create_appropriate_ztracker()));
+				g_active_tracker = g_trackers.back();
+				if (g_active_tracker->ztracker()) { g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
+			}
+		}
+		else
+			++numlost;
+	}
+
+
+	//printf("%i candidates were lost after optimizing\n", numlost);
+	//printf("%i candidates were not lost.\n", numnotlost);
+	
+
+	
+	// clean up candidate spots memory
+	for each (Spot_Information* si in potentialTrackers)
+	{
+		if (si != NULL)
+		{
+			delete si->xytracker();
+			if(si->ztracker())
+				delete si->ztracker();
+			delete si;
+			si = NULL;
+		}
+	}
+	potentialTrackers.clear();
+
+
+	// clear up our SMD memory
+	delete vertSMDs;
+	delete horiSMDs;
+
+	// clean up our image filtering memory
+	cvReleaseImage( &img );
+	cvReleaseImage( &src );
+
   return true;
 }
 
@@ -2079,6 +2360,7 @@ void myIdleFunc(void)
     } else {
       // Got a valid video frame; can log it.  Add to the frame number.
       g_video_valid = true;
+	  g_gotNewFrame = true;
       g_frame_number++;
     }
   }
@@ -2569,7 +2851,7 @@ void mouseCallbackForGLUT(int button, int state, int raw_x, int raw_y)
 	// Make sure that we don't have too many trackers.  If we do, then don't do anything.
 	// The number is limited for purposes of logging to the maximum number of sensors in
 	// a VRPN tracker.
-	if (g_trackers.size() >= vrpn_TRACKER_MAX_SENSORS) {
+		  if (Spot_Information::get_static_index() >= vrpn_TRACKER_MAX_SENSORS) {
 	  fprintf(stderr, "Too many trackers, only %d allowed\n", vrpn_TRACKER_MAX_SENSORS);
 	  return;
 	}
