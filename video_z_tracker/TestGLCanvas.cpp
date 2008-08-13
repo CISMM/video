@@ -78,7 +78,8 @@ BEGIN_EVENT_TABLE(TestGLCanvas, wxGLCanvas)
 END_EVENT_TABLE()
 
 TestGLCanvas::TestGLCanvas(wxWindow *parent, wxWindowID id,
-    const wxPoint& pos, const wxSize& size, long style, const wxString& name)
+    const wxPoint& pos, const wxSize& size, long style, const wxString& name,
+	char* deviceName)
     : wxGLCanvas(parent, id, pos, size, style|wxFULL_REPAINT_ON_RESIZE, name)
 {
 	InitGL();
@@ -121,7 +122,7 @@ TestGLCanvas::TestGLCanvas(wxWindow *parent, wxWindowID id,
 
 	m_logger = NULL;
 
-	device_name = "TestImage@localhost";
+	device_name = deviceName;
 	printf("Opening %s\n", device_name);
 	m_imager = new vrpn_Imager_Remote(device_name);
 	m_imager->register_description_handler(this, handle_description_message);
@@ -631,11 +632,11 @@ void  VRPN_CALLBACK TestGLCanvas::handle_region_change(void *testglcanvas, const
     // with the channel index.  If it is one of "red", "green", or "blue" then put
     // it into that channel.
     if (strcmp(imager->channel(region->d_chanIndex)->name, "red") == 0) {
-      region->decode_unscaled_region_using_base_pointer(image+0, 3, 3*xDim, 0, yDim, true);
+      region->decode_unscaled_region_using_base_pointer((vrpn_uint8*)image+0, 3, 3*xDim, 0, yDim, true);
     } else if (strcmp(imager->channel(region->d_chanIndex)->name, "green") == 0) {
-      region->decode_unscaled_region_using_base_pointer(image+1, 3, 3*xDim, 0, yDim, true);
+      region->decode_unscaled_region_using_base_pointer((vrpn_uint8*)image+1, 3, 3*xDim, 0, yDim, true);
     } else if (strcmp(imager->channel(region->d_chanIndex)->name, "blue") == 0) {
-      region->decode_unscaled_region_using_base_pointer(image+2, 3, 3*xDim, 0, yDim, true);
+      region->decode_unscaled_region_using_base_pointer((vrpn_uint8*)image+2, 3, 3*xDim, 0, yDim, true);
     } else {
       // This uses a repeat count of three to put the data into all channels.
       // NOTE: This copies each channel into all buffers, rather
@@ -643,7 +644,7 @@ void  VRPN_CALLBACK TestGLCanvas::handle_region_change(void *testglcanvas, const
       // application will probably want to provide a selector to choose which
       // is drawn.  It can check region->d_chanIndex to determine which channel
       // is being reported for each callback.
-      region->decode_unscaled_region_using_base_pointer(image, 3, 3*xDim, 0, yDim, true, 3);
+      region->decode_unscaled_region_using_base_pointer((vrpn_uint8*)image, 3, 3*xDim, 0, yDim, true, 3);
     }
 
 	/* OLDSCHOOL LOGGING!!

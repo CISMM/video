@@ -23,7 +23,8 @@ public:
     TestGLCanvas(wxWindow *parent, wxWindowID id = wxID_ANY,
         const wxPoint& pos = wxDefaultPosition,
         const wxSize& size = wxDefaultSize, long style = 0,
-        const wxString& name = wxT("TestGLCanvas"));
+        const wxString& name = wxT("TestGLCanvas"),
+		char* deviceName = "TestImage@localhost");
 
     ~TestGLCanvas();
 

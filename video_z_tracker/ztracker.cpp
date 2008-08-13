@@ -107,7 +107,9 @@ BEGIN_EVENT_TABLE(zTracker, wxFrame)
 
 END_EVENT_TABLE()
 
-zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoint& pos, const wxSize& size, long style, char* stage_name):
+zTracker::zTracker(wxWindow* parent, int id, const wxString& title,
+				   const wxPoint& pos, const wxSize& size, long style, 
+				   char* stage_name, char* video_name):
     wxFrame(parent, id, title, pos, size, wxDEFAULT_FRAME_STYLE)
 {
 //	g_video = NULL;
@@ -175,7 +177,7 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 	this->Show();
 
 	m_canvas = new TestGLCanvas(m_panel, wxID_ANY, wxDefaultPosition,
-        wxSize(200, 200), wxNO_BORDER);
+        wxSize(200, 200), wxNO_BORDER, "TestGLCanvas", video_name);
 	m_canvas->SetSize(m_canvas->cols, m_canvas->rows);
 
 	m_horizLabel = new wxStaticText(m_panel, wxID_ANY, wxT("Horizontal"), wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL | wxNO_BORDER);
@@ -301,12 +303,6 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title, const wxPoin
 	m_zTrackDampingText = NULL; // for some reason the wx text event callback was happening
 								// when this was still uninitialized!
 	m_zTrackDampingText = new wxTextCtrl(m_panel, Z_DAMPING, "1.0", wxDefaultPosition, wxSize(30, 20));
-
-
-	m_imageGainSlider = new wxIntSlider(m_panel, wxID_ANY, 1, 1, 16);
-
-
-
 
 
 	m_zGuess = NULL;
@@ -1107,7 +1103,7 @@ void zTracker::set_layout()
 	m_assortedSizer->Add(m_updateStage, 0, wxALL, 3);
 	m_assortedSizer->Add(m_trackingSizer, 0, 0, 0);
 	//m_assortedSizer->Add(m_manualFocusSizer, 0, 0, 0);
-	m_assortedSizer->Add(m_imageGainSlider, 0, wxALL, 3);
+
 	
 	m_loggingSizer->Add(m_loggingButton, 0, wxALL, 3);
 	m_loggingSizer->Add(m_logfileText, 0, wxALL, 3);

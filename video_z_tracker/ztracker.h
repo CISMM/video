@@ -34,7 +34,8 @@
 class zTracker : public wxFrame {
 public:
     zTracker(wxWindow* parent, int id, const wxString& title, const wxPoint& pos=wxDefaultPosition, 
-		const wxSize& size=wxDefaultSize, long style=wxDEFAULT_FRAME_STYLE, char* stage_name="Focus@mercury-cs.cs.unc.edu");
+		const wxSize& size=wxDefaultSize, long style=wxDEFAULT_FRAME_STYLE, 
+		char* stage_name="Focus@localhost", char* video_name="TestImage@localhost");
 
 	~zTracker();
 
@@ -180,9 +181,6 @@ protected:
 	wxBoxSizer* m_loggingSizer;
 	wxTextCtrl* m_logfileText;
 	wxButton* m_loggingButton;
-
-	wxIntSlider* m_imageGainSlider;
-
 
 	// spot tracker stuff
 	Spot_Information* m_spotTracker;

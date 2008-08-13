@@ -7,7 +7,7 @@ CameraImage::CameraImage(int width, int height)
 	m_width = width;
 	m_height = height;
 
-	m_image = new unsigned char[height * width * 3];
+	m_image = new vrpn_uint8[height * width * 3];
 	
 	// initialize our image memory, if we want
 	for (int x = 0; x < width; ++x)
@@ -16,7 +16,7 @@ CameraImage::CameraImage(int width, int height)
 		{
 			m_image[3 * (x + width * y) + 0] = 0;
 			m_image[3 * (x + width * y) + 1] = 0;
-			m_image[3 * (x + width * y) + 2] = 255;
+			m_image[3 * (x + width * y) + 2] = 0;
 		}
 	}
 }
@@ -58,7 +58,7 @@ double CameraImage::read_pixel_nocheck(int x, int y, unsigned rgb) const
 bool CameraImage::write_to_opengl_quad(double scale, double offset)
 {
 	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();	
+	glLoadIdentity();
 
 	gluOrtho2D(-1.0, 1.0, -1.0, 1.0);
 
@@ -73,5 +73,5 @@ bool CameraImage::write_to_opengl_quad(double scale, double offset)
 
 unsigned char* CameraImage::getRawImagePointer()
 {
-	return m_image;
+	return (unsigned char*)m_image;
 }

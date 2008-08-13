@@ -24,7 +24,7 @@ public:
 protected:
 
 private:
-	unsigned char* m_image;
+	vrpn_uint8* m_image;
 
 	int m_width;
 	int m_height;
