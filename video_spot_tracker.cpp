@@ -292,6 +292,7 @@ Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_t
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
 Tclvar_float_with_scale g_lossSensitivity("lost_tracking_sensitivity", ".lost_and_found_controls.bottom", 0.0, 1.0, 0.0);
 Tclvar_float_with_scale g_findThisManyBeads("maintain_this_many_beads", ".lost_and_found_controls.bottom", 0.0, 100.0, 0.0);
+Tclvar_float_with_scale g_candidateSpotThreshold("candidate_spot_threshold", ".lost_and_found_controls.bottom", 0.0, 5.0, 5.0);
 Tclvar_int_with_button  g_lostBehavior("lost_behavior",NULL,0);
 Tclvar_int_with_button	g_showLostAndFound("show_lost_and_found","",0);
 Tclvar_int_with_button	g_invert("dark_spot",NULL,0, rebuild_trackers);
@@ -2049,7 +2050,7 @@ bool find_more_trackers(unsigned how_many_more)
 	double minSMD = 1e50;
 	double avgSMD = 0;
 	SMD = 0;
-	radius = 7;
+	radius = g_Radius;
 	for (i = 0; i < candidateSpotsX.size(); ++i)
 	{
 		x = candidateSpotsX[i];
@@ -2066,7 +2067,7 @@ bool find_more_trackers(unsigned how_many_more)
 
 
 	//printf("minSMD = %f, maxSMD = %f, avgSMD = %f\n", minSMD, maxSMD, avgSMD);
-	double SMDthresh = avgSMD * 5.0f;
+	double SMDthresh = avgSMD * g_candidateSpotThreshold;
 
 	list<Spot_Information*> potentialTrackers;
 

@@ -1,3 +1,9 @@
+2008-08-13  Ryan Schubert  <res@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Added a float slider in the lost and found
+		box for changing the local SMD threshold multiplier (it uses
+		avgSMD * [multiplier] as the threshold).
+
 2008-08-11  Ryan Schubert  <res@cs.unc.edu>
 
 	* video_spot_tracker.* : Adding improved bead auto-finding code.
