@@ -283,6 +283,12 @@ bool roper_server::open_and_find_parameters(void)
     fprintf(stderr,"roper_server::open_and_find_parameters(): Does not support circular buffers (using single-capture mode)\n");
   }
 
+  // Get the camera bit depth
+  PL_CHECK_EXIT(pl_get_param(_camera_handle, PARAM_BIT_DEPTH, ATTR_CURRENT, &_bit_depth),
+	  "PARAM_BIT_DEPTH");
+
+  printf("Bit depth = %i\n", _bit_depth);
+
   // XXX Find the list of available exposure settings..
 
   return true;
@@ -560,8 +566,8 @@ bool roper_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrc
     uns16 rows = (_maxY - _minY)/_binning + 1;
     unsigned  num_x = cols;
     unsigned  num_y = rows;
-    //XXX Should be 16-bit version later
-    int nRowsPerRegion = vrpn_IMAGER_MAX_REGIONu8/(num_x*sizeof(vrpn_uint8)) - 1;
+    //XXX Changed to use 16-bit values
+    int nRowsPerRegion = vrpn_IMAGER_MAX_REGIONu16/(num_x*sizeof(vrpn_uint16)) - 1;
     unsigned y;
 
     //XXX Check for lost frames in continuous mode and report them if they are found.
@@ -569,11 +575,13 @@ bool roper_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrc
     //XXX This is hacked to send the upper 8 bits of each value. Need to modify reader to handle 16-bit ints.
     // For these, stride will be 1 and offset will be 0, and the code will use memcpy() to copy the values.
     // Later, it should send 16 bits.
-    const int stride = 2;
-    const int offset = 1;
+	//XXX This has now been changed to send all 16 bits--either strait up or as a 12in16 depending on the
+	// camera bit depth
+    const int stride = 1;
+    const int offset = 0;
     svr->send_begin_frame(0, cols-1, 0, rows-1);
     for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
-      svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1, reinterpret_cast<vrpn_uint8 *>(_memory) + offset, stride, num_x * stride);
+      svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1, reinterpret_cast<vrpn_uint16 *>(_memory) + offset, stride, num_x * stride);
       svr->mainloop();
     }
     svr->send_end_frame(0, cols-1, 0, rows-1);

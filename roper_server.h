@@ -42,6 +42,7 @@ protected:
   unsigned  _circbuffer_num;  //< Number of images in the circular buffer
   uns16	    *_circbuffer;     //< Buffer to hold the images from the camera
   uns32     _last_buffer_cnt; //< How many buffers read continuously before?
+  uns16		_bit_depth;		  //< Number of valid bits in the 16-bit values from camera
 
   // Buffers and pointers to the image data.
   uns16     *_buffer;  //< Global memory-locked buffer
