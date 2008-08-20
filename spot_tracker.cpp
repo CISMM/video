@@ -419,6 +419,68 @@ void  spot_tracker_Z::optimize(const image_wrapper &image, unsigned rgb, double 
   } while (true);
 }
 
+local_max_spot_tracker::local_max_spot_tracker(double radius, bool inverted, double pixelaccuracy,
+											   double radiusaccuracy, double sample_separation_in_pixels) :
+	spot_tracker_XY(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)
+{
+	
+}
+
+double local_max_spot_tracker::check_fitness(const image_wrapper &image, unsigned rgb)
+{
+	// It doesn't matter what we return, because we don't even call this method.
+	return 0.0;
+}
+
+bool local_max_spot_tracker::take_single_optimization_step(const image_wrapper &image, unsigned rgb, 
+														   double &x, double &y, bool do_x, bool do_y, bool do_r)
+{
+	// Find maximum value within the radius of the spot.
+	double maximum = 0.0;
+	double radius2 = this->get_radius() * this->get_radius();
+	double val = 0.0;
+	double i, j;
+	int ilow = (int)floor(get_x() - _rad);
+	int ihigh = (int)ceil(get_x() + _rad);
+	int jlow = (int)floor(get_y() - _rad);
+	int jhigh = (int)ceil(get_y() + _rad);
+	for (i = ilow; i <= ihigh; i += _samplesep) {
+		for (j = jlow; j <= jhigh; j += _samplesep) {
+			double dist2 = (i-get_x())*(i-get_x()) + (j-get_y())*(j-get_y());
+			if (dist2 <= radius2) {
+				if (image.read_pixel((int) i, (int) j, val, rgb) && val > maximum) { 
+					maximum = val;
+				}
+			}
+		}
+	}
+
+	// Find centroid of all pixels with maximum value
+	double pixelCount = 0.0;
+	double centroidX = 0.0, centroidY = 0.0;
+	for (i = ilow; i <= ihigh; i += _samplesep) {
+		for (j = jlow; j <= jhigh; j += _samplesep) {
+			double dist2 = (i-get_x())*(i-get_x()) + (j-get_y())*(j-get_y());
+			if (dist2 <= radius2) {
+				if (image.read_pixel((int)i, (int)j, val, rgb) && val == maximum) {
+					centroidX += (int) i;
+					centroidY += (int) j;
+					pixelCount += 1.0;
+				}
+			}
+		}
+	}
+
+	set_location(centroidX / pixelCount, centroidY / pixelCount);
+	x = get_x();
+	y = get_y();
+
+	// We'll always find the local max with a single call, so we'll trick the
+	// caller into thinking we haven't found a better solution, causing the caller
+	// to stop optimization.
+	return false;
+}
+
 
 disk_spot_tracker::disk_spot_tracker(double radius, bool inverted, double pixelaccuracy,
 				     double radiusaccuracy, double sample_separation_in_pixels) :

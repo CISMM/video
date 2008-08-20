@@ -1,24 +1,8 @@
-2008-08-13  Ryan Schubert  <res@cs.unc.edu>
+2008-08-19  Cory Quammen <cquammen@cs.unc.edu>
 
-	* roper_server.* : Adding support for 16 bit Roper cameras.
-
-2008-08-13  Ryan Schubert  <res@cs.unc.edu>
-
-	* video_spot_tracker.cpp : Added a float slider in the lost and found
-		box for changing the local SMD threshold multiplier (it uses
-		avgSMD * [multiplier] as the threshold).
-
-2008-08-11  Ryan Schubert  <res@cs.unc.edu>
-
-	* video_spot_tracker.* : Adding improved bead auto-finding code.
-		Also fixed a bug that allowed more trackers than the declared
-		vrpn max.
-
-2008-07-30  Russell M. Taylor II  <taylorr@cs.unc.edu>
-
-	* Makefile : Makes it compile on the BASS system.
-	* VRPN_Imager_camera_serer.cpp : Same.
-	* controllable_video.h : Same.
+	* spot_tracker.h,.C: Added methods to spot_tracker_XY to set desired
+	radius accuracy, sample separation, and inversion. Added local maximum
+	spot tracker.
 
 2008-04-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
 

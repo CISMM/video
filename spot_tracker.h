@@ -64,8 +64,17 @@ public:
   /// Set the location for the bead.
   virtual void	set_location(const double x, const double y) { _x = x; _y = y; };
 
-  /// Set the desired pixel accuracy
+  /// Set the desired pixel accuracy.
   virtual bool	set_pixel_accuracy(const double a) { if (a <= 0) { return false; } else {_pixelacc = a; return true; } };
+
+  /// Set the desired radius accuracy.
+  virtual bool set_radius_accuracy(const double a) { if (a <= 0) { return false; } else {_radacc = a; return true; } };
+
+  /// Set the spacing between samples in terms of pixels
+  virtual bool set_sample_separation(const double s) { if (s <= 0) { return false; } else {_samplesep = s; return true; } };
+
+  /// Set with the fitting functions should be inverted.
+  virtual bool set_invert(const bool invert) { _invert = invert; return true; };
 
 protected:
   double  _samplesep; //< Spacing between samples in pixels
@@ -137,6 +146,39 @@ protected:
   double  _radius;	//< Radius of the tracker
 
   spot_tracker_Z(double minz, double maxz, double radius, double depthaccuracy = 0.25);
+};
+
+//----------------------------------------------------------------------------
+// This class will center the tracker at a local maximum within a circular
+// neighborhood defined by the tracker position and radius. If several pixels 
+// share the maximum value in the region, then the centroid of those pixels
+// is taken to be the center
+
+class local_max_spot_tracker : public spot_tracker_XY {
+public:
+	// Set initial parameters of the local max search routine
+	local_max_spot_tracker(double radius,
+		bool inverted = false,
+		double pixelaccuracy = 1.0,
+		double radiusaccuracy = 0.25,
+		double sample_separation_in_pixels = 1.0);
+
+	/// Check the fitness against an image, at the current parameter settings.
+	// Return the fitness value there.
+	virtual double check_fitness(const image_wrapper &image, unsigned rgb);
+
+	//------------------------------------------------
+	// The local_max tracker simply finds the pixel with the maximum value in 
+	// a circular neighborhood defined by the tracker position and radius. If
+	// several pixels have the same maximum value, the centroid of those positions
+	// is returned.
+
+	// This method will always "optimize" in x and y, but not r. It will always return
+	// false to indicate to callers that no further optimization should take place.
+	virtual bool take_single_optimization_step(const image_wrapper &image, unsigned rgb, double &x, double &y,
+				      bool do_x, bool do_y, bool do_r);
+
+protected:
 };
 
 
