@@ -4,6 +4,7 @@
 	Version="8.00"
 	Name="roper_library"
 	ProjectGUID="{B14D45A3-AFC9-4142-B872-6F38E18649AE}"
+	RootNamespace="roper_library"
 	>
 	<Platforms>
 		<Platform
@@ -41,7 +42,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Roper Scientific\PVCAM&quot;;..\vrpn"
+				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Roper Scientific\PVCAM&quot;;..\vrpn;C:\NSRG\external\pc_win32\include"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -117,7 +118,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Roper Scientific\PVCAM&quot;;..\vrpn"
+				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Roper Scientific\PVCAM&quot;;..\vrpn;C:\NSRG\external\pc_win32\include"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="2"

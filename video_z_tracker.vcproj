@@ -61,7 +61,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="wxmsw28d_gl.lib comctl32.lib rpcrt4.lib file_stack_library.lib base_camera_server.lib vrpn.lib quat.lib VRPN_Imager_library.lib"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="../quat/pc_win32/Release;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib&quot;;&quot;..\wxWidgets-2.8.3\lib\vc_lib&quot;;&quot;C:\NSRG\external\pc_win32\wxWidgets-2.8.3\lib\vc_lib&quot;;..\vrpn\pc_win32\Debug;.\Debug;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib&quot;"
+				AdditionalLibraryDirectories="../quat/pc_win32/Release;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib&quot;;&quot;..\wxWidgets-2.8.3\lib\vc_lib&quot;;&quot;C:\NSRG\external\pc_win32\wxWidgets-2.8.3\lib\vc_lib&quot;;..\vrpn\pc_win32\Debug;.\Debug;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib&quot;;C:\NSRG\external\pc_win32\lib"
 				IgnoreDefaultLibraryNames="msvcrt.lib"
 				GenerateDebugInformation="true"
 				SubSystem="1"
