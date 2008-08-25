@@ -1,3 +1,11 @@
+2008-08-25  Ryan Schubert  <res@cs.unc.edu>
+
+	* ztracker.cpp : Removed File...->Open from menu system.  Renamed
+		"logging" in Advanced menu to "plotting".  Added a label
+		for the p-gain text box.
+	* ztrackmain.cpp : Fixed video server defaulting to 
+		TestImage@localhost
+
 2008-08-13  Ryan Schubert  <res@cs.unc.edu>
 
 	* video_z_tracker.vcproj : Adding cameraImage class files.

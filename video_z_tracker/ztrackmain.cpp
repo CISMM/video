@@ -17,7 +17,7 @@ bool zTrackApp::OnInit()
 
 	//char* stage_name = "Focus@aurum-cs.cs.unc.edu";
 	char* stage_name = "";
-	char* video_name = "";
+	char* video_name = "TestImage@localhost";
 
 	if (argc > 1) // get stage control specification
 	{
@@ -50,16 +50,19 @@ bool zTrackApp::OnInit()
 			{
 				printf("Likely a mal-formed video server specified: %s\n", video_name);
 			}
-
 		}
 	}
 
-    zTracker* frmZTrack = new zTracker(0, -1, wxT("Video Z Tracker, prototype version."),wxDefaultPosition, appSize,
-		wxDEFAULT_FRAME_STYLE, stage_name, video_name);
-    SetTopWindow(frmZTrack);
+	zTracker* frmZTrack = new zTracker(0, -1, wxT("Video Z Tracker, prototype version."),
+		wxDefaultPosition, appSize, wxDEFAULT_FRAME_STYLE, stage_name, video_name);
+
+
+
+	SetTopWindow(frmZTrack);
 	frmZTrack->Show();
 
-    return true;
+	return true;
+
 }
 
 IMPLEMENT_APP_CONSOLE(zTrackApp)

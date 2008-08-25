@@ -138,8 +138,8 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title,
 
 	// Make the "File" menu
     wxMenu *fileMenu = new wxMenu;
-    fileMenu->Append(wxID_OPEN, wxT("&Open..."));
-    fileMenu->AppendSeparator();
+//    fileMenu->Append(wxID_OPEN, wxT("&Open..."));
+//    fileMenu->AppendSeparator();
     fileMenu->Append(wxID_EXIT, wxT("E&xit\tALT-X"));
 
     // Make the "Help" menu
@@ -150,8 +150,8 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title,
 	// Make the "Advanced" menu
 	wxMenu *advancedMenu = new wxMenu;
 	advancedMenu->Append(MENU_SHOW_ADV, wxT("Toggle &Adv. Options"));
-	advancedMenu->Append(MENU_START_LOG, wxT("&Start Logging"));
-	advancedMenu->Append(MENU_STOP_LOG, wxT("S&top Logging"));
+	advancedMenu->Append(MENU_START_LOG, wxT("&Start Plotting"));
+	advancedMenu->Append(MENU_STOP_LOG, wxT("S&top Plotting"));
 
 	// Make the "Camera" menu
 	wxMenu *cameraMenu = new wxMenu;
@@ -1064,6 +1064,7 @@ void zTracker::set_layout()
 	m_zSizer->Add(m_zUpText, 0, wxALIGN_CENTER);
 	m_zSizer->Add(m_zVelText, 0, wxALIGN_CENTER);
 	m_zSizer->Add(m_zDownText, 0, wxALIGN_CENTER);
+	m_zSizer->Add(new wxStaticText(m_panel, wxID_ANY, wxT("p-gain")), 0, wxALIGN_CENTER);
 	m_zSizer->Add(m_zTrackDampingText, 0, wxALIGN_CENTER);
 
 	m_canvasSizer->Add(m_canvas, 0, wxALL, 3);
