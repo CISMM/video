@@ -4,6 +4,7 @@
 	Version="8.00"
 	Name="file_stack_library"
 	ProjectGUID="{3EC043E1-84AB-4975-8298-6AC796B6F406}"
+	RootNamespace="file_stack_library"
 	>
 	<Platforms>
 		<Platform
@@ -41,7 +42,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;C:\Program Files\GnuWin32\include&quot;;&quot;D:\Program Files\GnuWin32\include&quot;;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include&quot;;..\vrpn;..\quat;C:\nsrg\external\pc_win32\include"
+				AdditionalIncludeDirectories="C:\NSRG\external\pc_win32\ImageMagick\include;..\vrpn;..\quat"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -117,7 +118,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;C:\Program Files\GnuWin32\include&quot;;&quot;D:\Program Files\GnuWin32\include&quot;;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include&quot;;..\vrpn;..\quat;C:\nsrg\external\pc_win32\include"
+				AdditionalIncludeDirectories="C:\NSRG\external\pc_win32\ImageMagick\include;..\vrpn;..\quat"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="2"

@@ -4,6 +4,7 @@
 	Version="8.00"
 	Name="base_camera_server"
 	ProjectGUID="{91C28129-4CA6-4833-88B5-25CCA8B16722}"
+	RootNamespace="base_camera_server"
 	>
 	<Platforms>
 		<Platform
@@ -42,7 +43,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include&quot;;..\vrpn"
+				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;C:\NSRG\external\pc_win32\ImageMagick\include;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include&quot;;..\vrpn"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="2"
@@ -116,7 +117,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include&quot;;..\vrpn"
+				AdditionalIncludeDirectories="C:\NSRG\external\pc_win32\ImageMagick\include;..\vrpn"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
