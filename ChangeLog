@@ -1,5 +1,9 @@
 2008-09-15  Ryan Schubert  <res@cs.unc.edu>
 
+	* video_z_tracker.vcproj : Updating for the new buildtime.
+
+2008-09-15  Ryan Schubert  <res@cs.unc.edu>
+
 	* *.vcproj : Updating project files for the new buildtime.
 
 2008-09-11  David Marshburn  <marshbur@cs.unc.edu>
