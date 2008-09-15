@@ -1,3 +1,17 @@
+2008-09-15  David Marshburn  <marshbur@cs.unc.edu>
+
+	* diaginc_library.vcproj:  corrected paths for new buildtime.
+	also, for some reason, it was necessary to define _WINDOWS to
+	the c/c++ preprocessor for the spot library to correctly define
+	all the stuff that it needed to define.
+	* diaginc_server.cpp:  the SPOT library did away with the 
+	SPOT_INTF_CARD_STRUCT structure and the SpotFindInterfaceCards 
+	function in favor of the SPOT_DEVICE_STRUCT structure and the
+	SpotFindDevices function.  it seems to have been a simple name
+	change; at least, everything compiles if i just swap in the 
+	new names.
+	* roper_library.vcproj:  corrected paths for new buildtime.
+
 2008-09-15  Ryan Schubert  <res@cs.unc.edu>
 
 	* video_z_tracker.vcproj : Updating for the new buildtime.

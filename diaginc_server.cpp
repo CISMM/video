@@ -110,7 +110,8 @@ bool diaginc_server::open_and_find_parameters(void)
   // name of the first camera, open it, and make sure that it has
   // no critical failures.
   int	  num_cameras;
-  SPOT_INTF_CARD_STRUCT	cameras[SPOT_MAX_INTF_CARDS];
+  //SPOT_INTF_CARD_STRUCT	cameras[SPOT_MAX_INTF_CARDS];
+  SPOT_DEVICE_STRUCT cameras[ SPOT_MAX_DEVICES ];
   short	  camera_to_use = 0;
   short	  bitdepth = 0;
   short	  binRange[2];
@@ -118,7 +119,8 @@ bool diaginc_server::open_and_find_parameters(void)
 
   // Find the list of cameras available, select the
   // first one, and then initialize the library.
-  SpotFindInterfaceCards(cameras, &num_cameras);
+  // SpotFindInterfaceCards(cameras, &num_cameras);
+  SpotFindDevices( cameras, &num_cameras );
   if (num_cameras <= 0) {
     fprintf(stderr,"SPOT driver: Cannot find any connected cameras\n");
     return false;

@@ -42,7 +42,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Roper Scientific\PVCAM&quot;;..\vrpn;C:\NSRG\external\pc_win32\include"
+				AdditionalIncludeDirectories="..\vrpn;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Headers&quot;"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -118,7 +118,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Roper Scientific\PVCAM&quot;;..\vrpn;C:\NSRG\external\pc_win32\include"
+				AdditionalIncludeDirectories="..\vrpn;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Headers&quot;"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="2"
