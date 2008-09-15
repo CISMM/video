@@ -121,15 +121,44 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title,
 
 	m_channel = 0;			// Red
 
-	m_logging = false; // THIS IS FOR FOCUS PLOT LOGGING, NOT IMAGE LOGGING!
+	m_logging = false; // THIS IS FOR FOCUS PLOT LOGGING, NOT IMAGE/STAGE LOGGING!
 
 
 	// set up stage logging now!
 	m_stageLogger = NULL;
 	if (stage_name != "")
-		m_stageLogger = new vrpn_Auxiliary_Logger_Remote(stage_name);
+	{
+		char stagelogger[80];
+		char stagedevice[80];
+		char stageaddress[80];
+
+		int devicelen = strchr(stage_name, '@') - stage_name;
+
+		strncpy(stagedevice, stage_name, devicelen);
+		stagedevice[devicelen]='\0'; // append the null terminating char
+
+		//printf("stagedevice = %s\n", stagedevice);
+
+		int addresslen = strlen(stage_name) - devicelen - 1;
+		strncpy(stageaddress, stage_name + devicelen + 1, addresslen);
+		stageaddress[addresslen]='\0';
+
+		//printf("stageaddress = %s\n", stageaddress);
+
+
+		// combine the pieces for our aux logger address
+		strcpy(stagelogger, stagedevice);
+		strcat(stagelogger, "Logger");
+		strcat(stagelogger, "@");
+		strcat(stagelogger, stageaddress);
+
+		printf("stage logging device (aux logger) is \"%s\"\n", stagelogger);
+		m_stageLogger = new vrpn_Auxiliary_Logger_Remote(stagelogger);
+	}
 	else
+	{
 		printf("Warning: No stage logger initialized\n");
+	}
 
 	m_videoAndStageLogging = false;
 
@@ -689,6 +718,8 @@ void zTracker::OnLoggingButton(wxCommandEvent& event)
 		{
 			if (!m_stageLogger->send_logging_request("", "", "", stagelogfile))
 				printf("Stage logging request failed!\n");
+
+			printf("IN THEORY WE'RE LOGGING STAGE POSITION NOW!\n");
 		}
 		else
 		{

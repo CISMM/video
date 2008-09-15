@@ -1,3 +1,12 @@
+2008-09-15  Ryan Schubert  <res@cs.unc.edu>
+
+	* ztracker.cpp : Made some changes to stage logging.  Now this
+		app will automatically try to make a second connection to
+		the same server as the stage server, with the device name
+		"[stage device]Logger".  It's up to the stage server to
+		also run an aux logger of that name that points at the 
+		stage server.
+
 2008-08-25  Ryan Schubert  <res@cs.unc.edu>
 
 	* ztracker.cpp : Removed File...->Open from menu system.  Renamed
