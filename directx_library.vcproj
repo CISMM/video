@@ -4,6 +4,7 @@
 	Version="8.00"
 	Name="directx_library"
 	ProjectGUID="{FC2FFA8B-2402-4802-A5C4-AFE506D8AB14}"
+	RootNamespace="directx_library"
 	>
 	<Platforms>
 		<Platform
@@ -42,7 +43,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="..\vrpn;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;"
+				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\include&quot;;..\vrpn;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="2"
@@ -116,7 +117,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\vrpn;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;"
+				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\include&quot;;..\vrpn;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"

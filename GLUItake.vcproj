@@ -4,6 +4,7 @@
 	Version="8.00"
 	Name="GLUItake"
 	ProjectGUID="{E0F462DC-62C7-4A9E-BD23-CC83A5175E09}"
+	RootNamespace="GLUItake"
 	>
 	<Platforms>
 		<Platform
@@ -44,7 +45,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;C:\nsrg\external\pc_win32\include;../vrpn;../glui_v2_2;C:\EDT\pdv"
+				AdditionalIncludeDirectories="C:\NSRG\external\pc_win32\GL\include;../vrpn;C:\NSRG\external\pc_win32\glui;C:\NSRG\external\pc_win32\EDT\pdv"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="2"
@@ -73,7 +74,7 @@
 				OutputFile=".\Release/GLUItake.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="../glui_v2_2/msvc/lib,C:\nsrg\external\pc_win32\lib"
+				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\GL\lib;C:\NSRG\external\pc_win32\glui"
 				ProgramDatabaseFile=".\Release/GLUItake.pdb"
 				SubSystem="1"
 				TargetMachine="1"
@@ -135,7 +136,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;C:\nsrg\external\pc_win32\include;../vrpn;../glui_v2_2;C:\EDT\pdv"
+				AdditionalIncludeDirectories="C:\NSRG\external\pc_win32\GL\include;../vrpn;C:\NSRG\external\pc_win32\glui;C:\NSRG\external\pc_win32\EDT\pdv"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -165,7 +166,7 @@
 				OutputFile=".\Debug/GLUItake.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="../glui_v2_2/msvc/lib,C:\nsrg\external\pc_win32\lib"
+				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\GL\lib;C:\NSRG\external\pc_win32\glui"
 				IgnoreDefaultLibraryNames="msvcrt.lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/GLUItake.pdb"

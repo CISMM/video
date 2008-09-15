@@ -1,3 +1,7 @@
+2008-09-15  Ryan Schubert  <res@cs.unc.edu>
+
+	* *.vcproj : Updating project files for the new buildtime.
+
 2008-09-11  David Marshburn  <marshbur@cs.unc.edu>
 
 	* *.vcproj:  updated paths for new build/run-time.  these are

@@ -4,6 +4,7 @@
 	Version="8.00"
 	Name="video_imager_server"
 	ProjectGUID="{EB326E4B-7613-4982-8922-D276E0854B50}"
+	RootNamespace="video_imager_server"
 	>
 	<Platforms>
 		<Platform
@@ -44,7 +45,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses,$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\include,$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include,C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include,D:\Program Files\Roper Scientific\PVCAM,C:\Program Files\Roper Scientific\PVCAM,..\vrpn,..\nano\src\lib\nmBase,..\nano\src\lib\nmMP,C:\nsrg\external\pc_win32\include"
+				AdditionalIncludeDirectories="&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\include&quot;;&quot;C:\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;C:\nsrg\external\pc_win32\ImageMagick\include;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Headers&quot;;..\vrpn;..\nano\src\lib\nmBase;..\nano\src\lib\nmMP"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="2"
@@ -74,7 +75,7 @@
 				OutputFile=".\Release/video_imager_server.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="../vrpn/pc_win32/Release,$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib,C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib,C:\Program Files\Roper Scientific\PVCAM,C:\nsrg\external\pc_win32\lib"
+				AdditionalLibraryDirectories="../vrpn/pc_win32/Release;C:\nsrg\external\pc_win32\ImageMagick\lib;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\tcl\lib"
 				SubSystem="1"
 				TargetMachine="1"
 			/>
@@ -135,7 +136,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses,$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\include,$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include,C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\include,D:\Program Files\Roper Scientific\PVCAM,C:\Program Files\Roper Scientific\PVCAM,..\vrpn,..\nano\src\lib\nmBase,..\nano\src\lib\nmMP,C:\nsrg\external\pc_win32\include"
+				AdditionalIncludeDirectories="&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\include&quot;;&quot;C:\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;C:\nsrg\external\pc_win32\ImageMagick\include;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Headers&quot;;..\vrpn;..\nano\src\lib\nmBase;..\nano\src\lib\nmMP"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -167,7 +168,7 @@
 				OutputFile=".\Debug/video_imager_server.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="../vrpn/pc_win32/Debug,$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib,C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib,C:\Program Files\Roper Scientific\PVCAM,C:\nsrg\external\pc_win32\lib"
+				AdditionalLibraryDirectories="../vrpn/pc_win32/Debug;C:\nsrg\external\pc_win32\ImageMagick\lib;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\tcl\lib"
 				IgnoreDefaultLibraryNames="msvcrt.lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/video_imager_server.pdb"

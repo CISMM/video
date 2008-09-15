@@ -4,6 +4,7 @@
 	Version="8.00"
 	Name="edt_library"
 	ProjectGUID="{C5400E41-45AE-4067-98BA-AEABD147046C}"
+	RootNamespace="edt_library"
 	>
 	<Platforms>
 		<Platform
@@ -327,50 +328,6 @@
 			</File>
 			<File
 				RelativePath="$(SYSTEMDRIVE)\EDT\pdv\libpdv.c"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="$(SYSTEMDRIVE)\EDT\pdv\pdv_bayer_filter.c"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="$(SYSTEMDRIVE)\EDT\pdv\pdv_dmy_image.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
