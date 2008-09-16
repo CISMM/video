@@ -994,14 +994,15 @@ void myDisplayFunc(void)
 	double x, y;
 	glBegin(GL_LINES);
 	glColor4f(1, 0, 0, 0.8);
-	for (int i = 0; i < vertCandidates.size(); ++i) {
+        unsigned i;
+	for (i = 0; i < vertCandidates.size(); ++i) {
 		x = -1.0 + vertCandidates[i] * (2.0/g_image->get_num_columns());
 		glVertex2f(x, -1);
 		glVertex2f(x, 1);
 	}
 
 	glColor4f(0, 0, 1, 0.8);
-	for (int i = 0; i < horiCandidates.size(); ++i) {
+	for (i = 0; i < horiCandidates.size(); ++i) {
 		y = -1.0 + horiCandidates[i] * (2.0/g_image->get_num_rows());
 		glVertex2f(-1, y);
 		glVertex2f(1, y);
@@ -1834,8 +1835,7 @@ bool find_more_trackers(unsigned how_many_more)
 	vertCandidates.clear();
 	horiCandidates.clear();
 
-  int i,j, radius;
-  double value;
+  int i, radius;
   int minx, maxx, miny, maxy;
   g_image->read_range(minx, maxx, miny, maxy);
 
@@ -1969,40 +1969,33 @@ bool find_more_trackers(unsigned how_many_more)
 	double curMax = 0;
 
 	// pick out local maxes on our vertical SMDs
-	for (x = minx + windowRadius; x <= maxx - windowRadius; ++x)
-	{
+	for (x = minx + windowRadius; x <= maxx - windowRadius; ++x) {
 		curMax = 0;
 		// check for the max SMD value within our window size that's > thresh
-		for (i = x - windowRadius; i < x + windowRadius; ++i)
-		{
+		for (i = x - windowRadius; i < x + windowRadius; ++i) {
 			if (vertSMDs[i] > curMax && vertSMDs[i] > vertThresh)
 			{
 				curMax = vertSMDs[i];
 			}
 		}
 		// if we were the max SMD value in our window, then we're a candidate!
-		if (curMax == vertSMDs[x] && curMax != 0)
-		{
+		if (curMax == vertSMDs[x] && curMax != 0) {
 			vertCandidates.push_back(x);
 			x = x + (windowRadius - 1);
 		}
 	}
 
 	// pick out local maxes on our horizontal SMDs
-	for (y = miny + windowRadius; y <= maxy - windowRadius; ++y)
-	{
+	for (y = miny + windowRadius; y <= maxy - windowRadius; ++y) {
 		curMax = 0;
 		// check for the max SMD value within our window size that's > thresh
-		for (i = y - windowRadius; i < y + windowRadius; ++i)
-		{
-			if (horiSMDs[i] > curMax && horiSMDs[i] > horiThresh)
-			{
+		for (i = y - windowRadius; i < y + windowRadius; ++i) {
+			if (horiSMDs[i] > curMax && horiSMDs[i] > horiThresh) {
 				curMax = horiSMDs[i];
 			}
 		}
 		// if we were the max SMD value in our window, then we're a candidate!
-		if (curMax == horiSMDs[y] && curMax != 0)
-		{
+		if (curMax == horiSMDs[y] && curMax != 0) {
 			horiCandidates.push_back(y);
 			y = y + (windowRadius - 1);
 		}
@@ -2018,10 +2011,8 @@ bool find_more_trackers(unsigned how_many_more)
 	double curX, curY;
 	bool safe = false;
 	spot_tracker_XY* curTracker;
-	for each (int cy in horiCandidates)
-	{
-		for each (int cx in vertCandidates)
-		{
+	for each (int cy in horiCandidates) {
+		for each (int cx in vertCandidates) {
 			safe = true;
 			// check to make sure we don't already have a tracker too close
 			for each (Spot_Information* si in g_trackers)
@@ -2035,8 +2026,7 @@ bool find_more_trackers(unsigned how_many_more)
 					safe = false;
 				}
 			}
-			if (safe)
-			{
+			if (safe) {
 				candidateSpotsX.push_back(cx);
 				candidateSpotsY.push_back(cy);
 			}
@@ -2051,8 +2041,7 @@ bool find_more_trackers(unsigned how_many_more)
 	double avgSMD = 0;
 	SMD = 0;
 	radius = g_Radius;
-	for (i = 0; i < candidateSpotsX.size(); ++i)
-	{
+	for (i = 0; i < static_cast<int>(candidateSpotsX.size()); ++i) {
 		x = candidateSpotsX[i];
 		y = candidateSpotsY[i];
 		SMD = localSMD(x, y, radius);
@@ -2065,17 +2054,14 @@ bool find_more_trackers(unsigned how_many_more)
 	}
 	avgSMD /= candidateSpotsX.size();
 
-
 	//printf("minSMD = %f, maxSMD = %f, avgSMD = %f\n", minSMD, maxSMD, avgSMD);
 	double SMDthresh = avgSMD * g_candidateSpotThreshold;
 
 	list<Spot_Information*> potentialTrackers;
 
 	int newTrackers = 0;
-	for (i = 0; i < candidateSpotsSMD.size(); ++i)
-	{
-		if (candidateSpotsSMD[i] > SMDthresh)
-		{
+	for (i = 0; i < static_cast<int>(candidateSpotsSMD.size()); ++i) {
+		if (candidateSpotsSMD[i] > SMDthresh) {
 			// add a new potential tracker!
 			++newTrackers;
 

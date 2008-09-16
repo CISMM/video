@@ -76,7 +76,7 @@
 				OutputFile=".\Debug/video_spot_tracker.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\tcl\lib;C:\NSRG\external\pc_win32\GL\lib;c:\NSRG\external\pc_win32\OpenCV\lib;../vrpn/pc_win32/Debug;../quat/pc_win32/Debug;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;C:\nsrg\external\pc_win32\ImageMagick\lib"
+				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\tcl\lib;C:\NSRG\external\pc_win32\GL\lib;c:\NSRG\external\pc_win32\OpenCV\lib;../vrpn/pc_win32/Debug;../quat/pc_win32/Debug;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;C:\nsrg\external\pc_win32\ImageMagick\lib;C:\NSRG\external\pc_win32\DiagInc;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;C:\NSRG\external\pc_win32\EDT\pdv"
 				IgnoreDefaultLibraryNames="msvcrt.lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/video_spot_tracker.pdb"
@@ -172,7 +172,7 @@
 				OutputFile=".\Release/video_spot_tracker.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\tcl\lib;C:\NSRG\external\pc_win32\GL\lib;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\OpenCV\lib;../vrpn/pc_win32/Release;../quat/pc_win32/Release;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;C:\nsrg\external\pc_win32\ImageMagick\lib"
+				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\tcl\lib;C:\NSRG\external\pc_win32\GL\lib;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\OpenCV\lib;../vrpn/pc_win32/Release;../quat/pc_win32/Release;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;C:\nsrg\external\pc_win32\ImageMagick\lib;C:\NSRG\external\pc_win32\diaginc;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;C:\NSRG\external\pc_win32\EDT\pdv"
 				SubSystem="1"
 				TargetMachine="1"
 			/>
@@ -275,79 +275,147 @@
 			Name="Libraries External"
 			>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\CORE_RL_bzlib_.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_DB_bzlib_.lib"
 				>
 			</File>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\CORE_RL_coders_.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_DB_coders_.lib"
 				>
 			</File>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\CORE_RL_filters_.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_DB_filters_.lib"
 				>
 			</File>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\CORE_RL_jbig_.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_DB_jbig_.lib"
 				>
 			</File>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\CORE_RL_jp2_.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_DB_jp2_.lib"
 				>
 			</File>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\CORE_RL_jpeg_.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_DB_jpeg_.lib"
 				>
 			</File>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\CORE_RL_lcms_.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_DB_lcms_.lib"
 				>
 			</File>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\CORE_RL_libxml_.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_DB_libxml_.lib"
 				>
 			</File>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\CORE_RL_Magick++_.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_DB_Magick++_.lib"
 				>
 			</File>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\CORE_RL_magick_.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_DB_magick_.lib"
 				>
 			</File>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\CORE_RL_png_.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_DB_png_.lib"
 				>
 			</File>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\CORE_RL_tiff_.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_DB_tiff_.lib"
 				>
 			</File>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\CORE_RL_ttf_.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_DB_ttf_.lib"
 				>
 			</File>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\CORE_RL_wand_.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_DB_wand_.lib"
 				>
 			</File>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\CORE_RL_wmf_.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_DB_wmf_.lib"
 				>
 			</File>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\CORE_RL_xlib_.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_DB_xlib_.lib"
 				>
 			</File>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\CORE_RL_zlib_.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_DB_zlib_.lib"
 				>
 			</File>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\X11.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_RL_bzlib_.lib"
 				>
 			</File>
 			<File
-				RelativePath="C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib\Xext.lib"
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_RL_coders_.lib"
+				>
+			</File>
+			<File
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_RL_filters_.lib"
+				>
+			</File>
+			<File
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_RL_jbig_.lib"
+				>
+			</File>
+			<File
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_RL_jp2_.lib"
+				>
+			</File>
+			<File
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_RL_jpeg_.lib"
+				>
+			</File>
+			<File
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_RL_lcms_.lib"
+				>
+			</File>
+			<File
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_RL_libxml_.lib"
+				>
+			</File>
+			<File
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_RL_Magick++_.lib"
+				>
+			</File>
+			<File
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_RL_magick_.lib"
+				>
+			</File>
+			<File
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_RL_png_.lib"
+				>
+			</File>
+			<File
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_RL_tiff_.lib"
+				>
+			</File>
+			<File
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_RL_ttf_.lib"
+				>
+			</File>
+			<File
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_RL_wand_.lib"
+				>
+			</File>
+			<File
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_RL_wmf_.lib"
+				>
+			</File>
+			<File
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_RL_xlib_.lib"
+				>
+			</File>
+			<File
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\CORE_RL_zlib_.lib"
+				>
+			</File>
+			<File
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\X11.lib"
+				>
+			</File>
+			<File
+				RelativePath="C:\NSRG\external\pc_win32\ImageMagick\lib\Xext.lib"
 				>
 			</File>
 		</Filter>

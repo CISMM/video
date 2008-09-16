@@ -1,3 +1,16 @@
+2008-09-15  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* edt_library.vcproj : Makes it compile using the version of
+		the library in the NSRG Buildtime 3.0.
+	* video_spot_tracker.cpp : Compiles without warnings (but will
+		currently only work in Visual Studio compiler due to
+		"for each" language).
+	* video_spot_tracker.vcproj : Compiles and links with NSRG
+		Buildtime 3.0 (lots of linker warnings for no debug info in
+		debug mode).  Requires some DLLs from OpenCV to run, so
+		need to change the installer to add these (can we
+		statically link this?)
+
 2008-09-15  David Marshburn  <marshbur@cs.unc.edu>
 
 	* diaginc_library.vcproj:  corrected paths for new buildtime.
