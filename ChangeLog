@@ -1,5 +1,10 @@
 2008-09-19  Ryan Schubert  <res@cs.unc.edu>
 
+	* video_z_tracker.vcproj : Fixed the external libraries
+		absolute paths to work with the new buildtime.
+
+2008-09-19  Ryan Schubert  <res@cs.unc.edu>
+
 	* video_spot_tracker.cpp : Reverted "for each" statements to
 		general "for" statements.
 
