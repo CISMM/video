@@ -2010,14 +2010,25 @@ bool find_more_trackers(unsigned how_many_more)
 	double tooClose = 5;
 	double curX, curY;
 	bool safe = false;
+	//Spot_Information* si;
+	list <Spot_Information *>::iterator loop;
+	int cx, cy;
 	spot_tracker_XY* curTracker;
-	for each (int cy in horiCandidates) {
-		for each (int cx in vertCandidates) {
+	for (y = 0; y < horiCandidates.size(); ++y)
+	{
+		cy = horiCandidates[y];
+		for (x = 0; x < vertCandidates.size(); ++x)
+		{
+			cx = vertCandidates[x];
 			safe = true;
+
 			// check to make sure we don't already have a tracker too close
-			for each (Spot_Information* si in g_trackers)
+			for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) 
 			{
-				curTracker = si->xytracker();
+			//for each (Spot_Information* si in g_trackers)
+			//{
+				//si = (*loop);
+				curTracker = (*loop)->xytracker();
 				curX = curTracker->get_x();
 				curY = curTracker->get_y();
 				if (cx >= curX - tooClose && cx <= curX + tooClose &&
@@ -2072,6 +2083,8 @@ bool find_more_trackers(unsigned how_many_more)
 	}
 	//printf("%i potential new trackers added!\n", newTrackers);
 
+	;
+
 /*
 	// let's take a look at the distribution of our local SMDs
 	std::sort(candidateSpotsSMD.begin(), candidateSpotsSMD.end());
@@ -2120,17 +2133,17 @@ bool find_more_trackers(unsigned how_many_more)
 	int numnotlost = 0;
 
 	// check to see which candidate spots aren't already lost
-	for each (Spot_Information* si in potentialTrackers)
+	for (loop = potentialTrackers.begin(); loop != potentialTrackers.end(); loop++) 
 	{
 		// if our candidate tracker isn't lost, then we add it to our list of real trackers
-		optimize_tracker(si);
-		if (!si->lost() && si->xytracker()->get_fitness() < 0)
+		optimize_tracker((*loop));
+		if (!(*loop)->lost() && (*loop)->xytracker()->get_fitness() < 0)
 		{
 			++numnotlost;
 			if (Spot_Information::get_static_index() >= vrpn_TRACKER_MAX_SENSORS) {
 				fprintf(stderr, "find_more_trackers(): Too many trackers, only %d allowed\n", vrpn_TRACKER_MAX_SENSORS);
 			} else {
-				g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(si->xytracker()->get_x(),si->xytracker()->get_y(),g_Radius),create_appropriate_ztracker()));
+				g_trackers.push_back(new Spot_Information(create_appropriate_xytracker((*loop)->xytracker()->get_x(),(*loop)->xytracker()->get_y(),g_Radius),create_appropriate_ztracker()));
 				g_active_tracker = g_trackers.back();
 				if (g_active_tracker->ztracker()) { g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
 			}
@@ -2146,15 +2159,15 @@ bool find_more_trackers(unsigned how_many_more)
 
 	
 	// clean up candidate spots memory
-	for each (Spot_Information* si in potentialTrackers)
+	for (loop = potentialTrackers.begin(); loop != potentialTrackers.end(); loop++) 
 	{
-		if (si != NULL)
+		if ((*loop) != NULL)
 		{
-			delete si->xytracker();
-			if(si->ztracker())
-				delete si->ztracker();
-			delete si;
-			si = NULL;
+			delete (*loop)->xytracker();
+			if((*loop)->ztracker())
+				delete (*loop)->ztracker();
+			delete (*loop);
+			(*loop) = NULL;
 		}
 	}
 	potentialTrackers.clear();

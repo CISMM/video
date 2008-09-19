@@ -1,3 +1,8 @@
+2008-09-19  Ryan Schubert  <res@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Reverted "for each" statements to
+		general "for" statements.
+
 2008-09-15  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* edt_library.vcproj : Makes it compile using the version of
