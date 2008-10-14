@@ -63,6 +63,10 @@ enum
 
 	Z_DAMPING,
 
+	PIXEL_SIZE,
+	
+	MICRONS_PER_FOCUS,
+
 	LAST_LOCAL_ID,
 };
 
@@ -102,6 +106,10 @@ BEGIN_EVENT_TABLE(zTracker, wxFrame)
 	EVT_BUTTON(LOG_VIDEO, zTracker::OnLoggingButton)
 
 	EVT_TEXT(Z_DAMPING, zTracker::OnZTrackDampingText)
+
+	EVT_TEXT(PIXEL_SIZE, zTracker::OnMicronsPerPixelText)
+
+	EVT_TEXT(MICRONS_PER_FOCUS, zTracker::OnMicronsPerFocusText)
 
 	EVT_IDLE(zTracker::Idle)
 
@@ -332,6 +340,18 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title,
 	m_zTrackDampingText = NULL; // for some reason the wx text event callback was happening
 								// when this was still uninitialized!
 	m_zTrackDampingText = new wxTextCtrl(m_panel, Z_DAMPING, "1.0", wxDefaultPosition, wxSize(30, 20));
+
+
+	// tracking mode 'keep bead centered' stuff
+	m_micronsPerPixelText = NULL;
+	m_micronsPerPixelText = new wxTextCtrl(m_panel, PIXEL_SIZE, "0.101", wxDefaultPosition, wxSize(40,20));
+	m_keepBeadCentered = new wxCheckBox(m_panel, wxID_ANY, "Keep bead centered");
+
+	m_micronsPerPixel = 0.101f; /// XXX hard-coded default for now...
+
+
+	m_micronsPerFocusText = NULL;
+	m_micronsPerFocusText = new wxTextCtrl(m_panel, MICRONS_PER_FOCUS, "1.0", wxDefaultPosition, wxSize(40,20));
 
 
 	m_zGuess = NULL;
@@ -929,6 +949,11 @@ void zTracker::OnCalibrateStageZ(wxCommandEvent& event)
 	m_micronsPerFocus = (z - initialZ) / (initialFocus - focus);
 	printf("m_MicronsPerFocus = %f\n", m_micronsPerFocus);
 
+	// update our microns per focus box
+	char mpf[20];
+	sprintf(mpf, "%f", m_micronsPerFocus);
+	m_micronsPerFocusText->ChangeValue(mpf);
+
 	m_stage->GetPosition(x, y, z); // get a final sync of our virtual x y z vars
 }
 
@@ -951,6 +976,29 @@ void zTracker::OnZTrackDampingText(wxCommandEvent& WXUNUSED(event))
 	}
 }
 
+void zTracker::OnMicronsPerPixelText(wxCommandEvent& WXUNUSED(event))
+{
+	double val = 1.0;
+	if (!m_micronsPerPixelText)
+		return;
+
+	if(m_micronsPerPixelText->GetValue().ToDouble(&val))
+	{
+		m_micronsPerPixel = val;
+	}
+}
+
+void zTracker::OnMicronsPerFocusText(wxCommandEvent& WXUNUSED(event))
+{
+	double val = 0.0;
+	if (!m_micronsPerFocusText)
+		return;
+
+	if(m_micronsPerFocusText->GetValue().ToDouble(&val))
+	{
+		m_micronsPerFocus = val;
+	}
+}
 
 void zTracker::Idle(wxIdleEvent& event)
 {
@@ -1029,26 +1077,59 @@ void zTracker::Idle(wxIdleEvent& event)
 		}
 	}
 
-	double dragX = (double)m_canvas->m_middleMouseDragX;
-	double dragY = (double)m_canvas->m_middleMouseDragY;
-
-	if (dragX != 0 && dragY != 0)
-		printf("moving stag frm: (%f, %f, %f)\n", x, y, z);
-
-	if (dragX != 0)
+	if (m_keepBeadCentered->GetValue())
 	{
-		x = x + (dragX * m_canvas->m_micronsPerPixel);
-		m_canvas->m_middleMouseDragX = 0;
-	}
+		// move the stage so the current tracker position is centered
+		double centerX = ((m_image->get_num_columns()) - 1.0f) * 0.5f;
+		double centerY = ((m_image->get_num_rows()) - 1.0f) * 0.5f;
 
-	if (dragY != 0)
+		double xDiff = centerX - m_spotTracker->xytracker()->get_x();
+		double yDiff = m_spotTracker->xytracker()->get_y() - centerY;
+
+		if (xDiff < -1)
+			xDiff = -1;
+		if (xDiff > 1)
+			xDiff = 1;
+		if (yDiff < -1)
+			yDiff = -1;
+		if (yDiff > 1)
+			yDiff = 1;
+
+		printf("diff = (%f, %f)\n", xDiff, yDiff);
+		
+		// set new stage position (if we're updating the stage we'll move there)
+		x = x + xDiff * m_micronsPerPixel;
+		y = y + yDiff * m_micronsPerPixel;
+
+		// update the selection location
+		m_canvas->SetSelect(m_spotTracker->xytracker()->get_x() + xDiff, 
+			m_spotTracker->xytracker()->get_y() + yDiff);
+		//m_spotTracker->xytracker()->set_location(m_canvas->GetSelectX(), m_canvas->GetSelectYflip());
+
+	}
+	else
 	{
-		y = y + (dragY * m_canvas->m_micronsPerPixel);
-		m_canvas->m_middleMouseDragY = 0;
-	}
+		double dragX = (double)m_canvas->m_middleMouseDragX;
+		double dragY = (double)m_canvas->m_middleMouseDragY;
 
-	if (dragX != 0 && dragY != 0)
-		printf("moving stage to: (%f, %f, %f)\n", x, y, z);
+		if (dragX != 0 && dragY != 0)
+			printf("moving stag frm: (%f, %f, %f)\n", x, y, z);
+
+		if (dragX != 0)
+		{
+			x = x + (dragX * m_canvas->m_micronsPerPixel);
+			m_canvas->m_middleMouseDragX = 0;
+		}
+
+		if (dragY != 0)
+		{
+			y = y + (dragY * m_canvas->m_micronsPerPixel);
+			m_canvas->m_middleMouseDragY = 0;
+		}
+
+		if (dragX != 0 && dragY != 0)
+			printf("moving stage to: (%f, %f, %f)\n", x, y, z);
+	}
 
 
 	if(m_updateStage->GetValue())
@@ -1097,6 +1178,8 @@ void zTracker::set_layout()
 	m_zSizer->Add(m_zDownText, 0, wxALIGN_CENTER);
 	m_zSizer->Add(new wxStaticText(m_panel, wxID_ANY, wxT("p-gain")), 0, wxALIGN_CENTER);
 	m_zSizer->Add(m_zTrackDampingText, 0, wxALIGN_CENTER);
+	m_zSizer->Add(new wxStaticText(m_panel, wxID_ANY, wxT("Um/focus")), 0, wxALIGN_CENTER);
+	m_zSizer->Add(m_micronsPerFocusText, 0, wxALIGN_CENTER);
 
 	m_canvasSizer->Add(m_canvas, 0, wxALL, 3);
 	m_canvasSizer->Add(m_vertSizer, 0, 0, 0);
@@ -1134,6 +1217,9 @@ void zTracker::set_layout()
 	m_assortedSizer->Add(m_8Bits, 0, wxALL, 3);
 	m_assortedSizer->Add(m_updateStage, 0, wxALL, 3);
 	m_assortedSizer->Add(m_trackingSizer, 0, 0, 0);
+	m_assortedSizer->Add(m_keepBeadCentered, 0, wxALL, 3);
+	m_assortedSizer->Add(new wxStaticText(m_panel, wxID_ANY, wxT("Microns per pixel:")), 0, wxALIGN_CENTER);
+	m_assortedSizer->Add(m_micronsPerPixelText, 0, wxALL, 3);
 	//m_assortedSizer->Add(m_manualFocusSizer, 0, 0, 0);
 
 	

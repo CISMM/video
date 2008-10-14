@@ -1,3 +1,10 @@
+2008-10-14  Ryan Schubert  <res@cs.unc.edu>
+
+	* ztracker.* : Added microns per focus GUI text box (this is
+		normally set during the bead calibration).  Added
+		"keep bead centered" tracking mode (and a GUI text box
+		for microns per pixel).
+
 2008-09-15  Ryan Schubert  <res@cs.unc.edu>
 
 	* ztracker.cpp : Made some changes to stage logging.  Now this

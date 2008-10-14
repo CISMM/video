@@ -73,6 +73,10 @@ public:
 
 	void OnZTrackDampingText(wxCommandEvent& event);
 
+	void OnMicronsPerPixelText(wxCommandEvent& event);
+
+	void OnMicronsPerFocusText(wxCommandEvent& event);
+
 	void Idle(wxIdleEvent& event);
 
 	void CalcFocus();
@@ -181,6 +185,14 @@ protected:
 	wxBoxSizer* m_loggingSizer;
 	wxTextCtrl* m_logfileText;
 	wxButton* m_loggingButton;
+
+	wxTextCtrl* m_micronsPerFocusText;
+
+	// tracking mode 'keep bead centered' stuff
+	wxTextCtrl* m_micronsPerPixelText;
+	wxCheckBox* m_keepBeadCentered;
+	float m_micronsPerPixel;
+
 
 	// spot tracker stuff
 	Spot_Information* m_spotTracker;
