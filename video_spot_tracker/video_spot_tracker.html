@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v05.21</title>
+<title>Video Spot Tracker v05.22</title>
 
-<h1>Video Spot Tracker version 05.21</h1>
+<h1>Video Spot Tracker version 05.22</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -165,9 +165,9 @@
   and then selecting the spread function's TIF file in the dialog box that appears. 
   The Z location will now be updated based on the spread-function stack.</p>
 
-<h3>Checking for lost trackers</h3>
+<h3>Checking for lost trackers and Auto-finding beads</h3>
 <h3></h3>
-<p><img src="lost_and_found.jpg" width="191" height="196" align="right">There 
+<p><img src="lost_and_found.jpg" width="191" height="261" align="right">There 
   is a <i>show_lost_and_found</i> button on the main control panel that brings 
   up a secondard control panel shown to the right. A<i>lost_tracking_sensitivity</i> 
   slider located on this control panel sets a threshold for detection of lost 
@@ -200,11 +200,12 @@
 </ul>
 <p></p>
 <p>The <i>maintain_this_many_beads</i> slider, if set to above zero, will attempt 
-  to place new trackers whenever there are fewer than the numbe requested. It 
+  to place new trackers whenever there are fewer than the number requested. It 
   places them in the locations on the screen that have the best matches for the 
   present kernel settings, and it creates them with the present kernel settings. 
   The trackers will not be placed within one radius of the edge of the screen 
-  or within two radii of existing trackers.</p>
+  or within two radii of existing trackers. The <i>candidate_spot_threshold</i> 
+  can be used to filter out spots that are not likely to be beads.</p>
 <h3>Faster display update</h3>
 
 <p><img src="small_area.jpg" width="162" height="175" align="right">Once you have created all of the trackers you want, you may check the <cite><strong>small_area</strong></cite> checkbox. This will cause the program to limit its update to a small area of pixels that surrounds the active trackers. This requires less processing and makes the update rate faster when the video is played. For the Roper and SPOT cameras, it also reduces the amount of data transmitted from the camera itself, again increasing the frame rate. This area will update itself as the trackers move, and it extends 4 radii past each tracker. This should enable the trackers to continue to track spots that are moving away from the updated video area.  A green box shows up in the video window to indicate the area being updated.</p>
@@ -329,6 +330,11 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 5.22:</h3>
+<ul>
+  <li>Added Ryan Schubert's auto-bead-finding code that locates new beads in an 
+    image in an attempt to maintain a minimum number of active beads.</li>
+</ul>
 <h3>Version 5.21:</h3>
 <ul>
   <li>Added <i>maintain_this_many_beads</i> control to the <i>lost_and_found</i> 

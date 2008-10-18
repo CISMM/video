@@ -96,7 +96,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.21";
+const char *Version_string = "05.22";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -2014,10 +2014,10 @@ bool find_more_trackers(unsigned how_many_more)
 	list <Spot_Information *>::iterator loop;
 	int cx, cy;
 	spot_tracker_XY* curTracker;
-	for (y = 0; y < horiCandidates.size(); ++y)
+	for (y = 0; y < static_cast<int>(horiCandidates.size()); ++y)
 	{
 		cy = horiCandidates[y];
-		for (x = 0; x < vertCandidates.size(); ++x)
+		for (x = 0; x < static_cast<int>(vertCandidates.size()); ++x)
 		{
 			cx = vertCandidates[x];
 			safe = true;

@@ -1,5 +1,5 @@
 Notes:
 	The video spot tracker program requires DirectX version 9.0a or later(www.microsoft.com/directx).  It requires the camera drivers for any attached Roper or SPOT camera to be installed.
 	This program makes use of the ImageMagick libraries to open image files.
-	For the video spot tracker programs to work correctly, you must also install the NSRG Runtime Environment version 01.11 or later, which is a large download that includes all of the DLLs and other files needed to run applications from the NSRG.  It installs itself in C:\NSRG\external\pc_win32.
-	This program is supplied AS IS, without any express or implied warranty of effectiveness or usefulness for any purpose.  Version 02.03 of the program has undergone only ad-hoc testing for accuracy.  You've been warned.
+	This program makes use of the OpenCV library from Intel to do image blurring.
+	This program is supplied AS IS, without any express or implied warranty of effectiveness or usefulness for any purpose.  As of version 05.00 the program had undergone only ad-hoc testing for accuracy.  You've been warned.
