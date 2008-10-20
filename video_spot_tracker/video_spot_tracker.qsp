@@ -8,7 +8,7 @@ OperatingSystem=WinXP  5.1  2600 (Service Pack 3)
 ProjectName=video_spot_tracker
 ProjectDirectory=F:\taylorr\STM\src\video\video_spot_tracker
 NonSFXDirectory=F:\taylorr\STM\src\video\video_spot_tracker\NonSFX
-MediaFileName=video_spot_tracker_v05_22
+MediaFileName=video_spot_tracker_v05_22_1
 CopyMediaToFName=
 ProgramDescriptiveName=Video Spot Tracker v05.22
 ProgramVersion=05.22
@@ -230,7 +230,7 @@ Exec-000=*||VCRedistributable|Setup Start|10|UnConditional|0|0|File Found||0||0|
 Arg-000-2==
 Arg-000-6==
 Arg-000-10==
-Arg-000-13=<AbsoluteDir><Application Folder>\vcredist_x86.exe
+Arg-000-13=<InstallDir>vcredist_x86.exe
 Exec-001=*||Tcl and Tk paths in batch file|After Copy|10|UnConditional|0|0|File Found||0||0|File Found||0||0|File Found||1|Replace Text in File||0|Display Message||0|Display Message||0|Display Message||
 Arg-001-2==
 Arg-001-6==
