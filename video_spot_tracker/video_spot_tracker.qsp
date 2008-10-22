@@ -8,7 +8,7 @@ OperatingSystem=WinXP  5.1  2600 (Service Pack 3)
 ProjectName=video_spot_tracker
 ProjectDirectory=F:\taylorr\STM\src\video\video_spot_tracker
 NonSFXDirectory=F:\taylorr\STM\src\video\video_spot_tracker\NonSFX
-MediaFileName=video_spot_tracker_v05_22_1
+MediaFileName=video_spot_tracker_v05_22_2
 CopyMediaToFName=
 ProgramDescriptiveName=Video Spot Tracker v05.22
 ProgramVersion=05.22
@@ -471,6 +471,7 @@ Item-221=Fil*C:\NSRG\external\pc_win32\tcl\lib\tk8.3\images\pwrdLogo75.gif
 Item-222=Fil*C:\NSRG\external\pc_win32\tcl\lib\tk8.3\images\README
 Item-223=Fil*C:\NSRG\external\pc_win32\tcl\lib\tk8.3\images\tag.txt
 Item-224=Fil*C:\NSRG\external\pc_win32\tcl\lib\tk8.3\images\tai-ku.gif
+Item-225=Fil*C:\WINDOWS\system32\msvcr80.dll
 
 [Group-001]
 TypicalCompactData=5
