@@ -45,7 +45,7 @@
 				AdditionalIncludeDirectories="$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses,$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\include,$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
-				RuntimeLibrary="0"
+				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				PrecompiledHeaderFile=".\Release/DirectShow_baseclasses.pch"
 				AssemblerListingLocation=".\Release/"

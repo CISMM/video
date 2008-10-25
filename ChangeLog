@@ -1,10 +1,13 @@
+2008-10-25  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.vcproj : Changed to not include both the
+		debug and release versions of the ImageMagick library.
+		Only includes release now.  This made the program run on
+		a machine without Visual Studio installed.
+
 2008-10-17  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Updated version number.  Made
-		a new installer for version 5.22 that doesn't rely
-		on an NSRG Runtime and that includes the Visual
-		Studio redistributable, which it should run during
-		setup.
 
 2008-09-19  Ryan Schubert  <res@cs.unc.edu>
 
