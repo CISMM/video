@@ -96,7 +96,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.22";
+const char *Version_string = "05.23";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -290,7 +290,9 @@ Tclvar_float_with_scale	g_colorIndex("red_green_blue", NULL, 0, 2, 0);
 Tclvar_float_with_scale	g_brighten("brighten", "", 0, 8, 0);
 Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_trackers);
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
-Tclvar_float_with_scale g_lossSensitivity("lost_tracking_sensitivity", ".lost_and_found_controls.bottom", 0.0, 1.0, 0.0);
+Tclvar_float_with_scale g_lossSensitivity("lost_tracking_sensitivity", ".lost_and_found_controls.top", 0.0, 1.0, 0.0);
+Tclvar_float_with_scale g_borderDeadZone("dead_zone_around_border", ".lost_and_found_controls.top", 0.0, 30.0, 0.0);
+Tclvar_float_with_scale g_trackerDeadZone("dead_zone_around_trackers", ".lost_and_found_controls.top", 0.0, 3.0, 0.0);
 Tclvar_float_with_scale g_findThisManyBeads("maintain_this_many_beads", ".lost_and_found_controls.bottom", 0.0, 100.0, 0.0);
 Tclvar_float_with_scale g_candidateSpotThreshold("candidate_spot_threshold", ".lost_and_found_controls.bottom", 0.0, 5.0, 5.0);
 Tclvar_int_with_button  g_lostBehavior("lost_behavior",NULL,0);
@@ -1718,6 +1720,20 @@ static void optimize_tracker(Spot_Information *tracker)
     tracker->lost(false);
   }
 
+  // If we have a non-zero threshold to check against the boundary of the
+  // image, check to see if we've wandered too close to it.
+  if (g_borderDeadZone > 0) {   
+      double x = tracker->xytracker()->get_x();
+      double y = tracker->xytracker()->get_y();
+      double zone = g_borderDeadZone;
+
+      // Check against the border.
+      if ( (x < (*g_minX) + zone) || (x > (*g_maxX) - zone) ||
+           (y < (*g_minY) + zone) || (y > (*g_maxY) - zone) ) {
+        tracker->lost(true);
+      }
+  }
+
   // If we're set to hover when lost and we are lost, then go back to where we
   // started.
   if (tracker->lost() && (g_lostBehavior == LOST_HOVER)) {
@@ -2538,6 +2554,27 @@ void myIdleFunc(void)
     // the auto-deletion of lost trackers is enabled.  If so, then delete each
     // lost tracker.  If not, then point at one of the lost trackers and
     // set the global lost-tracker flag;
+
+    // We do additional lost-tracker checking here, marking trackers that are too near
+    // other trackers.  We do this here to avoid race conditions that would happen in
+    // the threads as each tracker moved itself.
+    if (g_trackerDeadZone > 0) {   
+      for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+        double x = (*loop)->xytracker()->get_x();
+        double y = (*loop)->xytracker()->get_y();
+
+        list<Spot_Information *>::iterator loop2;
+        double zone2 = g_trackerDeadZone * g_trackerDeadZone;
+        for (loop2 = g_trackers.begin(); loop2 != loop; loop2++) {
+          double x2 = (*loop2)->xytracker()->get_x();
+          double y2 = (*loop2)->xytracker()->get_y();
+          double dist2 = ( (x-x2)*(x-x2) + (y-y2)*(y-y2) );
+          if (dist2 < zone2) {
+            (*loop)->lost(true);
+          }
+        }
+      }
+    }
 
     // If this tracker is lost, and we have the "autodelete lost tracker" feature
     // turned on, then delete this tracker and say that we are no longer lost.

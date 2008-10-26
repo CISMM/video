@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v05.22</title>
+<title>Video Spot Tracker v05.23</title>
 
-<h1>Video Spot Tracker version 05.22</h1>
+<h1>Video Spot Tracker version 05.23</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -17,40 +17,48 @@
   package for reading images.</p>
 
 <h2>Downloading and installing the program</h2>
-<p>This program is brought to you courtesy of the National Institutes of Health 
-  <a href="http://www.nibib.nih.gov/">National Institute for Biomedical Imaging 
-  and Bioengineering</a> through its National Research Resource in <a href="http://www.cs.unc.edu/nano/cismm">Computer-Integrated 
-  Systems for Microscopy and Manipulation</a> at the University of North Carolina 
-  at Chapel Hill.</p>
 <p>An installer for the program and manual can be downloaded from the <a href="http://www.cs.unc.edu/Research/nano/cismm/download/index.html">CISMM 
-  software download page</a>. To run it, you must also download and install <b><u>version 
-  01.05 or higher</u> </b>of the <i>NSRG Runtime</i> package, which is also available 
-  on that page. It also requires <a href="http://www.microsoft.com/directx">Microsoft 
-  <i>Direct X</i></a> version 9.0a or higher. To convert the VRPN output files 
-  to Matlab format requires the VRPNLogToMatlab program, also available from the 
-  CISMM download page. These packages can be installed in any order.</p>
-<h2>Thank-You Ware</h2>
-<p>This program is distributed as &quot;Thank-You Ware.&quot; As a National Research 
-  Resource, we are funded by the NIH National Institute of Biomedical Imaging 
-  and Bioengineering to develop tools for scientists. Part of our mission is to 
-  distribute these tools broadly to help biomedical researchers do their work.</p>
-<p>Rather than making you register to download our software or join a mailing 
-  list or provide other personally-identifying material to use our code, we've 
-  come up with the following easy and anonymous way for you to let us know we're 
-  helping the community. When you press the &quot;Say Thank You!&quot; button 
-  to let us know you appreciate having the tool, the application sends a web query 
-  to our server and logs your response (not your name or your phone number, just 
-  a web hit count). We add up these counts and report them to the reviewers for 
-  our renewal applications when we ask NIBIB to continue funding us to maintain 
-  our existing tools and to build new ones. Please press the button whenever you 
-  feel like the tool has been helpful to you.</p>
+  software download page</a>. It requires <a href="http://www.microsoft.com/directx">Microsoft 
+  <i>Direct X</i></a> version 9.0a or higher.</p>
+<p>To convert the VRPN output files to Matlab format requires the VRPNLogToMatlab 
+  program, also available from the CISMM download page. These packages can be 
+  installed in any order.</p>
+<h2>Cost of Use</h2>
+<p>The development, dissemination, and support of this program is paid for by 
+  the National Institutes of Health <a href="http://www.nibib.nih.gov/">National 
+  Institute for Biomedical Imaging and Bioengineering</a> through its National 
+  Research Resource in <a href="http://www.cs.unc.edu/nano/cismm">Computer-Integrated 
+  Systems for Microscopy and Manipulation</a> at the University of North Carolina 
+  at Chapel Hill. This program is distributed without charge, subject to the following 
+  terms: </p>
+<ul>
+  <li>Acknowledgement in any publication, written, videotaped, or otherwise produced, 
+    that results from using this program. The acknowledgement should credit: CISMM 
+    at UNC-CH, supported by the NIH NIBIB (NIH 5-P41-RR02170).</li>
+  <li>Furnish a reference to (and preferably a copy of) any publication, including 
+    videotape, that you produce and disseminate outside your group using our program. 
+    These should be addressed to: taylorr@cs.unc.edu; Russell M. Taylor II, Department 
+    of Computer Science, Sitterson Hall,University of North Carolina at Chapel 
+    Hill, Chapel Hill, NC 27599-3175.<br>
+  </li>
+</ul>
+<p><b>Thank-You Ware:</b> Rather than making you register to download our software 
+  or join a mailing list or provide other personally-identifying material to use 
+  our code, we've come up with the following easy and anonymous way for you to 
+  let us know we're helping the community. When you press the &quot;Say Thank 
+  You!&quot; button to let us know you appreciate having the tool, the application 
+  sends a web query to our server and logs your response (not your name or your 
+  phone number, just a web hit count). We add up these counts and report them 
+  to the reviewers for our renewal applications when we ask NIBIB to continue 
+  funding us to maintain our existing tools and to build new ones. Please press 
+  the button whenever you feel like the tool has been helpful to you.</p>
 <h2>Running the program</h2>
 
 <p>The program is run by dragging a video file or image file onto the desktop 
   icon that was created when the program was installed. To select a stack of image 
   files that are numbered consecutively, drag any one of the files onto the icon. 
   It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
-  Menu/All Programs/NSRG/Video Spot Tracker v05.21</b></i>. If you run the program 
+  Menu/All Programs/NSRG/Video Spot Tracker v05.23</b></i>. If you run the program 
   directly by double-clicking on the icon, it will ask for a video or image file 
   (AVI, TIF, or BMP) that it should open.</p>
 
@@ -167,17 +175,26 @@
 
 <h3>Checking for lost trackers and Auto-finding beads</h3>
 <h3></h3>
-<p><img src="lost_and_found.jpg" width="191" height="261" align="right">There 
+<p><img src="lost_and_found.jpg" width="191" height="392" align="right">There 
   is a <i>show_lost_and_found</i> button on the main control panel that brings 
-  up a secondard control panel shown to the right. A<i>lost_tracking_sensitivity</i> 
-  slider located on this control panel sets a threshold for detection of lost 
-  tracking. A threshold setting of zero disables this feature, and is the default. 
-  The actual threshold depends on the type of kernel you are using to track; this 
-  slider provides a normalized &quot;how sensitive&quot; control that should be 
-  approximately the same across types (the FIONA tracker uses the whole range 
-  0-1, but the symmetric kernel needs only a very small number). If the threshold 
-  is exceeded by one or more beads while tracking, the program will do the following 
-  (depending on the setting for the radio buttons):</p>
+  up a secondard control panel shown to the right.</p>
+<p><b>Lost:</b> A<i> lost_tracking_sensitivity</i> slider located on this control 
+  panel sets a threshold for detection of lost tracking. A threshold setting of 
+  zero disables this feature, and is the default. The actual threshold depends 
+  on the type of kernel you are using to track; this slider provides a normalized 
+  &quot;how sensitive&quot; control that should be approximately the same across 
+  types (the FIONA tracker uses the whole range 0-1, but the symmetric kernel 
+  needs only a very small number). If the threshold is exceeded by one or more 
+  beads while tracking, the associated bead is marked as lost.</p>
+<p><b>Strayed:</b> The <i>dead_zone_around_border</i> slider sets a boundary around 
+  the edge of the clipping region (see <i>Faster display update</i> section below 
+  for a description of clipping). If a bead gets within this many pixels of the 
+  border, it is marked as lost. The <i>dead_zone_around_trackers</i> slider marks 
+  beads as lost when they get too close to each other -- their locations being 
+  within the specified radius of each other. When either of these sliders are 
+  set to 0, its dead-zone feature is disabled.</p>
+<p>When a bead becomes lost for any of the above reasons, the result depends on 
+  the setting for the radio buttons:</p>
 <ul>
   <li><b>Stop</b>: say &quot;lost&quot; and immediately stop going forward in 
     the video until the problem is corrected. The tracker causing the problem 
@@ -199,13 +216,16 @@
     was made to enable tracking of blinking spots with the FIONA kernel.</li>
 </ul>
 <p></p>
-<p>The <i>maintain_this_many_beads</i> slider, if set to above zero, will attempt 
-  to place new trackers whenever there are fewer than the number requested. It 
-  places them in the locations on the screen that have the best matches for the 
-  present kernel settings, and it creates them with the present kernel settings. 
-  The trackers will not be placed within one radius of the edge of the screen 
-  or within two radii of existing trackers. The <i>candidate_spot_threshold</i> 
-  can be used to filter out spots that are not likely to be beads.</p>
+<p><b>Found:</b> The <i>maintain_this_many_beads</i> slider, if set to above zero, 
+  will attempt to automaticall place new trackers whenever there are fewer than 
+  the number requested. It places them in the locations on the screen that have 
+  the best matches for the present kernel settings, and it creates them with the 
+  present kernel settings. The trackers will not be placed within one radius of 
+  the edge of the screen or within two radii of existing trackers. The <i>candidate_spot_threshold</i> 
+  can be used to filter out spots that are not likely to be beads; the higher 
+  the setting, the more discriminating the test. The <i>lost_tracking_sensitivity</i> 
+  also controls where trackers will be initialized; they will not appear where 
+  they would be immediately lost.</p>
 <h3>Faster display update</h3>
 
 <p><img src="small_area.jpg" width="162" height="175" align="right">Once you have created all of the trackers you want, you may check the <cite><strong>small_area</strong></cite> checkbox. This will cause the program to limit its update to a small area of pixels that surrounds the active trackers. This requires less processing and makes the update rate faster when the video is played. For the Roper and SPOT cameras, it also reduces the amount of data transmitted from the camera itself, again increasing the frame rate. This area will update itself as the trackers move, and it extends 4 radii past each tracker. This should enable the trackers to continue to track spots that are moving away from the updated video area.  A green box shows up in the video window to indicate the area being updated.</p>
@@ -330,6 +350,14 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 5.23:</h3>
+<ul>
+  <li>Added an optional dead band around the edge of the selection area so that 
+    trackers going into this area are marked as being lost.</li>
+  <li>Added an optional dead band around each tracker so that trackers that get 
+    too close together will have all but one marked as being lost.</li>
+</ul>
+<h3></h3>
 <h3>Version 5.22:</h3>
 <ul>
   <li>Added Ryan Schubert's auto-bead-finding code that locates new beads in an 

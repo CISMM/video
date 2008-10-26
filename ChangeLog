@@ -1,3 +1,11 @@
+2008-10-26  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Added a "dead zone" around the
+		edge of the screen, where trackers get lost if they
+		go there.  Alsoo added one around each tracker, to
+		avoid having trackers overlap each other.
+		Updated version number.  Made installer.
+
 2008-10-25  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.vcproj : Changed to not include both the
@@ -8,6 +16,7 @@
 2008-10-17  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Updated version number.  Made
+		installer.
 
 2008-09-19  Ryan Schubert  <res@cs.unc.edu>
 
