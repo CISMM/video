@@ -295,6 +295,7 @@ Tclvar_float_with_scale g_borderDeadZone("dead_zone_around_border", ".lost_and_f
 Tclvar_float_with_scale g_trackerDeadZone("dead_zone_around_trackers", ".lost_and_found_controls.top", 0.0, 3.0, 0.0);
 Tclvar_float_with_scale g_findThisManyBeads("maintain_this_many_beads", ".lost_and_found_controls.bottom", 0.0, 100.0, 0.0);
 Tclvar_float_with_scale g_candidateSpotThreshold("candidate_spot_threshold", ".lost_and_found_controls.bottom", 0.0, 5.0, 5.0);
+Tclvar_float_with_scale g_slidingWindowRadius("sliding_window_radius", ".lost_and_found_controls.bottom", 5.0, 15.0, 10.0);
 Tclvar_int_with_button  g_lostBehavior("lost_behavior",NULL,0);
 Tclvar_int_with_button	g_showLostAndFound("show_lost_and_found","",0);
 Tclvar_int_with_button	g_invert("dark_spot",NULL,0, rebuild_trackers);
@@ -1981,7 +1982,7 @@ bool find_more_trackers(unsigned how_many_more)
 
 	// now we need to pick out the local maxes in our SMDs as candidate bead positions
 
-	int windowRadius = 9;
+	int windowRadius = g_slidingWindowRadius;
 	double curMax = 0;
 
 	// pick out local maxes on our vertical SMDs
@@ -3289,21 +3290,43 @@ void  handle_optimize_z_change(int newvalue, void *)
 
 void Usage(const char *progname)
 {
-    fprintf(stderr, "Usage: %s [-kernel disc|cone|symmetric|FIONA] [-dark_spot] [-follow_jumps]\n", progname);
-    fprintf(stderr, "           [-rod3 LENGTH ORIENT] [-outfile NAME] [-precision P] [-sample_spacing S]\n");
+    fprintf(stderr, "Usage: %s [-kernel disc|cone|symmetric|FIONA]\n", progname);
+    fprintf(stderr, "           [-dark_spot] [-follow_jumps] [-rod3 LENGTH ORIENT] [-outfile NAME]\n");
+	fprintf(stderr, "           [-precision P] [-sample_spacing S] [-show_lost_and_found]\n");
+	fprintf(stderr, "           [-lost_behavior B] [-lost_tracking_sensitivity L]\n");
+	fprintf(stderr, "           [-dead_zone_around_border DB] [-dead_zone_around_trackers DT]\n");
+	fprintf(stderr, "           [-maintain_this_many_beads M] [-candidate_spot_threshold T]\n");
+	fprintf(stderr, "           [-sliding_window_radius SR]\n");
     fprintf(stderr, "           [-tracker X Y R] [-tracker X Y R] [-FIONA_background BG] ...\n");
     fprintf(stderr, "           [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n");
     fprintf(stderr, "       -kernel: Use kernels of the specified type (default symmetric)\n");
-    fprintf(stderr, "       -rod3: Make a rod3 kernel of specified LENGTH (pixels) and ORIENT (degrees)\n");
+    fprintf(stderr, "       -rod3: Make a rod3 kernel of specified LENGTH(pixels) & ORIENT(degrees)\n");
     fprintf(stderr, "       -dark_spot: Track a dark spot (default is bright spot)\n");
     fprintf(stderr, "       -follow_jumps: Set the follow_jumps flag\n");
     fprintf(stderr, "       -outfile: Save the track to the file 'name' (.vrpn will be appended)\n");
     fprintf(stderr, "       -precision: Set the precision for created trackers to P (default 0.05)\n");
-    fprintf(stderr, "       -sample_spacing: Set the sample spacing for created trackers to S (default 1)\n");
-    fprintf(stderr, "       -tracker: Create a tracker with radius R at pixel X,Y and initiate optimization\n");
-    fprintf(stderr, "                 Multiple trackers can be created\n");
-    fprintf(stderr, "       -FIONA_background: Set the default background for FIONA trackers to BG (default 0)\n");
-    fprintf(stderr, "       source: The source file for tracking can be specified here (default is a dialog box)\n");
+    fprintf(stderr, "       -sample_spacing: Set the sample spacing for trackers to S (default 1)\n");
+	fprintf(stderr, "       -show_lost_and_found: Show the lost_and_found window on startup\n");
+	fprintf(stderr, "       -lost_behavior: Set lost tracker behavior: 0:stop; 1:delete; 2:hover\n");
+	fprintf(stderr, "       -lost_tracking_sensitivity: Set lost_tracking_sensitivity to L\n");
+	fprintf(stderr, "       -dead_zone_around_border: Set a dead zone around the region of interest\n");
+	fprintf(stderr, "                 edge within which new trackers will not be found\n");
+	fprintf(stderr, "       -dead_zone_around_trackers: Set a dead zone around all current trackers\n");
+	fprintf(stderr, "                 within which new trackers will not be found\n");
+	fprintf(stderr, "       -maintain_this_many_beads: Try to autofind up to M beads at every frame\n");
+	fprintf(stderr, "       -candidate_spot_threshold: Set the threshold for possible spots when\n");
+	fprintf(stderr, "                 autofinding.  Setting this lower will not miss as many spots,\n");
+	fprintf(stderr, "                 but will also find garbage (default 5)\n");
+	fprintf(stderr, "       -sliding_window_radius: Set the radius of the global SMD sliding window\n");
+	fprintf(stderr, "                 neighborhood.  Higher values of SR may cause some spots to\n");
+	fprintf(stderr, "                 take longer before they are detected, but will greatly\n");
+	fprintf(stderr, "                 increase the running speed (default 9)\n");
+    fprintf(stderr, "       -tracker: Create a tracker with radius R at pixel X,Y and initiate\n");
+    fprintf(stderr, "                 optimization.  Multiple trackers can be created\n");
+    fprintf(stderr, "       -FIONA_background: Set the default background for FIONA trackers to BG\n");
+	fprintf(stderr, "                 (default 0)\n");
+    fprintf(stderr, "       source: The source file for tracking can be specified here (default is\n");
+	fprintf(stderr, "                 a dialog box)\n");
     exit(-1);
 }
 
@@ -3543,6 +3566,29 @@ int main(int argc, char *argv[])
       g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(g_X,g_Y,g_Radius),create_appropriate_ztracker()));
       g_active_tracker = g_trackers.back();
       if (g_active_tracker->ztracker()) { g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
+	} else if (!strncmp(argv[i], "-lost_tracking_sensitivity", strlen("-lost_tracking_sensitivity"))) {
+		if (++i > argc) { Usage(argv[0]); }
+		g_lossSensitivity = atof(argv[i]);
+	} else if (!strncmp(argv[i], "-dead_zone_around_border", strlen("-dead_zone_around_border"))) {
+		if (++i > argc) { Usage(argv[0]); }
+		g_borderDeadZone = atof(argv[i]);
+	} else if (!strncmp(argv[i], "-dead_zone_around_trackers", strlen("-dead_zone_around_trackers"))) {
+		if (++i > argc) { Usage(argv[0]); }
+		g_trackerDeadZone = atof(argv[i]);
+	} else if (!strncmp(argv[i], "-maintain_this_many_beads", strlen("-maintain_this_many_beads"))) {
+		if (++i > argc) { Usage(argv[0]); }
+		g_findThisManyBeads = atof(argv[i]);
+	} else if (!strncmp(argv[i], "-candidate_spot_threshold", strlen("-candidate_spot_threshold"))) {
+		if (++i > argc) { Usage(argv[0]); }
+		g_candidateSpotThreshold = atof(argv[i]);
+	} else if (!strncmp(argv[i], "-lost_behavior", strlen("-lost_behavior"))) {
+		if (++i > argc) { Usage(argv[0]); }
+		g_lostBehavior = atof(argv[i]);
+	} else if (!strncmp(argv[i], "-sliding_window_radius", strlen("-sliding_window_radius"))) {
+		if (++i > argc) { Usage(argv[0]); }
+		g_slidingWindowRadius = atof(argv[i]);
+	} else if (!strncmp(argv[i], "-show_lost_and_found", strlen("-show_lost_and_found"))) {
+		g_showLostAndFound = true;
     } else if (argv[i][0] == '-') {
       Usage(argv[0]);
     } else {

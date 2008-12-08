@@ -1,3 +1,13 @@
+2008-12-08  Ryan Schubert  <res@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Added a slider in the
+		lost_and_found window for controlling the global SMD
+		local neighborhood raius (over which we look for the
+		max SMD value to determine our candidate scanlines).
+		Added command line parameter support for all controls
+		in the lost_and_found window, and updated the usage
+		for new switchs and for lengths.
+
 2008-10-26  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Added a "dead zone" around the
