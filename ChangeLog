@@ -1,3 +1,8 @@
+2008-12-10  Ryan Schubert  <res@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Added Radius to the command line
+		parameters that can be passed in.
+
 2008-12-08  Ryan Schubert  <res@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Added a slider in the

@@ -3296,7 +3296,7 @@ void Usage(const char *progname)
 	fprintf(stderr, "           [-lost_behavior B] [-lost_tracking_sensitivity L]\n");
 	fprintf(stderr, "           [-dead_zone_around_border DB] [-dead_zone_around_trackers DT]\n");
 	fprintf(stderr, "           [-maintain_this_many_beads M] [-candidate_spot_threshold T]\n");
-	fprintf(stderr, "           [-sliding_window_radius SR]\n");
+	fprintf(stderr, "           [-sliding_window_radius SR] [-radius R]\n");
     fprintf(stderr, "           [-tracker X Y R] [-tracker X Y R] [-FIONA_background BG] ...\n");
     fprintf(stderr, "           [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n");
     fprintf(stderr, "       -kernel: Use kernels of the specified type (default symmetric)\n");
@@ -3321,6 +3321,7 @@ void Usage(const char *progname)
 	fprintf(stderr, "                 neighborhood.  Higher values of SR may cause some spots to\n");
 	fprintf(stderr, "                 take longer before they are detected, but will greatly\n");
 	fprintf(stderr, "                 increase the running speed (default 9)\n");
+	fprintf(stderr, "       -radius: Set the radius to use for new trackers to R (default 5)\n");
     fprintf(stderr, "       -tracker: Create a tracker with radius R at pixel X,Y and initiate\n");
     fprintf(stderr, "                 optimization.  Multiple trackers can be created\n");
     fprintf(stderr, "       -FIONA_background: Set the default background for FIONA trackers to BG\n");
@@ -3587,6 +3588,9 @@ int main(int argc, char *argv[])
 	} else if (!strncmp(argv[i], "-sliding_window_radius", strlen("-sliding_window_radius"))) {
 		if (++i > argc) { Usage(argv[0]); }
 		g_slidingWindowRadius = atof(argv[i]);
+	} else if (!strncmp(argv[i], "-radius", strlen("-radius"))) {
+		if (++i > argc) { Usage(argv[0]); }
+		g_Radius = atof(argv[i]);
 	} else if (!strncmp(argv[i], "-show_lost_and_found", strlen("-show_lost_and_found"))) {
 		g_showLostAndFound = true;
     } else if (argv[i][0] == '-') {
