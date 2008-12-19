@@ -1,5 +1,5 @@
-//XXX Make an HTML page in the directory describing the data set
-
+//XXX There is a bug in the program that makes it not work when not
+//    saving 16-bits, so we've disabled the choice.
 //XXX There are some off-by-1 errors in the way the red lines are drawn, maybe to
 //    do with binning > 1.
 //XXX It is not possible to select all the way to the top or right
@@ -43,7 +43,7 @@ const unsigned FAKE_CAMERA_SIZE = 256;
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "02.05";
+const char *Version_string = "02.07";
 char  *g_device_name = NULL;			  //< Name of the device to open
 bool	g_focus_changed = false;
 base_camera_server  *g_camera = NULL;
@@ -99,7 +99,7 @@ Tclvar_int_with_button	g_quit("quit",NULL);
 Tclvar_int_with_button	g_take_stack("logging",NULL);
 Tclvar_selector		g_base_filename("logfilename", NULL, NULL, "", logfilename_changed);
 char *                  g_base_filename_char = NULL;
-Tclvar_int_with_button	g_sixteenbits("save_sixteen_bits",NULL);
+Tclvar_int_with_button	g_sixteenbits("save_sixteen_bits",NULL, 1);
 Tclvar_float_with_scale	g_pixelcount("pixels_from_camera","", 8,16, 8);
 Tclvar_int_with_button	g_step_past_bottom("step_past_bottom","",1);
 Tclvar_int_with_button	g_preview("preview_video","", 1, handle_preview_change);
@@ -511,6 +511,11 @@ void myIdleFunc(void)
       if (con) { con->mainloop(); }
       read_z->mainloop();
 #endif
+    }
+
+    // XXX Bug; 8-bit saving fails, so make this not possible
+    if (g_sixteenbits == 0) {
+      g_sixteenbits = 1;
     }
 
     // If we've been asked to take a stack, do it.

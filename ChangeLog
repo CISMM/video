@@ -1,3 +1,11 @@
+2008-12-18  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* stack_collector.cpp : Changed so that you can't select 8-bit
+		saving, which is currently broken.  Version 2.07.
+	* stack_collector.vcproj : Changed so that it compiles with the
+		NSRG Buildtime 3.0 and installs without the need for an
+		NSRG Runtime.  Version 2.07 installer.
+
 2008-12-10  Ryan Schubert  <res@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Added Radius to the command line
