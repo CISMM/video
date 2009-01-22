@@ -96,7 +96,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.23";
+const char *Version_string = "05.24";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -2150,30 +2150,21 @@ bool find_more_trackers(unsigned how_many_more)
 	int numnotlost = 0;
 
 	// check to see which candidate spots aren't already lost
-	for (loop = potentialTrackers.begin(); loop != potentialTrackers.end(); loop++) 
-	{
+	for (loop = potentialTrackers.begin(); loop != potentialTrackers.end(); loop++) {
 		// if our candidate tracker isn't lost, then we add it to our list of real trackers
 		optimize_tracker((*loop));
-		if (!(*loop)->lost() && (*loop)->xytracker()->get_fitness() < 0)
-		{
+		if (!(*loop)->lost() && (*loop)->xytracker()->get_fitness() < 0) {
 			++numnotlost;
-			if (Spot_Information::get_static_index() >= vrpn_TRACKER_MAX_SENSORS) {
-				fprintf(stderr, "find_more_trackers(): Too many trackers, only %d allowed\n", vrpn_TRACKER_MAX_SENSORS);
-			} else {
-				g_trackers.push_back(new Spot_Information(create_appropriate_xytracker((*loop)->xytracker()->get_x(),(*loop)->xytracker()->get_y(),g_Radius),create_appropriate_ztracker()));
-				g_active_tracker = g_trackers.back();
-				if (g_active_tracker->ztracker()) { g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
-			}
-		}
-		else
+                        g_trackers.push_back(new Spot_Information(create_appropriate_xytracker((*loop)->xytracker()->get_x(),(*loop)->xytracker()->get_y(),g_Radius),create_appropriate_ztracker()));
+                        g_active_tracker = g_trackers.back();
+                        if (g_active_tracker->ztracker()) { g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
+                } else {
 			++numlost;
+                }
 	}
-
 
 	//printf("%i candidates were lost after optimizing\n", numlost);
 	//printf("%i candidates were not lost.\n", numnotlost);
-	
-
 	
 	// clean up candidate spots memory
 	for (loop = potentialTrackers.begin(); loop != potentialTrackers.end(); loop++) 
@@ -2886,13 +2877,6 @@ void mouseCallbackForGLUT(int button, int state, int raw_x, int raw_y)
     // The new tracker becomes the active tracker.
     case GLUT_LEFT_BUTTON:
       if (state == GLUT_DOWN) {
-	// Make sure that we don't have too many trackers.  If we do, then don't do anything.
-	// The number is limited for purposes of logging to the maximum number of sensors in
-	// a VRPN tracker.
-		  if (Spot_Information::get_static_index() >= vrpn_TRACKER_MAX_SENSORS) {
-	  fprintf(stderr, "Too many trackers, only %d allowed\n", vrpn_TRACKER_MAX_SENSORS);
-	  return;
-	}
 
 	g_whichDragAction = 1;
 	g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(x,y,g_Radius),create_appropriate_ztracker()));
@@ -3725,9 +3709,10 @@ int main(int argc, char *argv[])
 
   //------------------------------------------------------------------
   // Set up the VRPN server connection and the tracker object that will
-  // report the position when tracking is turned on.
+  // report the position when tracking is turned on.  Reserve 30,000
+  // sensor locations (this should be an overestimate).
   g_vrpn_connection = vrpn_create_server_connection();
-  g_vrpn_tracker = new vrpn_Tracker_Server("Spot", g_vrpn_connection, vrpn_TRACKER_MAX_SENSORS);
+  g_vrpn_tracker = new vrpn_Tracker_Server("Spot", g_vrpn_connection, 30000);
   g_vrpn_analog = new vrpn_Analog_Server("FrameNumber", g_vrpn_connection, 1);
 
   //------------------------------------------------------------------
