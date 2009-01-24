@@ -2031,17 +2031,14 @@ bool find_more_trackers(unsigned how_many_more)
 	list <Spot_Information *>::iterator loop;
 	int cx, cy;
 	spot_tracker_XY* curTracker;
-	for (y = 0; y < static_cast<int>(horiCandidates.size()); ++y)
-	{
+	for (y = 0; y < static_cast<int>(horiCandidates.size()); ++y) {
 		cy = horiCandidates[y];
-		for (x = 0; x < static_cast<int>(vertCandidates.size()); ++x)
-		{
+		for (x = 0; x < static_cast<int>(vertCandidates.size()); ++x) {
 			cx = vertCandidates[x];
 			safe = true;
 
 			// check to make sure we don't already have a tracker too close
-			for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) 
-			{
+			for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++)  {
 			//for each (Spot_Information* si in g_trackers)
 			//{
 				//si = (*loop);
@@ -2049,9 +2046,8 @@ bool find_more_trackers(unsigned how_many_more)
 				curX = curTracker->get_x();
 				curY = curTracker->get_y();
 				if (cx >= curX - tooClose && cx <= curX + tooClose &&
-					cy >= curY - tooClose && cy <= curY + tooClose )
-				{
-					safe = false;
+					cy >= curY - tooClose && cy <= curY + tooClose ) {
+				  safe = false;
 				}
 			}
 			if (safe) {
@@ -2074,10 +2070,12 @@ bool find_more_trackers(unsigned how_many_more)
 		y = candidateSpotsY[i];
 		SMD = localSMD(x, y, radius);
 		avgSMD += SMD;
-		if (SMD > maxSMD)
+                if (SMD > maxSMD) {
 			maxSMD = SMD;
-		if (SMD < minSMD)
+                }
+                if (SMD < minSMD) {
 			minSMD = SMD;
+                }
 		candidateSpotsSMD.push_back(SMD);
 	}
 	avgSMD /= candidateSpotsX.size();
@@ -2167,10 +2165,8 @@ bool find_more_trackers(unsigned how_many_more)
 	//printf("%i candidates were not lost.\n", numnotlost);
 	
 	// clean up candidate spots memory
-	for (loop = potentialTrackers.begin(); loop != potentialTrackers.end(); loop++) 
-	{
-		if ((*loop) != NULL)
-		{
+	for (loop = potentialTrackers.begin(); loop != potentialTrackers.end(); loop++)  {
+		if ((*loop) != NULL) {
 			delete (*loop)->xytracker();
 			if((*loop)->ztracker())
 				delete (*loop)->ztracker();
@@ -2180,10 +2176,9 @@ bool find_more_trackers(unsigned how_many_more)
 	}
 	potentialTrackers.clear();
 
-
 	// clear up our SMD memory
-	delete vertSMDs;
-	delete horiSMDs;
+	delete [] vertSMDs;
+	delete [] horiSMDs;
 
 	// clean up our image filtering memory
 	cvReleaseImage( &img );
