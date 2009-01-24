@@ -15,6 +15,8 @@ public:
   // Radius.
   virtual bool	take_single_optimization_step(const image_wrapper &image, unsigned rgb, double &x, double &y,
 				      bool do_x, bool do_y, bool do_r);
+  // So derived classes' destructors are called when needed.
+  virtual ~spot_tracker_XY() {};
 
   // Same thing, but say where to start.  This means that we should measure the
   // fitness at that location before trying the steps.
@@ -280,7 +282,7 @@ public:
 		    double pixelaccuracy = 0.25,
 		    double radiusaccuracy = 0.25,
 		    double sample_separation_in_pixels = 1.0);
-  ~symmetric_spot_tracker_interp();
+  virtual ~symmetric_spot_tracker_interp();
 
   /// Check the fitness against an image, at the current parameter settings.
   // Return the fitness value there.
@@ -603,7 +605,7 @@ class radial_average_tracker_Z : public spot_tracker_Z {
 public:
   // Set initial parameters of the search routine
   radial_average_tracker_Z(const char *in_filename, double depth_accuracy = 0.25);
-  ~radial_average_tracker_Z() { if (d_radial_image) { delete d_radial_image; }; }
+  virtual ~radial_average_tracker_Z() { if (d_radial_image) { delete d_radial_image; }; }
 
   /// Check the fitness against an image, at the current parameter settings.
   // Return the fitness value there.

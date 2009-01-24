@@ -96,7 +96,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.24";
+const char *Version_string = "05.25";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -119,10 +119,11 @@ public:
   Spot_Information(spot_tracker_XY *xytracker, spot_tracker_Z *ztracker, bool unofficial = false) {
     d_tracker_XY = xytracker;
     d_tracker_Z = ztracker;
-	if (!unofficial)
+    if (!unofficial) {
 		d_index = d_static_index++;
-	else
+    } else {
 		d_index = -1;
+    }
     d_velocity[0] = d_acceleration[0] = d_velocity[1] = d_acceleration[1] = 0;
     d_lost = false;
   }
@@ -1843,10 +1844,11 @@ void fill_around_tracker_with_value(double_image &im, spot_tracker_XY *t, double
 bool find_more_trackers(unsigned how_many_more)
 {
 	// make sure we only try to auto-find once per new frame of video
-	if (!g_gotNewFrame)
+        if (!g_gotNewFrame) {
 		return true;
-	else
+        } else {
 		g_gotNewFrame = false;
+        }
 
 	// empty out our candidate vectors...
 	vertCandidates.clear();
@@ -1857,7 +1859,6 @@ bool find_more_trackers(unsigned how_many_more)
   g_image->read_range(minx, maxx, miny, maxy);
 
   int x, y;
-
 
   // We'll do a simple gaussian filter on our image before looking for beads.
   // For this we'll use OpenCV.
@@ -1871,21 +1872,18 @@ bool find_more_trackers(unsigned how_many_more)
 	//  effectively into our 0-255 single byte values
 	double maxi = 0;
 	double curi;
-	for (y = miny; y <= maxy; ++y)
-	{
-		for (x = minx; x <= maxx; ++x)
-		{
+	for (y = miny; y <= maxy; ++y) {
+		for (x = minx; x <= maxx; ++x) {
 			curi = g_image->read_pixel_nocheck(x, y);
-			if (curi > maxi)
+                        if (curi > maxi) {
 				maxi = curi;
+                        }
 		}
 	}
 
 	// Write the current image values into our temporary IplImage
-	for (y = miny; y <= maxy; ++y)
-	{
-		for (x = minx; x <= maxx; ++x)
-		{
+	for (y = miny; y <= maxy; ++y) {
+		for (x = minx; x <= maxx; ++x) {
 			curi = g_image->read_pixel_nocheck(x, y);
 			((uchar*)(src->imageData + src->widthStep*(y-miny)))[x - minx] = (curi / maxi) * 255;
 		}
@@ -1910,8 +1908,7 @@ bool find_more_trackers(unsigned how_many_more)
 
 	// vertical SMDs
 	double* vertSMDs = new double[maxx - minx + 1];
-	for (x = minx; x <= maxx; ++x)
-	{
+	for (x = minx; x <= maxx; ++x) {
 		SMD = 0;
 		// calcualte one SMD
 		for (y = miny + 1; y <= maxy; ++y)
@@ -1990,8 +1987,7 @@ bool find_more_trackers(unsigned how_many_more)
 		curMax = 0;
 		// check for the max SMD value within our window size that's > thresh
 		for (i = x - windowRadius; i < x + windowRadius; ++i) {
-			if (vertSMDs[i] > curMax && vertSMDs[i] > vertThresh)
-			{
+			if (vertSMDs[i] > curMax && vertSMDs[i] > vertThresh) {
 				curMax = vertSMDs[i];
 			}
 		}
@@ -2098,12 +2094,9 @@ bool find_more_trackers(unsigned how_many_more)
 	}
 	//printf("%i potential new trackers added!\n", newTrackers);
 
-	;
-
 /*
 	// let's take a look at the distribution of our local SMDs
 	std::sort(candidateSpotsSMD.begin(), candidateSpotsSMD.end());
-
 
 	for each (double localSMDval in candidateSpotsSMD)
 	{
@@ -2168,19 +2161,22 @@ bool find_more_trackers(unsigned how_many_more)
 	for (loop = potentialTrackers.begin(); loop != potentialTrackers.end(); loop++)  {
 		if ((*loop) != NULL) {
 			delete (*loop)->xytracker();
-			if((*loop)->ztracker())
+                        if((*loop)->ztracker()) {
 				delete (*loop)->ztracker();
+                        }
 			delete (*loop);
 			(*loop) = NULL;
 		}
 	}
 	potentialTrackers.clear();
 
-	// clear up our SMD memory
-	delete [] vertSMDs;
+	// clear up our SMD memory in reverse order from allocation to make it
+        // easier for the memory manager
 	delete [] horiSMDs;
+	delete [] vertSMDs;
 
-	// clean up our image filtering memory
+	// clean up our image filtering memory in reverse order to make it
+        // easier for the memory manager
 	cvReleaseImage( &img );
 	cvReleaseImage( &src );
 

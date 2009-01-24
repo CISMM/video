@@ -1,5 +1,13 @@
 2009-01-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* spot_tracker.h : Made the base-class destructor virtual, which is
+		needed to make things work correctly when deleting derived
+		types.  This fixed a memory leak with the symmetric kernel.
+	* video_spot_tracker.cpp : White space clean-up.  New version number
+		(5.25).  Made installer.
+
+2009-01-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* video_spot_tracker.cpp : Switched from delete to delete [] for memory
 		that was allocated with new [].  This didn't fix the memory leak,
 		but will save us from trouble later.
