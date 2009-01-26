@@ -1,5 +1,16 @@
 2008-01-26  Ryan Schubert  <res@cs.unc.edu>
 
+	* video_spot_tracker.cpp : Changed the code that cleared up the
+		tracker list memory on program exit to properly free up
+		all memory.  Fixed a bug that the new destructor introduced
+		where when the active tracker was deleted, its xy and z
+		trackers were being deleted manually but not sell to NULL.
+		This was changed to just rely on the destructor to delete the
+		xy and z trackers (but could have been changed to set the
+		pointers to NULL after deleting them explicitly as well).
+
+2008-01-26  Ryan Schubert  <res@cs.unc.edu>
+
 	* video_spot_tracker.cpp : Removing two debug printfs that I missed
 		before my previous commit.
 

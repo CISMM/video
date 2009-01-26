@@ -460,6 +460,15 @@ void drawStringAtXY(double x, double y, char *string)
 }
 
 
+// This function allows for much simpler freeing up of std::lists of
+//  Spot_Information pointers.
+static bool deleteAll( Spot_Information * theElement ) {
+	if (theElement != NULL)
+		delete theElement; // we'll let our Spot_Information destructor do the work
+	return true;
+}
+
+
 // This is called when someone kills the task by closing Glut or some
 // other means we don't have control over.  If we try to delete the VRPN
 // objects here, we get a seg fault for some reason.  VRPN must have already
@@ -488,10 +497,7 @@ static void  dirtyexit(void)
   g_tracking_threads.clear();
 
   // Get rid of any trackers.
-  list<Spot_Information *>::iterator  loop;
-  for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-    delete *loop;
-  }
+  g_trackers.remove_if( deleteAll );
   if (g_camera) { delete g_camera; g_camera = NULL; }
   if (g_glut_image) { delete [] g_glut_image; g_glut_image = NULL; };
   if (g_beadseye_image) { delete [] g_beadseye_image; g_beadseye_image = NULL; };
@@ -1433,16 +1439,12 @@ bool  delete_active_xytracker(void)
     list <Spot_Information *>::iterator loop;
     list <Spot_Information *>::iterator next;
     for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-      if (*loop == g_active_tracker) {
-	next = loop; next++;
-	delete g_active_tracker->xytracker();
-	if ( g_active_tracker->ztracker() ) {
-	  delete g_active_tracker->ztracker();
-	}
-	delete *loop;
-	g_trackers.erase(loop);
-	break;
-      }
+		if (*loop == g_active_tracker) {
+			next = loop; next++;
+			delete *loop;
+			g_trackers.erase(loop);
+			break;
+		}
     }
 
     // Set the active tracker to the next one in the list if there is
@@ -1841,14 +1843,6 @@ void fill_around_tracker_with_value(double_image &im, spot_tracker_XY *t, double
       }
     }
   }
-}
-
-// This function allows for much simpler freeing up of std:lists of
-//  Spot_Information pointers.
-static bool deleteAll( Spot_Information * theElement ) {
-	if (theElement != NULL)
-		delete theElement; // we'll let our Spot_Information destructor do the work
-	return true; 
 }
 
 // Find the specified number of additional trackers, which should be placed
