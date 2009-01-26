@@ -1,3 +1,12 @@
+2008-01-26  Ryan Schubert  <res@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Wrote a destructor for the
+		Spot_Information class, and a helper function which utilizes
+		this to clear up a std::list of Spot_Information pointers.
+		This wasn't necessary anymore (Russ already fixed the memory
+		leak issues), but seems like a safer way of cleaning up this
+		memory.
+
 2009-01-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* spot_tracker.h : Made the base-class destructor virtual, which is

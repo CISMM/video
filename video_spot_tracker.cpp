@@ -128,6 +128,15 @@ public:
     d_lost = false;
   }
 
+  ~Spot_Information() {
+	  printf("~Spot_Information()...");
+	  if (d_tracker_XY != NULL)
+		  delete d_tracker_XY;
+	  if (d_tracker_Z != NULL)
+		  delete d_tracker_Z;
+	  printf("done.\n");
+  }
+
   spot_tracker_XY *xytracker(void) const { return d_tracker_XY; }
   spot_tracker_Z *ztracker(void) const { return d_tracker_Z; }
   unsigned index(void) const { return d_index; }
@@ -1836,6 +1845,14 @@ void fill_around_tracker_with_value(double_image &im, spot_tracker_XY *t, double
   }
 }
 
+// This function allows for much simpler freeing up of std:lists of
+//  Spot_Information pointers.
+static bool deleteAll( Spot_Information * theElement ) {
+	if (theElement != NULL)
+		delete theElement; // we'll let our Spot_Information destructor do the work
+	return true; 
+}
+
 // Find the specified number of additional trackers, which should be placed
 // at the highest-response locations in the image that is not within one
 // tracker radius of an existing tracker or within one tracker radius of the
@@ -2158,17 +2175,7 @@ bool find_more_trackers(unsigned how_many_more)
 	//printf("%i candidates were not lost.\n", numnotlost);
 	
 	// clean up candidate spots memory
-	for (loop = potentialTrackers.begin(); loop != potentialTrackers.end(); loop++)  {
-		if ((*loop) != NULL) {
-			delete (*loop)->xytracker();
-                        if((*loop)->ztracker()) {
-				delete (*loop)->ztracker();
-                        }
-			delete (*loop);
-			(*loop) = NULL;
-		}
-	}
-	potentialTrackers.clear();
+	potentialTrackers.remove_if( deleteAll );
 
 	// clear up our SMD memory in reverse order from allocation to make it
         // easier for the memory manager
