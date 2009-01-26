@@ -1,5 +1,10 @@
 2008-01-26  Ryan Schubert  <res@cs.unc.edu>
 
+	* video_spot_tracker.cpp : Removing two debug printfs that I missed
+		before my previous commit.
+
+2008-01-26  Ryan Schubert  <res@cs.unc.edu>
+
 	* video_spot_tracker.cpp : Wrote a destructor for the
 		Spot_Information class, and a helper function which utilizes
 		this to clear up a std::list of Spot_Information pointers.

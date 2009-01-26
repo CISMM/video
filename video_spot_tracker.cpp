@@ -129,12 +129,10 @@ public:
   }
 
   ~Spot_Information() {
-	  printf("~Spot_Information()...");
 	  if (d_tracker_XY != NULL)
 		  delete d_tracker_XY;
 	  if (d_tracker_Z != NULL)
 		  delete d_tracker_Z;
-	  printf("done.\n");
   }
 
   spot_tracker_XY *xytracker(void) const { return d_tracker_XY; }
