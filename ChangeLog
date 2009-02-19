@@ -1,3 +1,8 @@
+2009-02-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Switched from abs() to fabs() for numbers
+		that were doubles during SMD calculation.
+
 2008-01-26  Ryan Schubert  <res@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Changed the code that cleared up the

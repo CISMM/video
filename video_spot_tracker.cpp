@@ -1807,7 +1807,7 @@ double localSMD(int x, int y, int radius)
 	{
 		g_image->read_pixel(lx, y, Ia, g_colorIndex);
 		g_image->read_pixel(lx + 1, y, Ib, g_colorIndex);
-		xSMD += abs(Ia - Ib);
+		xSMD += fabs(Ia - Ib);
 		++n;
 	}
 	xSMD = xSMD / (double)n;
@@ -1818,7 +1818,7 @@ double localSMD(int x, int y, int radius)
 	{
 		g_image->read_pixel(x, ly, Ia, g_colorIndex);
 		g_image->read_pixel(x, ly + 1, Ib, g_colorIndex);
-		ySMD += abs(Ia - Ib);
+		ySMD += fabs(Ia - Ib);
 		++n;
 	}
 	ySMD = ySMD / (double)n;
@@ -1924,7 +1924,7 @@ bool find_more_trackers(unsigned how_many_more)
 		{
 			Ia = ((uchar*)(img->imageData + img->widthStep*y))[x];
 			Ib = ((uchar*)(img->imageData + img->widthStep*(y-1)))[x];
-			SMD += (abs(Ia - Ib));
+			SMD += fabs(Ia - Ib);
 		}
 		// normalize by dividing by the number of pairwise computations
 		SMD = SMD / (float)(maxy - miny);
@@ -1962,7 +1962,7 @@ bool find_more_trackers(unsigned how_many_more)
 		{
 			Ia = ((uchar*)(img->imageData + img->widthStep*y))[x];
 			Ib = ((uchar*)(img->imageData + img->widthStep*y))[x-1];
-			SMD += (abs(Ia - Ib));
+			SMD += fabs(Ia - Ib);
 		}
 		// normalize by dividing by the number of pairwise computations
 		SMD = SMD / (float)(maxx - minx);
