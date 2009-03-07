@@ -1,3 +1,13 @@
+2009-03-07  Ryan Schubert  <res@cs.unc.edu>
+
+	* TestGLCanvas.* : Changed spot selection cursor to a round
+		one that doesn't block the spot of interest.  Added the
+		ability to toggle the HUD text and selection cursor
+		color between black and white (for brightfield vs
+		fluorescence).
+	* ztracker.* : Same, plus currently has video logging line
+		commented out (for testing stage logging).
+
 2008-10-14  Ryan Schubert  <res@cs.unc.edu>
 
 	* ztracker.* : Added microns per focus GUI text box (this is

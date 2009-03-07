@@ -44,6 +44,7 @@ enum
 	MENU_ROPER,
 
 	SHOW_CROSS,
+	HUD_COLOR,
 
 	NEW_PLOT,
 	NEW_PLOT_ARRAY,
@@ -91,6 +92,7 @@ BEGIN_EVENT_TABLE(zTracker, wxFrame)
 //	EVT_SCROLL_CHANGED(zTracker::OnFrameScroll) 
 
 	EVT_CHECKBOX(SHOW_CROSS, zTracker::OnCrossCheck)
+	EVT_CHECKBOX(HUD_COLOR, zTracker::OnHUDColorCheck)
 
 	EVT_BUTTON(NEW_PLOT, zTracker::OnNewPlot)
 	EVT_BUTTON(NEW_PLOT_ARRAY, zTracker::OnNewPlotArray)
@@ -249,6 +251,9 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title,
 
 	m_showCrossCheck = new wxCheckBox(m_panel, SHOW_CROSS, "Show crosshairs");
 	m_showCrossCheck->SetValue(true);
+
+	m_HUDColorCheck = new wxCheckBox(m_panel, HUD_COLOR, "Toggle text color");
+	m_HUDColorCheck->SetValue(false);
 
 	m_advancedSizer = new wxBoxSizer(wxHORIZONTAL);
 	
@@ -628,6 +633,11 @@ void zTracker::OnCrossCheck(wxCommandEvent& WXUNUSED(event))
 	m_canvas->SetShowCross(m_showCrossCheck->IsChecked());
 }
 
+void zTracker::OnHUDColorCheck(wxCommandEvent& WXUNUSED(event))
+{
+	m_canvas->ToggleHUDColor();
+}
+
 void zTracker::On8BitsCheck(wxCommandEvent& WXUNUSED(event))
 {
 	if (m_8Bits->GetValue())
@@ -732,7 +742,7 @@ void zTracker::OnLoggingButton(wxCommandEvent& event)
 
 		printf("logging to: %s and %s\n", videologfile, stagelogfile);
 
-		m_canvas->LogToFile(videologfile);
+		//m_canvas->LogToFile(videologfile);
 
 		if (m_stageLogger)
 		{
@@ -1083,8 +1093,8 @@ void zTracker::Idle(wxIdleEvent& event)
 		double centerX = ((m_image->get_num_columns()) - 1.0f) * 0.5f;
 		double centerY = ((m_image->get_num_rows()) - 1.0f) * 0.5f;
 
-		double xDiff = centerX - m_spotTracker->xytracker()->get_x();
-		double yDiff = m_spotTracker->xytracker()->get_y() - centerY;
+		double xDiff = m_spotTracker->xytracker()->get_x() - centerX;
+		double yDiff = centerY - m_spotTracker->xytracker()->get_y();
 
 		if (xDiff < -1)
 			xDiff = -1;
@@ -1098,11 +1108,13 @@ void zTracker::Idle(wxIdleEvent& event)
 		printf("diff = (%f, %f)\n", xDiff, yDiff);
 		
 		// set new stage position (if we're updating the stage we'll move there)
-		x = x + xDiff * m_micronsPerPixel;
-		y = y + yDiff * m_micronsPerPixel;
+		x = x - xDiff * m_micronsPerPixel;
+		y = y - yDiff * m_micronsPerPixel;
+		m_canvas->SetX(x);
+		m_canvas->SetY(y);
 
 		// update the selection location
-		m_canvas->SetSelect(m_spotTracker->xytracker()->get_x() + xDiff, 
+		m_canvas->SetSelectYflip(m_spotTracker->xytracker()->get_x() + xDiff, 
 			m_spotTracker->xytracker()->get_y() + yDiff);
 		//m_spotTracker->xytracker()->set_location(m_canvas->GetSelectX(), m_canvas->GetSelectYflip());
 
@@ -1113,7 +1125,7 @@ void zTracker::Idle(wxIdleEvent& event)
 		double dragY = (double)m_canvas->m_middleMouseDragY;
 
 		if (dragX != 0 && dragY != 0)
-			printf("moving stag frm: (%f, %f, %f)\n", x, y, z);
+			printf("moving stage from: (%f, %f, %f)\n", x, y, z);
 
 		if (dragX != 0)
 		{
@@ -1214,6 +1226,7 @@ void zTracker::set_layout()
 //	m_manualFocusSizer->Add(m_manualFocusSlider, 0, wxALL, 3);
 
 	m_assortedSizer->Add(m_showCrossCheck, 0, wxALL, 3);
+	m_assortedSizer->Add(m_HUDColorCheck, 0, wxALL, 3);
 	m_assortedSizer->Add(m_8Bits, 0, wxALL, 3);
 	m_assortedSizer->Add(m_updateStage, 0, wxALL, 3);
 	m_assortedSizer->Add(m_trackingSizer, 0, 0, 0);
@@ -1222,7 +1235,6 @@ void zTracker::set_layout()
 	m_assortedSizer->Add(m_micronsPerPixelText, 0, wxALL, 3);
 	//m_assortedSizer->Add(m_manualFocusSizer, 0, 0, 0);
 
-	
 	m_loggingSizer->Add(m_loggingButton, 0, wxALL, 3);
 	m_loggingSizer->Add(m_logfileText, 0, wxALL, 3);
 

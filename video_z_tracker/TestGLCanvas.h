@@ -58,6 +58,8 @@ public:
 	}
 
 
+	void ToggleHUDColor() { m_textColor = 1 - m_textColor; }
+
 	int GetRadius()	{	return m_pixelRadius;	}
 
 	void UpdateSlices();
@@ -141,6 +143,7 @@ private:
 
 	bool m_logging;
 
+	float m_textColor;
 
     void InitGL();
     void ResetProjectionMode();

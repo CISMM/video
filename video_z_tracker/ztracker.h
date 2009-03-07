@@ -57,6 +57,8 @@ public:
 
 	void OnCrossCheck(wxCommandEvent& event);
 
+	void OnHUDColorCheck(wxCommandEvent& event);
+
 	void OnNewPlot(wxCommandEvent& event);
 	
 	void OnNewPlotArray(wxCommandEvent& event);
@@ -111,6 +113,8 @@ protected:
 
 
 	wxCheckBox* m_showCrossCheck;
+
+	wxCheckBox* m_HUDColorCheck;
 
 	//wxSlider* m_frameSlider;
 

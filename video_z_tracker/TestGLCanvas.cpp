@@ -99,6 +99,8 @@ TestGLCanvas::TestGLCanvas(wxWindow *parent, wxWindowID id,
 
 	m_image = NULL;
 
+	m_textColor = 0;
+
 	m_xDim = 0;
 	m_yDim = 0;
 
@@ -136,6 +138,7 @@ TestGLCanvas::TestGLCanvas(wxWindow *parent, wxWindowID id,
 
 	printf("Waiting to hear the image dimensions...\n");
 	while (!m_got_dimensions) {
+		printf(".");
 		m_imager->mainloop();
 		vrpn_SleepMsecs(1);
 	}
@@ -317,33 +320,43 @@ void TestGLCanvas::DrawSelectionBox()
 	gluOrtho2D(0, sz.GetX(), sz.GetY(), 0);
 
 	//glRasterPos2i(0, sz.GetY());
-	
-	glBegin(GL_LINE_LOOP);
 
+	// *** DRAW A ROUND SPOT TRACKER TYPE SELECTION MARKER
+	double stepsize = M_PI / m_pixelRadius;
+	double runaround;
+	glBegin(GL_LINE_STRIP);
+	for (runaround = 0; runaround <= 2*M_PI; runaround += stepsize) {
+		glVertex3f(cx + 2*m_pixelRadius*cos(runaround),cy + 2*m_pixelRadius*sin(runaround), 0.1f);
+	}
+	glVertex3f(cx + 2*m_pixelRadius, cy, 0.1f);  // Close the circle
+	glEnd();
+	// Then, make four lines coming from the cirle in to the radius of the spot
+	// so we can tell what radius we have set
+	glBegin(GL_LINES);
+	glVertex2f(cx+m_pixelRadius,cy); glVertex2f(cx+2*m_pixelRadius,cy);
+	glVertex2f(cx,cy+m_pixelRadius); glVertex2f(cx,cy+2*m_pixelRadius);
+	glVertex2f(cx-m_pixelRadius,cy); glVertex2f(cx-2*m_pixelRadius,cy);
+	glVertex2f(cx,cy-m_pixelRadius); glVertex2f(cx,cy-2*m_pixelRadius);
+	glEnd();
+
+
+	/* *** DRAW CROSSHAIRS ***
+	glBegin(GL_LINE_LOOP);
 	glColor4f(0, 0, 1, 1);
 	glVertex3f(cx - 1, cy - m_pixelRadius - 1, 0.1);
-
 	glVertex3f(cx - 1, cy + m_pixelRadius + 1, 0.1);
-
 	glVertex3f(cx + 1, cy + m_pixelRadius + 1, 0.1);
-
 	glVertex3f(cx + 1, cy - m_pixelRadius - 1, 0.1);
-
 	glEnd();
-
 
 	glBegin(GL_LINE_LOOP);
-
 	glColor4f(1, 0, 0, 1);
 	glVertex3f(cx - m_pixelRadius - 1, cy - 1, 0.1);
-
 	glVertex3f(cx - m_pixelRadius - 1, cy + 1, 0.1);
-
 	glVertex3f(cx + m_pixelRadius + 1, cy + 1, 0.1);
-
 	glVertex3f(cx + m_pixelRadius + 1, cy - 1, 0.1);
-
 	glEnd();
+	*** */
 
 	glPopMatrix();
 }
@@ -365,7 +378,7 @@ void TestGLCanvas::DrawHUD()
 
 	int y = h - 12;
 	int x = 3;
-	glColor4f(0.0, 0.0, 0.0, 0.7);
+	glColor4f(m_textColor, m_textColor, m_textColor, 0.7);
 
 	glRasterPos2i(x,y);
 	gprintf("Stage");
