@@ -79,6 +79,8 @@ public:
 
 	void OnMicronsPerFocusText(wxCommandEvent& event);
 
+	void OnTargetOOFText(wxCommandEvent& event);
+
 	void Idle(wxIdleEvent& event);
 
 	void CalcFocus();
@@ -190,7 +192,9 @@ protected:
 	wxTextCtrl* m_logfileText;
 	wxButton* m_loggingButton;
 
+	wxTextCtrl* m_focusMeasureText;
 	wxTextCtrl* m_micronsPerFocusText;
+	wxTextCtrl* m_targetOOFText;
 
 	// tracking mode 'keep bead centered' stuff
 	wxTextCtrl* m_micronsPerPixelText;
@@ -218,6 +222,10 @@ protected:
 
 	vrpn_Auxiliary_Logger_Remote* m_stageLogger;
 	bool m_videoAndStageLogging;
+
+	vrpn_Connection	    *m_vrpn_connection;    //< Connection to send position over
+	vrpn_Tracker_Server *m_vrpn_tracker;	  //< Tracker server to send positions
+	vrpn_Analog_Server  *m_vrpn_analog;        //< Analog server to report frame number
 
 private:
 

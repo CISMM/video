@@ -1,3 +1,13 @@
+2009-03-26  Ryan Schubert  <res@cs.unc.edu>
+
+	* TestGLCanvas.cpp : Fixed a race condition that caused a
+		crash if we got a region changed event before we were
+		ready for them.
+	* ztracker.* : Added controls for all bead-specific calibration
+		numbers (target, um/focus).  Now always displays the 
+		current focus measure for the tracked position.  Added
+		a vrpn server over which to send live bead position data.
+
 2009-03-07  Ryan Schubert  <res@cs.unc.edu>
 
 	* TestGLCanvas.* : Changed spot selection cursor to a round

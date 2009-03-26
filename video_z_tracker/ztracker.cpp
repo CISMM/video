@@ -20,6 +20,14 @@
 //bool  get_camera(const char *type, base_camera_server **camera, Controllable_Video **video);
 
 
+void clamp(double &var, double min, double max) {
+	if (var < min)
+		var = min;
+	else if (var > max)
+		var = max;
+}
+
+
 
 // spot tracker library stuff...this is ugly
 unsigned  Spot_Information::d_static_index = 0;	  //< Start the first instance of a Spot_Information index at zero.
@@ -67,6 +75,7 @@ enum
 	PIXEL_SIZE,
 	
 	MICRONS_PER_FOCUS,
+	TARGET_OOF,
 
 	LAST_LOCAL_ID,
 };
@@ -112,6 +121,8 @@ BEGIN_EVENT_TABLE(zTracker, wxFrame)
 	EVT_TEXT(PIXEL_SIZE, zTracker::OnMicronsPerPixelText)
 
 	EVT_TEXT(MICRONS_PER_FOCUS, zTracker::OnMicronsPerFocusText)
+
+	EVT_TEXT(TARGET_OOF, zTracker::OnTargetOOFText)
 
 	EVT_IDLE(zTracker::Idle)
 
@@ -217,6 +228,7 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title,
 
 	m_canvas = new TestGLCanvas(m_panel, wxID_ANY, wxDefaultPosition,
         wxSize(200, 200), wxNO_BORDER, "TestGLCanvas", video_name);
+
 	m_canvas->SetSize(m_canvas->cols, m_canvas->rows);
 
 	m_horizLabel = new wxStaticText(m_panel, wxID_ANY, wxT("Horizontal"), wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL | wxNO_BORDER);
@@ -278,7 +290,6 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title,
 	m_newPlotArrayButton = new wxButton(m_panel, NEW_PLOT_ARRAY, "plot array");
 
 
-
 	m_8Bits = new wxCheckBox(m_panel, BIT_DEPTH, "8 bits");
 	m_8Bits->SetValue(true);
 	m_canvas->SetNumBits(8);
@@ -292,13 +303,13 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title,
 	m_XYtracking = new wxCheckBox(m_panel, wxID_ANY, "Track XY");
 	m_zVel = 0;
 
-
+/*
 	m_zLabel = new wxStaticText(m_panel, wxID_ANY, "Z");
 	m_zText = new wxTextCtrl(m_panel, wxID_ANY, "0", wxDefaultPosition, wxSize(50, 20), wxTE_CENTER);
 	m_zUpText = new wxTextCtrl(m_panel, wxID_ANY, " ", wxDefaultPosition, wxSize(20, 20), wxTE_CENTER | wxTE_READONLY);
 	m_zVelText = new wxTextCtrl(m_panel, wxID_ANY, "0", wxDefaultPosition, wxSize(50, 20), wxTE_CENTER | wxTE_READONLY);
 	m_zDownText = new wxTextCtrl(m_panel, wxID_ANY, " ", wxDefaultPosition, wxSize(20, 20), wxTE_CENTER | wxTE_READONLY);
-
+*/
 
 //	m_manualFocusSizer = new wxBoxSizer(wxVERTICAL);
 //	m_manualFocusSlider = new wxSlider(m_panel, wxID_ANY, 0, 0, 100, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL | wxNO_BORDER);
@@ -341,10 +352,13 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title,
 	m_targetOOF = 0;
 	m_micronsPerFocus = 0;
 
+	m_focusMeasureText = NULL;
+	m_focusMeasureText = new wxTextCtrl(m_panel, wxID_ANY, "0.0", wxDefaultPosition, wxSize(40, 20));
+
 	m_zTrackDamping = 1.0;
 	m_zTrackDampingText = NULL; // for some reason the wx text event callback was happening
 								// when this was still uninitialized!
-	m_zTrackDampingText = new wxTextCtrl(m_panel, Z_DAMPING, "1.0", wxDefaultPosition, wxSize(30, 20));
+	m_zTrackDampingText = new wxTextCtrl(m_panel, Z_DAMPING, "1.0", wxDefaultPosition, wxSize(40, 20));
 
 
 	// tracking mode 'keep bead centered' stuff
@@ -358,6 +372,8 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title,
 	m_micronsPerFocusText = NULL;
 	m_micronsPerFocusText = new wxTextCtrl(m_panel, MICRONS_PER_FOCUS, "1.0", wxDefaultPosition, wxSize(40,20));
 
+	m_targetOOFText = NULL;
+	m_targetOOFText = new wxTextCtrl(m_panel, TARGET_OOF, "0.0", wxDefaultPosition, wxSize(40,20));
 
 	m_zGuess = NULL;
 
@@ -372,6 +388,13 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title,
 	x = 0;
 	y = 0;
 	z = 0;
+
+
+	// setup our vrpn server that will report the actual bead position
+	m_vrpn_connection = vrpn_create_server_connection(3885);
+	m_vrpn_tracker = new vrpn_Tracker_Server("Bead", m_vrpn_connection, 100);
+	m_vrpn_analog = new vrpn_Analog_Server("FrameNumber", m_vrpn_connection, 1);
+
 
 
 
@@ -925,9 +948,9 @@ void zTracker::OnCalibrateStageZ(wxCommandEvent& event)
 		if (m_canvas != NULL)
 		{
 			m_image = m_canvas->GetWrappedImage();
+
+			m_canvas->UpdateSlices(); // update the pixel slices from which we get the SMDs
 		}
-		
-		m_canvas->UpdateSlices(); // update the pixel slices from which we get the SMDs
 
 		// TODO average pixel slices before calculating a single SMD!
 		smd1 = m_horizPixels->calcFocus(m_channel, method, weight);
@@ -959,10 +982,14 @@ void zTracker::OnCalibrateStageZ(wxCommandEvent& event)
 	m_micronsPerFocus = (z - initialZ) / (initialFocus - focus);
 	printf("m_MicronsPerFocus = %f\n", m_micronsPerFocus);
 
-	// update our microns per focus box
+	// update our text boxes
 	char mpf[20];
 	sprintf(mpf, "%f", m_micronsPerFocus);
 	m_micronsPerFocusText->ChangeValue(mpf);
+
+	char oof[20];
+	sprintf(oof, "%f", m_targetOOF);
+	m_targetOOFText->ChangeValue(oof);
 
 	m_stage->GetPosition(x, y, z); // get a final sync of our virtual x y z vars
 }
@@ -1007,6 +1034,18 @@ void zTracker::OnMicronsPerFocusText(wxCommandEvent& WXUNUSED(event))
 	if(m_micronsPerFocusText->GetValue().ToDouble(&val))
 	{
 		m_micronsPerFocus = val;
+	}
+}
+
+void zTracker::OnTargetOOFText(wxCommandEvent& WXUNUSED(event))
+{
+	double val = 0.0;
+	if (!m_targetOOFText)
+		return;
+
+	if(m_targetOOFText->GetValue().ToDouble(&val))
+	{
+		m_targetOOF = val;
 	}
 }
 
@@ -1059,6 +1098,16 @@ void zTracker::Idle(wxIdleEvent& event)
 	}
 
 	CalcFocus();
+	char buffer[20] = "";
+	sprintf(buffer, "%.3f", m_focus);	
+	m_focusMeasureText->SetValue(buffer);
+
+	// auto-detect lost tracking
+	if (m_focus < 0.2 && m_Ztracking->GetValue())
+	{
+		printf("Lost tracking!\n");
+		m_Ztracking->SetValue(false);
+	}
 
 	// STARTZTRACKING
 	if (m_Ztracking->GetValue()) // if we're doing active, automatic tracking
@@ -1082,7 +1131,7 @@ void zTracker::Idle(wxIdleEvent& event)
 		if (delta != 0)
 		{
 			z += delta;
-			printf("delta = %f\tmoving z to: %f\n", delta, z);
+			//printf("delta = %f\tmoving z to: %f\n", delta, z);
 			m_canvas->m_mouseWheelDelta = 0;
 		}
 	}
@@ -1105,7 +1154,7 @@ void zTracker::Idle(wxIdleEvent& event)
 		if (yDiff > 1)
 			yDiff = 1;
 
-		printf("diff = (%f, %f)\n", xDiff, yDiff);
+		//printf("diff = (%f, %f)\n", xDiff, yDiff);
 		
 		// set new stage position (if we're updating the stage we'll move there)
 		x = x - xDiff * m_micronsPerPixel;
@@ -1124,23 +1173,20 @@ void zTracker::Idle(wxIdleEvent& event)
 		double dragX = (double)m_canvas->m_middleMouseDragX;
 		double dragY = (double)m_canvas->m_middleMouseDragY;
 
-		if (dragX != 0 && dragY != 0)
-			printf("moving stage from: (%f, %f, %f)\n", x, y, z);
-
 		if (dragX != 0)
 		{
 			x = x + (dragX * m_canvas->m_micronsPerPixel);
 			m_canvas->m_middleMouseDragX = 0;
+			clamp(x, 0, 100);
 		}
 
 		if (dragY != 0)
 		{
 			y = y + (dragY * m_canvas->m_micronsPerPixel);
 			m_canvas->m_middleMouseDragY = 0;
+			clamp(y, 0, 100);
 		}
 
-		if (dragX != 0 && dragY != 0)
-			printf("moving stage to: (%f, %f, %f)\n", x, y, z);
 	}
 
 
@@ -1151,11 +1197,13 @@ void zTracker::Idle(wxIdleEvent& event)
 	}
 
 
+	/*
 	char buffer[20] = "";
 	sprintf(buffer, "%.3f", z);	
 	m_zText->SetValue(buffer);
 	sprintf(buffer, "%.3f", m_zVel);	
 	m_zVelText->SetValue(buffer);
+	*/
 
 	/***
 	for (int i = 0; i < m_plotWindows.size(); ++i)
@@ -1169,6 +1217,31 @@ void zTracker::Idle(wxIdleEvent& event)
 
 
 	m_stage->Update(); // update our stage
+	
+
+
+	// Report current bead position if logging
+	if (m_Ztracking->GetValue())
+	{
+	m_vrpn_analog->channels()[0] = 0;
+	m_vrpn_analog->report(vrpn_CONNECTION_RELIABLE);
+
+	struct timeval now; gettimeofday(&now, NULL);
+	float beadX = 0, beadY = 0, beadZ = 0;
+	beadX = 100 - x + m_spotTracker->xytracker()->get_x();
+	beadY = 100 - y + m_spotTracker->xytracker()->get_y();
+	beadZ = 100 - z + m_targetOOF;
+	vrpn_float64  pos[3] = {beadX, beadY, beadZ};
+	vrpn_float64  quat[4] = { 0, 0, 0, 1};
+	if (m_vrpn_tracker->report_pose(0, now, pos, quat, vrpn_CONNECTION_RELIABLE) != 0) {
+      fprintf(stderr,"Error: Could not log tracker\n");
+    }
+
+	if (m_vrpn_analog) { m_vrpn_analog->mainloop(); }
+	if (m_vrpn_tracker) { m_vrpn_tracker->mainloop(); }
+	if (m_vrpn_connection) { m_vrpn_connection->mainloop(); }
+	}
+	
 
 	event.RequestMore();
 
@@ -1183,15 +1256,21 @@ void zTracker::set_layout()
 	m_vertSizer->Add(m_vertLabel, 0, wxALIGN_CENTER | wxALL, 3);
 	m_vertSizer->Add(m_vertPixels, 0, wxALIGN_CENTER | wxALL, 3);
 
-	m_zSizer->Add(m_zLabel, 0, wxALIGN_CENTER);
-	m_zSizer->Add(m_zText, 0, wxALIGN_CENTER);
-	m_zSizer->Add(m_zUpText, 0, wxALIGN_CENTER);
-	m_zSizer->Add(m_zVelText, 0, wxALIGN_CENTER);
-	m_zSizer->Add(m_zDownText, 0, wxALIGN_CENTER);
+	//m_zSizer->Add(m_zLabel, 0, wxALIGN_CENTER);
+	//m_zSizer->Add(m_zText, 0, wxALIGN_CENTER);
+	//m_zSizer->Add(m_zUpText, 0, wxALIGN_CENTER);
+	//m_zSizer->Add(m_zVelText, 0, wxALIGN_CENTER);
+	//m_zSizer->Add(m_zDownText, 0, wxALIGN_CENTER);
+
+	m_zSizer->Add(new wxStaticText(m_panel, wxID_ANY, wxT("SMD Measure")), 0, wxALIGN_CENTER);
+	m_zSizer->Add(m_focusMeasureText, 0, wxALIGN_CENTER);
+	m_zSizer->Add(new wxStaticText(m_panel, wxID_ANY, wxT(" ")), 0, wxALIGN_CENTER);
 	m_zSizer->Add(new wxStaticText(m_panel, wxID_ANY, wxT("p-gain")), 0, wxALIGN_CENTER);
 	m_zSizer->Add(m_zTrackDampingText, 0, wxALIGN_CENTER);
 	m_zSizer->Add(new wxStaticText(m_panel, wxID_ANY, wxT("Um/focus")), 0, wxALIGN_CENTER);
 	m_zSizer->Add(m_micronsPerFocusText, 0, wxALIGN_CENTER);
+	m_zSizer->Add(new wxStaticText(m_panel, wxID_ANY, wxT("Target")), 0, wxALIGN_CENTER);
+	m_zSizer->Add(m_targetOOFText, 0, wxALIGN_CENTER);
 
 	m_canvasSizer->Add(m_canvas, 0, wxALL, 3);
 	m_canvasSizer->Add(m_vertSizer, 0, 0, 0);
@@ -1552,6 +1631,9 @@ void zTracker::optimize_tracker(Spot_Information *tracker)
 zTracker::~zTracker()
 {
 	//
+	if (m_vrpn_tracker) { delete m_vrpn_tracker; m_vrpn_tracker = NULL; };
+	if (m_vrpn_analog) { delete m_vrpn_analog; m_vrpn_analog = NULL; };
+	if (m_vrpn_connection) { m_vrpn_connection->removeReference(); m_vrpn_connection = NULL; };
 }
 
 

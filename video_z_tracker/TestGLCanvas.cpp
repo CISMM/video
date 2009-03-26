@@ -626,13 +626,17 @@ void TestGLCanvas::ResetProjectionMode()
 
 void  VRPN_CALLBACK TestGLCanvas::handle_region_change(void *testglcanvas, const vrpn_IMAGERREGIONCB info)
 {
+	//printf("handle_region_change()\n");
+
+	// Just leave things alone if we haven't set up the drawable things
+    // yet.
+	if (!((TestGLCanvas*)testglcanvas)->m_ready_for_region) { return; }
+
 	const vrpn_Imager_Region  *region=info.region;
     const vrpn_Imager_Remote  *imager = ((TestGLCanvas*)testglcanvas)->m_imager;
 	unsigned char* image = (((TestGLCanvas*)testglcanvas)->m_image)->getRawImagePointer();
 	int xDim = ((TestGLCanvas*)testglcanvas)->m_xDim;
 	int yDim = ((TestGLCanvas*)testglcanvas)->m_yDim;
-
-	//printf("handling region change...\n");
 
     // Just leave things alone if we haven't set up the drawable things
     // yet.
@@ -686,6 +690,7 @@ void  VRPN_CALLBACK TestGLCanvas::handle_region_change(void *testglcanvas, const
 
 void  VRPN_CALLBACK TestGLCanvas::handle_end_of_frame(void *thisCanvas,const struct _vrpn_IMAGERENDFRAMECB)
 {
+	//printf("handle_end_of_frame()\n");
     // Tell Glut it is time to draw.  Make sure that we don't post the redisplay
     // operation more than once by checking to make sure that it has been handled
     // since the last time we posted it.  If we don't do this check, it gums
