@@ -1,3 +1,8 @@
+2009-06-16  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* file_list.cpp : Added space to the descriptur string so that
+		it does not overflow.
+
 2009-02-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Switched from abs() to fabs() for numbers

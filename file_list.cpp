@@ -31,12 +31,12 @@ static string make_filename(const string file_name, string::size_type start, str
   // We're going to write the number into a character array using
   // sprintf(), but first we have to construct an argument to sprintf()
   // that tells how many spaces to fill in and asks it to zero-pad
-  // the number on the left.  This format string must be  %0XXu  where
+  // the number on the left.  This format string must be  %0XXlu  where
   // XX is replaced by the number of characters to take up.  We have
   // to prefix the % with another % to stick it into the string, then
   // add the  %02u  that is used to fill in the format descriptor, then
-  // add the  u  that is written into the format descriptor.
-  char	format_descriptor[6];
+  // add the  lu  that is written into the format descriptor.
+  char	format_descriptor[10];
   char	num_as_chars[100];
   sprintf(format_descriptor, "%%0%02ulu", len);
   sprintf(num_as_chars, format_descriptor, value);
