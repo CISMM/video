@@ -1,5 +1,22 @@
 2009-06-16  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* video_spot_tracker.cpp : Avoids changing the size of the
+		newly-active tracker when a tracker is deleted when
+		they are a different size.  Increases the search
+		radius for "follow jumps" to be four times the bead
+		radius so that it will follow larger jumps.
+	* spot_tracker.cpp : For the image-based spot tracker, when
+		it is grabbing an image it will reduce the radius if
+		needed to avoid grabbing pixels outside of the image,
+		rather than just giving up if it was asked to grab
+		pixels outside the image.  Modified twlines_image
+		tracker to return highly negative fitness when its
+		center goes outside the image.  Same for image tracker.
+		Never divides by zero on the symmetric kernel to avoid
+		fitness becoming NaN.
+
+2009-06-16  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* file_list.cpp : Added space to the descriptur string so that
 		it does not overflow.
 

@@ -810,8 +810,8 @@ double	symmetric_spot_tracker_interp::check_fitness(const image_wrapper &image, 
   // Don't check the pixel in the middle; it makes no difference to circular
   // symmetry.
   for (r = 1; r <= _rad / _samplesep; r++) {
-    double squareValSum = 0.0;		//< Used to compute the variance around a ring
-    double valSum = 0.0;		//< Used to compute the mean and variance around a ring
+    double squareValSum = 0.0;		//< Accumulates the variance around a ring
+    double valSum = 0.0;		//< Accumulates the mean around a ring
     int	pix;
     offset *list = *(which_list++);	//< Makes a speed difference to do this with increment vs. index
 
@@ -841,7 +841,9 @@ double	symmetric_spot_tracker_interp::check_fitness(const image_wrapper &image, 
     // variance = sum_over_points(val^2) - sum_over_points(val)^2 / count,
     // where val is the value at each point and count is the number of points.
     // Accumulate these into the ring variance sum.
-    ring_variance_sum += squareValSum - valSum*valSum / pixels;
+    if (pixels) {
+      ring_variance_sum += squareValSum - valSum*valSum / pixels;
+    }
   }
 
   return -ring_variance_sum;
@@ -887,24 +889,21 @@ image_spot_tracker_interp::~image_spot_tracker_interp()
 
 bool	image_spot_tracker_interp::set_image(const image_wrapper &image, unsigned rgb, double x, double y, double rad)
 {
-  // Find out the desired test radius and make sure it is valid.
+  // Find out the desired test radius, clip it to fit within the test
+  // image boundaries, and make sure it is valid.
   int desired_rad = (int)ceil(rad);
-  if (desired_rad <= 0) {
-    fprintf(stderr,"image_spot_tracker_interp::set_image(): Non-positive radius, giving up\n");
-    if (_testimage) {
-      delete [] _testimage;
-      _testimage = NULL;
-    }
-    return false;
-  }
 
-  // Make sure that the section of the image we are going to grab fits within
-  // the image itself
   int minx, maxx, miny, maxy;
   image.read_range(minx, maxx, miny, maxy);
-  if ( (x - desired_rad < minx) || (x + desired_rad > maxx) ||
-       (y - desired_rad < miny) || (y + desired_rad > maxy) ) {
-    fprintf(stderr,"image_spot_tracker_interp::set_image(): Test region goes outside of image, giving up\n");
+  // Subtract one because bilerp will sometimes go one beyond the
+  // pixel you want, which can be beyond the image.
+  desired_rad = (int)min(desired_rad, x - minx - 1);
+  desired_rad = (int)min(desired_rad, y - miny - 1);
+  desired_rad = (int)min(desired_rad, maxx - x - 1);
+  desired_rad = (int)min(desired_rad, maxy - y - 1);
+
+  if (desired_rad <= 0) {
+    fprintf(stderr,"image_spot_tracker_interp::set_image(): Non-positive radius, giving up\n");
     if (_testimage) {
       delete [] _testimage;
       _testimage = NULL;
@@ -969,6 +968,15 @@ double	image_spot_tracker_interp::check_fitness(const image_wrapper &image, unsi
     }
   }
 
+  // If our center is outside of the image, return a very low fitness value.
+  int minx, miny, maxx, maxy;
+  image.read_range(minx, maxx, miny, maxy);
+  if ( (get_x() < minx) || (get_x() > maxx) || (get_y() < miny) || (get_y() > maxy) ) {
+    fitness = -1e10;
+    return fitness;
+  }
+
+  // Find the fitness.
   for (x = -_testrad; x <= _testrad; x++) {
     for (y = -_testrad; y <= _testrad; y++) {
       if (image.read_pixel_bilerp(get_x()+x,get_y()+y,val, rgb)) {
@@ -977,14 +985,15 @@ double	image_spot_tracker_interp::check_fitness(const image_wrapper &image, unsi
 	fitness -= squarediff;
 	pixels++;
       }
-
     }
   }
 
   // Normalize the fitness value by the number of pixels we have chosen,
-  // or leave it at zero if we never found any.
+  // or set it low if we never found any.
   if (pixels) {
     fitness /= pixels;
+  } else {
+    fitness = -1e10;
   }
 
   // We never invert the fitness: we don't care whether it is a dark
@@ -1016,6 +1025,14 @@ double	twolines_image_spot_tracker_interp::check_fitness(const image_wrapper &im
     }
   }
 
+  // If our center is outside of the image, return a very low fitness value.
+  int minx, miny, maxx, maxy;
+  image.read_range(minx, maxx, miny, maxy);
+  if ( (get_x() < minx) || (get_x() > maxx) || (get_y() < miny) || (get_y() > maxy) ) {
+    fitness = -1e10;
+    return fitness;
+  }
+
   // Check the X cross section through the center, then the Y.
   for (x = -_testrad; x <= _testrad; x++) {
     if (image.read_pixel_bilerp(get_x()+x,get_y(),val, rgb)) {
@@ -1035,9 +1052,11 @@ double	twolines_image_spot_tracker_interp::check_fitness(const image_wrapper &im
   }
 
   // Normalize the fitness value by the number of pixels we have chosen,
-  // or leave it at zero if we never found any.
+  // or set it low if we never found any.
   if (pixels) {
     fitness /= pixels;
+  } else {
+    fitness = -1e10;
   }
 
   // We never invert the fitness: we don't care whether it is a dark

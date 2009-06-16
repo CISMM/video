@@ -96,7 +96,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.25";
+const char *Version_string = "05.26";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -1458,6 +1458,12 @@ bool  delete_active_xytracker(void)
       } else {
 	g_active_tracker = NULL;
       }
+    }
+
+    // Set the radius slider to the value of the new active tracker to avoid
+    // having it change to the current radius value.
+    if (g_active_tracker) {
+      g_Radius = g_active_tracker->xytracker()->get_radius();
     }
 
     // Play the "deleted tracker" sound.
@@ -3188,10 +3194,10 @@ void  rebuild_trackers(float newvalue, void *) {
 }
 
 // Sets the radius as the check-box is turned on (1) and off (0);
-// it will be set to the current bead radius
+// it will be set to 4x the current bead radius
 void  set_maximum_search_radius(int newvalue, void *)
 {
-  g_search_radius = g_Radius * newvalue;
+  g_search_radius = 4 * g_Radius * newvalue;
 }
 
 // When the check-box for "optimize Z" is changed, this

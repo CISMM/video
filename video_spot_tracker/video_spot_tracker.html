@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v05.25</title>
+<title>Video Spot Tracker v05.26</title>
 
-<h1>Video Spot Tracker version 05.25</h1>
+<h1>Video Spot Tracker version 05.26</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -156,7 +156,12 @@
 <h3>Enabling the trackers to follow jumps in bead position</h3>
 
 
-<p>The <strong><cite>follow_jumps</cite></strong> check-box activates a more-robust tracking algorithm that first looks for the best image match within 2 radiii of the prior position and then performs the standard kernel match. This makes the tracking run more slowly, but is more robust to bead motion between frames.  It does not affect the accuracy or the style of the main optimization for the kernel, it is only used to initialize the new search location between frames.</p>
+<p>The <strong><cite>follow_jumps</cite></strong> check-box activates a more-robust 
+  tracking algorithm that first looks for the best image match within 4 radiii 
+  of the prior position and then performs the standard kernel match. This makes 
+  the tracking run more slowly, but is more robust to bead motion between frames. 
+  It does not affect the accuracy or the style of the main optimization for the 
+  kernel, it is only used to initialize the new search location between frames.</p>
 
 <p>This following can be made faster (and slightly less reliable) by using estimated velocity to predict where the bead will be and reducing the search area. This is only true for beads whose motion is driven by a force; using velocity estimation on Brownian motion will produce worse results. Prediction is enabled by selecting the <cite><strong>predict</strong></cite> check-box. It is not recommended to use prediction without follow_jumps unless the motion is very linear. To get the tracker to reliably lock on, it is important to catch the bead when it is moving relatively slowly because the initial velocity estimate is zero velocity.</p> 
 
@@ -350,6 +355,16 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 5.26:</h3>
+<ul>
+  <li>Fixed a bug where deleting a tracker would sometimes change the radius of 
+    the new active tracker.</li>
+  <li>Made the image-based tracker used in <i>follow jumps</i> mode reduce its 
+    radius rather than give up when it is close to the edge of the image.</li>
+  <li>Made the <i>follow_jumps</i> check radius 4 times the bead radius.</li>
+  <li>Modified the symmetric kernel so that it does not return NaN values when 
+    it is on the image edge.</li>
+</ul>
 <h3>Version 5.25:</h3>
 <ul>
   <li>Fixed memory leak that was causing the program to crash after running for 
