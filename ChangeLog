@@ -1,3 +1,17 @@
+2009-06-17  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* base_camera_server.cpp : Took out overly-restrictive test on
+		the boundaries for the image boundaries in a double_image
+		object.
+	* spot_tracker.cpp : Changed the cone tracker back to doing
+		only positive weightings (not weighting the surround
+		negatively and the center positively) to make it work
+		right.  Also changed it to only go to the radius you
+		ask for rather than twice the radius.
+	* video_spot_tracker.cpp : Adding intensity-based lost-tracker
+		threshold based on how much the tracker pixel varies from
+		the background.
+
 2009-06-16  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Avoids changing the size of the

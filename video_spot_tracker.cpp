@@ -96,7 +96,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.26";
+const char *Version_string = "05.27";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -298,7 +298,8 @@ Tclvar_float_with_scale	g_colorIndex("red_green_blue", NULL, 0, 2, 0);
 Tclvar_float_with_scale	g_brighten("brighten", "", 0, 8, 0);
 Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_trackers);
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
-Tclvar_float_with_scale g_lossSensitivity("lost_tracking_sensitivity", ".lost_and_found_controls.top", 0.0, 1.0, 0.0);
+Tclvar_float_with_scale g_lossSensitivity("kernel_lost_tracking_sensitivity", ".lost_and_found_controls.top", 0.0, 1.0, 0.0);
+Tclvar_float_with_scale g_intensityLossSensitivity("intensity_lost_tracking_sensitivity", ".lost_and_found_controls.top", 0.0, 10.0, 0.0);
 Tclvar_float_with_scale g_borderDeadZone("dead_zone_around_border", ".lost_and_found_controls.top", 0.0, 30.0, 0.0);
 Tclvar_float_with_scale g_trackerDeadZone("dead_zone_around_trackers", ".lost_and_found_controls.top", 0.0, 3.0, 0.0);
 Tclvar_float_with_scale g_findThisManyBeads("maintain_this_many_beads", ".lost_and_found_controls.bottom", 0.0, 100.0, 0.0);
@@ -1597,7 +1598,7 @@ static void optimize_tracker(Spot_Information *tracker)
     tracker->set_acceleration(new_acc);
   }
 
-  // If we have a non-zero threshold for determining if we are lost,
+  // If we have a non-zero kernel-based threshold for determining if we are lost,
   // check and see if we are.  This is done by finding the value of
   // the fitness function at the actual tracker location and comparing
   // it to the maximum values located on concentric rings around the
@@ -1617,6 +1618,7 @@ static void optimize_tracker(Spot_Information *tracker)
   //    center is more than the specified fraction of twice the standard deviation away
   //    from the mean of the surrounding values.  For an inverted tracker, this
   //    must be below; for a non-inverted tracker it is above.
+  tracker->lost(false); // Not lost yet...
   if (g_lossSensitivity > 0.0) {
    if (g_kernel_type == KERNEL_FIONA) {
      // Compute the mean of the values two radii out from the
@@ -1732,9 +1734,63 @@ static void optimize_tracker(Spot_Information *tracker)
       }
     }
    }
-  } else {
-    // Not checking, so nobody is lost.
-    tracker->lost(false);
+  }
+
+  // If the intensity-based lost threshold setting is nonzero, check to see
+  // whether the pixel at the center of the tracker is significantly different
+  // from the pixels around the outside of the tracker.  We do this by looking at
+  // the mean and variance of the pixels along a box with sides that are
+  // 1.5 times the diameter of the tracker (3x the radius) and seeing if the
+  // squared difference between the center pixel and mean is greater than the
+  // variance scaled by the sensitivity.  If it is, there is a well-defined
+  // bead and so we're not lost.  (This routine does not check the corner
+  // pixels of the square surrounding, to avoid double-weighting them based
+  // on our loop strategy.)
+  if (g_intensityLossSensitivity > 0.0) {
+     int halfwidth = static_cast<int>(1.5 * tracker->xytracker()->get_radius());
+     int x = static_cast<int>(tracker->xytracker()->get_x());
+     int y = static_cast<int>(tracker->xytracker()->get_y());
+     int pixels = 0;
+     double val = 0;
+     double mean = 0;
+     double variance = 0;
+     int offset;
+     for (offset = -halfwidth+1; offset < halfwidth; offset++) {
+       if (g_image->read_pixel(x-offset, y-halfwidth, val, g_colorIndex)) {
+         mean += val;
+         variance += val*val;
+         pixels++;
+       }
+       if (g_image->read_pixel(x-offset, y+halfwidth, val, g_colorIndex)) {
+         mean += val;
+         variance += val*val;
+         pixels++;
+       }
+       if (g_image->read_pixel(x-halfwidth, y+offset, val, g_colorIndex)) {
+         mean += val;
+         variance += val*val;
+         pixels++;
+       }
+       if (g_image->read_pixel(x+halfwidth, y+offset, val, g_colorIndex)) {
+         mean += val;
+         variance += val*val;
+         pixels++;
+       }
+     }
+
+     // Compute the variance of all the points using the shortcut
+     // formula: var = (sum of squares of measures) - (sum of measurements)^2 / n.
+     // Then compute the mean.
+     if (pixels) {
+       variance = variance - mean*mean/pixels;
+       mean /= pixels;
+     }
+
+     // Compare to see if we're lost.
+     g_image->read_pixel(x, y, val, g_colorIndex);
+     if ((val - mean)*(val-mean) < variance * g_intensityLossSensitivity) {
+       tracker->lost(true);
+     }
   }
 
   // If we have a non-zero threshold to check against the boundary of the
@@ -2155,7 +2211,7 @@ bool find_more_trackers(unsigned how_many_more)
 	int numlost = 0;
 	int numnotlost = 0;
 
-	// check to see which candidate spots aren't already lost
+	// check to see which candidate spots aren't immediately lost
 	for (loop = potentialTrackers.begin(); loop != potentialTrackers.end(); loop++) {
 		// if our candidate tracker isn't lost, then we add it to our list of real trackers
 		optimize_tracker((*loop));

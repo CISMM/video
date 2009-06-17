@@ -197,8 +197,9 @@ double_image::double_image(int minx, int maxx, int miny, int maxy) :
   _image(NULL)
 {
   // Make sure the parameters are meaningful
-  if ( (_minx >= _maxx) || (_miny >= _maxy) || (_minx < 0) || (_miny < 0) ) {
-    fprintf(stderr,"double_image::double_image(): Bad min/max coordinates\n");
+  if ( (_minx >= _maxx) || (_miny >= _maxy) ) {
+    fprintf(stderr,"double_image::double_image(): Bad min/max coordinates (%d,%d; %d,%d)\n",
+      _minx, _miny, _maxx, _maxy);
     _minx = _maxy = _minx = _maxx = 0;
     return;
   }
