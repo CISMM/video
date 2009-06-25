@@ -3330,10 +3330,11 @@ void Usage(const char *progname)
     fprintf(stderr, "           [-dark_spot] [-follow_jumps] [-rod3 LENGTH ORIENT] [-outfile NAME]\n");
 	fprintf(stderr, "           [-precision P] [-sample_spacing S] [-show_lost_and_found]\n");
 	fprintf(stderr, "           [-lost_behavior B] [-lost_tracking_sensitivity L]\n");
-	fprintf(stderr, "           [-dead_zone_around_border DB] [-dead_zone_around_trackers DT]\n");
-	fprintf(stderr, "           [-maintain_this_many_beads M] [-candidate_spot_threshold T]\n");
-	fprintf(stderr, "           [-sliding_window_radius SR] [-radius R]\n");
-    fprintf(stderr, "           [-tracker X Y R] [-tracker X Y R] [-FIONA_background BG] ...\n");
+	fprintf(stderr, "           [-intensity_lost_sensitivity IL] [-dead_zone_around_border DB]");
+	fprintf(stderr, "           [-maintain_this_many_beads M] [-dead_zone_around_trackers DT]\n");
+	fprintf(stderr, "           [-candidate_spot_threshold T] [-sliding_window_radius SR]\n");
+	fprintf(stderr, "           [-radius R] [-tracker X Y R] [-tracker X Y R]\n");
+    fprintf(stderr, "           [-FIONA_background BG] ...\n");
     fprintf(stderr, "           [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n");
     fprintf(stderr, "       -kernel: Use kernels of the specified type (default symmetric)\n");
     fprintf(stderr, "       -rod3: Make a rod3 kernel of specified LENGTH(pixels) & ORIENT(degrees)\n");
@@ -3345,6 +3346,7 @@ void Usage(const char *progname)
 	fprintf(stderr, "       -show_lost_and_found: Show the lost_and_found window on startup\n");
 	fprintf(stderr, "       -lost_behavior: Set lost tracker behavior: 0:stop; 1:delete; 2:hover\n");
 	fprintf(stderr, "       -lost_tracking_sensitivity: Set lost_tracking_sensitivity to L\n");
+	fprintf(stderr, "       -intensity_lost_sensitivity: Set intensity_lost_tracking_sensitivity to IL\n");
 	fprintf(stderr, "       -dead_zone_around_border: Set a dead zone around the region of interest\n");
 	fprintf(stderr, "                 edge within which new trackers will not be found\n");
 	fprintf(stderr, "       -dead_zone_around_trackers: Set a dead zone around all current trackers\n");
@@ -3606,6 +3608,9 @@ int main(int argc, char *argv[])
 	} else if (!strncmp(argv[i], "-lost_tracking_sensitivity", strlen("-lost_tracking_sensitivity"))) {
 		if (++i > argc) { Usage(argv[0]); }
 		g_lossSensitivity = atof(argv[i]);
+	} else if (!strncmp(argv[i], "-intensity_lost_sensitivity", strlen("-intensity_lost_sensitivity"))) {
+		if (++i > argc) { Usage(argv[0]); }
+		g_intensityLossSensitivity = atof(argv[i]);	
 	} else if (!strncmp(argv[i], "-dead_zone_around_border", strlen("-dead_zone_around_border"))) {
 		if (++i > argc) { Usage(argv[0]); }
 		g_borderDeadZone = atof(argv[i]);
