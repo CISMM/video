@@ -1,3 +1,7 @@
+2009-06-17  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Released version 5.28.
+
 2009-06-26  Ryan Schubert <res@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Added a missing newline in usage.

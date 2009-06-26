@@ -96,7 +96,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.27";
+const char *Version_string = "05.28";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -1003,7 +1003,6 @@ void myDisplayFunc(void)
       glEnd();
     }
   }
-
 
   // For debug info, let's draw the horizontal and vertical lines of our
   //  candidate SMD auto-find locations.
