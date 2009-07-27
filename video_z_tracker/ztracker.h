@@ -87,6 +87,8 @@ public:
 
 	void CalculateZOffset();
 
+	void MCLAccuracy();
+
 protected:
 
 	wxPanel* m_panel;

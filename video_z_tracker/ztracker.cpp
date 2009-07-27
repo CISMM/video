@@ -757,16 +757,17 @@ void zTracker::OnLoggingButton(wxCommandEvent& event)
 	if (!m_videoAndStageLogging)
 	{
 		string filename = m_logfileText->GetValue();
-		char videologfile[80];
-		char stagelogfile[80];
+		char videologfile[256];
+		char stagelogfile[256];
 
 		sprintf(videologfile, "%s.vrpn", filename.c_str());
 		sprintf(stagelogfile, "%s_stage.vrpn", filename.c_str());
 
 		printf("logging to: %s and %s\n", videologfile, stagelogfile);
 
-		//m_canvas->LogToFile(videologfile);
+		m_canvas->LogToFile(videologfile);
 
+		/*
 		if (m_stageLogger)
 		{
 			if (!m_stageLogger->send_logging_request("", "", "", stagelogfile))
@@ -778,6 +779,7 @@ void zTracker::OnLoggingButton(wxCommandEvent& event)
 		{
 			printf("WARNING: NOT LOGGING STAGE POSITION!\n");
 		}
+		*/
 		m_videoAndStageLogging = true;
 	}
 	else
@@ -795,7 +797,9 @@ void zTracker::OnLoggingButton(wxCommandEvent& event)
 
 void zTracker::OnDo(wxCommandEvent& event)
 {
-	CalculateZOffset();
+	MCLAccuracy();
+
+	//CalculateZOffset();
 
 	/*
 	if (!m_canvas->m_imagelogging)
@@ -1049,6 +1053,90 @@ void zTracker::OnTargetOOFText(wxCommandEvent& WXUNUSED(event))
 	}
 }
 
+void zTracker::MCLAccuracy()
+{
+	
+	vector<double> xCmd, xAct, yCmd, yAct, zCmd, zAct;
+
+	double initX = 50;
+	double initY = 50;
+	double initZ = 50;
+
+	m_stage->MoveTo(initX, initY, initZ);
+	int i = 0;
+	for (i = 0; i < 50; ++i) {
+		m_stage->Update();
+		vrpn_SleepMsecs(5);
+	}
+
+	printf("Initial position should now be stable.\n");
+	int progStep = 100;
+	int prog = 0;
+
+	double x, y, z, sx, sy, sz;
+	double step = 1; // microns
+	double coarseStep = 25; // microns
+
+	x = initX;
+	y = initY;
+	z = initZ;
+	for (int num = 0; num < 10000; ++num) {
+		xCmd.push_back(x);
+		yCmd.push_back(y);
+		zCmd.push_back(z);
+
+		for (i = 0; i < 10; ++i) {
+			m_stage->Update();
+			vrpn_SleepMsecs(5);
+		}
+
+		m_stage->GetPosition(sx, sy, sz);
+		xAct.push_back(sx);
+		yAct.push_back(sy);
+		zAct.push_back(sz);
+
+		if (++prog % progStep == 0)
+			printf("%i percent done...\n", num / 100);
+	}
+
+
+/*
+
+	z = 0;
+	for (y = 0; y <= 100; y = y + step) {
+		for (x = 0; x <= 100; x = x + step) {
+			xCmd.push_back(x);
+			yCmd.push_back(y);
+			zCmd.push_back(z);
+			m_stage->MoveTo(x, y, z);
+			for (i = 0; i < 10; ++i) {
+				m_stage->Update();
+				vrpn_SleepMsecs(5);
+			}
+			m_stage->GetPosition(sx, sy, sz);
+			xAct.push_back(sx);
+			yAct.push_back(sy);
+			zAct.push_back(sz);
+		}
+
+		i = y;
+		if (i == y)
+			printf("%i percent done...\n", i);
+	}
+*/
+
+	FILE* pFile;
+	pFile = fopen("MCL_data.txt","w");
+
+	for (i = 0; i < xCmd.size(); ++i) {
+		fprintf(pFile, "%f %f %f %f %f %f\n", xCmd[i], yCmd[i], zCmd[i], xAct[i], yAct[i], zAct[i]);
+	}
+
+	fclose(pFile);
+	
+}
+
+
 void zTracker::Idle(wxIdleEvent& event)
 {
 
@@ -1098,7 +1186,7 @@ void zTracker::Idle(wxIdleEvent& event)
 	}
 
 	CalcFocus();
-	char buffer[20] = "";
+	char buffer[256] = "";
 	sprintf(buffer, "%.3f", m_focus);	
 	m_focusMeasureText->SetValue(buffer);
 
@@ -1196,14 +1284,12 @@ void zTracker::Idle(wxIdleEvent& event)
 			printf("Illegal movement command sent to stage: (%f, %f, %f)!\n", x, y, z);
 	}
 
-
-	/*
-	char buffer[20] = "";
-	sprintf(buffer, "%.3f", z);	
-	m_zText->SetValue(buffer);
-	sprintf(buffer, "%.3f", m_zVel);	
-	m_zVelText->SetValue(buffer);
-	*/
+	//sprintf(buffer, "%.3f", z);	
+	//m_zText->SetValue(buffer);
+	sprintf_s(buffer, 256, "%.3f", m_zVel);	
+	//m_zVelText->SetValue(buffer);
+	//printf("Estimated z offset from target: %s\n", buffer);
+	
 
 	/***
 	for (int i = 0; i < m_plotWindows.size(); ++i)

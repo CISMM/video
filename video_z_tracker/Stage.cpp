@@ -264,7 +264,7 @@ void Stage::CalculateOffset(double z_meters, double x_meters = 0, double y_meter
 		}
 		vrpn_SleepMsecs(250);
 
-		// Wait until we get at least one reponse for focus.
+		// Wait until we get at least one response for focus.
 		m_focus_changed = false;
 		do {
 			if (svr) { svr->mainloop(); }

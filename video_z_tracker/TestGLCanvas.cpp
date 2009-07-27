@@ -144,7 +144,7 @@ TestGLCanvas::TestGLCanvas(wxWindow *parent, wxWindowID id,
 	}
 
 	// attempt to fix horrible video logging rates?
-	m_imager->connectionPtr()->Jane_stop_this_crazy_thing(50);
+	//m_imager->connectionPtr()->Jane_stop_this_crazy_thing(50);
 
 	printf("got image dimensions!\n");
 	cols = m_imager->nCols();
@@ -171,7 +171,7 @@ TestGLCanvas::TestGLCanvas(wxWindow *parent, wxWindowID id,
 		m_imager->mainloop();
 		vrpn_gettimeofday(&cur, NULL);
 		double seconds = 0.001 * vrpn_TimevalMsecs(vrpn_TimevalDiff(cur, drainStart));
-		if (seconds >= 1)
+		if (seconds >= 2)
 			m_draining = false;
 	}
 	m_imager->throttle_sender(1);
@@ -318,6 +318,8 @@ void TestGLCanvas::DrawSelectionBox()
 	glPushMatrix();
 
 	gluOrtho2D(0, sz.GetX(), sz.GetY(), 0);
+
+	glColor4f(m_textColor, m_textColor, m_textColor, 0.7);
 
 	//glRasterPos2i(0, sz.GetY());
 
@@ -664,22 +666,6 @@ void  VRPN_CALLBACK TestGLCanvas::handle_region_change(void *testglcanvas, const
       region->decode_unscaled_region_using_base_pointer((vrpn_uint8*)image, 3, 3*xDim, 0, yDim, true, 3);
     }
 
-	/* OLDSCHOOL LOGGING!!
-    // If we're logging, save to disk.  This is needed to keep up with
-    // logging and because the program is killed to exit.
-	if (((TestGLCanvas*)testglcanvas)->m_imagelogging)
-	{
-		printf("checking to see if we have a logable connection yet...\n");
-		if (!((TestGLCanvas*)testglcanvas)->m_connection) // this is the first time we've logged!
-		{
-			printf("intantiating a loggable connection!\n");
-			((TestGLCanvas*)testglcanvas)->m_connection = vrpn_get_connection_by_name(((TestGLCanvas*)testglcanvas)->device_name, ((TestGLCanvas*)testglcanvas)->logfile_name);
-		}
-		printf("saving log file so far...\n");
-		((TestGLCanvas*)testglcanvas)->m_connection->save_log_so_far();
-	}
-	*/
-
     // We do not post a redisplay here, because we want to do that only
     // when we've gotten the end of a frame.  It is done in the
     // end_of_frame message handler.
@@ -691,6 +677,7 @@ void  VRPN_CALLBACK TestGLCanvas::handle_region_change(void *testglcanvas, const
 void  VRPN_CALLBACK TestGLCanvas::handle_end_of_frame(void *thisCanvas,const struct _vrpn_IMAGERENDFRAMECB)
 {
 	//printf("handle_end_of_frame()\n");
+
     // Tell Glut it is time to draw.  Make sure that we don't post the redisplay
     // operation more than once by checking to make sure that it has been handled
     // since the last time we posted it.  If we don't do this check, it gums
@@ -705,7 +692,6 @@ void  VRPN_CALLBACK TestGLCanvas::handle_end_of_frame(void *thisCanvas,const str
     // as the second buffer, sending each full frame into texture memory and
     // rendering a textured polygon.
 
-	//printf("handling end of frame...\n");
 	
 	((TestGLCanvas*)thisCanvas)->m_newImage = true;
 
@@ -717,6 +703,7 @@ void  VRPN_CALLBACK TestGLCanvas::handle_end_of_frame(void *thisCanvas,const str
 		print_timing_info();
     }
 
+	// ask the video server for 1 more frame.
 	((TestGLCanvas*)thisCanvas)->m_imager->throttle_sender(1);
 
 	//printf("done handling end of frame!\n");

@@ -1,3 +1,12 @@
+2009-07-27  Ryan Schubert  <res@cs.unc.edu>
+
+	* Stage.cpp : Fixed comment typo.
+	* TestGLCanvas.cpp : Removed some old, commented-out code.
+	* ztracker.* : Upped length of log filenames from 80 to 256.
+		Added MCLAccuracy() function to do a sweep of MCL range
+		and then dump all position command/sensor pairs to a
+		text file for analysis.
+
 2009-03-26  Ryan Schubert  <res@cs.unc.edu>
 
 	* TestGLCanvas.cpp : Fixed a race condition that caused a
