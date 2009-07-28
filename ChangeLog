@@ -1,3 +1,10 @@
+2009-07-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* edt_server.cpp : Slight changes, mostly in comments, done
+		while debugging for a new release using he old server.
+	* vrpn_imager_server.vcproj : New release (3.05) that uses the
+		old EDT library that doesn't have high latency.
+
 2009-07-27  Ryan Schubert <res@cs.unc.edu>
 
 	* video_imager_server.vcproj : Adding cooke pco library

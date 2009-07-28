@@ -121,6 +121,7 @@ bool  edt_server::read_image_to_memory(unsigned minX, unsigned maxX,
 							double exposure_time_millisecs)
 {
   u_char *image_p;
+  struct timeval now;
 
   if (!_status) { return false; }
 
@@ -163,17 +164,14 @@ bool  edt_server::read_image_to_memory(unsigned minX, unsigned maxX,
     d_missed_some_images = true;
   }
 
-/*
   // Once a second, tell how many buffers have been filled and are waiting
   // for us to process.
   static struct timeval last = { 0, 0 };
-  struct timeval now;
   vrpn_gettimeofday(&now, NULL);
   if (now.tv_sec > last.tv_sec) {
     last = now;
     printf("XXX EDT: %d outstanding buffers\n", outstanding );
   }
-*/
 
   /*
    * get the image and immediately start the next one. Processing
@@ -189,6 +187,20 @@ bool  edt_server::read_image_to_memory(unsigned minX, unsigned maxX,
     return false;
   }
   pdv_start_image((PdvDev*)d_pdv_p);
+  /*XXX
+  if (edt_reg_read((PdvDev*)d_pdv_p, PDV_STAT) & PDV_OVERRUN) {
+    XXX_overrun_check; // http://www.edt.com/api/simple__take_8c-source.html
+  }
+  */
+
+  // XXX We might think that we wanted to use the wait_images functions
+  // rather than wait_image, but we do seem to fill up all of the buffers
+  // when we can't send data out fast enough.  But it may be worth trying
+  // to use it and ask for one at a time, then only start more reads when
+  // half of them have been read or something?  And do this using a commend
+  // to start multiple reads?  Does it re-start every time we call start?
+  // If so, what's the point of multiple buffers in the simple_take.c file?
+  // Google search for pdv_wait_image_timed turned up pointers to their docs.
 
   //---------------------------------------------------------------------
   // Time handling: We let the EDT board tell us what time each image
@@ -208,7 +220,6 @@ bool  edt_server::read_image_to_memory(unsigned minX, unsigned maxX,
 
   // XXX The EDT-board time handling seems to be broken, so for now we just
   // put on the current time for the frame.
-  struct timeval now;
   vrpn_gettimeofday(&now, NULL);
   d_timestamp = now;
 
