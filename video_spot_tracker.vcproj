@@ -72,11 +72,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="SpotCamVC.lib glut32.lib opengl32.lib tcl83.lib tk83.lib odbc32.lib odbccp32.lib quat.lib cxcore.lib cv.lib highgui.lib"
+				AdditionalDependencies="pvcam32.lib SpotCamVC.lib glut32.lib opengl32.lib tcl83.lib tk83.lib odbc32.lib odbccp32.lib quat.lib cxcore.lib cv.lib highgui.lib"
 				OutputFile=".\Debug/video_spot_tracker.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\tcl\lib;C:\NSRG\external\pc_win32\GL\lib;c:\NSRG\external\pc_win32\OpenCV\lib;../vrpn/pc_win32/Debug;../quat/pc_win32/Debug;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;C:\nsrg\external\pc_win32\ImageMagick\lib;C:\NSRG\external\pc_win32\DiagInc;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;C:\NSRG\external\pc_win32\EDT\pdv"
+				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\tcl\lib;C:\NSRG\external\pc_win32\GL\lib;c:\NSRG\external\pc_win32\OpenCV\lib;../vrpn/pc_win32/Debug;../quat/pc_win32/Debug;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;C:\nsrg\external\pc_win32\ImageMagick\lib;C:\NSRG\external\pc_win32\DiagInc;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;C:\NSRG\external\pc_win32\EDT\pdv;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;"
 				IgnoreDefaultLibraryNames="msvcrt.lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/video_spot_tracker.pdb"
@@ -168,11 +168,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="SpotCamVC.lib glut32.lib opengl32.lib tcl83.lib tk83.lib odbc32.lib odbccp32.lib quat.lib cxcore.lib cv.lib highgui.lib"
+				AdditionalDependencies="pvcam32.lib SpotCamVC.lib glut32.lib opengl32.lib tcl83.lib tk83.lib odbc32.lib odbccp32.lib quat.lib cxcore.lib cv.lib highgui.lib"
 				OutputFile=".\Release/video_spot_tracker.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\tcl\lib;C:\NSRG\external\pc_win32\GL\lib;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\OpenCV\lib;../vrpn/pc_win32/Release;../quat/pc_win32/Release;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;C:\nsrg\external\pc_win32\ImageMagick\lib;C:\NSRG\external\pc_win32\diaginc;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;C:\NSRG\external\pc_win32\EDT\pdv"
+				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\tcl\lib;C:\NSRG\external\pc_win32\GL\lib;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\OpenCV\lib;../vrpn/pc_win32/Release;../quat/pc_win32/Release;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;C:\nsrg\external\pc_win32\ImageMagick\lib;C:\NSRG\external\pc_win32\diaginc;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;C:\NSRG\external\pc_win32\EDT\pdv;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;"
 				IgnoreDefaultLibraryNames=""
 				SubSystem="1"
 				TargetMachine="1"

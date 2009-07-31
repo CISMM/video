@@ -17,10 +17,6 @@
 //#define USE_METAMORPH	    // Metamorph reader not completed.
 #endif
 
-#ifdef	VST_USE_ROPER
-#pragma comment(lib,"C:\\Program Files\\Roper Scientific\\PVCAM\\pvcam32.lib")
-#endif
-
 // END configuration section.
 //---------------------------------------------------------------------------
 
@@ -240,6 +236,8 @@ int		    g_kymograph_filled = 0;	  //< How many lines of data are in there now.
 bool                g_quit_at_end_of_video = false; //< When we reach the end of the video, should we quit?
 
 double              g_FIONA_background = 0.0;     //< Can be specified on the command line.
+
+bool                g_use_gui = true;             //< Use 3D and 2D GUI?
 
 //-----------------------------------------------------------------
 // This section deals with providing multiple threads for tracking.
@@ -1031,30 +1029,6 @@ void myDisplayFunc(void)
   // Swap buffers so we can see it.
   if (g_show_video || g_mark) {
     glutSwapBuffers();
-  }
-
-  // Capture timing information and print out how many frames per second
-  // are being drawn.
-
-  { static struct timeval last_print_time;
-    struct timeval now;
-    static bool first_time = true;
-    static int frame_count = 0;
-
-    if (first_time) {
-      gettimeofday(&last_print_time, NULL);
-      first_time = false;
-    } else {
-      frame_count++;
-      gettimeofday(&now, NULL);
-      double timesecs = 0.001 * vrpn_TimevalMsecs(vrpn_TimevalDiff(now, last_print_time));
-      if (timesecs >= 5) {
-	double frames_per_sec = frame_count / timesecs;
-	frame_count = 0;
-	printf("Displayed frames per second = %lg\n", frames_per_sec);
-	last_print_time = now;
-      }
-    }
   }
 
   // Have no longer posted redisplay since the last display.
@@ -2787,7 +2761,7 @@ void myIdleFunc(void)
 
   //------------------------------------------------------------
   // Post a redisplay so that Glut will draw the new image
-  if (!g_already_posted) {
+  if (g_use_gui && !g_already_posted) {
     glutSetWindow(g_tracking_window);
     glutPostRedisplay();
     glutSetWindow(g_beadseye_window);
@@ -2820,6 +2794,30 @@ void myIdleFunc(void)
   }
 
   //------------------------------------------------------------
+  // Capture timing information and print out how many frames per second
+  // are being tracked.
+
+  { static struct timeval last_print_time;
+    struct timeval now;
+    static bool first_time = true;
+    static int last_frame_number = g_frame_number;
+
+    if (first_time) {
+      gettimeofday(&last_print_time, NULL);
+      first_time = false;
+    } else {
+      gettimeofday(&now, NULL);
+      double timesecs = 0.001 * vrpn_TimevalMsecs(vrpn_TimevalDiff(now, last_print_time));
+      if (timesecs >= 5) {
+	double frames_per_sec = (g_frame_number - last_frame_number) / timesecs;
+	last_frame_number = g_frame_number;
+	printf("Tracking %lg frames per second\n", frames_per_sec);
+	last_print_time = now;
+      }
+    }
+  }
+
+//------------------------------------------------------------
   // Time to quit?
   if (g_quit) {
     // If we have been logging, then see if we have saved the
@@ -3325,7 +3323,7 @@ void  handle_optimize_z_change(int newvalue, void *)
 
 void Usage(const char *progname)
 {
-    fprintf(stderr, "Usage: %s [-kernel disc|cone|symmetric|FIONA]\n", progname);
+    fprintf(stderr, "Usage: %s [-nogui] [-kernel disc|cone|symmetric|FIONA]\n", progname);
     fprintf(stderr, "           [-dark_spot] [-follow_jumps] [-rod3 LENGTH ORIENT] [-outfile NAME]\n");
 	fprintf(stderr, "           [-precision P] [-sample_spacing S] [-show_lost_and_found]\n");
 	fprintf(stderr, "           [-lost_behavior B] [-lost_tracking_sensitivity L]\n");
@@ -3335,6 +3333,7 @@ void Usage(const char *progname)
 	fprintf(stderr, "           [-radius R] [-tracker X Y R] [-tracker X Y R]\n");
     fprintf(stderr, "           [-FIONA_background BG] ...\n");
     fprintf(stderr, "           [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n");
+    fprintf(stderr, "       -nogui: Run without any graphical user interface (2D or 3D)\n");
     fprintf(stderr, "       -kernel: Use kernels of the specified type (default symmetric)\n");
     fprintf(stderr, "       -rod3: Make a rod3 kernel of specified LENGTH(pixels) & ORIENT(degrees)\n");
     fprintf(stderr, "       -dark_spot: Track a dark spot (default is bright spot)\n");
@@ -3570,6 +3569,8 @@ int main(int argc, char *argv[])
         Usage(argv[0]);
         exit(-1);
       }
+    } else if (!strncmp(argv[i], "-nogui", strlen("-nogui"))) {
+      g_use_gui = false;
     } else if (!strncmp(argv[i], "-dark_spot", strlen("-dark_spot"))) {
       g_invert = true;
     } else if (!strncmp(argv[i], "-follow_jumps", strlen("-follow_jumps"))) {
@@ -3798,17 +3799,19 @@ int main(int argc, char *argv[])
   // Initialize GLUT and create the window that will display the
   // video -- name the window after the device that has been
   // opened in VRPN.  Also set mouse callbacks.
-  glutInit(&argc, argv);
-  glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(175 + g_window_offset_x, 210 + g_window_offset_y);
-  glutInitWindowSize(g_camera->get_num_columns(), g_camera->get_num_rows());
-#ifdef DEBUG
-  printf("initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());
-#endif
-  g_tracking_window = glutCreateWindow(g_device_name);
-  glutMotionFunc(motionCallbackForGLUT);
-  glutMouseFunc(mouseCallbackForGLUT);
-  glutKeyboardFunc(keyboardCallbackForGLUT);
+  if (g_use_gui) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
+    glutInitWindowPosition(175 + g_window_offset_x, 210 + g_window_offset_y);
+    glutInitWindowSize(g_camera->get_num_columns(), g_camera->get_num_rows());
+  #ifdef DEBUG
+    printf("initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());
+  #endif
+    g_tracking_window = glutCreateWindow(g_device_name);
+    glutMotionFunc(motionCallbackForGLUT);
+    glutMouseFunc(mouseCallbackForGLUT);
+    glutKeyboardFunc(keyboardCallbackForGLUT);
+  }
 
   // Create the buffer that Glut will use to send to the tracking window.  This is allocating an
   // RGBA buffer.  It needs to be 4-byte aligned, so we allocated it as a group of
@@ -3826,10 +3829,12 @@ int main(int argc, char *argv[])
 
   //------------------------------------------------------------------
   // Create the window that will be used for the "Bead's-eye view"
-  glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(375 + g_window_offset_x, 140 + g_window_offset_y);
-  glutInitWindowSize(g_beadseye_size, g_beadseye_size);
-  g_beadseye_window = glutCreateWindow("Tracked");
+  if (g_use_gui) {
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
+    glutInitWindowPosition(375 + g_window_offset_x, 140 + g_window_offset_y);
+    glutInitWindowSize(g_beadseye_size, g_beadseye_size);
+    g_beadseye_window = glutCreateWindow("Tracked");
+  }
 
   // Create the buffer that Glut will use to send to the beads-eye window.  This is allocating an
   // RGBA buffer.  It needs to be 4-byte aligned, so we allocated it as a group of
@@ -3847,10 +3852,12 @@ int main(int argc, char *argv[])
 
   //------------------------------------------------------------------
   // Create the window that will be used for the "Landscape view"
-  glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(375 + 10 + g_beadseye_size + g_window_offset_x, 140 + g_window_offset_y);
-  glutInitWindowSize(g_landscape_size + g_landscape_strip_width, g_landscape_size);
-  g_landscape_window = glutCreateWindow("Landscape");
+  if (g_use_gui) {
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
+    glutInitWindowPosition(375 + 10 + g_beadseye_size + g_window_offset_x, 140 + g_window_offset_y);
+    glutInitWindowSize(g_landscape_size + g_landscape_strip_width, g_landscape_size);
+    g_landscape_window = glutCreateWindow("Landscape");
+  }
 
   // Create the floating-point buffer that will hold the fitness values before
   // they are scaled to match the displayable range.
@@ -3879,9 +3886,11 @@ int main(int argc, char *argv[])
 
   //------------------------------------------------------------------
   // Create the window that will be used for the kymograph
-  glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(190 + g_camera->get_num_columns() + g_window_offset_x, 140 + g_window_offset_y);
-  initializekymograph();
+  if (g_use_gui) {
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
+    glutInitWindowPosition(190 + g_camera->get_num_columns() + g_window_offset_x, 140 + g_window_offset_y);
+    initializekymograph();
+  }
 
   // Figure out how wide the kymograph needs to be based on the window size.
   g_kymograph_width = g_camera->get_num_columns();
@@ -3898,31 +3907,39 @@ int main(int argc, char *argv[])
     cleanup();
     exit(-1);
   }
-  glutInitWindowSize(g_kymograph_width, g_kymograph_height);
-  g_kymograph_window = glutCreateWindow("kymograph");
-  glutInitWindowPosition(190 + g_camera->get_num_columns() + g_window_offset_x, 440 + g_window_offset_y);
-  g_kymograph_center_window = glutCreateWindow("kymograph_center");
+  if (g_use_gui) {
+    glutInitWindowSize(g_kymograph_width, g_kymograph_height);
+    g_kymograph_window = glutCreateWindow("kymograph");
+    glutInitWindowPosition(190 + g_camera->get_num_columns() + g_window_offset_x, 440 + g_window_offset_y);
+    g_kymograph_center_window = glutCreateWindow("kymograph_center");
+  }
 
   // Set the display functions for each window and idle function for GLUT (they
   // will do all the work) and then give control over to GLUT.
-  glutSetWindow(g_tracking_window);
-  glutDisplayFunc(myDisplayFunc);
-  glutShowWindow();
-  glutSetWindow(g_beadseye_window);
-  glutDisplayFunc(myBeadDisplayFunc);
-  glutHideWindow();
-  glutSetWindow(g_landscape_window);
-  glutDisplayFunc(myLandscapeDisplayFunc);
-  glutHideWindow();
-  glutSetWindow(g_kymograph_window);
-  glutDisplayFunc(mykymographDisplayFunc);
-  glutHideWindow();
-  glutSetWindow(g_kymograph_center_window);
-  glutDisplayFunc(mykymographCenterDisplayFunc);
-  glutHideWindow();
-  glutIdleFunc(myIdleFunc);
+  if (g_use_gui) {
+    glutSetWindow(g_tracking_window);
+    glutDisplayFunc(myDisplayFunc);
+    glutShowWindow();
+    glutSetWindow(g_beadseye_window);
+    glutDisplayFunc(myBeadDisplayFunc);
+    glutHideWindow();
+    glutSetWindow(g_landscape_window);
+    glutDisplayFunc(myLandscapeDisplayFunc);
+    glutHideWindow();
+    glutSetWindow(g_kymograph_window);
+    glutDisplayFunc(mykymographDisplayFunc);
+    glutHideWindow();
+    glutSetWindow(g_kymograph_center_window);
+    glutDisplayFunc(mykymographCenterDisplayFunc);
+    glutHideWindow();
+    glutIdleFunc(myIdleFunc);
+  }
 
-  glutMainLoop();
+  if (g_use_gui) {
+    glutMainLoop();
+  } else {
+    while (true) { myIdleFunc(); }
+  }
   // glutMainLoop() NEVER returns.  Wouldn't it be nice if it did when Glut was done?
   // Nope: Glut calls exit(0);
 
