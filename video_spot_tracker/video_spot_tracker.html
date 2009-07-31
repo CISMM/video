@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v05.28</title>
+<title>Video Spot Tracker v05.29</title>
 
-<h1>Video Spot Tracker version 05.28</h1>
+<h1>Video Spot Tracker version 05.29</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -58,7 +58,7 @@
   icon that was created when the program was installed. To select a stack of image 
   files that are numbered consecutively, drag any one of the files onto the icon. 
   It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
-  Menu/All Programs/NSRG/Video Spot Tracker v05.28</b></i>. If you run the program 
+  Menu/All Programs/NSRG/Video Spot Tracker v05.29</b></i>. If you run the program 
   directly by double-clicking on the icon, it will ask for a video or image file 
   (AVI, TIF, or BMP) that it should open.</p>
 
@@ -102,11 +102,11 @@
 
 <h3>Selecting the type of tracker and tracking/logging parameters</h3>
 
-<p><img src="kernel.jpg" width="745" height="171"></p>
+<p><img src="kernel.jpg" width="745" height="173"></p>
 
-<p>There are three types of tracking kernels available in version 4.05: disc, 
-  cone, and symmetric. Their properties are controlled using interface widgets 
-  in the <cite>kernel</cite> control panel.</p>
+<p>There are four types of tracking kernels available: disc, cone, symmetric, 
+  and FIONA. Their properties are controlled using interface widgets in the <cite>kernel</cite> 
+  control panel.</p>
 
 <p>For tracking spots that are even in intensity, or which have uneven intensities within them but a defined circular edge, the <cite><strong>disc</strong></cite> kernel should be used. The radius should be set to match the radius of the spots you wish to track. The <cite><strong>interpolate</strong></cite> checkbox should be set for more accuracy and cleared for more speed.</p>
 
@@ -335,6 +335,14 @@
   within a 5-pixel radius around the center of the Gaussian with the mean background 
   subtracted from each.</p>
 
+<h3>Saving and loading program settings</h3>
+<p>Once you have all of the settings tweaked just the way you like them for a 
+  given experiment set-up, you can save them all to a configuration file using 
+  the <b><i>Save State</i></b> button in the lower-left corner of the <b><i>kernel</i></b> 
+  window. Then, when you open a similar file again later you can load these settings 
+  using the <b><i>Load State</i></b> button. This is useful if you have one or 
+  more favorite settings -- you don't have to set them all again by hand.</p>
+<h3></h3>
 <h3>Controlling playback</h3>
 
 <p>Whether logging is turned on or not, the video can be played by checking the <b><i>play_video</i></b> checkbox, and paused by unchecking it. The <b><i>single_step_video</i></b> checkbox will step forwards one video frame each time it is pressed. The <b><i>rewind</i></b> checkbox causes the video to rewind to the beginning, play the first frame of the video, and then pause. The <cite>FrameNum</cite> display shows which frame of a video file is currently being displayed.</p> 
@@ -364,6 +372,19 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 5.29:</h3>
+<ul>
+  <li>Added <i>Save State</i> and <i>Load State </i>buttons that store the current 
+    kernel, lost-and-found, exposure, and precision settings to a file so that 
+    if you have a favorite setup, you can keep them for running on other files. 
+    Also added a &quot;-load_state&quot; command-line option so that you can use 
+    this with a script. As a special hidden bonus, you should know that each line 
+    from the state file is passed as-is to the Tcl interpreter, so this could 
+    potentially be used to script things besides state.</li>
+  <li>Added a<i> -nogui</i> command-line parameter that turns off the video display 
+    window and enables tracking at greater than the frame-refresh rate.</li>
+</ul>
+<h3></h3>
 <h3>Version 5.28:</h3>
 <ul>
   <li>Added an <i>-intensity_lost_sensitivity</i> command-line parameter so that 

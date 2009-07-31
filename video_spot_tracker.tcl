@@ -30,15 +30,25 @@ pack .colorpick.b -side left
 toplevel .kernel
 wm geometry .kernel +170+10
 frame .kernel.bottom
+pack .kernel.bottom -side bottom -fill x
+
+frame .kernel.bottom.state -relief raised -borderwidth 1
+pack .kernel.bottom.state -side left
+button .kernel.bottom.state.save_state -text "Save State" -command { set save_state 1 }
+pack .kernel.bottom.state.save_state -side top -fill x
+button .kernel.bottom.state.load_state -text "Load State" -command { set load_state 1 }
+pack .kernel.bottom.state.load_state -side top -fill x
+
 frame .kernel.bottom.log -relief raised -borderwidth 1
-pack .kernel.bottom -side bottom
-pack .kernel.bottom.log -side left
+pack .kernel.bottom.log -side left -fill x -fill y
+
 frame .kernel.options
 checkbutton .kernel.options.invert -text dark_spot -variable dark_spot
 pack .kernel.options.invert -anchor w
 checkbutton .kernel.options.interp -text interpolate -variable interpolate
 pack .kernel.options.interp -anchor w
 pack .kernel.options -side left
+
 frame .kernel.type -relief raised -borderwidth 1
 frame .kernel.type.left
 frame .kernel.type.right
@@ -53,16 +63,19 @@ pack .kernel.type.right.fiona -anchor w
 pack .kernel.type.left -side left
 pack .kernel.type.right -side left
 pack .kernel.type -side left
+
 frame .kernel.options2
-checkbutton .kernel.options2.areamax -text follow_jumps -variable areamax
-pack .kernel.options2.areamax -anchor w
+checkbutton .kernel.options2.follow_jumps -text follow_jumps -variable follow_jumps
+pack .kernel.options2.follow_jumps -anchor w
 checkbutton .kernel.options2.predict -text predict -variable predict
 pack .kernel.options2.predict -anchor w
 checkbutton .kernel.options2.rod3 -text rod3 -variable rod3
 pack .kernel.options2.rod3 -anchor w
 pack .kernel.options2 -side left
+
 frame .kernel.radius
 pack .kernel.radius -side left
+
 frame .kernel.track
 frame .kernel.track.top
 frame .kernel.track.bottom
@@ -91,6 +104,7 @@ label .kernel.track.bottom.err -width 15 -textvariable error
 pack .kernel.track.bottom.err -side left
 pack .kernel.track.bottom -side top
 pack .kernel.track -side left
+
 frame .kernel.optimize
 pack .kernel.optimize -side left
 
@@ -267,5 +281,45 @@ proc ask_user_for_psf_filename { } {
 	# If we don't have a name, quit.
 	if {$psf_filename == ""} {
 		set psf_filename "NONE"
+	} 	
+}
+
+###########################################################
+# Ask user for the name of the state file they want to write,
+# or else set it to "NONE".  The variable to set for the
+# name is "save_state_filename".
+
+set save_state_filename "NONE"
+proc ask_user_for_save_state_filename { } {
+	global save_state_filename fileinfo
+		
+	set types { {"State Files" "*.cfg"} }
+	set save_state_filename [tk_getSaveFile -filetypes $types \
+		-defaultextension ".cfg" \
+		-initialdir $fileinfo(open_dir) \
+		-title "Specify a State file to save"]
+	# If we don't have a name, set it to "NONE.
+	if {$save_state_filename == ""} {
+		set save_state_filename "NONE"
+	} 	
+}
+
+###########################################################
+# Ask user for the name of the state file they want to read,
+# or else set it to "NONE".  The variable to set for the
+# name is "load_state_filename".
+
+set load_state_filename "NONE"
+proc ask_user_for_load_state_filename { } {
+	global load_state_filename fileinfo
+		
+	set types { {"State Files" "*.cfg"} }
+	set load_state_filename [tk_getOpenFile -filetypes $types \
+		-defaultextension ".cfg" \
+		-initialdir $fileinfo(open_dir) \
+		-title "Specify a State file to load"]
+	# If we don't have a name, set it to "NONE.
+	if {$load_state_filename == ""} {
+		set load_state_filename "NONE"
 	} 	
 }

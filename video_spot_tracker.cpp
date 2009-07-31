@@ -92,7 +92,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "05.28";
+const char *Version_string = "05.29";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -181,7 +181,6 @@ image_wrapper	    *g_calculated_image = NULL;	  //< Image calculated from the ca
 unsigned            g_background_count = 0;       //< Number of frames we've already averaged over
 copy_of_image	    *g_last_image = NULL;	  //< Copy of the last image we had, if any
 
-float		    g_search_radius = 0;	  //< Search radius for doing local max in before optimizing.
 Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
 Tclvar_int_with_button	g_frame_number("frame_number",NULL,-1);  //< Keeps track of video frame number
 #ifdef _WIN32
@@ -282,6 +281,8 @@ void  set_debug_visibility(int newvalue, void *);
 void  set_kymograph_visibility(int newvalue, void *);
 void  set_maximum_search_radius(int newvalue, void *);
 void  handle_optimize_z_change(int newvalue, void *);
+void  handle_save_state_change(int newvalue, void *);
+void  handle_load_state_change(int newvalue, void *);
 Tclvar_float		g_X("x");
 Tclvar_float		g_Y("y");
 Tclvar_float		g_Z("z");
@@ -308,7 +309,8 @@ Tclvar_int_with_button	g_showLostAndFound("show_lost_and_found","",0);
 Tclvar_int_with_button	g_invert("dark_spot",NULL,0, rebuild_trackers);
 Tclvar_int_with_button	g_interpolate("interpolate",NULL,1, rebuild_trackers);
 Tclvar_int_with_button	g_parabolafit("parabolafit",NULL,0);
-Tclvar_int_with_button	g_areamax("areamax",NULL,0, set_maximum_search_radius);
+Tclvar_int_with_button	g_follow_jumps("follow_jumps",NULL,0, set_maximum_search_radius);
+Tclvar_float		g_search_radius("search_radius",0);	  //< Search radius for doing local max in before optimizing.
 Tclvar_int_with_button	g_predict("predict",NULL,0);
 Tclvar_int_with_button	g_kernel_type("kerneltype", NULL, KERNEL_SYMMETRIC, rebuild_trackers);
 Tclvar_int_with_button	g_rod("rod3",NULL,0, rebuild_trackers);
@@ -317,6 +319,8 @@ Tclvar_float_with_scale	g_orientation("orient", ".rod3", 0, 359, 0);
 Tclvar_int_with_button	g_opt("optimize",".kernel.optimize");
 Tclvar_int_with_button	g_opt_z("optimize_z",".kernel.optimize", 0, handle_optimize_z_change);
 Tclvar_selector		g_psf_filename("psf_filename", NULL, NULL, "");
+Tclvar_selector		g_load_state_filename("load_state_filename", NULL, NULL, "");
+Tclvar_selector		g_save_state_filename("save_state_filename", NULL, NULL, "");
 Tclvar_int_with_button	g_round_cursor("round_cursor",NULL,1);
 Tclvar_int_with_button	g_small_area("small_area",NULL);
 Tclvar_int_with_button	g_full_area("full_area",NULL);
@@ -333,6 +337,8 @@ Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
 Tclvar_int		g_log_relative("logging_relative");
 Tclvar_int		g_log_without_opt("logging_without_opt");
+Tclvar_int	        g_save_state("save_state", 0, handle_save_state_change);
+Tclvar_int	        g_load_state("load_state", 0, handle_load_state_change);
 double			g_log_offset_x, g_log_offset_y, g_log_offset_z;
 Tclvar_int              g_logging("logging"); //< Accessor for the GUI logging button so rewind can turn it off.
 bool g_video_valid = false; // Do we have a valid video frame in memory?
@@ -1481,7 +1487,7 @@ static void optimize_tracker(Spot_Information *tracker)
   // image-based tracker for this because other trackers may have maximum
   // fits outside the region where the bead is -- the symmetric tracker often
   // has a local maximum at best fit and global maxima elsewhere.
-  if ( g_last_image && (g_search_radius > 0) && (g_last_optimized_frame_number != g_frame_number) ) {
+  if ( g_last_image && ((double)(g_search_radius) > 0) && (g_last_optimized_frame_number != g_frame_number) ) {
 
     double x_base = tracker->xytracker()->get_x();
     double y_base = tracker->xytracker()->get_y();
@@ -1491,7 +1497,7 @@ static void optimize_tracker(Spot_Information *tracker)
     // it starts to lose track with an accuracy of 1 pixel for a bead on cilia in
     // pulnix video (acquired at 120 frames/second).
     double used_search_radius = g_search_radius;
-    if ( g_predict && (g_search_radius > 3) ) {
+    if ( g_predict && (used_search_radius > 3) ) {
       used_search_radius = 3;
     }
 
@@ -2338,7 +2344,7 @@ void myIdleFunc(void)
   // If we're doing a search for local maximum during optimization, then make a
   // copy of the previous image before reading a new one.
 
-  if (g_search_radius > 0) {
+  if ((double)(g_search_radius) > 0) {
     if (g_last_image == NULL) {
       g_last_image = new copy_of_image(*g_image);
     } else {
@@ -3253,6 +3259,128 @@ void  set_maximum_search_radius(int newvalue, void *)
   g_search_radius = 4 * g_Radius * newvalue;
 }
 
+// When the button for "Save State" is pressed, this
+// routine is called.  Ask the user for a file to save the state to.
+void  handle_save_state_change(int newvalue, void *)
+{
+  //------------------------------------------------------------
+  // Create a dialog box that will ask the user
+  // to either fill it in or cancel (if the file is "NONE").
+  // Wait until they have made a choice.
+  g_save_state_filename = "";
+  if (Tcl_Eval(g_tk_control_interp, "ask_user_for_save_state_filename") != TCL_OK) {
+    fprintf(stderr, "Tcl_Eval(ask_user_for_save_state_filename) failed: %s\n", g_tk_control_interp->result);
+    cleanup();
+    exit(-1);
+  }
+  do {
+    //------------------------------------------------------------
+    // This pushes changes in the C variables over to Tcl.
+
+    while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
+    if (Tclvar_mainloop()) {
+	fprintf(stderr,"Tclvar Mainloop failed\n");
+    }
+  } while (strcmp(g_save_state_filename,"") == 0);
+
+  //------------------------------------------------------------
+  // Open the file and write a Tcl-interpretable line for each
+  // state value that we want to set.  These will then be
+  // interpreted when the file is loaded again.  Do not store
+  // the state of the optimize flag or the locations of any of
+  // the trackers, but do set all of the default values.
+  const char *outname = g_save_state_filename;
+  FILE *f = fopen(outname, "w");
+  if (f == NULL) {
+    perror("Cannot open state file for writing");
+    fprintf(stderr, "  (%s)\n", outname);
+    return;
+  }
+  fprintf(f, "set radius %lg\n", (double)(g_Radius));
+  fprintf(f, "set exposure_millisecs %lg\n", (double)(g_exposure));
+  fprintf(f, "set red_green_blue %lg\n", (double)(g_colorIndex));
+  fprintf(f, "set brighten %lg\n", (double)(g_brighten));
+  fprintf(f, "set precision %lg\n", (double)(g_precision));
+  fprintf(f, "set sample_spacing %lg\n", (double)(g_sampleSpacing));
+  fprintf(f, "set kernel_lost_tracking_sensitivity %lg\n", (double)(g_lossSensitivity));
+  fprintf(f, "set intensity_lost_tracking_sensitivity %lg\n", (double)(g_intensityLossSensitivity));
+  fprintf(f, "set dead_zone_around_border %lg\n", (double)(g_borderDeadZone));
+  fprintf(f, "set dead_zone_around_trackers %lg\n", (double)(g_trackerDeadZone));
+  fprintf(f, "set maintain_this_many_beads %lg\n", (double)(g_findThisManyBeads));
+  fprintf(f, "set candidate_spot_threshold %lg\n", (double)(g_candidateSpotThreshold));
+  fprintf(f, "set sliding_window_radius %lg\n", (double)(g_slidingWindowRadius));
+  fprintf(f, "set lost_behavior %d\n", (int)(g_lostBehavior));
+  fprintf(f, "set kerneltype %d\n", (int)(g_kernel_type));
+  fprintf(f, "set dark_spot %d\n", (int)(g_invert));
+  fprintf(f, "set interpolate %d\n", (int)(g_interpolate));
+  fprintf(f, "set parabolafit %d\n", (int)(g_parabolafit));
+  fprintf(f, "set predict %d\n", (int)(g_predict));
+  fprintf(f, "set follow_jumps %d\n", (int)(g_follow_jumps));
+  fprintf(f, "set search_radius %lg\n", (double)(g_search_radius));
+  fprintf(f, "set predict %d\n", (int)(g_predict));
+  fprintf(f, "set rod3 %d\n", (int)(g_rod));
+  fprintf(f, "set length %lg\n", (double)(g_length));
+  fprintf(f, "set orientation %lg\n", (double)(g_orientation));
+  fprintf(f, "set round_cursor %d\n", (int)(g_round_cursor));
+  fprintf(f, "set show_tracker %d\n", (int)(g_mark));
+  fprintf(f, "set show_video %d\n", (int)(g_show_video));
+  fprintf(f, "set background_subtract %d\n", (int)(g_background_subtract));
+
+  fclose(f);
+}
+
+bool load_state_from_file(const char *inname)
+{
+  //------------------------------------------------------------
+  // Open the file and read each of its lines, passing it to the Tcl
+  // parser for evaluation.  This lets people put whatever set commands
+  // they want into one of these files.
+  FILE *f = fopen(inname, "r");
+  if (f == NULL) {
+    perror("Cannot open state file for reading");
+    fprintf(stderr, "  (%s)\n", inname);
+    return false;
+  }
+  char  line[4096];
+  while (fgets(line, sizeof(line)-1, f)) {
+    if (Tcl_Eval(g_tk_control_interp, line) != TCL_OK) {
+      fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", line, g_tk_control_interp->result);
+      cleanup();
+      exit(-1);
+    }
+  }
+  fclose(f);
+
+  return true;
+}
+
+// When the button for "Load State" is pressed, this
+// routine is called.  Ask the user for a file to load the state from.
+void  handle_load_state_change(int newvalue, void *)
+{
+  //------------------------------------------------------------
+  // Create a dialog box that will ask the user
+  // to either fill it in or cancel (if the file is "NONE").
+  // Wait until they have made a choice.
+  g_load_state_filename = "";
+  if (Tcl_Eval(g_tk_control_interp, "ask_user_for_load_state_filename") != TCL_OK) {
+    fprintf(stderr, "Tcl_Eval(ask_user_for_load_state_filename) failed: %s\n", g_tk_control_interp->result);
+    cleanup();
+    exit(-1);
+  }
+  do {
+    //------------------------------------------------------------
+    // This pushes changes in the C variables over to Tcl.
+
+    while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
+    if (Tclvar_mainloop()) {
+	fprintf(stderr,"Tclvar Mainloop failed\n");
+    }
+  } while (strcmp(g_load_state_filename,"") == 0);
+
+  load_state_from_file(g_load_state_filename);
+}
+
 // When the check-box for "optimize Z" is changed, this
 // routine is called.  When it is turning on, we make the
 // user select a PSF file to use for Z tracking and create
@@ -3332,8 +3460,9 @@ void Usage(const char *progname)
 	fprintf(stderr, "           [-candidate_spot_threshold T] [-sliding_window_radius SR]\n");
 	fprintf(stderr, "           [-radius R] [-tracker X Y R] [-tracker X Y R]\n");
     fprintf(stderr, "           [-FIONA_background BG] ...\n");
+    fprintf(stderr, "           [-load_state FILE]\n");
     fprintf(stderr, "           [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n");
-    fprintf(stderr, "       -nogui: Run without any graphical user interface (2D or 3D)\n");
+    fprintf(stderr, "       -nogui: Run without the video display window (no Glut/OpenGL)\n");
     fprintf(stderr, "       -kernel: Use kernels of the specified type (default symmetric)\n");
     fprintf(stderr, "       -rod3: Make a rod3 kernel of specified LENGTH(pixels) & ORIENT(degrees)\n");
     fprintf(stderr, "       -dark_spot: Track a dark spot (default is bright spot)\n");
@@ -3361,7 +3490,8 @@ void Usage(const char *progname)
     fprintf(stderr, "       -tracker: Create a tracker with radius R at pixel X,Y and initiate\n");
     fprintf(stderr, "                 optimization.  Multiple trackers can be created\n");
     fprintf(stderr, "       -FIONA_background: Set the default background for FIONA trackers to BG\n");
-	fprintf(stderr, "                 (default 0)\n");
+    fprintf(stderr, "                 (default 0)\n");
+    fprintf(stderr, "       -load_state: Load program state from FILE\n");
     fprintf(stderr, "       source: The source file for tracking can be specified here (default is\n");
 	fprintf(stderr, "                 a dialog box)\n");
     exit(-1);
@@ -3574,7 +3704,7 @@ int main(int argc, char *argv[])
     } else if (!strncmp(argv[i], "-dark_spot", strlen("-dark_spot"))) {
       g_invert = true;
     } else if (!strncmp(argv[i], "-follow_jumps", strlen("-follow_jumps"))) {
-      g_areamax = 1;
+      g_follow_jumps = 1;
     } else if (!strncmp(argv[i], "-outfile", strlen("-outfile"))) {
       if (++i > argc) { Usage(argv[0]); }
       char *name = new char[strlen(argv[i])+6];
@@ -3634,6 +3764,12 @@ int main(int argc, char *argv[])
 		g_Radius = atof(argv[i]);
 	} else if (!strncmp(argv[i], "-show_lost_and_found", strlen("-show_lost_and_found"))) {
 		g_showLostAndFound = true;
+    } else if (!strncmp(argv[i], "-load_state", strlen("-load_state"))) {
+      if (++i > argc) { Usage(argv[0]); }
+      if (!load_state_from_file(argv[i])) {
+        fprintf(stderr,"Could not load state file from %s\n", argv[i]);
+        exit(-1);
+      }
     } else if (argv[i][0] == '-') {
       Usage(argv[0]);
     } else {

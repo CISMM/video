@@ -1,6 +1,12 @@
 2009-07-31  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
-	* vide_imager_server.cpp : Adds a command-line option to only send one out of
+	* video_spot_tracker.cpp : Added buttons to save and load the state of the
+		program, along with a -load_state comand-line option.  Updates version
+		number to 5.29.
+
+2009-07-31  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_imager_server.cpp : Adds a command-line option to only send one out of
 		every Nth frame.  This lets us reduce the frame rate (and storage
 		required) when we don't need all of the frames.
 	* directx_camera_server.cpp : Removed timing printf().
