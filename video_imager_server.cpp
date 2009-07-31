@@ -20,7 +20,7 @@
 #endif
 
 const int MAJOR_VERSION = 3;
-const int MINOR_VERSION = 4;
+const int MINOR_VERSION = 6;
 
 //-----------------------------------------------------------------
 // g_done gets set when the user presses ^C to exit the program.
@@ -43,8 +43,9 @@ void handle_cntl_c(int) {
 
 void  Usage(const char *s)
 {
-  fprintf(stderr,"Usage: %s [-expose msecs] [-bin count] [-res x y] [-swap_edt] [-buffers N] [devicename [devicenum]]\n",s);
+  fprintf(stderr,"Usage: %s [-expose msecs] [-every_nth_frame N] [-bin count] [-res x y] [-swap_edt] [-buffers N] [devicename [devicenum]]\n",s);
   fprintf(stderr,"       -expose: Exposure time in milliseconds (default 250)\n");
+  fprintf(stderr,"       -every_nth_frame: Discard all but every Nth frame (default 1)\n");
   fprintf(stderr,"       -bin: How many pixels to average in x and y (default 1)\n");
   fprintf(stderr,"       -res: Resolution in x and y (default 320 200)\n");
   fprintf(stderr,"       -swap_edt: Swap lines to fix a bug in the EDT camera\n");
@@ -63,6 +64,7 @@ void  Usage(const char *s)
 base_camera_server  *g_camera;	    //< The camera we're going to read from
 int		    g_bincount = 1; //< How many pixels to average into one bin in X and Y
 double		    g_exposure = 250.0;	//< How long to expose in milliseconds
+int		    g_every_nth_frame = 1;	//< Discard all but every nth frame
 unsigned	    g_width = 0, g_height = 0;  //< Resolution for DirectX cameras (use default)
 int                 g_numchannels = 1;  //< How many channels to send (3 for RGB cameras, 1 otherwise)
 int                 g_maxval = 4095;    //< Maximum value available in a channel for this device
@@ -165,12 +167,19 @@ void imager_server_thread_func(vrpn_ThreadData &threadData)
 {
   // Mainloop the server and its connection until it is time to quit.
   while (!g_done) {
-    // Setting the min to be larger than the max means "the whole image"
-    g_camera->read_image_to_memory(1,0,1,0,g_exposure);
+    int skip;
+
+    // Throw away all but every Nth frame.  We do this by reading them and then
+    // reading again.
+    for (skip = 1; skip <= g_every_nth_frame; skip++) {
+      // Setting the min to be larger than the max means "the whole image"
+      g_camera->read_image_to_memory(1,0,1,0,g_exposure);
+    }
+
+    // Send the non-skipped frame to VRPN and log.
     if (!g_camera->send_vrpn_image(svr,svrcon,g_exposure,svrchan, g_numchannels)) {
       fprintf(stderr, "Could not send VRPN frame\n");
     }
-
     svr->mainloop();
     svrcon->mainloop();
     svrcon->save_log_so_far();
@@ -271,6 +280,14 @@ int main(int argc, char *argv[])
       g_bincount = atoi(argv[i]);
       if ( (g_bincount < 1) || (g_bincount > 16) ) {
 	fprintf(stderr,"Invalid bincount (1-16 allowed, %d entered)\n", g_bincount);
+	exit(-1);
+      }
+    } else if (!strncmp(argv[i], "-every_nth_frame", strlen("-every_nth_frame"))) {
+      if (++i > argc) { Usage(argv[0]); }
+      g_every_nth_frame = atoi(argv[i]);
+      printf("Only sending one frame in %d\n", g_every_nth_frame);
+      if ( (g_every_nth_frame < 1) || (g_every_nth_frame > 4000) ) {
+	fprintf(stderr,"Invalid frame skip (1-4000 allowed, %d entered)\n", g_every_nth_frame);
 	exit(-1);
       }
     } else if (!strncmp(argv[i], "-expose", strlen("-expose"))) {

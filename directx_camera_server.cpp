@@ -157,6 +157,7 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
   // Capture timing information and print out how many frames per second
   // are being received.
 
+#if 0
   { static struct timeval last_print_time;
     struct timeval now;
     static bool first_time = true;
@@ -178,6 +179,7 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
       }
     }
   }
+#endif
 
   return true;
 }

@@ -8,10 +8,10 @@ OperatingSystem=WinXP  5.1  2600 (Service Pack 3)
 ProjectName=video_imager_server
 ProjectDirectory=F:\taylorr\STM\src\video\video_imager_server
 NonSFXDirectory=F:\taylorr\STM\src\video\video_imager_server\NonSFX
-MediaFileName=video_imager_server_v03_05
+MediaFileName=video_imager_server_v03_06
 CopyMediaToFName=
 ProgramDescriptiveName=Video Imager Server
-ProgramVersion=03_05
+ProgramVersion=03_06
 CompanyName=UNC NSRG
 ProgVerLiveUpdate=0
 RegisterAsApp=1
@@ -62,7 +62,7 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|1|0|
 CompanyUrl=
 
 [TargetExe]
-TargetDirectory=<ProgramFilesDir>NSRG\video_imager_server_03_05
+TargetDirectory=<ProgramFilesDir>NSRG\video_imager_server_03_06
 CommonDirectory=<CommonFilesDir>UNC NSRG
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\video_imager_server.bat
@@ -106,7 +106,7 @@ ShowCopyrightWarning=1
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=NSRG\Video Imager Server v03_05
+ProgramLinkFolder=NSRG\Video Imager Server v03_06
 ProgramLinkName=Video_imager_server
 ProgramLinkParam=
 ProgramLinkWorkDir=<Application Folder>
@@ -133,11 +133,13 @@ AddUninstallShortcut=1
 Item-000=*|Video_imager_server for Roper|<Application Folder>\video_imager_server.bat||roper|<Application Folder>|Normal Window||0|1||0|
 Item-001=*|Video_imager_server for Cooke|<Application Folder>\video_imager_server.bat||cooke|<Application Folder>|Normal Window||0|1||0|
 Item-002=*|Video_imager_server for Pulnix|<Application Folder>\video_imager_server.bat||edt|<Application Folder>|Normal Window||0|1||0|
-Item-003=*|Video_imager_server for Cooke (bin 2x2)|<Application Folder>\video_imager_server.bat||-bin 2 cooke|<Application Folder>|Normal Window||0|1||0|
-Item-004=*|Video_imager_server for Roper (bin 2x2)|<Application Folder>\video_imager_server.bat||-bin 2 roper|<Application Folder>|Normal Window||0|1||0|
-Item-005=*|Video Imager Client|<Application Folder>\testimager_client.exe|||<Application Folder>|Normal Window||0|1||0|
-Item-006=*|Video_imager_server for Pulnix Swap-lines|<Application Folder>\video_imager_server.bat||-swap_edt edt|<Application Folder>|Normal Window||0|1||0|
-Item-007=*|Setup EDT board to use Pulnix|<Application Folder>\setup_edt_for_pulnix.bat||||Normal Window||0|1||0|
+Item-003=*|Video_imager_server for Pulnix Swap-lines|<Application Folder>\video_imager_server.bat||-swap_edt edt|<Application Folder>|Normal Window||0|1||0|
+Item-004=*|Video_imager_server for Pulnix (1 of 4 frames)|<Application Folder>\video_imager_server.bat||-every_nth_frame 4 edt|<Application Folder>|Normal Window||0|1||0|
+Item-005=*|Video_imager_server for Cooke (bin 2x2)|<Application Folder>\video_imager_server.bat||-bin 2 cooke|<Application Folder>|Normal Window||0|1||0|
+Item-006=*|Video_imager_server for Roper (bin 2x2)|<Application Folder>\video_imager_server.bat||-bin 2 roper|<Application Folder>|Normal Window||0|1||0|
+Item-007=*|Video Imager Client|<Application Folder>\testimager_client.exe|||<Application Folder>|Normal Window||0|1||0|
+Item-008=*|Setup EDT board to use Pulnix|<Application Folder>\setup_edt_for_pulnix.bat||||Normal Window||0|1||0|
+Item-009=*|Video Imager Server (1 of 3 frames)|<Application Folder>\video_imager_server.bat||-every_nth_frame 3|<Application Folder>|Normal Window||0|1||0|
 
 [Billboard]
 AddBillboard=1

@@ -1,4 +1,11 @@
-2009-07-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
+2009-07-31  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* vide_imager_server.cpp : Adds a command-line option to only send one out of
+		every Nth frame.  This lets us reduce the frame rate (and storage
+		required) when we don't need all of the frames.
+	* directx_camera_server.cpp : Removed timing printf().
+
+2009-07-31  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Has a "-nogui" option that turns off the GLUT
 		display window, which should remove our limitation of only tracking
