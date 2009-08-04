@@ -1,3 +1,17 @@
+2009-08-03  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Added option to forward video on the logging
+		connection; it sends only one full frame out of 300 but sends
+		a small subset of the data around each tracker each frame.  This
+		should let us radically shrink the size of video files, and should
+		also let us forward video through spot tracker to another app,
+		thus reducing the bandwidth leaving the video server. *** Warning ***
+		This still has a bug: it will lock up if you actually try to log
+		the video because the client never calls mainloop() to read in
+		the messages.  This needs to be pulled out into another thread.
+		But it does let you forward the video to a remote server.
+	* video_spot_tracker.tcl : Same.
+
 2009-07-31  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Added buttons to save and load the state of the

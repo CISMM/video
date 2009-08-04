@@ -62,16 +62,15 @@
 #include <vrpn_FileConnection.h>
 #include <vrpn_Analog.h>
 #include <vrpn_Tracker.h>
+#include <vrpn_Imager.h>
 
 //NMmp source files (nanoManipulator project).
 #include <thread.h>
-
 
 // OpenCV includes
 #include <cv.h>
 #include <cxcore.h>
 #include <highgui.h>
-
 
 #include <list>
 #include <vector>
@@ -211,8 +210,11 @@ vector<Position_Vector_XY>  g_logged_traces;      //< Stores the trajectories of
 vrpn_Connection	    *g_vrpn_connection = NULL;    //< Connection to send position over
 vrpn_Tracker_Server *g_vrpn_tracker = NULL;	  //< Tracker server to send positions
 vrpn_Analog_Server  *g_vrpn_analog = NULL;        //< Analog server to report frame number
+vrpn_Imager_Server  *g_vrpn_imager = NULL;        //< VRPN Imager Server in case we're forwarding images
+int                 g_server_channel = -1;        //< Server channel index to send image data on
+Tclvar_int          g_video_full_frame_every("video_full_frame_every",400);  //< How often (in frames) to send a full frame of video
 vrpn_Connection	    *g_client_connection = NULL;  //< Connection on which to perform logging
-vrpn_Tracker_Remote *g_client_tracker = NULL;	  //< Client tracker object to case ping/pong server messages
+vrpn_Tracker_Remote *g_client_tracker = NULL;	  //< Client tracker object to cause ping/pong server messages
 FILE		    *g_csv_file = NULL;		  //< File to save data in with .csv extension
 
 unsigned char	    *g_beadseye_image = NULL;	  //< Pointer to the storage for the beads-eye image
@@ -337,6 +339,7 @@ Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
 Tclvar_int		g_log_relative("logging_relative");
 Tclvar_int		g_log_without_opt("logging_without_opt");
+Tclvar_int		g_log_video("logging_video",0);
 Tclvar_int	        g_save_state("save_state", 0, handle_save_state_change);
 Tclvar_int	        g_load_state("load_state", 0, handle_load_state_change);
 double			g_log_offset_x, g_log_offset_y, g_log_offset_z;
@@ -351,8 +354,6 @@ double	flip_y(double y)
 {
   return g_image->get_num_rows() - 1 - y;
 }
-
-
 
 /// Create a pointer to a new tracker of the appropriate type,
 // given the global settings for interpolation and inversion.
@@ -532,6 +533,7 @@ static void  cleanup(void)
 
   if (g_vrpn_tracker) { delete g_vrpn_tracker; g_vrpn_tracker = NULL; };
   if (g_vrpn_analog) { delete g_vrpn_analog; g_vrpn_analog = NULL; };
+  if (g_vrpn_imager) { delete g_vrpn_imager; g_vrpn_imager = NULL; };
   if (g_vrpn_connection) { g_vrpn_connection->removeReference(); g_vrpn_connection = NULL; };
   if (g_client_tracker) { delete g_client_tracker; g_client_tracker = NULL; };
   if (g_client_connection) { g_client_connection->removeReference(); g_client_connection = NULL; };
@@ -541,6 +543,127 @@ static	double	timediff(struct timeval t1, struct timeval t2)
 {
 	return (t1.tv_usec - t2.tv_usec) / 1e6 +
 	       (t1.tv_sec - t2.tv_sec);
+}
+
+static bool fill_and_send_video_region(unsigned minX, unsigned minY, unsigned maxX, unsigned maxY)
+{
+  // Flip the Y values around the center axis; the image coordinates are upside
+  // down with respect to the tracker coordinates.  This also inverts the order of
+  // which is min and which is max.  There is a lot of flipping going on inside
+  // this routine to get everything lined up right.
+  unsigned temp = flip_y(minY);
+  minY = flip_y(maxY);
+  maxY = temp;
+
+  if (g_camera_bit_depth == 8) {
+    static  vrpn_uint8  *image_8bit = NULL;
+    static  size_t      image_size = 0;
+    size_t              new_size = g_camera->get_num_columns() * g_camera->get_num_rows();
+
+    // Allocate a region that can hold the whole camera image if
+    // the image size is different from what we had before (probebly
+    // only happens the first time we're called).
+    if (image_size != new_size) {
+      if (image_8bit != NULL) {
+        delete [] image_8bit;
+      }
+      if ( (image_8bit = new vrpn_uint8[new_size]) == NULL) {
+        fprintf(stderr,"fill_and_send_video_region(): Out of memory\n");
+        return false;
+      }
+      image_size = new_size;
+    }
+
+    // Fill in the pixels from the global image (based on the routines in the
+    // display function, but not scaled by the brightness slider).  Also, we need
+    // to flip the row we're reading from and writing to to make things in the
+    // output buffer line up correctly and to read from the correct location in
+    // the input buffer.
+    unsigned r,c;
+    vrpn_uint8  uns_pix;
+    for (r = minY; r <= maxY; r++) {
+      unsigned flip_r = static_cast<unsigned>(flip_y(r));
+      unsigned lowc = minX, hic = maxX; //< Speeds things up compared to index arithmetic
+      vrpn_uint8 *pixel_base = &image_8bit[(lowc + g_image->get_num_columns() * flip_r) ]; //< Speeds things up
+      for (c = lowc; c <= hic; c++) {
+	if (!g_image->read_pixel(c, flip_r, uns_pix, g_colorIndex)) {
+	    fprintf(stderr, "fill_and_send_video_region(): Cannot read pixel (%d,%d) from region\n", c, flip_r);
+            return false;
+	}
+        *(pixel_base++) = uns_pix;
+      }
+    }
+
+    // Send the subregion of the image that we were asked to send.
+    // We tell it to invert the rows here as well.
+    unsigned send_width = maxX - minX + 1;
+    unsigned nRowsPerRegion=vrpn_IMAGER_MAX_REGIONu8/send_width;
+    unsigned y;
+    for(y=minY; y<=maxY; y+=nRowsPerRegion) {
+      g_vrpn_imager->send_region_using_base_pointer(g_server_channel,
+        minX, maxX, y, min(maxY,y+nRowsPerRegion-1),
+        image_8bit,
+        1, g_camera->get_num_columns(),
+        g_camera->get_num_rows(),true,
+        0, 0, 0 /* , XXX timestamp */);
+      g_vrpn_imager->mainloop();
+    }
+  } else {
+    static  vrpn_uint16 *image_16bit = NULL;
+    static  size_t      image_size = 0;
+    size_t              new_size = g_camera->get_num_columns() * g_camera->get_num_rows();
+
+    // Allocate a region that can hold the whole camera image if
+    // the image size is different from what we had before (probebly
+    // only happens the first time we're called).
+    if (image_size != new_size) {
+      if (image_16bit != NULL) {
+        delete [] image_16bit;
+      }
+      if ( (image_16bit = new vrpn_uint16[new_size]) == NULL) {
+        fprintf(stderr,"fill_and_send_video_region(): Out of memory\n");
+        return false;
+      }
+      image_size = new_size;
+    }
+
+    // Fill in the pixels from the global image (based on the routines in the
+    // display function, but not scaled by the brightness slider).  Also, we need
+    // to flip the row we're reading from and writing to to make things in the
+    // output buffer line up correctly and to read from the correct location in
+    // the input buffer.
+    unsigned r,c;
+    vrpn_uint16  uns_pix;
+    for (r = minY; r <= maxY; r++) {
+      unsigned flip_r = static_cast<unsigned>(flip_y(r));
+      unsigned lowc = minX, hic = maxX; //< Speeds things up compared to index arithmetic
+      vrpn_uint16 *pixel_base = &image_16bit[(lowc + g_image->get_num_columns() * flip_r) ]; //< Speeds things up
+      for (c = lowc; c <= hic; c++) {
+	if (!g_image->read_pixel(c, flip_r, uns_pix, g_colorIndex)) {
+	    fprintf(stderr, "fill_and_send_video_region(): Cannot read pixel (%d,%d) from region\n", c, flip_r);
+            return false;
+	}
+        *(pixel_base++) = uns_pix;
+      }
+    }
+
+    // Send the subregion of the image that we were asked to send.
+    // We tell it to invert the rows here as well.
+    unsigned send_width = maxX - minX + 1;
+    unsigned nRowsPerRegion=vrpn_IMAGER_MAX_REGIONu16/send_width;
+    unsigned y;
+    for(y=minY; y<=maxY; y+=nRowsPerRegion) {
+      g_vrpn_imager->send_region_using_base_pointer(g_server_channel,
+        minX, maxX, y, min(maxY,y+nRowsPerRegion-1),
+        image_16bit,
+        1, g_camera->get_num_columns(),
+        g_camera->get_num_rows(),true,
+        0, 0, 0 /* , XXX timestamp */);
+      g_vrpn_imager->mainloop();
+    }
+  }
+
+  return true;
 }
 
 // XXX The start time needs to be reset whenever a new file is opened, probably,
@@ -564,8 +687,15 @@ static	bool  save_log_frame(int frame_number)
   g_vrpn_analog->channels()[0] = frame_number;
   g_vrpn_analog->report(vrpn_CONNECTION_RELIABLE);
 
+  // If we're logging video, send a begin-frame event.
+  if (g_log_video) {
+    // Send begin-frame event.
+    // XXX Figure out timestamp
+    g_vrpn_imager->send_begin_frame(0, g_camera->get_num_columns()-1,
+      0, g_camera->get_num_rows()-1);
+  }
+
   list<Spot_Information *>::iterator loop;
-  unsigned last_tracker_number = 0;
   for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
     // If this tracker is lost, do not log its values (this can happen
     // when we're in "Hover when lost" mode).
@@ -637,6 +767,26 @@ static	bool  save_log_frame(int frame_number)
       }
     }
 
+    // If we're sending video, then send a little snippet of video
+    // around each tracker every frame.
+    if (g_log_video) {
+      int x = (*loop)->xytracker()->get_x();
+      int y = (*loop)->xytracker()->get_y();
+      int halfwidth = (*loop)->xytracker()->get_radius() * 2;
+      int minX = x - halfwidth;
+      int minY = y - halfwidth;
+      int maxX = x + halfwidth;
+      int maxY = y + halfwidth;
+      if (minX < *g_minX) { minX = *g_minX; }
+      if (minY < *g_minY) { minY = *g_minY; }
+      if (static_cast<unsigned>(maxX) > *g_maxX) { maxX = *g_maxX; }
+      if (static_cast<unsigned>(maxY) > *g_maxY) { maxY = *g_maxY; }
+      if (!fill_and_send_video_region(minX, minY, maxX, maxY)) {
+        fprintf(stderr, "Could not fill and send video for tracker\n");
+        return false;
+      }
+    }
+
     // Rotation about the Z axis, reported in radians.
     q_from_euler(quat, orient * (M_PI/180),0,0);
     if (g_vrpn_tracker->report_pose((*loop)->index(), now, pos, quat, vrpn_CONNECTION_RELIABLE) != 0) {
@@ -669,6 +819,24 @@ static	bool  save_log_frame(int frame_number)
       tracepos.y = (*loop)->xytracker()->get_y();
       g_logged_traces[(*loop)->index()].push_back(tracepos);
     }
+  }
+
+  // Forward the full region-of-interest image if our frame number is
+  // oone of the lucky ones.
+  if ( g_log_video && (frame_number % g_video_full_frame_every == 0) ) {
+    // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION).
+    if (!fill_and_send_video_region(*g_minX, *g_minY, *g_maxX, *g_maxY)) {
+      fprintf(stderr, "Could not fill and send region of interest\n");
+      return false;
+    }
+  }
+  
+  // If we're logging video, send an end-of-frame event.
+  // XXX Figure out timestamp
+  if (g_log_video) {
+    g_vrpn_imager->send_end_frame(0, g_camera->get_num_columns()-1,
+      0, g_camera->get_num_rows()-1);
+    g_vrpn_imager->mainloop();
   }
 
   return true;
@@ -2469,31 +2637,31 @@ void myIdleFunc(void)
       static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->set_length(g_length);
       static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->set_orientation(g_orientation);
     }
+  }
 
-    // Update the VRPN tracker position for each tracker and report it
-    // using the same time value for each.  Don't do the update if we
-    // don't currently have a valid video frame.  Sensors are indexed
-    // by their position in the list.  Putting this here before the
-    // optimize loop means that we're reporting the PREVIOUS values of
-    // the optimizer (the ones for the frame just ending) rather than
-    // the CURRENT values.  This means we'll not write a value for the
-    // last frame in a video.  Before, we weren't writing a value for the first
-    // frame.  The way it is now, the user can single-step through a
-    // file and move the trackers around to line up on each frame before
-    // their values are saved.  To fix this, we put in a log save at
-    // program exit and logfile name change.
-    // Remember to invert the Y value so that it logs based on the
-    // upper-left corner of the image.
-    // We log even if we aren't optimizing, because the user may be moving
-    // the dots around by hand.
-    // Don't log if we just stepped to the zeroeth frame (this can happen
-    // if we start logging on the command line).
-    if (g_vrpn_tracker && g_video_valid && (g_frame_number > 0)) {
-      if (!save_log_frame(g_frame_number-1)) {
+  // Update the VRPN tracker position for each tracker and report it
+  // using the same time value for each.  Don't do the update if we
+  // don't currently have a valid video frame.  Sensors are indexed
+  // by their position in the list.  Putting this here before the
+  // optimize loop means that we're reporting the PREVIOUS values of
+  // the optimizer (the ones for the frame just ending) rather than
+  // the CURRENT values.  This means we'll not write a value for the
+  // last frame in a video.  Before, we weren't writing a value for the first
+  // frame.  The way it is now, the user can single-step through a
+  // file and move the trackers around to line up on each frame before
+  // their values are saved.  To fix this, we put in a log save at
+  // program exit and logfile name change.
+  // Remember to invert the Y value so that it logs based on the
+  // upper-left corner of the image.
+  // We log even if we aren't optimizing, because the user may be moving
+  // the dots around by hand.
+  // Don't log if we just stepped to the zeroeth frame (this can happen
+  // if we start logging on the command line).
+  if (g_vrpn_tracker && g_video_valid && (g_frame_number > 0)) {
+    if (!save_log_frame(g_frame_number-1)) {
 	fprintf(stderr,"Could not save data to log file\n");
 	cleanup();
 	exit(-1);
-      }
     }
   }
 
@@ -2787,6 +2955,7 @@ void myIdleFunc(void)
   // reports.
   if (g_vrpn_analog) { g_vrpn_analog->mainloop(); }
   if (g_vrpn_tracker) { g_vrpn_tracker->mainloop(); }
+  if (g_vrpn_imager) { g_vrpn_imager->mainloop(); }
   if (g_vrpn_connection) { g_vrpn_connection->mainloop(); }
 
   //------------------------------------------------------------
@@ -3325,6 +3494,8 @@ void  handle_save_state_change(int newvalue, void *)
   fprintf(f, "set show_tracker %d\n", (int)(g_mark));
   fprintf(f, "set show_video %d\n", (int)(g_show_video));
   fprintf(f, "set background_subtract %d\n", (int)(g_background_subtract));
+  fprintf(f, "set logging_video %d\n", (int)(g_log_video));
+  fprintf(f, "set video_full_frame_every %lg\n", (double)(g_video_full_frame_every));
 
   fclose(f);
 }
@@ -3460,7 +3631,7 @@ void Usage(const char *progname)
 	fprintf(stderr, "           [-candidate_spot_threshold T] [-sliding_window_radius SR]\n");
 	fprintf(stderr, "           [-radius R] [-tracker X Y R] [-tracker X Y R]\n");
     fprintf(stderr, "           [-FIONA_background BG] ...\n");
-    fprintf(stderr, "           [-load_state FILE]\n");
+    fprintf(stderr, "           [-load_state FILE] [-log_video N]\n");
     fprintf(stderr, "           [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n");
     fprintf(stderr, "       -nogui: Run without the video display window (no Glut/OpenGL)\n");
     fprintf(stderr, "       -kernel: Use kernels of the specified type (default symmetric)\n");
@@ -3492,6 +3663,7 @@ void Usage(const char *progname)
     fprintf(stderr, "       -FIONA_background: Set the default background for FIONA trackers to BG\n");
     fprintf(stderr, "                 (default 0)\n");
     fprintf(stderr, "       -load_state: Load program state from FILE\n");
+    fprintf(stderr, "       -log_video: Log every Nth frame of video (in addition to every tracker every frame)\n");
     fprintf(stderr, "       source: The source file for tracking can be specified here (default is\n");
 	fprintf(stderr, "                 a dialog box)\n");
     exit(-1);
@@ -3770,6 +3942,10 @@ int main(int argc, char *argv[])
         fprintf(stderr,"Could not load state file from %s\n", argv[i]);
         exit(-1);
       }
+    } else if (!strncmp(argv[i], "-log_video", strlen("-log_video"))) {
+      if (++i > argc) { Usage(argv[0]); }
+      g_log_video = 1;
+      g_video_full_frame_every = atoi(argv[i]);
     } else if (argv[i][0] == '-') {
       Usage(argv[0]);
     } else {
@@ -3907,6 +4083,18 @@ int main(int argc, char *argv[])
   g_vrpn_connection = vrpn_create_server_connection();
   g_vrpn_tracker = new vrpn_Tracker_Server("Spot", g_vrpn_connection, 30000);
   g_vrpn_analog = new vrpn_Analog_Server("FrameNumber", g_vrpn_connection, 1);
+  g_vrpn_imager = new vrpn_Imager_Server("TestImage", g_vrpn_connection,
+    g_camera->get_num_columns(), g_camera->get_num_rows());
+  if ( (g_server_channel = g_vrpn_imager->add_channel("tracked", "unknown", 0, pow(2.0, (double)g_camera_bit_depth)-1 )) == -1) {
+    fprintf(stderr, "Could not add channel to server image\n");
+    cleanup();
+    exit(-1);
+  }
+  if (g_vrpn_imager == NULL) {
+    fprintf(stderr, "Could not create imager server\n");
+    cleanup();
+    exit(-1);
+  }
 
   //------------------------------------------------------------------
   // Horrible hack to deal with the swapping of the Y axis in all of this

@@ -215,10 +215,12 @@ pack .kernel.bottom.log.label -side bottom -fill x
 trace variable logging w logging_changed
 checkbutton .kernel.bottom.log.button -text "Logging" -variable logging -anchor w
 pack .kernel.bottom.log.button -side left -fill x
-checkbutton .kernel.bottom.log.relative -text "Relative to active tracker start" -variable logging_relative -anchor w
+checkbutton .kernel.bottom.log.relative -text "relative to active tracker start" -variable logging_relative -anchor w
 pack .kernel.bottom.log.relative -side left -fill x
-checkbutton .kernel.bottom.log.withoutopt -text "Log when not optimizing" -variable logging_without_opt -anchor w
+checkbutton .kernel.bottom.log.withoutopt -text "when not optimizing" -variable logging_without_opt -anchor w
 pack .kernel.bottom.log.withoutopt -side left -fill x
+checkbutton .kernel.bottom.log.video -text "video" -variable logging_video -anchor w
+pack .kernel.bottom.log.video -side left -fill x
 
 proc logging_changed { varName index op } {
     global logging logfilename fileinfo
