@@ -1,3 +1,14 @@
+2009-08-08  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Moved display of targets in front of path trace.
+		Moved VRPN client-side logging into a separate thread so that it
+		can pull the video data out of the server and keep the application
+		from locking up.
+	* cismm_video_optimizer.vcproj : Making it compile with the latest version
+		of NSRG buildtime.
+	* cismm_video_optimizer.cpp : Added comments asking and responding to why
+		it has trouble reading from VST-generated logfiles.
+
 2009-08-03  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Added option to forward video on the logging

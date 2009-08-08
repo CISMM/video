@@ -213,8 +213,6 @@ vrpn_Analog_Server  *g_vrpn_analog = NULL;        //< Analog server to report fr
 vrpn_Imager_Server  *g_vrpn_imager = NULL;        //< VRPN Imager Server in case we're forwarding images
 int                 g_server_channel = -1;        //< Server channel index to send image data on
 Tclvar_int          g_video_full_frame_every("video_full_frame_every",400);  //< How often (in frames) to send a full frame of video
-vrpn_Connection	    *g_client_connection = NULL;  //< Connection on which to perform logging
-vrpn_Tracker_Remote *g_client_tracker = NULL;	  //< Client tracker object to cause ping/pong server messages
 FILE		    *g_csv_file = NULL;		  //< File to save data in with .csv extension
 
 unsigned char	    *g_beadseye_image = NULL;	  //< Pointer to the storage for the beads-eye image
@@ -239,6 +237,19 @@ bool                g_quit_at_end_of_video = false; //< When we reach the end of
 double              g_FIONA_background = 0.0;     //< Can be specified on the command line.
 
 bool                g_use_gui = true;             //< Use 3D and 2D GUI?
+
+//-----------------------------------------------------------------
+// This section deals with providing a thread for logging, which runs
+// to make sure that the network pipe doesn't get full while video data
+// is being pushed into it.  Note that it should be okay to have an extra thread
+// here even thought there are as many tracking threads as processors
+// because it will be running in between tracking times (though it may
+// still be receiving data when the next round of tracking has started).
+ThreadData  g_logging_thread_data;
+Thread      *g_logging_thread = NULL;
+vrpn_Connection	    *g_client_connection = NULL;  //< Connection on which to perform logging
+vrpn_Tracker_Remote *g_client_tracker = NULL;	  //< Client tracker object to cause ping/pong server messages
+vrpn_Imager_Remote  *g_client_imager = NULL;	  //< Client imager object to cause ping/pong server messages
 
 //-----------------------------------------------------------------
 // This section deals with providing multiple threads for tracking.
@@ -482,6 +493,7 @@ static bool deleteAll( Spot_Information * theElement ) {
 static void  dirtyexit(void)
 {
   static bool did_already = false;
+  g_quit = 1;  // Lets all the threads know that it is time to exit.
 
   if (did_already) {
     return;
@@ -491,6 +503,26 @@ static void  dirtyexit(void)
 
   // Done with the camera and other objects.
   printf("Exiting\n");
+
+  // Make the log file name empty so that the logging thread
+  // will notice and close its file.
+  // Wait until the logging thread exits.
+  g_logfilename = "";
+  logfilename_changed("", NULL);
+  while (g_logging_thread->running()) {
+    //------------------------------------------------------------
+    // This must be done in any Tcl app, to allow Tcl/Tk to handle
+    // events.
+  
+    while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
+
+    //------------------------------------------------------------
+    // This pushes changes in the C variables over to Tcl.
+
+    if (Tclvar_mainloop()) {
+      fprintf(stderr,"Tclvar Mainloop failed\n");
+    }
+  }
 
   // Get rid of any tracking threads and their associated data
   unsigned i;
@@ -535,8 +567,6 @@ static void  cleanup(void)
   if (g_vrpn_analog) { delete g_vrpn_analog; g_vrpn_analog = NULL; };
   if (g_vrpn_imager) { delete g_vrpn_imager; g_vrpn_imager = NULL; };
   if (g_vrpn_connection) { g_vrpn_connection->removeReference(); g_vrpn_connection = NULL; };
-  if (g_client_tracker) { delete g_client_tracker; g_client_tracker = NULL; };
-  if (g_client_connection) { g_client_connection->removeReference(); g_client_connection = NULL; };
 }
 
 static	double	timediff(struct timeval t1, struct timeval t2)
@@ -938,7 +968,43 @@ void myDisplayFunc(void)
       glDrawPixels(g_image->get_num_columns(),g_image->get_num_rows(),
         GL_RGBA, GL_UNSIGNED_BYTE, g_glut_image);
     } // End of "not g_opengl_video for texture"
+  }
 
+  // Draw a green border around the selected area.  It will be beyond the
+  // window border if it is set to the edges; it will just surround the
+  // region being selected if it is inside the window.
+  glDisable(GL_LINE_SMOOTH);
+  glColor3f(0,1,0);
+  glBegin(GL_LINE_STRIP);
+  glVertex3f( -1 + 2*((*g_minX-1) / (g_image->get_num_columns()-1)),
+	      -1 + 2*((*g_minY-1) / (g_image->get_num_rows()-1)) , 0.0 );
+  glVertex3f( -1 + 2*((*g_maxX+1) / (g_image->get_num_columns()-1)),
+	      -1 + 2*((*g_minY-1) / (g_image->get_num_rows()-1)) , 0.0 );
+  glVertex3f( -1 + 2*((*g_maxX+1) / (g_image->get_num_columns()-1)),
+	      -1 + 2*((*g_maxY+1) / (g_image->get_num_rows()-1)) , 0.0 );
+  glVertex3f( -1 + 2*((*g_minX-1) / (g_image->get_num_columns()-1)),
+	      -1 + 2*((*g_maxY+1) / (g_image->get_num_rows()-1)) , 0.0 );
+  glVertex3f( -1 + 2*((*g_minX-1) / (g_image->get_num_columns()-1)),
+	      -1 + 2*((*g_minY-1) / (g_image->get_num_rows()-1)) , 0.0 );
+  glEnd();
+
+  // If we are showing the past positions that have been logged, draw
+  // them now.
+  if (g_show_traces) {
+    glDisable(GL_LINE_SMOOTH);
+    glColor3f(1,1,0);
+
+    unsigned trace;
+    for (trace = 0; trace < g_logged_traces.size(); trace++) {
+      unsigned point;
+
+      glBegin(GL_LINE_STRIP);
+      for (point = 0; point < g_logged_traces[trace].size(); point++) {
+        glVertex2f( -1 + 2*(g_logged_traces[trace][point].x / (g_image->get_num_columns()-1)),
+	            -1 + 2*(g_logged_traces[trace][point].y / (g_image->get_num_rows()-1)) );
+      }
+      glEnd();
+    }
   }
 
   // If we have been asked to show the tracking markers, draw them.
@@ -1067,43 +1133,6 @@ void myDisplayFunc(void)
 	}
       }
       drawStringAtXY(x+2*dx,y, numString);
-    }
-  }
-
-  // Draw a green border around the selected area.  It will be beyond the
-  // window border if it is set to the edges; it will just surround the
-  // region being selected if it is inside the window.
-  glDisable(GL_LINE_SMOOTH);
-  glColor3f(0,1,0);
-  glBegin(GL_LINE_STRIP);
-  glVertex3f( -1 + 2*((*g_minX-1) / (g_image->get_num_columns()-1)),
-	      -1 + 2*((*g_minY-1) / (g_image->get_num_rows()-1)) , 0.0 );
-  glVertex3f( -1 + 2*((*g_maxX+1) / (g_image->get_num_columns()-1)),
-	      -1 + 2*((*g_minY-1) / (g_image->get_num_rows()-1)) , 0.0 );
-  glVertex3f( -1 + 2*((*g_maxX+1) / (g_image->get_num_columns()-1)),
-	      -1 + 2*((*g_maxY+1) / (g_image->get_num_rows()-1)) , 0.0 );
-  glVertex3f( -1 + 2*((*g_minX-1) / (g_image->get_num_columns()-1)),
-	      -1 + 2*((*g_maxY+1) / (g_image->get_num_rows()-1)) , 0.0 );
-  glVertex3f( -1 + 2*((*g_minX-1) / (g_image->get_num_columns()-1)),
-	      -1 + 2*((*g_minY-1) / (g_image->get_num_rows()-1)) , 0.0 );
-  glEnd();
-
-  // If we are showing the past positions that have been logged, draw
-  // them now.
-  if (g_show_traces) {
-    glDisable(GL_LINE_SMOOTH);
-    glColor3f(1,1,0);
-
-    unsigned trace;
-    for (trace = 0; trace < g_logged_traces.size(); trace++) {
-      unsigned point;
-
-      glBegin(GL_LINE_STRIP);
-      for (point = 0; point < g_logged_traces[trace].size(); point++) {
-        glVertex2f( -1 + 2*(g_logged_traces[trace][point].x / (g_image->get_num_columns()-1)),
-	            -1 + 2*(g_logged_traces[trace][point].y / (g_image->get_num_rows()-1)) );
-      }
-      glEnd();
     }
   }
 
@@ -1966,6 +1995,80 @@ static void optimize_tracker(Spot_Information *tracker)
     tracker->ztracker()->locate_close_fit_in_depth(*g_image, g_colorIndex, tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), z);
     tracker->ztracker()->optimize(*g_image, g_colorIndex, tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), z);
   }
+}
+
+// The logging on the VRPN connection is done by a separate thread so that
+// the network buffer won't get filled up while writing video data, causing
+// the porgram to hang while trying to pack more.  The CSV file writing is
+// handled in the main thread, so don't be confused by that.
+//   This thread watches the logging file name and starts up a new logging
+// connection when it has a new, non-empty value.
+
+void logging_thread_function(void *)
+{
+  printf("Starting VRPN logging thread\n");
+  while (!g_quit) {
+    //------------------------------------------------------------
+    // Watch the log file name and see if it becomes non-empty.
+    // Open a new connection and ask it to log, then open a new
+    // tracker and connect it to this connection.
+    const char *newvalue;
+    do {
+      vrpn_SleepMsecs(10);
+      newvalue = g_logfilename;
+    } while ((strlen(newvalue) == 0) && !g_quit);
+    if (g_quit) { break; }
+
+    // Make sure that the file does not exist by deleting it if it does.
+    // The Tcl code had a dialog box that asked the user if they wanted
+    // to overwrite, so this is "safe."
+    FILE *in_the_way;
+    if ( (in_the_way = fopen(newvalue, "r")) != NULL) {
+      fclose(in_the_way);
+      int err;
+      if ( (err=remove(newvalue)) != 0) {
+	fprintf(stderr,"Error: could not delete existing logfile %s\n", newvalue);
+	perror("   Reason");
+	cleanup();
+	exit(-1);
+      }
+    }
+
+    g_client_connection = vrpn_get_connection_by_name("Spot@localhost", newvalue);
+    g_client_tracker = new vrpn_Tracker_Remote("Spot@localhost");
+    g_client_imager = new vrpn_Imager_Remote("TestImage@localhost");
+
+    //------------------------------------------------------------
+    // Let the logging connection do its thing, sleeping only briefly
+    // to avoid eating the processor.  If the logging file name changes,
+    // then we close the existing log file and go back to waiting for a
+    // non-empty name in the next iteration.
+    char  *oldvalue = new char[strlen(newvalue) + 1];
+    if (oldvalue == NULL) {
+      fprintf(stderr,"logging_thread_function(): Out of memory\n");
+      break;
+    }
+    strncpy(oldvalue, newvalue, strlen(newvalue));
+    do {
+      g_client_tracker->mainloop();
+      g_client_imager->mainloop();
+      g_client_connection->mainloop();
+      g_client_connection->save_log_so_far();
+      vrpn_SleepMsecs(1);
+      newvalue = g_logfilename;
+    } while (strcmp(newvalue, oldvalue) == 0);
+
+    //------------------------------------------------------------
+    // Delete and make NULL the client tracker and connection object.
+    // Then free up the space from the oldvalue.  After that, go back
+    // and watch for the name to become non-empty so we open a new
+    // log file.
+    if (g_client_tracker) { delete g_client_tracker; g_client_tracker = NULL; };
+    if (g_client_imager) { delete g_client_imager; g_client_imager = NULL; };
+    if (g_client_connection) { g_client_connection->removeReference(); g_client_connection = NULL; };
+    delete [] oldvalue;
+  }
+  printf("Exiting VRPN logging thread\n");
 }
 
 // The tracking is now done by separate threads from the main program.  This function is
@@ -2959,16 +3062,6 @@ void myIdleFunc(void)
   if (g_vrpn_connection) { g_vrpn_connection->mainloop(); }
 
   //------------------------------------------------------------
-  // Let the logging connection do its thing if it is open.
-  if (g_client_tracker != NULL) {
-    g_client_tracker->mainloop();
-  }
-  if (g_client_connection != NULL) {
-    g_client_connection->mainloop();
-    g_client_connection->save_log_so_far();
-  }
-
-  //------------------------------------------------------------
   // Capture timing information and print out how many frames per second
   // are being tracked.
 
@@ -3219,15 +3312,8 @@ void  logfilename_changed(const char *newvalue, void *)
     }
   }
 
-  // Close the old connection, if there was one.
-  if (g_client_tracker != NULL) {
-    delete g_client_tracker;
-    g_client_tracker = NULL;
-  }
-  if (g_client_connection != NULL) {
-    delete g_client_connection;
-    g_client_connection = NULL;
-  }
+  // The logging thread will take care of closing the client tracker
+  // and connection as needed when the file name changes.
 
   // Close the old CSV log file, if there was one.
   if (g_csv_file != NULL) {
@@ -3237,23 +3323,6 @@ void  logfilename_changed(const char *newvalue, void *)
 
   // Open a new connection and .csv file, if we have a non-empty name.
   if (strlen(newvalue) > 0) {
-
-    // Make sure that the file does not exist by deleting it if it does.
-    // The Tcl code had a dialog box that asked the user if they wanted
-    // to overwrite, so this is "safe."
-    FILE *in_the_way;
-    if ( (in_the_way = fopen(newvalue, "r")) != NULL) {
-      fclose(in_the_way);
-      int err;
-      if ( (err=remove(newvalue)) != 0) {
-	fprintf(stderr,"Error: could not delete existing logfile %s\n", newvalue);
-	perror("   Reason");
-	cleanup();
-	exit(-1);
-      }
-    }
-    g_client_connection = vrpn_get_connection_by_name("Spot@localhost", newvalue);
-    g_client_tracker = new vrpn_Tracker_Remote("Spot@localhost");
 
     // Open the CSV file and put the titles on.
     // Make sure that the file does not exist by deleting it if it does.
@@ -3267,6 +3336,7 @@ void  logfilename_changed(const char *newvalue, void *)
     }
     strcpy(csvname, newvalue);
     strcpy(&csvname[strlen(csvname)-5], ".csv");
+    FILE *in_the_way;
     if ( (in_the_way = fopen(csvname, "r")) != NULL) {
       fclose(in_the_way);
       int err;
@@ -3729,6 +3799,18 @@ int main(int argc, char *argv[])
       }
     }
   }
+
+  //------------------------------------------------------------------
+  // Create the tracking thread that will create and fill the
+  // VRPN log file.
+  g_logging_thread_data.pvUD = NULL;
+  g_logging_thread_data.ps = new Semaphore();
+  g_logging_thread = new Thread(logging_thread_function, g_logging_thread_data);
+  if (g_logging_thread == NULL) {
+    fprintf(stderr, "Could not create logging thread; exiting\n");
+    exit(-1);
+  }
+  g_logging_thread->go();
 
   //------------------------------------------------------------------
   // VRPN state setting so that we don't try to preload a video file
