@@ -8,10 +8,10 @@ OperatingSystem=WinXP  5.1  2600 (Service Pack 3)
 ProjectName=stack_collector
 ProjectDirectory=F:\taylorr\STM\src\video\stack_collector
 NonSFXDirectory=F:\taylorr\STM\src\video\stack_collector\NonSFX
-MediaFileName=CISMM_stack_collector_02_07
+MediaFileName=CISMM_stack_collector_02_08
 CopyMediaToFName=
 ProgramDescriptiveName=CISMM Stack Collector
-ProgramVersion=02.07
+ProgramVersion=02.08
 CompanyName=www.cs.unc.edu/nano
 ProgVerLiveUpdate=0
 RegisterAsApp=1
@@ -62,7 +62,7 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|
 CompanyUrl=www.cs.unc.edu/nano
 
 [TargetExe]
-TargetDirectory=<ProgramFilesDir>NSRG\CISMM_stack_collector v2.07
+TargetDirectory=<ProgramFilesDir>NSRG\CISMM_stack_collector v2.08
 CommonDirectory=<CommonFilesDir>www.cs.unc.edu/nano
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\stack_collector.bat
@@ -106,7 +106,7 @@ ShowCopyrightWarning=1
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=NSRG\CISMM Stack Collector v2.07
+ProgramLinkFolder=NSRG\CISMM Stack Collector v2.08
 ProgramLinkName=DirectX_Stack_collector
 ProgramLinkParam=
 ProgramLinkWorkDir=<Application Folder>
@@ -132,11 +132,11 @@ SetAllUsers=1
 AddUninstallShortcut=1
 Item-000=*|Roper_Stack_Collector|<Application Folder>\stack_collector.bat||roper|<Application Folder>|Minimized|<Application Folder>\stack_collector.ico|0|1||0|
 Item-001=*|Pulnix_Stack_Collector_Hercules|<Application Folder>\stack_collector.bat||edt mcl|<Application Folder>|Minimized|<Application Folder>\stack_collector.ico|0|1||0|
-Item-002=*|Pulnix_Stack_Collector_Artemis|<Application Folder>\stack_collector.bat||edt Focus@carbon-cs.cs.unc.edu|<Application Folder>|Minimized|<Application Folder>\stack_collector.ico|0|1||0|
+Item-002=*|Pulnix_Stack_Collector_Artemis|<Application Folder>\stack_collector.bat||edt Focus@mercury-cs.cs.unc.edu|<Application Folder>|Minimized|<Application Folder>\stack_collector.ico|0|1||0|
 Item-003=*|Cooke_Stack_Collector_Hercules|<Application Folder>\stack_collector.bat||cooke mcl||Minimized|<Application Folder>\stack_collector.ico|0|1||0|
 Item-004=*|Hercules_Roper_MCL|<Application Folder>\stack_collector.bat||roper Focus@aurum-cs.cs.unc.edu|<Application Folder>|Minimized|<Application Folder>\stack_collector.ico|0|1||0|
 Item-005=*|MCL Server|<Application Folder>\vrpn_server.exe||-f mcl.cfg|<Application Folder>|Normal Window||0|1||0|
-Item-006=*|Artemis_Roper_MCL|<Application Folder>\stack_collector.exe||roper Focus@mercury-cs.cs.unc.edu|<Application Folder>|Normal Window|<Application Folder>\stack_collector.ico|0|1||0|
+Item-006=*|Artemis_Roper_MCL|<Application Folder>\stack_collector.bat||roper Focus@mercury-cs.cs.unc.edu|<Application Folder>|Normal Window|<Application Folder>\stack_collector.ico|0|1||0|
 
 [Billboard]
 AddBillboard=1

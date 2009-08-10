@@ -1,3 +1,11 @@
+2009-08-10  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* mcl.cfg : Inverted the direction of travel for the MCL stage; they
+		are mounted so that +Z is down on our instruments.  This had to
+		be inverted both on the way out (Poser) and the way in (Tracker).
+		Made a new installer for version 2.08 with that and with some
+		improved shortcuts.
+
 2009-08-08  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Moved display of targets in front of path trace.
