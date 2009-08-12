@@ -37,7 +37,7 @@ void VRPN_Imager_camera_server::handle_description_message(void * userdata, cons
 
   //---------------------------------------------------------------------
   // Allocate a buffer that is large enough to read the maximum-sized
-  // image with no binning.
+  // image with no binning.  Clear the back buffer.
   me->_buflen = (vrpn_uint32)(me->_num_rows* me->_num_columns);	// Two bytes per pixel, but we're allocating 16-bit values
   if ( (me->_front = new vrpn_uint16[me->_buflen]) == NULL) {
     fprintf(stderr, "VRPN_Imager_camera_server::handle_description_message(): Cannot allocate memory buffer\n");
@@ -49,6 +49,7 @@ void VRPN_Imager_camera_server::handle_description_message(void * userdata, cons
     me->_status = false;
     return;
   }
+  memset(me->_back, 0, me->_buflen * 2);
 
   // We've now heard the resolution from the server.
   me->_gotResolution = true;
@@ -73,6 +74,16 @@ void VRPN_Imager_camera_server::handle_end_frame_message(void * userdata, const 
   me->_front = me->_back;
   me->_back = temp;
   me->_frameNum++;
+
+  // If we're clearing each new frame, clear the back buffer.  Otherwise, copy the front
+  // buffer into the back buffer so that we are keeping all pixels the same that are
+  // not overwritten.
+  if (me->_clear_new_frames) {
+    memset(me->_back, 0, me->_buflen * 2);
+  } else {
+    memcpy(me->_back, me->_front, me->_buflen * 2);
+  }
+
 
   if (me->_pause_after_one_frame) { 
     // To avoid skipping past the message we just read, find out the current
@@ -203,17 +214,17 @@ bool VRPN_Imager_camera_server::open_and_find_parameters(const char *name)
   return _status;
 }
 
-VRPN_Imager_camera_server::VRPN_Imager_camera_server(const char *name) :
+VRPN_Imager_camera_server::VRPN_Imager_camera_server(const char *name, bool clear_new_frames) :
   base_camera_server(1),
   _fileCon(NULL),
-  _bitDepth(0),
   _imager(NULL),
   _front(NULL),
   _back(NULL),
   _frameNum(-1),
   _justStepped(false),
   _pause_after_one_frame(false),
-  _paused(false)
+  _paused(false),
+  _clear_new_frames(clear_new_frames)
 {
   //---------------------------------------------------------------------
   // Open the Imager and find out what its capabilities are.

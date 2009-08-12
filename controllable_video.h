@@ -177,6 +177,7 @@ bool  get_camera(const char *name,
     VRPN_Imager_Controllable_Video  *s = new VRPN_Imager_Controllable_Video (name);
     *camera = s;
     *video = s;
+    // We're going to put out 16-bit video no matter what the input is.
     *bit_depth = 16;
 
   // Unknown type, so we presume that it is a file.  Now we figure out what
@@ -238,6 +239,7 @@ bool  get_camera(const char *name,
       VRPN_Imager_Controllable_Video *s = new VRPN_Imager_Controllable_Video(vrpnname);
       *camera = s;
       *video = s;
+      *bit_depth = 16;
       delete [] vrpnname;
 
     // If the extension is ".tif" or ".tiff" or ".bmp" or ".png" then we assume it is
@@ -255,6 +257,7 @@ bool  get_camera(const char *name,
       FileStack_Controllable_Video *s = new FileStack_Controllable_Video(name);
       *camera = s;
       *video = s;
+      // We're going to put out 16-bit video no matter what the input is.
       *bit_depth = 16;
 
     // If the extension is ".stk"  then we assume it is a Metamorph file

@@ -61,7 +61,7 @@ static void dirtyexit();
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.13";
+const char *Version_string = "02.00";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -640,19 +640,6 @@ void myIdleFunc(void)
     *g_maxY = g_camera->get_num_rows() - 1;
     g_full_area = 0;
   }
-
-  // XXX Why does a vrpn_Imager read from a VST log file flicker its
-  // background on and off every other frame; it should either have it
-  // there once and not again until the full frame comes in or else keep
-  // it there the whole time.  BECAUSE the VRPN_Imager_camera_server
-  // uses double-buffering to prevent half-frame updates.
-
-  // XXX Why does a vrpn_Imager read from a VST log file get clamped unless
-  // the bit depth is set to 16 when the actual bit depth of the channel
-  // is 8?  BECAUSE the VRPN_Imager_camera_server stores things into
-  // a 16-bit buffer whatever the input is, presumably shifting it up if
-  // it is an 8-bit channel.  Also it must not tell that it should be a
-  // 16-bit image.
 
   // Read an image from the camera into memory, within a structure that
   // is wrapped by an image_wrapper object that the tracker can use.

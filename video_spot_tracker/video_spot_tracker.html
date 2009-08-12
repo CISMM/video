@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v05.29</title>
+<title>Video Spot Tracker v06.00</title>
 
-<h1>Video Spot Tracker version 05.29</h1>
+<h1>Video Spot Tracker version 06.00</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -58,9 +58,9 @@
   icon that was created when the program was installed. To select a stack of image 
   files that are numbered consecutively, drag any one of the files onto the icon. 
   It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
-  Menu/All Programs/NSRG/Video Spot Tracker v05.29</b></i>. If you run the program 
-  directly by double-clicking on the icon, it will ask for a video or image file 
-  (AVI, TIF, or BMP) that it should open.</p>
+  Menu/All Programs/NSRG/Video Spot Tracker</b></i>. If you run the program directly 
+  by double-clicking on the icon, it will ask for a video or image file (AVI, 
+  TIF, or BMP) that it should open.</p>
 
 <p><b><i>NOTE:</i></b> With Windows XP service pack 2 and with other firewall software, running the program causes a dialog box to appear asking whether to block the program; the program needs to be unblocked only if the program is to be connected to a local or remote feedback system that relies on the tracking data. This happens when the program opens the Internet port assigned to it (3883) by the Internet Domain Naming Authority to export the data through the standard VRPN protocol (<a href="http://www.vrpn.org">www.vrpn.org</a>).</p> 
 
@@ -272,21 +272,21 @@
   further around) to prevent sampling preferentially along the horizontal axis. 
   the image shown here is for the symmetric tracker, which does not sample at 
   the center; the cone and disc trackers have a single sample in the center.</p>
-<h3>Recording the tracker motion</h3>
+<h3>Recording the tracker motion (and video)</h3>
 
-<p><img src="log.jpg" width="397" height="50" align="right">You can record the 
+<p><img src="log.jpg" width="427" height="54" align="right">You can record the 
   motion of the trackers by checking the <b><i>Logging</i></b> checkbox within 
-  the <b><i>log</i></b> control panel (shown to the right). This panel was moved 
-  inside the <b><i>kernel</i></b> control panel in version 04.07. This will bring 
-  up a dialog box that will let you select a filename. It will automatically add 
-  the default extension &quot;.vrpn&quot; to the filename you create. (A second 
-  file, with the extension &quot;.csv&quot; will also be created, though the program 
-  does not mention it.) Once you have selected a file name, you check the <b><i>play_video</i></b> 
-  checkbox to begin going through the video file, or you can use the <b><i>single_step_video</i></b> 
-  repeatedly to step through a frame at a time. When you are finished with the 
-  section of tracking that you are interested in, uncheck the Logging checkbox 
-  to stop the logging. You can then go forward to another section, turn on logging, 
-  and save a different file if you like.</p>
+  the <b><i>log</i></b> control (shown to the right) inside the <b><i>kernel</i></b> 
+  control panel. This will bring up a dialog box that will let you select a filename. 
+  It will automatically add the default extension &quot;.vrpn&quot; to the filename 
+  you create. (A second file, with the extension &quot;.csv&quot; will also be 
+  created, though the program does not mention it.) Once you have selected a file 
+  name, you check the <b><i>play_video</i></b> checkbox to begin going through 
+  the video file, or you can use the <b><i>single_step_video</i></b> repeatedly 
+  to step through a frame at a time. When you are finished with the section of 
+  tracking that you are interested in, uncheck the Logging checkbox to stop the 
+  logging. You can then go forward to another section, turn on logging, and save 
+  a different file if you like.</p>
 
 <p>At the time logging is started, the value of the <b><i>Relative to active tracker 
   start</i></b> check box is used to determine the origin of the reported positions 
@@ -334,6 +334,15 @@
   from the Gaussian center. The <i>Summed Value</i> field is the sum of the pixels 
   within a 5-pixel radius around the center of the Gaussian with the mean background 
   subtracted from each.</p>
+<p>If the <b><i>video</i></b> checkbox is selected, Spot Tracker will also store 
+  a <i>vrpn_Imager</i> copy of the video data on a device named <i>TestImage</i>. 
+  The first frame of the video and every 400th frame of the video will be stored 
+  as the entire frames; intermediate frames will only have video in them for regions 
+  around the existing trackers (twice the radius of each). This provides a way 
+  to store a much smaller video that records all of the motion at and near beads 
+  in case they need to be re-tracked later with different parameters. It also 
+  provides a pass-through mechanism for another program to connect to a live running 
+  Spot Tracker program and watch both the (subset) video and the bead motion.</p>
 
 <h3>Saving and loading program settings</h3>
 <p>Once you have all of the settings tweaked just the way you like them for a 
@@ -372,6 +381,14 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 6.00:</h3>
+<ul>
+  <li>Added <i>video</i> check-box to the logging control that enables logging 
+    of <i>vrpn_Imager</i> data to the VRPN file (and to any attached client). 
+    It stores complete frames every 400th frame, and in between sends video only 
+    around the current trackers (twice their radius). This provides a way to forward 
+    and to store that subset of the video relevant to the experiment.</li>
+</ul>
 <h3>Version 5.29:</h3>
 <ul>
   <li>Added <i>Save State</i> and <i>Load State </i>buttons that store the current 

@@ -7,7 +7,11 @@
 
 class VRPN_Imager_camera_server : public base_camera_server {
 public:
-  VRPN_Imager_camera_server(const char *name);
+  // If clear_new_frames = true, each new image buffer is filled with
+  // zeroes before being written to.  If it is false, the previous image
+  // (if there is one) is copied into the buffer.  This allows continuous-
+  // looking frames when only partial frames are sent by the server.
+  VRPN_Imager_camera_server(const char *name, bool clear_new_frames = false);
 
   virtual ~VRPN_Imager_camera_server(void);
 
@@ -45,11 +49,11 @@ protected:
   vrpn_Imager_Remote  *_imager;           //< Imager to use
   vrpn_File_Connection *_fileCon;	  //< File connection, if we have one.
   bool	_gotResolution;			  //< Lets us know we've heard the resolution from the server
-  unsigned short _bitDepth;		  //< Bit depth that is set
   int     _frameNum;			  //< How many frames we've read in.
   bool	  _justStepped;			  //< Just took a step to a new location, play out frame.
   bool    _pause_after_one_frame;         //< Flag to let the callback handler know to pause after we get one
   bool    _paused;                        //< Keeps track of whether we're paused or not.
+  bool    _clear_new_frames;              //< Clear out each new frame, or copy from previous?
 
   // We use double-buffering to prevent half-updated frames.
   // Writes always happen to the back buffer, and reads from the front buffer.

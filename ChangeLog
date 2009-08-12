@@ -1,3 +1,16 @@
+2009-08-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* VRPN_Imager_camera_server.cpp : Changed it so that it either copies the
+		previous frame (by default) or a blank frame into the buffer to be
+		filled in.  This enables reading in of frames that are only partially
+		filled by the server without visual distractions.
+	* VPRN_Imager_camera_server.h : Same.
+	* controllable_video.h : Sets the VRPN Imager camera to use 16 bits, which
+		it always does.
+	* cismm_video_optimizer.cpp : New release with the other changes built in.
+	* video_spot_tracker.cpp : Links to all of the changes above.  New version
+		that includes all of them.
+
 2009-08-10  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* mcl.cfg : Inverted the direction of travel for the MCL stage; they
