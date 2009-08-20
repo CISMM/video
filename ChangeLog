@@ -1,3 +1,12 @@
+2009-08-20  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_imager_server.cpp : Changed to version 03.07 so we could build a
+		new installer that includes the MSVCRT manifest and other DLL files
+		needed to run the program.  This works on most machines, but still
+		has trouble on cuprum (where video spot tracker's newest version
+		also has problems), probably due to an incompatible DLL from a
+		camera driver.
+
 2009-08-12  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* VRPN_Imager_camera_server.cpp : Changed it so that it either copies the
