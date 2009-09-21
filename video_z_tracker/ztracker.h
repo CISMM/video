@@ -89,6 +89,8 @@ public:
 
 	void MCLAccuracy();
 
+	void VSTAccuracyTest();
+
 protected:
 
 	wxPanel* m_panel;
@@ -228,6 +230,14 @@ protected:
 	vrpn_Connection	    *m_vrpn_connection;    //< Connection to send position over
 	vrpn_Tracker_Server *m_vrpn_tracker;	  //< Tracker server to send positions
 	vrpn_Analog_Server  *m_vrpn_analog;        //< Analog server to report frame number
+
+
+
+	int m_motionLeg;
+	float m_step;
+	float m_pauseStep;
+	int m_curSteps;
+	struct timeval m_motionTime;
 
 private:
 

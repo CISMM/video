@@ -1,5 +1,12 @@
 2009-07-28  Ryan Schubert  <res@cs.unc.edu>
 
+	* ztracker.* : Added code that will move the MCL in fixed
+		steps (currently 5 microns) first in X and then in
+		Y.  Beads in the field of view can then be tracked
+		to gather information about the optics.
+
+2009-07-28  Ryan Schubert  <res@cs.unc.edu>
+
 	* ztracker.cpp : Upped length of log filenames to 4096.
 		Removed some old, commented-out code.
 

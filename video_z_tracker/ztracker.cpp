@@ -27,6 +27,11 @@ void clamp(double &var, double min, double max) {
 		var = max;
 }
 
+unsigned long	dur(struct timeval t1, struct timeval t2)
+{
+	return (t1.tv_usec - t2.tv_usec) +
+	       1000000L * (t1.tv_sec - t2.tv_sec);
+}
 
 
 // spot tracker library stuff...this is ugly
@@ -149,9 +154,9 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title,
 	m_stageLogger = NULL;
 	if (stage_name != "")
 	{
-		char stagelogger[80];
-		char stagedevice[80];
-		char stageaddress[80];
+		char stagelogger[4096];
+		char stagedevice[4096];
+		char stageaddress[4096];
 
 		int devicelen = strchr(stage_name, '@') - stage_name;
 
@@ -349,16 +354,15 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title,
 
 
 
-	m_targetOOF = 0;
 	m_micronsPerFocus = 0;
 
 	m_focusMeasureText = NULL;
 	m_focusMeasureText = new wxTextCtrl(m_panel, wxID_ANY, "0.0", wxDefaultPosition, wxSize(40, 20));
 
-	m_zTrackDamping = 1.0;
+	m_zTrackDamping = 0.001;
 	m_zTrackDampingText = NULL; // for some reason the wx text event callback was happening
 								// when this was still uninitialized!
-	m_zTrackDampingText = new wxTextCtrl(m_panel, Z_DAMPING, "1.0", wxDefaultPosition, wxSize(40, 20));
+	m_zTrackDampingText = new wxTextCtrl(m_panel, Z_DAMPING, "0.001", wxDefaultPosition, wxSize(40, 20));
 
 
 	// tracking mode 'keep bead centered' stuff
@@ -372,8 +376,9 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title,
 	m_micronsPerFocusText = NULL;
 	m_micronsPerFocusText = new wxTextCtrl(m_panel, MICRONS_PER_FOCUS, "1.0", wxDefaultPosition, wxSize(40,20));
 
+	m_targetOOF = 2;
 	m_targetOOFText = NULL;
-	m_targetOOFText = new wxTextCtrl(m_panel, TARGET_OOF, "0.0", wxDefaultPosition, wxSize(40,20));
+	m_targetOOFText = new wxTextCtrl(m_panel, TARGET_OOF, "2.0", wxDefaultPosition, wxSize(40,20));
 
 	m_zGuess = NULL;
 
@@ -396,6 +401,8 @@ zTracker::zTracker(wxWindow* parent, int id, const wxString& title,
 	m_vrpn_analog = new vrpn_Analog_Server("FrameNumber", m_vrpn_connection, 1);
 
 
+
+	m_motionLeg = -1;
 
 
 	// ****************************************
@@ -767,7 +774,7 @@ void zTracker::OnLoggingButton(wxCommandEvent& event)
 
 		m_canvas->LogToFile(videologfile);
 
-		/*
+		//*
 		if (m_stageLogger)
 		{
 			if (!m_stageLogger->send_logging_request("", "", "", stagelogfile))
@@ -779,7 +786,7 @@ void zTracker::OnLoggingButton(wxCommandEvent& event)
 		{
 			printf("WARNING: NOT LOGGING STAGE POSITION!\n");
 		}
-		*/
+		//*/
 		m_videoAndStageLogging = true;
 	}
 	else
@@ -797,7 +804,14 @@ void zTracker::OnLoggingButton(wxCommandEvent& event)
 
 void zTracker::OnDo(wxCommandEvent& event)
 {
-	MCLAccuracy();
+	m_motionLeg = 0;
+	gettimeofday(&m_motionTime, NULL);
+
+	;
+
+	//MCLAccuracy();
+
+	;
 
 	//CalculateZOffset();
 
@@ -1136,7 +1150,6 @@ void zTracker::MCLAccuracy()
 	
 }
 
-
 void zTracker::Idle(wxIdleEvent& event)
 {
 
@@ -1275,6 +1288,58 @@ void zTracker::Idle(wxIdleEvent& event)
 			clamp(y, 0, 100);
 		}
 
+	}
+
+	// set our x y z here for pre-set stage motion
+	// m_motionLeg:
+	//		-1	:	no motion
+	//		0	:	moving in X from 0-100
+	//		1	:	moving in Y from 0-100
+	//
+	// m_motionTime - when we got to the current position of interest
+	// m_step - step size to use while stage is moving to next position of interest
+	// m_pauseStep - how far apart are positions of interest
+	// m_curSteps - how many steps we've taken since the previous position of interest
+	m_step = 0.05;
+	m_pauseStep = 5;
+
+	struct timeval motionTimeNow; 
+	gettimeofday(&motionTimeNow, NULL);
+	if (m_motionLeg > -1) {
+		if(dur(motionTimeNow, m_motionTime) > 1000000L) {
+			// move stage; reset time
+			if (m_motionLeg == 0) {
+				x += m_step;
+			}
+			else if (m_motionLeg == 1) {
+				y += m_step;
+			}
+
+			++m_curSteps;
+
+			if (m_curSteps >= (m_pauseStep / m_step)) {
+				// we've reached our next position of interest
+				m_curSteps = 0;
+
+				if (m_motionLeg == 0)
+					printf("X progress: %i\n", x);
+				if (m_motionLeg == 1)
+					printf("Y progress: %i\n", y);
+
+
+				if (m_motionLeg == 0 && x >= 100) {
+					// we've reached the end of the X leg!
+					m_curSteps = 0;
+					m_motionLeg = 1;
+				}
+				if (m_motionLeg == 1 && y >= 100) {
+					// we've reached the end of the Y leg!
+					m_curSteps = 0;
+					m_motionLeg = -1; // stop
+				}
+				gettimeofday(&m_motionTime, NULL);
+			}
+		}
 	}
 
 
