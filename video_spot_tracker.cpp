@@ -91,7 +91,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "06.00";
+const char *Version_string = "06.01";
 
 //--------------------------------------------------------------------------
 // Global constants
