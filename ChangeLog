@@ -1,3 +1,9 @@
+2009-09-24  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* cismm_vide_optimizer.vcproj : Pulled the manifest out of the program
+		so that we can hand-edit a correct one to ship with the program
+		that doesn't try to load two different copies of MSVCRT.
+
 2009-09-23  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_imager_server.proj : Pulled the manifest out of the
