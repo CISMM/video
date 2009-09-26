@@ -21,6 +21,8 @@
 IMAGEMAGIC_INCLUDE := ../External/pc_linux64/include/ImageMagick
 IMAGEMAGIC_LIB := ../External/pc_linux64/lib
 
+OPENCV_INCLUDE := /usr/include/opencv
+
 ##########################
 # Directories for installation
 
@@ -114,7 +116,7 @@ OBJ_DIR := $(HW_OS)$(OBJECT_DIR_SUFFIX)
 LIB_DIR := ../$(OBJ_DIR)
 
 CFLAGS = -g -I./ -Istocc_random_number_generator -I../quat -I../vrpn \
-	-I../nano/src/lib/nmMP -I/usr/local/include -I$(IMAGEMAGIC_INCLUDE)
+	-I../nano/src/lib/nmMP -I/usr/local/include -I$(IMAGEMAGIC_INCLUDE) -I$(OPENCV_INCLUDE)
 
 # The -rpath command specifies that the system should look for shared objects in
 # the specified location.  In our case, this is an attempt to get ImageMagick
@@ -126,6 +128,9 @@ TCLLIBS = -ltk8.5 -ltcl8.5 -lXss
 MAGICLIBS = -lMagickCore -ltiff -lfreetype -ljpeg -lpng -lfontconfig -lXext -lXt -lSM -lICE -lX11 -lbz2 -lrsvg-2 -lgdk_pixbuf-2.0 -lgobject-2.0 -lgmodule-2.0 -ldl -lglib-2.0 -lxml2 -lz -lpthread -lpthread 
 
 VRPNLIBS = -lvrpn -lquat
+
+#OPENCVLIBS = -lcvaux -lcvservice -lcv
+OPENCVLIBS = -lcv
 
 .SUFFIXES: .cpp
 
@@ -209,24 +214,24 @@ $(OBJ_DIR)/libstocc.a : $(MAKEFILE) $(STOCC_LIB_OBJECTS)
 $(OBJ_DIR)/test_spot_tracker: $(OBJ_DIR)/test_spot_tracker.o $(OBJ_DIR)/libspottracker.a
 	$(CC) $(LFLAGS) -o $(OBJ_DIR)/test_spot_tracker \
 		$(OBJ_DIR)/test_spot_tracker.o \
-		-lspottracker $(MAGICLIBS) $(GL) $(VRPNLIBS) $(SYSLIBS) -lm
+		-lspottracker $(MAGICLIBS) $(GL) $(VRPNLIBS) $(OPENCVLIBS) $(SYSLIBS) -lm
 
 $(OBJ_DIR)/video_spot_tracker: $(OBJ_DIR)/video_spot_tracker.o $(OBJ_DIR)/libspottracker.a\
 				$(OBJ_DIR)/libtcllinkvar85.a libedt.a
 	$(CC) $(LFLAGS) -o $(OBJ_DIR)/video_spot_tracker \
 		$(OBJ_DIR)/video_spot_tracker.o \
 		-lnmMP -lspottracker -ledt -ltcllinkvar85 $(TCLLIBS) \
-		$(MAGICLIBS) -lglut $(GL) $(VRPNLIBS) $(SYSLIBS) -lm
+		$(MAGICLIBS) -lglut $(GL) $(VRPNLIBS) $(OPENCVLIBS) $(SYSLIBS) -lm
 
 $(OBJ_DIR)/add_noise_to_image: $(OBJ_DIR)/add_noise_to_image.o $(OBJ_DIR)/libstocc.a
 	$(CC) $(LFLAGS) -o $(OBJ_DIR)/add_noise_to_image \
 		$(OBJ_DIR)/add_noise_to_image.o \
-		-lstocc $(MAGICLIBS) $(GL) $(VRPNLIBS) $(SYSLIBS) -lm
+		-lstocc $(MAGICLIBS) $(GL) $(VRPNLIBS) $(OPENCVLIBS) $(SYSLIBS) -lm
 
 $(OBJ_DIR)/average_videos: $(OBJ_DIR)/average_videos.o
 	$(CC) $(LFLAGS) -o $(OBJ_DIR)/average_videos \
 		$(OBJ_DIR)/average_videos.o \
-		$(MAGICLIBS) $(GL) $(VRPNLIBS) $(SYSLIBS) -lm
+		$(MAGICLIBS) $(GL) $(VRPNLIBS) $(OPENCVLIBS) $(SYSLIBS) -lm
 
 install: all
 	-mkdir $(BIN_DIR)

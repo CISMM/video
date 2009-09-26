@@ -10,6 +10,10 @@ const double M_PI = 2*asin(1.0);
 #endif
 #endif
 
+#ifndef min
+#define min(a,b) ( (a)<(b)?(a):(b) )
+#endif
+
 // Find the maximum of three elements.  Return the
 // index of which one was picked.
 double max3(double v0, double v1, double v2, unsigned &index) {
