@@ -1,5 +1,9 @@
 2009-09-26  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* Makefile : Making it compile on BASS using system ImageMagick.
+
+2009-09-26  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* spot_tracker.cpp : Defining min() so it compiles under Linux.
 	* Makefile : Making it compile on Linux (BASS).
 

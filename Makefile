@@ -18,8 +18,8 @@
 #HW_OS := powerpc_macosx
 ##########################
 
-IMAGEMAGIC_INCLUDE := ../External/pc_linux64/include/ImageMagick
-IMAGEMAGIC_LIB := ../External/pc_linux64/lib
+IMAGEMAGIC_INCLUDE := /usr/include/ImageMagick
+IMAGEMAGIC_LIB := /usr/lib64
 
 OPENCV_INCLUDE := /usr/include/opencv
 
