@@ -17,6 +17,7 @@
 #include  "diaginc_server.h"
 #include  "edt_server.h"
 #include  "cooke_server.h"
+#include  "point_grey_server.h"
 #endif
 
 const int MAJOR_VERSION = 3;
@@ -26,16 +27,21 @@ const int MINOR_VERSION = 8;
 // g_done gets set when the user presses ^C to exit the program.
 
 static	bool  g_done = false;	//< Becomes true when time to exit
+static bool g_camera_done = false; // True when the camera thread
+								   // has finished cleaning up.
 
 // WARNING: On Windows systems, this handler is called in a separate
 // thread from the main program (this differs from Unix).  To avoid all
 // sorts of chaos as the main program continues to handle packets, we
 // set a done flag here and let the main program shut down in its own
 // and do all of the stuff we used to do in this handler.
-// This flag actually stops two threads: the imager-server thread and
-// the main-program thread.  The main-program thread runs the imager
-// forwarder (which actually has its own sub-thread, but that death
-// is handled internally).
+// We actually need to use two flags so that we ensure the camera
+// thread finishes and runs the camera teardown code before the main
+// thread finishes and does server teardown code.  When both threads
+// dropped out of their loops from a single flag the main thread could
+// tear down the server code and actually exit (deallocating the camera
+// memory) while the camera server was still trying to grab one more
+// image.
 
 void handle_cntl_c(int) {
   g_done = true;
@@ -70,6 +76,7 @@ int                 g_numchannels = 1;  //< How many channels to send (3 for RGB
 int                 g_maxval = 4095;    //< Maximum value available in a channel for this device
 bool                g_swap_edt = false; //< Swap lines in EDT to fix bug in driver
 unsigned            g_camera_buffers = 360; //< How many camera buffers to ask for
+double		g_framerate = -1; //< -1 for use max framerate given exposure, if an option
 
 /// Open the camera we want to use (the type is based on the name passed in)
 bool  init_camera_code(const char *type, int which = 1)
@@ -131,6 +138,15 @@ bool  init_camera_code(const char *type, int which = 1)
       fprintf(stderr,"init_camera_code(): Can't open Cooke camera server\n");
       return false;
     }
+  } else if (!strcmp(type, "pgr")) {
+	  printf("Opening Point Grey Camera\n");
+	  g_camera = new point_grey_server(g_framerate, g_exposure);
+	  g_numchannels = 1;
+	  g_maxval = 255;
+	  if (!g_camera->working()) {
+		  fprintf(stderr, "init_camera_code(): Can't open PGR camera server\n");
+		  return false;
+	  }
 #endif
   } else {
     fprintf(stderr,"init_camera_code(): Unknown camera type (%s)\n", type);
@@ -142,7 +158,7 @@ bool  init_camera_code(const char *type, int which = 1)
 
 void  teardown_camera_code(void)
 {
-  if (g_camera) { delete g_camera; };
+  if (g_camera) { delete g_camera; g_camera = NULL;};
 }
 
 //-----------------------------------------------------------------
@@ -173,7 +189,7 @@ void imager_server_thread_func(vrpn_ThreadData &threadData)
     // reading again.
     for (skip = 1; skip <= g_every_nth_frame; skip++) {
       // Setting the min to be larger than the max means "the whole image"
-      g_camera->read_image_to_memory(1,0,1,0,g_exposure);
+	  g_camera->read_image_to_memory(1,0,1,0,g_exposure);
     }
 
     // Send the non-skipped frame to VRPN and log.
@@ -187,6 +203,7 @@ void imager_server_thread_func(vrpn_ThreadData &threadData)
   if (svr) { delete svr; svr = NULL; };
   if (svrcon) { delete svrcon; svrcon = NULL; };
   teardown_camera_code();
+  g_camera_done = true;
 }
 
 bool  init_server_code(const char *outgoing_logfile_name, bool do_color)
@@ -301,7 +318,7 @@ int main(int argc, char *argv[])
       if (++i > argc) { Usage(argv[0]); }
       g_camera_buffers = atoi(argv[i]);
       if ( (g_camera_buffers < 1) || (g_camera_buffers > 1000) ) {
-	fprintf(stderr,"Invalid exposure (1-1000 allowed, %d entered)\n", g_camera_buffers);
+	fprintf(stderr,"Invalid number of buffers (1-1000 allowed, %d entered)\n", g_camera_buffers);
 	exit(-1);
       }
     } else if (!strncmp(argv[i], "-res", strlen("-res"))) {
@@ -316,11 +333,18 @@ int main(int argc, char *argv[])
       if ( (g_height < 1) || (g_height > 1200) ) {
 	fprintf(stderr,"Invalid height (1-1200 allowed, %f entered)\n", g_height);
 	exit(-1);
-      }
-    } else if (!strncmp(argv[i], "-swap_edt", strlen("-swap_edt"))) {
-      g_swap_edt = true;
-    } else {
-      switch (++realparams) {
+	  }
+	} else if (!strncmp(argv[i], "-swap_edt", strlen("-swap_edt"))) {
+		g_swap_edt = true;
+	} else if (!strncmp(argv[i], "-framerate", strlen("-framerate"))) {
+		if (++i > argc) { Usage(argv[0]); }
+		g_framerate = atof(argv[i]);
+		if ( (g_framerate < 1) || (g_framerate > 1000) ) {
+			fprintf(stderr,"Invalid framerate (1-1000 allowed, %d entered)\n", g_framerate);
+			exit(-1);
+		}
+	} else {
+		switch (++realparams) {
       case 1:
 	devicename = argv[i];
 	break;
@@ -345,7 +369,7 @@ int main(int argc, char *argv[])
   printf("Opened camera\n");
   if (!init_server_code(logfilename, (g_numchannels > 1) )) { return -1; }
 
-  while (!g_done) {
+  while (!g_camera_done) {
     str->mainloop();
     strcon->mainloop();
 

@@ -1,3 +1,13 @@
+2009-10-07  Ryan Schubert <res@cs.unc.edu>
+
+	* point_grey_library.vcproj : Added PGRCam.* to project.
+	* point_grey_server.* : Filled in all stubs except for
+		write_to_opengl_texture().
+	* video_imager_server.* : Added support for point grey cameras.
+		Specified by "pgr" these currently can take a framerate
+		and an exposure (shutter) time.
+	* PGRCam.* : Added wrapper class for Point Grey cameras.
+
 2009-09-26  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* Makefile : Making it compile on BASS using system ImageMagick.

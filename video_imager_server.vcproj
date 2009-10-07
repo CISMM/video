@@ -45,7 +45,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\include&quot;;&quot;C:\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;C:\nsrg\external\pc_win32\ImageMagick\include;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Headers&quot;;..\vrpn;..\nano\src\lib\nmBase;..\nano\src\lib\nmMP"
+				AdditionalIncludeDirectories="&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\include&quot;;&quot;C:\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;C:\nsrg\external\pc_win32\ImageMagick\include;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Headers&quot;;c:\NSRG\external\pc_win32\PointGrey\include;..\vrpn;..\nano\src\lib\nmBase;..\nano\src\lib\nmMP"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="2"
@@ -71,11 +71,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="SpotCamVC.lib pvcam32.lib tcl83.lib tk83.lib opengl32.lib odbc32.lib odbccp32.lib"
+				AdditionalDependencies="SpotCamVC.lib pvcam32.lib tcl83.lib tk83.lib opengl32.lib odbc32.lib odbccp32.lib PGRFlycapture.lib"
 				OutputFile=".\Release/video_imager_server.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="../vrpn/pc_win32/Release;C:\nsrg\external\pc_win32\ImageMagick\lib;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\tcl\lib;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;"
+				AdditionalLibraryDirectories="../vrpn/pc_win32/Release;C:\nsrg\external\pc_win32\ImageMagick\lib;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\tcl\lib;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;c:\NSRG\external\pc_win32\PointGrey\lib"
 				SubSystem="1"
 				TargetMachine="1"
 			/>
@@ -137,7 +137,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\include&quot;;&quot;C:\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;C:\nsrg\external\pc_win32\ImageMagick\include;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Headers&quot;;..\vrpn;..\nano\src\lib\nmBase;..\nano\src\lib\nmMP"
+				AdditionalIncludeDirectories="&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\include&quot;;&quot;C:\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Include&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses&quot;;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;C:\nsrg\external\pc_win32\ImageMagick\include;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Headers&quot;;c:\NSRG\external\pc_win32\PointGrey\include;..\vrpn;..\nano\src\lib\nmBase;..\nano\src\lib\nmMP"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -165,11 +165,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="SpotCamVC.lib pvcam32.lib tcl83.lib tk83.lib opengl32.lib odbc32.lib odbccp32.lib"
+				AdditionalDependencies="SpotCamVC.lib pvcam32.lib tcl83.lib tk83.lib opengl32.lib odbc32.lib odbccp32.lib PGRFlycapture.lib"
 				OutputFile=".\Debug/video_imager_server.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="../vrpn/pc_win32/Debug;C:\nsrg\external\pc_win32\ImageMagick\lib;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\tcl\lib;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;"
+				AdditionalLibraryDirectories="../vrpn/pc_win32/Debug;C:\nsrg\external\pc_win32\ImageMagick\lib;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\tcl\lib;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;c:\NSRG\external\pc_win32\PointGrey\lib"
 				IgnoreDefaultLibraryNames="msvcrt.lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/video_imager_server.pdb"
