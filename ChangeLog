@@ -1,5 +1,13 @@
 2009-10-07  Ryan Schubert <res@cs.unc.edu>
 
+	* video_z_tracker.vcproj : Manually added necessary wx libs.  These
+		used to be pragma comment'd in by a redirecting wx header
+		that will no longer be used in the next version of the buildtime.
+		This will still build with the old version of the buildtime as
+		well.
+
+2009-10-07  Ryan Schubert <res@cs.unc.edu>
+
 	* point_grey_library.vcproj : Added PGRCam.* to project.
 	* point_grey_server.* : Filled in all stubs except for
 		write_to_opengl_texture().

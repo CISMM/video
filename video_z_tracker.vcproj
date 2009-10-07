@@ -135,7 +135,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="wxmsw28_gl.lib comctl32.lib rpcrt4.lib file_stack_library.lib base_camera_server.lib libfftw3-3.lib vrpn.lib quat.lib VRPN_Imager_library.lib"
+				AdditionalDependencies="wxbase28.lib wxmsw28_gl.lib wxmsw28_core.lib comctl32.lib rpcrt4.lib file_stack_library.lib base_camera_server.lib libfftw3-3.lib vrpn.lib quat.lib VRPN_Imager_library.lib"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="../quat/pc_win32/Release;..\vrpn\pc_win32\Release;.\Release;C:\nsrg\external\pc_win32\ImageMagick\lib;.\video_z_tracker;C:\NSRG\external\pc_win32\wxWidgets\lib;C:\NSRG\external\pc_win32\GL\lib"
 				GenerateDebugInformation="false"
