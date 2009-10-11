@@ -194,6 +194,10 @@
 					/>
 				</FileConfiguration>
 			</File>
+			<File
+				RelativePath=".\raw_file_server.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -201,6 +205,10 @@
 			>
 			<File
 				RelativePath="base_camera_server.h"
+				>
+			</File>
+			<File
+				RelativePath=".\raw_file_server.h"
 				>
 			</File>
 		</Filter>

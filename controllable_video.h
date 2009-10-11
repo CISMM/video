@@ -79,14 +79,16 @@ public:
   void single_step(void) { VRPN_Imager_camera_server::single_step(); }
 };
 
-class Pulnix_Controllable_Video : public Controllable_Video, public edt_pulnix_raw_file_server {
+class Raw_Controllable_Video : public Controllable_Video, public raw_file_server {
 public:
-  Pulnix_Controllable_Video(const char *filename) : edt_pulnix_raw_file_server(filename) {};
-  virtual ~Pulnix_Controllable_Video() {};
-  void play(void) { edt_pulnix_raw_file_server::play(); }
-  void pause(void) { edt_pulnix_raw_file_server::pause(); }
-  void rewind(void) { pause(); edt_pulnix_raw_file_server::rewind(); }
-  void single_step(void) { edt_pulnix_raw_file_server::single_step(); }
+  Raw_Controllable_Video(const char *filename, unsigned numX, unsigned numY,
+    unsigned bitdepth, unsigned channels, unsigned headersize, unsigned frameheadersize) :
+      raw_file_server(filename, numX, numY, bitdepth, channels, headersize, frameheadersize) {};
+  virtual ~Raw_Controllable_Video() {};
+  void play(void) { raw_file_server::play(); }
+  void pause(void) { raw_file_server::pause(); }
+  void rewind(void) { pause(); raw_file_server::rewind(); }
+  void single_step(void) { raw_file_server::single_step(); }
 };
 
 class FileStack_Controllable_Video : public Controllable_Video, public file_stack_server {
@@ -112,11 +114,16 @@ public:
 #endif
 
 /// Open the wrapped camera we want to use depending on the name of the
-//  camera we're trying to open.
+//  camera we're trying to open.  If it is a raw camera, then the params
+//  needed to open it are specified (one in bit_depth, the others in
+//  special params at the end).
 bool  get_camera(const char *name,
                  unsigned *bit_depth,
                  float *exposure,
-                 base_camera_server **camera, Controllable_Video **video)
+                 base_camera_server **camera, Controllable_Video **video,
+                 unsigned raw_camera_numx, unsigned raw_camera_numy,
+                 unsigned raw_camera_channels, unsigned raw_camera_headersize,
+                 unsigned raw_camera_frameheadersize)
 {
 #ifdef VST_USE_ROPER
   if (!strcmp(name, "roper")) {
@@ -187,11 +194,13 @@ bool  get_camera(const char *name,
   {
     fprintf(stderr,"get_camera(): Assuming filename (%s)\n", name);
 
-    // If the extension is ".raw" then we assume it is a Pulnix file and open
+    // If the extension is ".raw" then we assume it is a raw video file and open
     // it that way.
     if (  (strcmp(".raw", &name[strlen(name)-4]) == 0) ||
 	  (strcmp(".RAW", &name[strlen(name)-4]) == 0) ) {
-      Pulnix_Controllable_Video *f = new Pulnix_Controllable_Video(name);
+      Raw_Controllable_Video *f = new Raw_Controllable_Video(name,
+        raw_camera_numx, raw_camera_numy, *bit_depth, raw_camera_channels,
+        raw_camera_headersize, raw_camera_frameheadersize);
       *camera = f;
       *video = f;
 
@@ -250,6 +259,10 @@ bool  get_camera(const char *name,
 		  (strcmp(".BMP", &name[strlen(name)-4]) == 0) ||
 		  (strcmp(".jpg", &name[strlen(name)-4]) == 0) ||
 		  (strcmp(".JPG", &name[strlen(name)-4]) == 0) ||
+		  (strcmp(".ppm", &name[strlen(name)-4]) == 0) ||
+		  (strcmp(".PPM", &name[strlen(name)-4]) == 0) ||
+		  (strcmp(".pgm", &name[strlen(name)-4]) == 0) ||
+		  (strcmp(".PGM", &name[strlen(name)-4]) == 0) ||
 		  (strcmp(".png", &name[strlen(name)-4]) == 0) ||
 		  (strcmp(".PNG", &name[strlen(name)-4]) == 0) ||
 		  (strcmp(".tiff", &name[strlen(name)-5]) == 0) || 

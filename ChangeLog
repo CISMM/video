@@ -1,3 +1,26 @@
+2009-10-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* base_camera_server.vcproj : Adding generic raw video file reader.
+	* controllable_video.h : Replacing Pulnix_Raw with generic Raw
+		controllable video.  Adding parameters to make the raw server
+		able to open images of arbitrary resolution.
+	* edt_server.cpp : Making EDT_Pulnix server derive from new
+		generic raw reader.
+	* edt_server.h : same.
+	* raw_file_server.cpp : New reader for generic raw video files.
+		Includes the ability to skip headers for the file and for
+		each frame.  Includes parameters (but not implementation)
+		for arbitrary bit depth and more than one channel.
+	* raw_file_server.h : same.
+	* video_spot_tracker.cpp : Can now load raw video files with
+		arbitrary resolution.  Tries the Pulnix and Point Grey
+		resolutions and opens them automatically.  Otherwise
+		throws a dialog box asking for the resolution.
+	* video_spot_tracker.tcl : same.
+	* cismm_video_optimizer.vjcproj : Having it put the manifest back
+		in the file now that we've solved the DLL problem.
+	* video_spot_tracker.vcproj : same.
+
 2009-10-07  Ryan Schubert <res@cs.unc.edu>
 
 	* video_z_tracker.vcproj : Manually added necessary wx libs.  These

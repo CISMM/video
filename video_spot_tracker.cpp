@@ -91,7 +91,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "06.01";
+const char *Version_string = "06.02";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -169,6 +169,13 @@ typedef vector<Position_XY> Position_Vector_XY;
 // global access to the objects we will be using.
 
 Tcl_Interp	    *g_tk_control_interp;
+
+Tclvar_int          g_tcl_raw_camera_numx("raw_numx");
+Tclvar_int          g_tcl_raw_camera_numy("raw_numy");
+Tclvar_int          g_tcl_raw_camera_bitdepth("raw_bitdepth");
+Tclvar_int          g_tcl_raw_camera_channels("raw_channels");
+Tclvar_int          g_tcl_raw_camera_headersize("raw_headersize");
+Tclvar_int          g_tcl_raw_camera_frameheadersize("raw_frameheadersize");
 
 char		    *g_device_name = NULL;	  //< Name of the camera/video/file device to open
 base_camera_server  *g_camera;			  //< Camera used to get an image
@@ -357,6 +364,39 @@ double			g_log_offset_x, g_log_offset_y, g_log_offset_z;
 Tclvar_int              g_logging("logging"); //< Accessor for the GUI logging button so rewind can turn it off.
 bool g_video_valid = false; // Do we have a valid video frame in memory?
 int		        g_log_frame_number_last_logged = -1;
+
+//--------------------------------------------------------------------------
+// Return the length of the named file.  Used to help figure out what
+// kind of raw file is being opened.  Returns -1 on failure.
+// NOTE: Some of our files are longer than 2GB, which means that
+// a 32-bit long will wrap and so be unable to determine the file
+// length.
+#ifndef	_WIN32
+  #define __int64 long;
+  #define _fseeki64 fseek
+  #define _ftelli64 ftell
+#endif
+static __int64 determine_file_length(const char *filename)
+{
+#ifdef	_WIN32
+  FILE *f = fopen(filename, "rb");
+#else
+  FILE *f = fopen(filename, "r");
+#endif
+  if (f == NULL) {
+    perror("determine_file_length(): Could not open file for reading");
+    return -1;
+  }
+  __int64 val;
+  if ( (val = _fseeki64(f, 0, SEEK_END)) != 0) {
+    fprintf(stderr, "determine_file_length(): fseek() returned %ld", val);
+    fclose(f);
+    return -1;
+  }
+  __int64 length = _ftelli64(f);
+  fclose(f);
+  return length;
+}
 
 //--------------------------------------------------------------------------
 // Helper routine to get the Y coordinate right when going between camera
@@ -3694,13 +3734,14 @@ void Usage(const char *progname)
 {
     fprintf(stderr, "Usage: %s [-nogui] [-kernel disc|cone|symmetric|FIONA]\n", progname);
     fprintf(stderr, "           [-dark_spot] [-follow_jumps] [-rod3 LENGTH ORIENT] [-outfile NAME]\n");
-	fprintf(stderr, "           [-precision P] [-sample_spacing S] [-show_lost_and_found]\n");
-	fprintf(stderr, "           [-lost_behavior B] [-lost_tracking_sensitivity L]\n");
-	fprintf(stderr, "           [-intensity_lost_sensitivity IL] [-dead_zone_around_border DB]\n");
-	fprintf(stderr, "           [-maintain_this_many_beads M] [-dead_zone_around_trackers DT]\n");
-	fprintf(stderr, "           [-candidate_spot_threshold T] [-sliding_window_radius SR]\n");
-	fprintf(stderr, "           [-radius R] [-tracker X Y R] [-tracker X Y R]\n");
-    fprintf(stderr, "           [-FIONA_background BG] ...\n");
+    fprintf(stderr, "           [-precision P] [-sample_spacing S] [-show_lost_and_found]\n");
+    fprintf(stderr, "           [-lost_behavior B] [-lost_tracking_sensitivity L]\n");
+    fprintf(stderr, "           [-intensity_lost_sensitivity IL] [-dead_zone_around_border DB]\n");
+    fprintf(stderr, "           [-maintain_this_many_beads M] [-dead_zone_around_trackers DT]\n");
+    fprintf(stderr, "           [-candidate_spot_threshold T] [-sliding_window_radius SR]\n");
+    fprintf(stderr, "           [-radius R] [-tracker X Y R] [-tracker X Y R] ...\n");
+    fprintf(stderr, "           [-FIONA_background BG]\n");
+    fprintf(stderr, "           [-raw_camera_params sizex sizey bitdepth channels headersize frameheadersize]\n");
     fprintf(stderr, "           [-load_state FILE] [-log_video N]\n");
     fprintf(stderr, "           [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n");
     fprintf(stderr, "       -nogui: Run without the video display window (no Glut/OpenGL)\n");
@@ -3711,31 +3752,33 @@ void Usage(const char *progname)
     fprintf(stderr, "       -outfile: Save the track to the file 'name' (.vrpn will be appended)\n");
     fprintf(stderr, "       -precision: Set the precision for created trackers to P (default 0.05)\n");
     fprintf(stderr, "       -sample_spacing: Set the sample spacing for trackers to S (default 1)\n");
-	fprintf(stderr, "       -show_lost_and_found: Show the lost_and_found window on startup\n");
-	fprintf(stderr, "       -lost_behavior: Set lost tracker behavior: 0:stop; 1:delete; 2:hover\n");
-	fprintf(stderr, "       -lost_tracking_sensitivity: Set lost_tracking_sensitivity to L\n");
-	fprintf(stderr, "       -intensity_lost_sensitivity:Set intensity_lost_tracking_sensitivity to IL\n");
-	fprintf(stderr, "       -dead_zone_around_border: Set a dead zone around the region of interest\n");
-	fprintf(stderr, "                 edge within which new trackers will not be found\n");
-	fprintf(stderr, "       -dead_zone_around_trackers: Set a dead zone around all current trackers\n");
-	fprintf(stderr, "                 within which new trackers will not be found\n");
-	fprintf(stderr, "       -maintain_this_many_beads: Try to autofind up to M beads at every frame\n");
-	fprintf(stderr, "       -candidate_spot_threshold: Set the threshold for possible spots when\n");
-	fprintf(stderr, "                 autofinding.  Setting this lower will not miss as many spots,\n");
-	fprintf(stderr, "                 but will also find garbage (default 5)\n");
-	fprintf(stderr, "       -sliding_window_radius: Set the radius of the global SMD sliding window\n");
-	fprintf(stderr, "                 neighborhood.  Higher values of SR may cause some spots to\n");
-	fprintf(stderr, "                 take longer before they are detected, but will greatly\n");
-	fprintf(stderr, "                 increase the running speed (default 9)\n");
-	fprintf(stderr, "       -radius: Set the radius to use for new trackers to R (default 5)\n");
+    fprintf(stderr, "       -show_lost_and_found: Show the lost_and_found window on startup\n");
+    fprintf(stderr, "       -lost_behavior: Set lost tracker behavior: 0:stop; 1:delete; 2:hover\n");
+    fprintf(stderr, "       -lost_tracking_sensitivity: Set lost_tracking_sensitivity to L\n");
+    fprintf(stderr, "       -intensity_lost_sensitivity:Set intensity_lost_tracking_sensitivity to IL\n");
+    fprintf(stderr, "       -dead_zone_around_border: Set a dead zone around the region of interest\n");
+    fprintf(stderr, "                 edge within which new trackers will not be found\n");
+    fprintf(stderr, "       -dead_zone_around_trackers: Set a dead zone around all current trackers\n");
+    fprintf(stderr, "                 within which new trackers will not be found\n");
+    fprintf(stderr, "       -maintain_this_many_beads: Try to autofind up to M beads at every frame\n");
+    fprintf(stderr, "       -candidate_spot_threshold: Set the threshold for possible spots when\n");
+    fprintf(stderr, "                 autofinding.  Setting this lower will not miss as many spots,\n");
+    fprintf(stderr, "                 but will also find garbage (default 5)\n");
+    fprintf(stderr, "       -sliding_window_radius: Set the radius of the global SMD sliding window\n");
+    fprintf(stderr, "                 neighborhood.  Higher values of SR may cause some spots to\n");
+    fprintf(stderr, "                 take longer before they are detected, but will greatly\n");
+    fprintf(stderr, "                 increase the running speed (default 9)\n");
+    fprintf(stderr, "       -radius: Set the radius to use for new trackers to R (default 5)\n");
     fprintf(stderr, "       -tracker: Create a tracker with radius R at pixel X,Y and initiate\n");
     fprintf(stderr, "                 optimization.  Multiple trackers can be created\n");
     fprintf(stderr, "       -FIONA_background: Set the default background for FIONA trackers to BG\n");
     fprintf(stderr, "                 (default 0)\n");
+    fprintf(stderr, "       -raw_camera_params: Set parameters in case we're opening a raw file\n");
+    fprintf(stderr, "                 (default throws a dialog box to ask you for them)\n");
     fprintf(stderr, "       -load_state: Load program state from FILE\n");
     fprintf(stderr, "       -log_video: Log every Nth frame of video (in addition to every tracker every frame)\n");
     fprintf(stderr, "       source: The source file for tracking can be specified here (default is\n");
-	fprintf(stderr, "                 a dialog box)\n");
+    fprintf(stderr, "                 a dialog box)\n");
     exit(-1);
 }
 
@@ -3938,6 +3981,15 @@ int main(int argc, char *argv[])
   // source to use until after we parse this.
   int	i, realparams;		  // How many non-flag command-line arguments
   realparams = 0;
+  // These defaults are set for a Pulnix camera
+  unsigned  raw_camera_params_valid = false;  //< Have the following been set intentionally?
+  unsigned  raw_camera_numx = 648;
+  unsigned  raw_camera_numy = 484;
+  unsigned  raw_camera_bitdepth = 8;        //< Number of bits per channel in raw file camera
+  unsigned  raw_camera_channels = 1;        //< Number of channels in raw file camera
+  unsigned  raw_camera_headersize = 0;      //< Number of header bytes in raw file camera
+  unsigned  raw_camera_frameheadersize = 0;      //< Number of header bytes in raw file camera
+
   for (i = 1; i < argc; i++) {
     if (!strncmp(argv[i], "-kernel", strlen("-kernel"))) {
       if (++i > argc) { Usage(argv[0]); }
@@ -3959,6 +4011,20 @@ int main(int argc, char *argv[])
       g_invert = true;
     } else if (!strncmp(argv[i], "-follow_jumps", strlen("-follow_jumps"))) {
       g_follow_jumps = 1;
+    } else if (!strncmp(argv[i], "-raw_camera_params", strlen("-raw_camera_params"))) {
+      if (++i > argc) { Usage(argv[0]); }
+      raw_camera_numx = atoi(argv[i]);
+      if (++i > argc) { Usage(argv[0]); }
+      raw_camera_numy = atoi(argv[i]);
+      if (++i > argc) { Usage(argv[0]); }
+      raw_camera_bitdepth = atoi(argv[i]);
+      if (++i > argc) { Usage(argv[0]); }
+      raw_camera_channels = atoi(argv[i]);
+      if (++i > argc) { Usage(argv[0]); }
+      raw_camera_headersize = atoi(argv[i]);
+      if (++i > argc) { Usage(argv[0]); }
+      raw_camera_frameheadersize = atoi(argv[i]);
+      raw_camera_params_valid = true;
     } else if (!strncmp(argv[i], "-outfile", strlen("-outfile"))) {
       if (++i > argc) { Usage(argv[0]); }
       char *name = new char[strlen(argv[i])+6];
@@ -4087,11 +4153,99 @@ int main(int argc, char *argv[])
   }
 
   //------------------------------------------------------------------
+  // If we're being asked to open a raw file and we don't have a set of
+  // raw-file parameters, then see if we can figure them out based on the
+  // file size or else throw a dialog box asking for them.
+  if (  (strcmp(".raw", &g_device_name[strlen(g_device_name)-4]) == 0) ||
+        (strcmp(".RAW", &g_device_name[strlen(g_device_name)-4]) == 0) ) {
+
+    if (!raw_camera_params_valid) {
+      //------------------------------------------------------------
+      // See if we can figure out the right settings for these parameters
+      // based on the file size (if it is an even multiple of the particular
+      // file sizes for the odd-sized Pulnix camera or the Point Grey camera that
+      // we're using at UNC.  Standard sizes are going to be harder to
+      // determine, because if there are 100 frames it will mask the difference
+      // between power-of-2 changes on each axis (640x480 vs. 1280x960, for example).
+      __int64 file_length = determine_file_length(g_device_name);
+      if (file_length > 0) {   // Zero length means we can't tell, <0 means failure.
+        double frame_size, num_frames;
+
+        // Check for original Pulnix cameras used at UNC
+        frame_size = 648 * 484;
+        num_frames = file_length / frame_size;
+        if ( num_frames == floor(num_frames) ) {
+          printf("Assuming EDT/Pulnix file format (648x484)\n");
+          raw_camera_numx = 648;
+          raw_camera_numy = 484;
+          raw_camera_bitdepth = 8;
+          raw_camera_channels = 1;
+          raw_camera_headersize = 0;
+          raw_camera_frameheadersize = 0;
+          raw_camera_params_valid = true;
+        } else {
+          // Check for Point Grey camera being used at UNC
+          frame_size = 1024 * 768 + 112;
+          num_frames = file_length / frame_size;
+          if ( num_frames == floor(num_frames) ) {
+            printf("Assuming Point Grey file format (1024x768, 112-byte frame headers)\n");
+            raw_camera_numx = 1024;
+            raw_camera_numy = 768;
+            raw_camera_bitdepth = 8;
+            raw_camera_channels = 1;
+            raw_camera_headersize = 0;
+            raw_camera_frameheadersize = 112;
+            raw_camera_params_valid = true;
+          }
+        }
+      }
+    }
+
+    if (!raw_camera_params_valid) {
+      //------------------------------------------------------------
+      // Create a callback for a variable that will tell when the
+      // params are filled and then create a dialog box that will ask the user
+      // to either fill it in or quit.
+      Tclvar_int  raw_params_set("raw_params_set", 0);
+      if (Tcl_Eval(g_tk_control_interp, "ask_user_for_raw_file_params") != TCL_OK) {
+        fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command, g_tk_control_interp->result);
+        cleanup();
+        exit(-1);
+      }
+
+      do {
+        //------------------------------------------------------------
+        // This pushes changes in the C variables over to Tcl.
+
+        while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
+        if (Tclvar_mainloop()) {
+	  fprintf(stderr,"Tclvar Mainloop failed\n");
+        }
+      } while ( (raw_params_set == 0) && !g_quit);
+      if (g_quit) {
+        cleanup();
+        exit(0);
+      }
+
+      // XXX Read the Tcl variables associated with this into our params
+      // and then say that the params have been filled in.
+      raw_camera_numx = g_tcl_raw_camera_numx;
+      raw_camera_numy = g_tcl_raw_camera_numy;
+      raw_camera_bitdepth = g_tcl_raw_camera_bitdepth;
+      raw_camera_channels = g_tcl_raw_camera_channels;
+      raw_camera_headersize = g_tcl_raw_camera_headersize;
+      raw_camera_frameheadersize = g_tcl_raw_camera_frameheadersize;
+    }
+  }
+
+  //------------------------------------------------------------------
   // Open the camera.  If we have a video file, then
   // set up the Tcl controls to run it.  Also, report the frame number.
   float exposure = g_exposure;
+  g_camera_bit_depth = raw_camera_bitdepth;
   if (!get_camera(g_device_name, &g_camera_bit_depth, &exposure,
-                  &g_camera, &g_video)) {
+                  &g_camera, &g_video, raw_camera_numx, raw_camera_numy,
+                  raw_camera_channels, raw_camera_headersize, raw_camera_frameheadersize)) {
     fprintf(stderr,"Cannot open camera\n");
     if (g_camera) { delete g_camera; g_camera = NULL; }
     cleanup();

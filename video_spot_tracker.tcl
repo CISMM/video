@@ -267,6 +267,56 @@ proc ask_user_for_filename { } {
 }
 
 ###########################################################
+# Ask user for the parameters for the raw file that is
+# being opened.  Put in defaults for the Pulnix camera.
+# 
+
+set raw_params_set 0
+proc ask_user_for_raw_file_params { } {
+	global raw_params_set quit raw_numx raw_numy raw_bitdepth raw_channels
+	global raw_headersize raw_frameheadersize
+	set raw_numx 648
+	set raw_numy 484
+	set raw_bitdepth 8
+	set raw_channels 1
+	set raw_headersize 0
+	set raw_frameheadersize 0
+
+	toplevel .raw
+	wm geometry .raw +170+170
+	frame .raw.bottom
+	pack .raw.bottom -side bottom -fill x
+
+	# Pack the sliders that lets the user set the variables
+
+	label .raw.xlabel -text NumX
+	pack .raw.xlabel
+	floatscale .raw.numx 0 2048 2048 0 1 raw_numx
+	pack .raw.numx
+
+	label .raw.ylabel -text NumY
+	pack .raw.ylabel
+	floatscale .raw.numy 0 2048 2048 0 1 raw_numy
+	pack .raw.numy
+
+	label .raw.headerlabel -text skip_at_file_start
+	pack .raw.headerlabel
+	floatscale .raw.headersize 0 2048 2048 0 1 raw_headersize
+	pack .raw.headersize
+
+	label .raw.frameheaderlabel -text skip_for_each_frame
+	pack .raw.frameheaderlabel
+	floatscale .raw.frameheadersize 0 2048 2048 0 1 raw_frameheadersize
+	pack .raw.frameheadersize
+
+	button .raw.bottom.okay -text "Okay" -command { set raw_params_set 1; wm withdraw .raw }
+	pack .raw.bottom.okay -side left -fill x
+	button .raw.bottom.quit -text "Quit" -command { set quit 1 }
+	pack .raw.bottom.quit -side left -fill x
+}
+
+
+###########################################################
 # Ask user for the name of the PSF file they want to open,
 # or else set it to "NONE".  The variable to set for the
 # name is "psf_filename".

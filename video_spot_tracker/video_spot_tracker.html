@@ -1,6 +1,6 @@
 <title>Video Spot Tracker v06.01</title>
 
-<h1>Video Spot Tracker version 06.01</h1>
+<h1>Video Spot Tracker version 06.02</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -8,13 +8,14 @@
   DirectShow</a>-compatible camera, from a <a href="http://roperscientific.com">Roper 
   Scientific</a> camera, from a <a href="http://diaginc.com">DiagInc</a> SPOT 
   camera, from a camera attached to an <a href="http://www.edt.com/">EDT</a> video 
-  capture board (we use a Pulnix camera this way at UNC), or from a set of TIFF 
-  or BMP files (it can read other, compressed file formats but these are not included 
-  in the default set because these file formats distort images in ways that affect 
-  tracking accuracy). The program currently runs only on Windows, but it uses 
-  the portable openGL library for rendering, the portable Tcl/Tk for user interface 
-  control, and the portable <a href="http://www.imagemagic.org">ImageMagick</a> 
-  package for reading images.</p>
+  capture board (we use a Pulnix camera this way at UNC), or from a set of TIFF, 
+  PPM, PGM, BMP files (it can read other, compressed file formats but these are 
+  not included in the default set because these file formats distort images in 
+  ways that affect tracking accuracy). It can also read raw, uncompressed 8-bit 
+  video files. The program currently runs only on Windows, but it uses the portable 
+  openGL library for rendering, the portable Tcl/Tk for user interface control, 
+  and the portable <a href="http://www.imagemagic.org">ImageMagick</a> package 
+  for reading images.</p>
 
 <h2>Downloading and installing the program</h2>
 <p>An installer for the program and manual can be downloaded from the <a href="http://www.cs.unc.edu/Research/nano/cismm/download/index.html">CISMM 
@@ -54,14 +55,26 @@
   the button whenever you feel like the tool has been helpful to you.</p>
 <h2>Running the program</h2>
 
-<p>The program is run by dragging a video file or image file onto the desktop 
-  icon that was created when the program was installed. To select a stack of image 
-  files that are numbered consecutively, drag any one of the files onto the icon. 
-  It can also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
+<p><img src="raw_dialog.jpg" width="158" height="322" align="left">The program 
+  is run by dragging a video file or image file onto the desktop icon that was 
+  created when the program was installed. To select a stack of image files that 
+  are numbered consecutively, drag any one of the files onto the icon. It can 
+  also be run by selecting one of the camera-specific shortcuts from <i><b>Start 
   Menu/All Programs/NSRG/Video Spot Tracker</b></i>. If you run the program directly 
   by double-clicking on the icon, it will ask for a video or image file (AVI, 
-  TIF, or BMP) that it should open.</p>
-
+  TIF, or BMP, PPM, raw) that it should open.</p>
+<p>If you open a raw video file, the program will try to guess the frame size 
+  by seeing if it matches a 648x484 image (some Pulnix cameras) or a 1024x768 
+  + 112-byte per-frame header (some Point Grey cameras). If neither of these seem 
+  to work, then it will bring up a dialog box like the one shown to the left to 
+  ask you about the file format so that it can read it. The <i>NumX</i> and <i>NumY</i> 
+  parameters specify the image size, the <i>skip_at_file_start</i> parameter tells 
+  how many bytes to skip at the beginning of the file (skipping a file header). 
+  The <i>skip_for_each_frame</i> value tells how many bytes to skip at the beginning 
+  of each frame in the video, to skip any per-frame header information. The raw 
+  file must be single-channel, 8-bit values to be properly interpreted. If you 
+  put incorrect values, the images will appear to be scrambled, to slant, and 
+  to jump around between frames.</p>
 <p><b><i>NOTE:</i></b> With Windows XP service pack 2 and with other firewall software, running the program causes a dialog box to appear asking whether to block the program; the program needs to be unblocked only if the program is to be connected to a local or remote feedback system that relies on the tracking data. This happens when the program opens the Internet port assigned to it (3883) by the Internet Domain Naming Authority to export the data through the standard VRPN protocol (<a href="http://www.vrpn.org">www.vrpn.org</a>).</p> 
 
 <h2><img src="GUI.jpg" width="161" height="714" align="right">Using the program</h2>
@@ -381,6 +394,20 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 6.02:</h3>
+<ul>
+  <li>Made it so that the program can load arbitrarily-sized 8-bit, single-channel 
+    raw files (some preliminary work has been done towards either multi-channel 
+    or 16-bit files, but the UI and the raw reader still need to be modified). 
+    This generalizes the Pulnix raw-file reading to also work with Point Grey 
+    and other cameras. The program tries to determine the frame size automatically 
+    (checks for 648x484 and 1024x768 with 112-byte padding), and if it cannot 
+    find one then it throws a dialog box asking for the size. There is a command-line 
+    argument that can be used to specify the size (avoiding the dialog box and 
+    enabling override of the guessed size if needed).</li>
+  <li>Adds the ability to read series of PPM file and PGM files.</li>
+</ul>
+<h3></h3>
 <h3>Version 6.01:</h3>
 <ul>
   <li>Updated the installer to use an external manifest and to remove an un-needed 
