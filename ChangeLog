@@ -1,3 +1,13 @@
+2009-11-19  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.cpp : Changed the comparison for lost trackers
+		so that it checks for <= the threshold so that in regions of
+		the image with identically zero values lost trackers will still
+		be detected.  Makes the program play and quit at the end when
+		we're auto-finding beads at program start-up and when we start
+		with no GUI.  This prevents batch versions of the program from
+		hanging forever.
+
 2009-10-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* base_camera_server.vcproj : Adding generic raw video file reader.

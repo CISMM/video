@@ -2002,9 +2002,11 @@ static void optimize_tracker(Spot_Information *tracker)
        mean /= pixels;
      }
 
-     // Compare to see if we're lost.
+     // Compare to see if we're lost.  Check <= rather than < because in
+     // regions where the pixels clamp to 0 or max there is no difference on
+     // either side of the equation and we should be lost.
      g_image->read_pixel(x, y, val, g_colorIndex);
-     if ((val - mean)*(val-mean) < variance * g_intensityLossSensitivity) {
+     if ((val - mean)*(val-mean) <= variance * g_intensityLossSensitivity) {
        tracker->lost(true);
      }
   }
@@ -4348,11 +4350,20 @@ int main(int argc, char *argv[])
   //------------------------------------------------------------------
   // If we created a tracker during the command-line parsing, then we
   // want to turn on optimization and also play the video.  Also set things
-  // so that we will exit when we get to the end of the video.
-  if (g_trackers.size()) {
+  // so that we will exit when we get to the end of the video.  We also do
+  // this if we're running without a GUI.  We also do this if we're trying
+  // to autofind beads.  If we don't have a video in one
+  // of these circumstances, then we go ahead and quit.
+  if (g_trackers.size() || !g_use_gui || (g_findThisManyBeads > 0.0)) {
     g_opt = 1;
-    if (g_video) { (*g_play) = 1; }
     g_quit_at_end_of_video = true;
+    if (g_video) {
+      (*g_play) = 1;
+    } else {
+      fprintf(stderr,"No GUI or tracker created but no video file opened\n");
+      cleanup();
+      exit(100);
+    }
   }
 
   //------------------------------------------------------------------
