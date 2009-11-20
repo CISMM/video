@@ -372,7 +372,7 @@ int		        g_log_frame_number_last_logged = -1;
 // a 32-bit long will wrap and so be unable to determine the file
 // length.
 #ifndef	_WIN32
-  #define __int64 long;
+  #define __int64 long
   #define _fseeki64 fseek
   #define _ftelli64 ftell
 #endif

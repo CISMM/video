@@ -158,7 +158,7 @@ $(OBJ_DIR)/%.o:	%.cpp
 STOCC_LIB_FILES = stocc_random_number_generator/mersenne.cpp stocc_random_number_generator/stoc1.cpp stocc_random_number_generator/userintf.cpp
 STOCC_LIB_OBJECTS = $(patsubst %,%,$(STOCC_LIB_FILES:.cpp=.o))
 
-SPOT_TRACKER_LIB_FILES = spot_math.cpp spot_tracker.cpp image_wrapper.cpp base_camera_server.cpp file_stack_server.cpp file_list.cpp VRPN_Imager_camera_server.cpp
+SPOT_TRACKER_LIB_FILES = spot_math.cpp spot_tracker.cpp image_wrapper.cpp base_camera_server.cpp file_stack_server.cpp file_list.cpp VRPN_Imager_camera_server.cpp raw_file_server.cpp
 SPOT_TRACKER_LIB_OBJECTS = $(patsubst %,$(OBJ_DIR)/%,$(SPOT_TRACKER_LIB_FILES:.cpp=.o))
 
 TCL_LINKVAR_LIB_FILES = Tcl_Linkvar85.C
