@@ -1,4 +1,12 @@
+2009-11-26  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* CMakeLists.txt : Start of Cmake text file to make all of this compile.
+	* FindDirectShow.cmake : Same.
+	* Findquatlib.cmake : Same.
+	* FindVRPN.cmake : Same.
+
 2009-11-23  Edward Dale  <eddale@cs.unc.edu>
+
 	* video_spot_tracker.cpp: Removed a semicolon from a #define that 
 		preventing compilation. Bumped version to 06.03.
 	* Makefile: Added missing raw_file_server.cpp to SPOT_TRACKER_LIB_FILES.
