@@ -14,6 +14,7 @@
 #define	VST_USE_DIAGINC
 #define	VST_USE_SEM
 #define	VST_USE_DIRECTX
+#define VST_USE_VRPN_IMAGER
 //#define USE_METAMORPH	    // Metamorph reader not completed.
 #endif
 

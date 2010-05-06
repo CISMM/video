@@ -8,6 +8,7 @@
 #define	VST_USE_DIAGINC
 #define	VST_USE_SEM
 #define	VST_USE_DIRECTX
+#define VST_USE_VRPN_IMAGER
 
 #pragma comment(lib,"C:\\Program Files\\Roper Scientific\\PVCAM\\pvcam32.lib")
 

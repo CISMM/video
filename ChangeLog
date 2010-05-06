@@ -1,5 +1,10 @@
 2010-05-06  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* video_spot_tracker.cpp : Adding #defines needed by previous commit.
+	* average_videos.cpp : Same.
+
+2010-05-06  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* CMakeLists.txt : Making this work better with CMake.
 	* controllable_video.h : Added #ifdef guards around #include
 		statements and code to enable running this without using
