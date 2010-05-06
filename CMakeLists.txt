@@ -31,9 +31,31 @@ endif (WIN32)
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${VIDEO_SOURCE_DIR})
 FIND_PACKAGE(quatlib REQUIRED)	# Sets QUATLIB_INCLUDE_DIR and QUATLIB_LIBRARIES
 FIND_PACKAGE(VRPN REQUIRED)
-if (NOT WIN32)
+FIND_PACKAGE(ImageMagick REQUIRED COMPONENTS MagickCore )	# Need to have ImageMagick
+FIND_PACKAGE(OpenGL REQUIRED)
+if (WIN32)
+	# XXX Bad evil hard-coded path for UNC.
+	link_directories( C:/NSRG/external/pc_win32/ImageMagick/lib )
+else(WIN32)
 	set (PTHREAD_LIBRARY pthread)
-endif (NOT WIN32)
+endif (WIN32)
+set(ImageMagick_Needed_Libs CORE_RL_bzlib_ CORE_RL_coders_ CORE_RL_filters_
+		CORE_RL_jbig_ CORE_RL_jp2_ CORE_RL_jpeg_ CORE_RL_lcms_ CORE_RL_libxml_
+		CORE_RL_Magick++_ CORE_RL_magick_ CORE_RL_png_ CORE_RL_tiff_
+		CORE_RL_ttf_ CORE_RL_wand_ CORE_RL_wmf_ CORE_RL_xlib_ CORE_RL_zlib_
+		X11 Xext
+)
+
+#-----------------------------------------------------------------------------
+# Camera-driver libraries
+ADD_LIBRARY (base_canera_server_library
+	base_camera_server.cpp base_camera_server.h
+	raw_file_server.cpp raw_file_server.h
+)
+ADD_LIBRARY (file_stack_library
+	file_stack_server.cpp file_stack_server.h
+	file_list.cpp
+)
 
 #-----------------------------------------------------------------------------
 # DirectShow base-class library (if configured)
@@ -78,12 +100,29 @@ if (BUILD_DIRECTSHOW_VIDEO_SERVER)
 	)
 	set (DirectShow_LIBS DirectShow_baseclasses directx_library)
 
-	SET(TARGET_NAME test_directx_library)
-	ADD_EXECUTABLE(test_directx_library test_directx_library.cpp)
-	TARGET_LINK_LIBRARIES(test_directx_library
+	ADD_DEFINITIONS( -DDIRECTX_VIDEO_ONLY )
+	SET(TARGET_NAME DIRECTX_VIDEO_ONLY)
+	ADD_EXECUTABLE( video_imager_server_directx_only video_imager_server.cpp )
+	TARGET_LINK_LIBRARIES(video_imager_server_directx_only
+		directx_library
+		base_canera_server_library
 		${VRPN_LIBRARY} ${QUATLIB_LIBRARY}
 		${DirectShow_LIBS}
 		${PTHREAD_LIBRARY}
+		${OPENGL_gl_LIBRARY}
+		${ImageMagick_Needed_Libs}
+	)
+	SET_TARGET_PROPERTIES(video_imager_server_directx_only PROPERTIES SOLUTION_FOLDER servers)
+
+	SET(TARGET_NAME test_directx_library)
+	ADD_EXECUTABLE(test_directx_library test_directx_library.cpp)
+	TARGET_LINK_LIBRARIES(test_directx_library
+		base_canera_server_library
+		${VRPN_LIBRARY} ${QUATLIB_LIBRARY}
+		${DirectShow_LIBS}
+		${PTHREAD_LIBRARY}
+		${OPENGL_gl_LIBRARY}
+		${ImageMagick_Needed_Libs}
 	)
 	SET_TARGET_PROPERTIES(test_directx_library PROPERTIES SOLUTION_FOLDER tests)
 endif (BUILD_DIRECTSHOW_VIDEO_SERVER)
@@ -93,6 +132,7 @@ endif (BUILD_DIRECTSHOW_VIDEO_SERVER)
 INCLUDE_DIRECTORIES(
 	${QUATLIB_INCLUDE_DIR}
 	${VRPN_INCLUDE_DIR}
+	${ImageMagick_MagickCore_INCLUDE_DIR}
 	${DirectShow_BASECLASS_DIR} ${PLATFORM_SDK_INCLUDE_DIR}
 		${PLATFORM_SDK_ATL_INCLUDE_DIR}
 		${PLATFORM_SDK_ATL_INCLUDE_DIR} ${DIRECTX_SDK_INCLUDE_DIR}
