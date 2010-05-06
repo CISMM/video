@@ -53,7 +53,7 @@ set(ImageMagick_Needed_Libs CORE_RL_bzlib_ CORE_RL_coders_ CORE_RL_filters_
 #-----------------------------------------------------------------------------
 # Camera-driver libraries
 set(BCS_SOURCES base_camera_server.cpp raw_file_server.cpp)
-set(BCS_PUBLIC_HEADERS base_camera_server.h raw_file_server.h)
+set(BCS_PUBLIC_HEADERS base_camera_server.h raw_file_server.h controllable_video.h)
 ADD_LIBRARY (base_camera_server_library
 	${BCS_SOURCES} ${BCS_PUBLIC_HEADERS}
 )
@@ -109,14 +109,15 @@ if (BUILD_DIRECTSHOW_VIDEO_SERVER)
 		${DirectShow_BASECLASS_DIR}/wxutil.cpp
 	)
 
-	ADD_LIBRARY (directx_library
-		directx_camera_server.cpp directx_camera_server.h
-		directx_videofile_server.cpp directx_videofile_server.h
-	)
+	set (DX_SOURCES directx_camera_server.cpp directx_videofile_server.cpp)
+	set (DX_PUBLIC_HEADERS directx_camera_server.h directx_videofile_server.h)
+	ADD_LIBRARY (directx_library ${DX_SOURCES} ${DX_PUBLIC_HEADERS})
+	set_property(TARGET directx_library PROPERTY PUBLIC_HEADER ${DX_PUBLIC_HEADERS})
 	install(TARGETS DirectShow_baseclasses
 		ARCHIVE DESTINATION lib)
 	install(TARGETS directx_library
-		ARCHIVE DESTINATION lib)
+		ARCHIVE DESTINATION lib
+		PUBLIC_HEADER DESTINATION include)
 	set (DirectShow_LIBS DirectShow_baseclasses directx_library)
 
 	ADD_DEFINITIONS( -DDIRECTX_VIDEO_ONLY )

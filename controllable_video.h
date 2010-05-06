@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <math.h>
 
+#include "base_camera_server.h"
+#include "raw_file_server.h"
+
 #ifdef	VST_USE_ROPER
 #include "roper_server.h"
 #endif
@@ -12,10 +15,18 @@
 #endif
 #include "directx_camera_server.h"
 #include "directx_videofile_server.h"
+#ifdef  VST_USE_DIAGINC
 #include "diaginc_server.h"
+#endif
+#ifdef  VST_USE_EDT
 #include "edt_server.h"
+#endif
+#ifdef  VST_USE_SEM
 #include "SEM_camera_server.h"
+#endif
+#ifdef  VST_USE_VRPN_IMAGER
 #include "VRPN_Imager_camera_server.h"
+#endif
 #include "file_stack_server.h"
 
 class Controllable_Video {
@@ -69,6 +80,7 @@ public:
 };
 #endif
 
+#ifdef  VST_USE_VRPN_IMAGER
 class VRPN_Imager_Controllable_Video : public Controllable_Video, public VRPN_Imager_camera_server {
 public:
   VRPN_Imager_Controllable_Video(const char *filename) : VRPN_Imager_camera_server(filename) {};
@@ -78,6 +90,7 @@ public:
   void rewind(void) { pause(); VRPN_Imager_camera_server::rewind(); }
   void single_step(void) { VRPN_Imager_camera_server::single_step(); }
 };
+#endif
 
 class Raw_Controllable_Video : public Controllable_Video, public raw_file_server {
 public:
@@ -180,6 +193,7 @@ bool  get_camera(const char *name,
 #endif  
   // If this is a VRPN URL for a VRPN Imager device, then open the file and set up
   // to read from that device.
+#ifdef  VST_USE_VRPN_IMAGER
   if (strchr(name, '@')) {
     VRPN_Imager_Controllable_Video  *s = new VRPN_Imager_Controllable_Video (name);
     *camera = s;
@@ -191,6 +205,7 @@ bool  get_camera(const char *name,
   // kind of file based on the extension and open the appropriate type of
   // imager.
   } else
+#endif
   {
     fprintf(stderr,"get_camera(): Assuming filename (%s)\n", name);
 
@@ -231,6 +246,7 @@ bool  get_camera(const char *name,
       *video = s;
       delete [] semname;
 #endif
+#ifdef  VST_USE_VRPN_IMAGER
     // If the extension is ".vrpn" then we assume it is a VRPN-format file
     // with an imager device in it, so we form the name of the device and open
     // a VRPN Remote object to handle it.  We have to assume some name for the
@@ -251,6 +267,7 @@ bool  get_camera(const char *name,
       *bit_depth = 16;
       delete [] vrpnname;
 
+#endif
     // If the extension is ".tif" or ".tiff" or ".bmp" or ".png" then we assume it is
     // a file or stack of files to be opened by ImageMagick.
     } else if (   (strcmp(".tif", &name[strlen(name)-4]) == 0) ||

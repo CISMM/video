@@ -1,3 +1,11 @@
+2010-05-06  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* CMakeLists.txt : Making this work better with CMake.
+	* controllable_video.h : Added #ifdef guards around #include
+		statements and code to enable running this without using
+		VRPN Imager and DiagINC and EDT servers.
+	* cismm_video_optimizer.cpp : Adding #defines needed by above.
+
 2009-11-26  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* CMakeLists.txt : Start of Cmake text file to make all of this compile.
