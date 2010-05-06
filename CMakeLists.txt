@@ -1,5 +1,5 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
-PROJECT(VIDEO)
+PROJECT(CISMM_VIDEO)
 
 #-----------------------------------------------------------------------------
 # XXX Things to make better.
@@ -27,6 +27,10 @@ if (WIN32)
 endif (WIN32)
 
 #-----------------------------------------------------------------------------
+# Local CMake Modules
+list(APPEND CMAKE_MODULE_PATH ${CISMM_VIDEO_SOURCE_DIR} ${CISMM_VIDEO_SOURCE_DIR}/cmake)
+
+#-----------------------------------------------------------------------------
 # Libraries we need to do our thing.
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${VIDEO_SOURCE_DIR})
 FIND_PACKAGE(quatlib REQUIRED)	# Sets QUATLIB_INCLUDE_DIR and QUATLIB_LIBRARIES
@@ -48,14 +52,25 @@ set(ImageMagick_Needed_Libs CORE_RL_bzlib_ CORE_RL_coders_ CORE_RL_filters_
 
 #-----------------------------------------------------------------------------
 # Camera-driver libraries
-ADD_LIBRARY (base_canera_server_library
-	base_camera_server.cpp base_camera_server.h
-	raw_file_server.cpp raw_file_server.h
+set(BCS_SOURCES base_camera_server.cpp raw_file_server.cpp)
+set(BCS_PUBLIC_HEADERS base_camera_server.h raw_file_server.h)
+ADD_LIBRARY (base_camera_server_library
+	${BCS_SOURCES} ${BCS_PUBLIC_HEADERS}
 )
+set_property(TARGET base_camera_server_library PROPERTY PUBLIC_HEADER ${BCS_PUBLIC_HEADERS})
+install(TARGETS base_camera_server_library
+	ARCHIVE DESTINATION lib
+	PUBLIC_HEADER DESTINATION include)
+
+set(FS_SOURCES file_stack_server.cpp file_list.cpp)
+set(FS_PUBLIC_HEADERS file_stack_server.h)
 ADD_LIBRARY (file_stack_library
-	file_stack_server.cpp file_stack_server.h
-	file_list.cpp
+	${FS_SOURCES} ${FS_PUBLIC_HEADERS}
 )
+set_property(TARGET file_stack_library PROPERTY PUBLIC_HEADER ${FS_PUBLIC_HEADERS})
+install(TARGETS file_stack_library
+	ARCHIVE DESTINATION lib
+	PUBLIC_HEADER DESTINATION include)
 
 #-----------------------------------------------------------------------------
 # DirectShow base-class library (if configured)
@@ -98,6 +113,10 @@ if (BUILD_DIRECTSHOW_VIDEO_SERVER)
 		directx_camera_server.cpp directx_camera_server.h
 		directx_videofile_server.cpp directx_videofile_server.h
 	)
+	install(TARGETS DirectShow_baseclasses
+		ARCHIVE DESTINATION lib)
+	install(TARGETS directx_library
+		ARCHIVE DESTINATION lib)
 	set (DirectShow_LIBS DirectShow_baseclasses directx_library)
 
 	ADD_DEFINITIONS( -DDIRECTX_VIDEO_ONLY )
@@ -105,8 +124,8 @@ if (BUILD_DIRECTSHOW_VIDEO_SERVER)
 	ADD_EXECUTABLE( video_imager_server_directx_only video_imager_server.cpp )
 	TARGET_LINK_LIBRARIES(video_imager_server_directx_only
 		directx_library
-		base_canera_server_library
-		${VRPN_LIBRARY} ${QUATLIB_LIBRARY}
+		base_camera_server_library
+		${VRPN_LIBRARIES} ${QUATLIB_LIBRARIES}
 		${DirectShow_LIBS}
 		${PTHREAD_LIBRARY}
 		${OPENGL_gl_LIBRARY}
@@ -117,8 +136,8 @@ if (BUILD_DIRECTSHOW_VIDEO_SERVER)
 	SET(TARGET_NAME test_directx_library)
 	ADD_EXECUTABLE(test_directx_library test_directx_library.cpp)
 	TARGET_LINK_LIBRARIES(test_directx_library
-		base_canera_server_library
-		${VRPN_LIBRARY} ${QUATLIB_LIBRARY}
+		base_camera_server_library
+		${VRPN_LIBRARIES} ${QUATLIB_LIBRARIES}
 		${DirectShow_LIBS}
 		${PTHREAD_LIBRARY}
 		${OPENGL_gl_LIBRARY}
@@ -146,14 +165,14 @@ INCLUDE_DIRECTORIES(
 MACRO(CAPC_APPLICATION APPLICATION_NAME SOLUTION_NAME)
   SET(TARGET_NAME ${APPLICATION_NAME})
   ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.C)
-  TARGET_LINK_LIBRARIES(${APPLICATION_NAME} ${VRPN_LIBRARY} ${QUATLIB_LIBRARY} ${PTHREAD_LIBRARY})
+  TARGET_LINK_LIBRARIES(${APPLICATION_NAME} ${VRPN_LIBRARIES} ${QUATLIB_LIBRARIES} ${PTHREAD_LIBRARY})
   SET_TARGET_PROPERTIES(${APPLICATION_NAME} PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
 ENDMACRO(CAPC_APPLICATION)
 
 MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
   SET(TARGET_NAME ${APPLICATION_NAME})
   ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp)
-  TARGET_LINK_LIBRARIES(${APPLICATION_NAME} ${VRPN_LIBRARY} ${QUATLIB_LIBRARY} ${PTHREAD_LIBRARY})
+  TARGET_LINK_LIBRARIES(${APPLICATION_NAME} ${VRPN_LIBRARIES} ${QUATLIB_LIBRARIES} ${PTHREAD_LIBRARY})
   SET_TARGET_PROPERTIES(${APPLICATION_NAME} PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
 ENDMACRO(CPP_APPLICATION)
 
