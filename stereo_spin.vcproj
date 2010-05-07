@@ -2,9 +2,9 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="8.00"
-	Name="video_spot_tracker"
-	ProjectGUID="{04742E5F-FD68-4746-81EE-CD6BE17E6CB3}"
-	RootNamespace="video_spot_tracker"
+	Name="stereo_spin"
+	ProjectGUID="{20D25009-5D70-4DDE-96F3-0427BBB64FBE}"
+	RootNamespace="stereo_spin"
 	>
 	<Platforms>
 		<Platform
@@ -38,7 +38,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\Debug/video_spot_tracker.tlb"
+				TypeLibraryName=".\Debug/stereo_spin.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -49,7 +49,7 @@
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
-				PrecompiledHeaderFile=".\Debug/video_spot_tracker.pch"
+				PrecompiledHeaderFile=".\Debug/stereo_spin.pch"
 				AssemblerListingLocation=".\Debug/"
 				ObjectFile=".\Debug/"
 				ProgramDataBaseFileName=".\Debug/"
@@ -73,13 +73,13 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="pvcam32.lib SpotCamVC.lib glut32.lib opengl32.lib tcl83.lib tk83.lib odbc32.lib odbccp32.lib vrpn.lib quat.lib cxcore.lib cv.lib highgui.lib"
-				OutputFile=".\Debug/video_spot_tracker.exe"
+				OutputFile=".\Debug/stereo_spin.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\tcl\lib;C:\NSRG\external\pc_win32\GL\lib;c:\NSRG\external\pc_win32\OpenCV\lib;../vrpn/pc_win32/Debug;../quat/pc_win32/Debug;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;C:\nsrg\external\pc_win32\ImageMagick\lib;C:\NSRG\external\pc_win32\DiagInc;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;C:\NSRG\external\pc_win32\EDT\pdv;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;"
 				IgnoreDefaultLibraryNames="msvcrt.lib"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\Debug/video_spot_tracker.pdb"
+				ProgramDatabaseFile=".\Debug/stereo_spin.pdb"
 				SubSystem="1"
 				TargetMachine="1"
 			/>
@@ -95,7 +95,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\Debug/video_spot_tracker.bsc"
+				OutputFile=".\Debug/stereo_spin.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -134,7 +134,7 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
-				TypeLibraryName=".\Release/video_spot_tracker.tlb"
+				TypeLibraryName=".\Release/stereo_spin.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -146,7 +146,7 @@
 				StringPooling="true"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
-				PrecompiledHeaderFile=".\Release/video_spot_tracker.pch"
+				PrecompiledHeaderFile=".\Release/stereo_spin.pch"
 				AssemblerListingLocation=".\Release/"
 				ObjectFile=".\Release/"
 				ProgramDataBaseFileName=".\Release/"
@@ -169,7 +169,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="pvcam32.lib SpotCamVC.lib glut32.lib opengl32.lib tcl83.lib tk83.lib odbc32.lib odbccp32.lib vrpn.lib quat.lib cxcore.lib cv.lib highgui.lib"
-				OutputFile=".\Release/video_spot_tracker.exe"
+				OutputFile=".\Release/stereo_spin.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\tcl\lib;C:\NSRG\external\pc_win32\GL\lib;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\OpenCV\lib;../vrpn/pc_win32/Release;../quat/pc_win32/Release;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;C:\nsrg\external\pc_win32\ImageMagick\lib;C:\NSRG\external\pc_win32\diaginc;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;C:\NSRG\external\pc_win32\EDT\pdv;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;"
@@ -190,7 +190,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\Release/video_spot_tracker.bsc"
+				OutputFile=".\Release/stereo_spin.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -214,6 +214,28 @@
 			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 			>
 			<File
+				RelativePath="stereo_spin.cpp"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+			</File>
+			<File
 				RelativePath="Tcl_Linkvar.C"
 				>
 				<FileConfiguration
@@ -234,28 +256,6 @@
 						AdditionalIncludeDirectories=""
 						PreprocessorDefinitions=""
 						CompileAs="2"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="video_spot_tracker.cpp"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions=""
 					/>
 				</FileConfiguration>
 			</File>

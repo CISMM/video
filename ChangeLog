@@ -1,3 +1,16 @@
+2010-05-07  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* video_spot_tracker.vcproj : Added explicit link to vrpn.lib because
+		new version of VRPN removed the #pragma lib() call.
+	* stereo_spin.cpp : New application to load in a spin video and display
+		it as stereo.  Due to linking failures with the various libraries,
+		this is a stripped-down Video Spot Tracker.  It does not yet do
+		anything that VST didn't do, but this version compiles, runs, and
+		shows video.
+	* stereo_spin.tcl : Same.
+	* stereo_spin.vcproj : Same.
+	* video.sln : Same.
+
 2010-05-06  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* video_spot_tracker.cpp : Adding #defines needed by previous commit.
