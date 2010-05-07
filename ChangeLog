@@ -1,5 +1,25 @@
 2010-05-07  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* base_camera_server.cpp : Moved multiple copies of the OpenGL texture-
+		pushing code into the base class and then have each derived class
+		call it with different parameters.  Less chance for code drift.
+		IMPORTANT: Changed the code to rely on the ability of OpenGL to
+		handle non-power-of-2 texture sizes.  If this breaks things, look
+		for XXXX and the code back in.
+	* base_camera_server.h : Same.
+	* SEM_camera_server.cpp : Same.
+	* VRPN_Imager_camera_server.cpp : Same.
+	* cooke_server.cpp : Same.
+	* diaginc_server.cpp : Same.
+	* directx_camera_server.cpp : Same.
+	* edt_server.cpp : Same.
+	* file_stack_server.cpp : Same.
+	* raw_file_server.cpp : Same.
+	* roper_server.cpp : Same.
+	* stereo_spin.cpp : Same.
+
+2010-05-07  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* video_spot_tracker.vcproj : Added explicit link to vrpn.lib because
 		new version of VRPN removed the #pragma lib() call.
 	* stereo_spin.cpp : New application to load in a spin video and display

@@ -337,49 +337,16 @@ bool  file_stack_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection
 }
 
 // Write the texture, using a virtual method call appropriate to the particular
-// camera type.  NOTE: At least the first time this function is called,
-// we must write a complete texture, which may be larger than the actual bytes
-// allocated for the image.  After the first time, and if we don't change the
-// image size to be larger, we can use the subimage call to only write the
-// pixels we have.
+// camera type.
 bool file_stack_server::write_to_opengl_texture(GLuint tex_id)
 {
-  // Note: Check the GLubyte or GLushort or whatever in the temporary buffer!
   const GLint   NUM_COMPONENTS = 3;
   const GLenum  FORMAT = GL_RGB;
   const GLenum  TYPE = GL_UNSIGNED_SHORT;
-
-  // We need to write an image to the texture at least once that includes all of
-  // the pixels, before we can call the subimage write method below.  We need to
-  // allocate a buffer large enough to send, and of the appropriate type, for this.
-  if (!_opengl_texture_have_written) {
-    GLushort *tempimage = new GLushort[NUM_COMPONENTS * _opengl_texture_size_x * _opengl_texture_size_y];
-    if (tempimage == NULL) {
-      fprintf(stderr,"file_stack_server::write_to_opengl_texture(): Out of memory allocating temporary buffer\n");
-      return false;
-    }
-    memset(tempimage, 0, _opengl_texture_size_x * _opengl_texture_size_y);
-
-    // Set the pixel storage parameters and store the total blank image.
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, _opengl_texture_size_x);
-    glTexImage2D(GL_TEXTURE_2D, 0, NUM_COMPONENTS, _opengl_texture_size_x, _opengl_texture_size_y,
-      0, FORMAT, TYPE, tempimage);
-
-    delete [] tempimage;
-    _opengl_texture_have_written = true;
-  }
-
-  // Set the pixel storage parameters.
-  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  glPixelStorei(GL_UNPACK_ROW_LENGTH, get_num_columns());
-
-  // Send the subset of the image that we actually have active to OpenGL.
-  // For the file_stack-server, we use a 16-bit unsigned, GL_RGB texture.
-  glTexSubImage2D(GL_TEXTURE_2D, 0,
-    _minX,_minY, _maxX-_minX+1,_maxY-_minY+1,
-    FORMAT, TYPE, &d_buffer[NUM_COMPONENTS * ( _minX + get_num_columns()*_minY )]);
-  return true;
+  const void*   BASE_BUFFER = d_buffer;
+  const void*   SUBSET_BUFFER = &d_buffer[NUM_COMPONENTS * ( _minX + get_num_columns()*_minY )];
+  return write_to_opengl_texture_generic(tex_id, NUM_COMPONENTS, FORMAT, TYPE,
+    BASE_BUFFER, SUBSET_BUFFER, _minX, _minY, _maxX, _maxY);
 }
 
 

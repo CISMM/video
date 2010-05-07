@@ -69,13 +69,6 @@ const char *Version_string = "01.00";
 
 Tcl_Interp	    *g_tk_control_interp;
 
-Tclvar_int          g_tcl_raw_camera_numx("raw_numx");
-Tclvar_int          g_tcl_raw_camera_numy("raw_numy");
-Tclvar_int          g_tcl_raw_camera_bitdepth("raw_bitdepth");
-Tclvar_int          g_tcl_raw_camera_channels("raw_channels");
-Tclvar_int          g_tcl_raw_camera_headersize("raw_headersize");
-Tclvar_int          g_tcl_raw_camera_frameheadersize("raw_frameheadersize");
-
 char		    *g_device_name = NULL;	  //< Name of the camera/video/file device to open
 base_camera_server  *g_camera;			  //< Camera used to get an image
 unsigned            g_camera_bit_depth = 8;       //< Bit depth of the particular camera
@@ -95,6 +88,7 @@ Tclvar_int_with_button	g_window_offset_y("window_offset_y",NULL,-10);  //< Offse
 
 int		    g_tracking_window;		  //< Glut window displaying tracking
 unsigned char	    *g_glut_image = NULL;	  //< Pointer to the storage for the image
+vector<GLuint>      g_texture_ids;                //< Keeps track of the texture IDs
 
 bool		    g_ready_to_display = false;	  //< Don't unless we get an image
 bool		    g_already_posted = false;	  //< Posted redisplay since the last display?
@@ -756,10 +750,8 @@ int main(int argc, char *argv[])
   // Open the camera.  If we have a video file, then
   // set up the Tcl controls to run it.  Also, report the frame number.
   float exposure = g_exposure;
-  g_camera_bit_depth = 8;
   if (!get_camera(g_device_name, &g_camera_bit_depth, &exposure,
-                  &g_camera, &g_video,
-                  0,0,0,0,0)) {
+                  &g_camera, &g_video, 648,484,1,0,0)) {
     fprintf(stderr,"Cannot open camera\n");
     if (g_camera) { delete g_camera; g_camera = NULL; }
     cleanup();
@@ -845,6 +837,25 @@ int main(int argc, char *argv[])
     glutKeyboardFunc(keyboardCallbackForGLUT);
   }
 
+  //------------------------------------------------------------------
+  // Load in all of the frames of the video.  Put them into an array of
+  // texture IDs on the graphics card so that they are ready to be rendered
+  // onto Quads.  Keep track of how many frames there are so that the slider
+  // setting the frame number can be used to pick from among them.  If we
+  // run out of texture memory, then say so and quit.
+  // XXX Display the video in the OpenGL window while we're loading these.
+  // XXX Display a "cancel" dialog box saying that we're loading.
+  /*XXX
+  while (XXX) {
+
+    // Get a new texture ID for this frame.
+    GLuint  new_id;
+    glGenTextures(1, &new_id);
+    g_texture_ids.push_back(new_id);
+
+    XXX;
+  }
+*/
   //------------------------------------------------------------------
   // Create the buffer that Glut will use to send to the tracking window.  This is allocating an
   // RGBA buffer.  It needs to be 4-byte aligned, so we allocated it as a group of

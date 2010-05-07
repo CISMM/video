@@ -21,7 +21,7 @@ d_infile(NULL)
 
   // Check to make sure that the parameters are valid
   if ( (numX == 0) || (numY) == 0) {
-    fprintf(stderr, "raw_file_server::raw_file_server: Invalid image size (%d,%d)", numX, numY);
+    fprintf(stderr, "raw_file_server::raw_file_server: Invalid image size (%d,%d)\n", numX, numY);
     return;
   }
   _num_columns = numX;
@@ -224,45 +224,13 @@ bool  raw_file_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* 
 // pixels we have.
 bool raw_file_server::write_to_opengl_texture(GLuint tex_id)
 {
-  // Note: Check the GLubyte or GLushort or whatever in the temporary buffer!
   const GLint   NUM_COMPONENTS = 1;
   const GLenum  FORMAT = GL_LUMINANCE;
   const GLenum  TYPE = GL_UNSIGNED_BYTE;
-
-  // We need to write an image to the texture at least once that includes all of
-  // the pixels, before we can call the subimage write method below.  We need to
-  // allocate a buffer large enough to send, and of the appropriate type, for this.
-  if (!_opengl_texture_have_written) {
-    GLubyte *tempimage = new GLubyte[NUM_COMPONENTS * _opengl_texture_size_x * _opengl_texture_size_y];
-    if (tempimage == NULL) {
-      fprintf(stderr,"raw_file_server::write_to_opengl_texture(): Out of memory allocating temporary buffer\n");
-      return false;
-    }
-    memset(tempimage, 0, _opengl_texture_size_x * _opengl_texture_size_y);
-
-    // Set the pixel storage parameters and store the total blank image.
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, _opengl_texture_size_x);
-    glTexImage2D(GL_TEXTURE_2D, 0, NUM_COMPONENTS, _opengl_texture_size_x, _opengl_texture_size_y,
-      0, FORMAT, TYPE, tempimage);
-
-    delete [] tempimage;
-    _opengl_texture_have_written = true;
-  }
-
-  // Set the pixel storage parameters.
-  // In this case, we need to invert the image in Y to make the display match
-  // that of the capture program.  We are not allowed a negative row length,
-  // so we have to find another trick.
-  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  glPixelStorei(GL_UNPACK_ROW_LENGTH, get_num_columns());
-
-  // Send the subset of the image that we actually have active to OpenGL.
-  // For the EDT_Pulnix, we use an 8-bit unsigned, GL_LUMINANCE texture.
-  glTexSubImage2D(GL_TEXTURE_2D, 0,
-    _minX,_minY, _maxX-_minX+1,_maxY-_minY+1,
-    FORMAT, TYPE, &d_buffer[NUM_COMPONENTS * ( _minX + get_num_columns()*_minY )]);
-  return true;
+  const void*   BASE_BUFFER = d_buffer;
+  const void*   SUBSET_BUFFER = &d_buffer[NUM_COMPONENTS * ( _minX + get_num_columns()*_minY )];
+  return write_to_opengl_texture_generic(tex_id, NUM_COMPONENTS, FORMAT, TYPE,
+    BASE_BUFFER, SUBSET_BUFFER, _minX, _minY, _maxX, _maxY);
 }
 
 bool raw_file_server::write_opengl_texture_to_quad(double xfrac, double yfrac)

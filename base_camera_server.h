@@ -33,7 +33,8 @@
 class image_wrapper {
 public:
 
-  image_wrapper() : _opengl_texture_size_x(0), _opengl_texture_size_y(0), _opengl_texture_have_written(false) {};
+  image_wrapper() : _opengl_texture_size_x(0), _opengl_texture_size_y(0),
+    _opengl_texture_have_written(false), _tex_id(65000) {};
 
   // Virtual destructor so that children can de-allocate space as needed.
   virtual ~image_wrapper() {};
@@ -182,12 +183,22 @@ protected:
   unsigned  _opengl_texture_size_y;
   unsigned  _opengl_texture_have_written;
 
-  // Write the texture, using a virtual method call appropriate to the particular
-  // camera type.  NOTE: At least the first time this function is called,
+  // Write the texture to OpenGL, where we've parameterized all of the
+  // things we need to tell about the process.  Each derived class should
+  // implement a specialized method (using the virtual template below) that
+  // calls this one with appropriate parameters.  NOTE: At least the first time
+  // this function is called,
   // we must write a complete texture, which may be larger than the actual bytes
   // allocated for the image.  After the first time, and if we don't change the
   // image size to be larger, we can use the subimage call to only write the
   // pixels we have.
+  bool write_to_opengl_texture_generic(GLuint tex_id, GLint num_components,
+          GLenum format, GLenum type, const GLvoid *buffer_base,
+          const GLvoid *subset_base,
+          unsigned minX, unsigned minY, unsigned maxX, unsigned maxY);
+
+  // Write the texture, using a virtual method call appropriate to the particular
+  // camera type.
   virtual bool write_to_opengl_texture(GLuint tex_id) {return false;};
 
   // Write from the texture to a quad.  Write only the actually-filled

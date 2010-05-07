@@ -655,6 +655,84 @@ bool  PSF_File::append_line(const image_wrapper &image, const double x, const do
   return true;
 }
 
+// Write the texture, using a virtual method call appropriate to the particular
+// camera type.  NOTE: At least the first time this function is called,
+// we must write a complete texture, which may be larger than the actual bytes
+// allocated for the image.  After the first time, and if we don't change the
+// image size to be larger, we can use the subimage call to only write the
+// pixels we have.
+bool image_wrapper::write_to_opengl_texture_generic(GLuint tex_id, GLint num_components,
+          GLenum format, GLenum type, const GLvoid *buffer_base, const GLvoid *subset_base,
+          unsigned minX, unsigned minY, unsigned maxX, unsigned maxY)
+{
+  // Note: Check the GLubyte or GLushort or whatever in the temporary buffer!
+  GLint   NUM_COMPONENTS = num_components;
+  GLenum  FORMAT = format;
+  GLenum  TYPE = type;
+
+  // We need to write an image to the texture at least once that includes all of
+  // the pixels, before we can call the subimage write method below.
+  if (!_opengl_texture_have_written || (tex_id != _tex_id)) {
+
+    // If the OpenGL texture size does not match the image size, we need to
+    // write a full blank image followed by the actual-sized image.  Otherwise,
+    // we can just write the correct-sized image.
+    if ( (_opengl_texture_size_x != get_num_columns()) ||
+         (_opengl_texture_size_y != get_num_rows()) ) {
+
+      // Allocate enough memory to handle either 8- or 16-bit arrays.
+      size_t maximum_size = 2 * NUM_COMPONENTS * _opengl_texture_size_x * _opengl_texture_size_y;
+      GLubyte *tempimage = new GLubyte[maximum_size];
+      if (tempimage == NULL) {
+        fprintf(stderr,"image_wrapper::write_to_opengl_texture(): Out of memory allocating temporary buffer\n");
+        return false;
+      }
+      memset(tempimage, 0, maximum_size);
+
+      // Set the pixel storage parameters and store the total blank image.
+      glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+      glPixelStorei(GL_UNPACK_ROW_LENGTH, _opengl_texture_size_x);
+      glTexImage2D(GL_TEXTURE_2D, 0, NUM_COMPONENTS, _opengl_texture_size_x, _opengl_texture_size_y,
+        0, FORMAT, TYPE, tempimage);
+
+      delete [] tempimage;
+
+      // Set the pixel storage parameters for the image-sized subset and send it.
+      glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+      glPixelStorei(GL_UNPACK_ROW_LENGTH, get_num_columns());
+
+      // Send the subset of the image that we actually have active to OpenGL.
+      glTexSubImage2D(GL_TEXTURE_2D, 0,
+        minX,minY, maxX-minX+1,maxY-minY+1,
+        FORMAT, TYPE, subset_base);
+
+    } else {
+      // Set the pixel storage parameters and store the total blank image.
+      glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+      glPixelStorei(GL_UNPACK_ROW_LENGTH, get_num_columns());
+      glTexImage2D(GL_TEXTURE_2D, 0, 3,
+        get_num_columns(), get_num_rows(),
+        0, FORMAT, TYPE, buffer_base);
+    }
+
+    // We've done the first storage, later ones can just do subset-sized
+    // writes unless we change texture IDs.
+    _opengl_texture_have_written = true;
+    _tex_id = tex_id;
+  } else {
+
+    // Set the pixel storage parameters.
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, get_num_columns());
+
+    // Send the subset of the image that we actually have active to OpenGL.
+    glTexSubImage2D(GL_TEXTURE_2D, 0,
+      minX,minY, maxX-minX+1,maxY-minY+1,
+      FORMAT, TYPE, subset_base);
+  }
+
+  return true;
+}
 
 /// Write the in-memory image into an OpenGL texture and then texture-map it onto a quad.  The scale and offset are used to set OpenGL transfer settings.
 // The quad will have its vertex coordinates going from -1 to 1 in X and Y and lie at Z=0.  Its texture coordinates will be
@@ -712,8 +790,13 @@ bool image_wrapper::write_to_opengl_quad(double scale, double offset)
 
   // Figure out the next power-of-two size up based on the current texture size.
   // This is because textures must be an even power of two size on each axis.
-  _opengl_texture_size_x = static_cast<unsigned>( pow(2.0, ceil( log( static_cast<double>(get_num_columns()) ) / log(2.0) ) ) );
-  _opengl_texture_size_y = static_cast<unsigned>( pow(2.0, ceil( log( static_cast<double>(get_num_rows()) ) / log(2.0) ) ) );
+  // XXXX It no longer seems to be the case that we need power-of-two texture
+  // sizes (5/7/2010), so I'm setting this to match.  This lets us do texture
+  // writes that are smaller and also reserves less graphics-card memory for
+  // the textures.  It also lets us do an actual write the first time to a
+  // texure ID, rather than writing an overfull empty buffer.
+  _opengl_texture_size_x = get_num_columns();//XXXX static_cast<unsigned>( pow(2.0, ceil( log( static_cast<double>(get_num_columns()) ) / log(2.0) ) ) );
+  _opengl_texture_size_y = get_num_rows();//XXXX static_cast<unsigned>( pow(2.0, ceil( log( static_cast<double>(get_num_rows()) ) / log(2.0) ) ) );
 
   // Write the texture, using a virtual method call appropriate to the particular
   // camera type.  NOTE: At least the first time this function is called,

@@ -488,59 +488,9 @@ bool diaginc_server::write_to_opengl_texture(GLuint tex_id)
   const GLint   NUM_COMPONENTS = 1;
   const GLenum  FORMAT = GL_LUMINANCE;
   const GLenum  TYPE = GL_UNSIGNED_SHORT;
+  const void*   BASE_BUFFER = _memory;
+  const void*   SUBSET_BUFFER = &((vrpn_uint16 *)_memory)[NUM_COMPONENTS * ( _minX + get_num_columns()*_minY )];
 
-  // We need to write an image to the texture at least once that includes all of
-  // the pixels, before we can call the subimage write method below.  We need to
-  // allocate a buffer large enough to send, and of the appropriate type, for this.
-  if (!_opengl_texture_have_written) {
-    GLushort *tempimage = new GLushort[NUM_COMPONENTS * _opengl_texture_size_x * _opengl_texture_size_y];
-    if (tempimage == NULL) {
-      fprintf(stderr,"roper_server::write_to_opengl_texture(): Out of memory allocating temporary buffer\n");
-      return false;
-    }
-    memset(tempimage, 0, _opengl_texture_size_x * _opengl_texture_size_y);
-
-    // Set the pixel storage parameters and store the total blank image.
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, _opengl_texture_size_x);
-    glTexImage2D(GL_TEXTURE_2D, 0, NUM_COMPONENTS, _opengl_texture_size_x, _opengl_texture_size_y,
-      0, FORMAT, TYPE, tempimage);
-
-    delete [] tempimage;
-    _opengl_texture_have_written = true;
-  }
-
-  // Set the offset and scale parameters for the transfer.  Set all of the RGB ones to
-  // the requested one even for GL_LUMINANCE textures, because they get used.  Set the
-  // Alpha ones to pass through unmodified because they eventually get used in the
-  // pixel math for some cases.  We multiply the existing scales and offsets by
-  // 2^4 = 16 because we encode a 12-bit value in a 16-bit variable.  We read the
-  // red scale that was set before and set them all to 16 times that.
-  double scale, offset;
-  glGetDoublev(GL_RED_SCALE, &scale);
-  glGetDoublev(GL_RED_BIAS, &offset);
-  scale *= 16;
-  offset *= 16;
-  glPixelTransferf(GL_RED_SCALE, static_cast<GLfloat>(scale));
-  glPixelTransferf(GL_GREEN_SCALE, static_cast<GLfloat>(scale));
-  glPixelTransferf(GL_BLUE_SCALE, static_cast<GLfloat>(scale));
-  glPixelTransferf(GL_ALPHA_SCALE, static_cast<GLfloat>(1.0));
-  glPixelTransferf(GL_RED_BIAS, static_cast<GLfloat>(offset));
-  glPixelTransferf(GL_GREEN_BIAS, static_cast<GLfloat>(offset));
-  glPixelTransferf(GL_BLUE_BIAS, static_cast<GLfloat>(offset));
-  glPixelTransferf(GL_ALPHA_BIAS, static_cast<GLfloat>(0.0));
-
-  // Set the pixel storage parameters.
-  // In this case, we need to invert the image in Y to make the display match
-  // that of the capture program.  We are not allowed a negative row length,
-  // so we have to find another trick.
-  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  glPixelStorei(GL_UNPACK_ROW_LENGTH, get_num_columns());
-
-  // Send the subset of the image that we actually have active to OpenGL.
-  // For the EDT_Pulnix, we use an 8-bit unsigned, GL_LUMINANCE texture.
-  glTexSubImage2D(GL_TEXTURE_2D, 0,
-    _minX,_minY, _maxX-_minX+1,_maxY-_minY+1,
-    FORMAT, TYPE, &((vrpn_uint16 *)_memory)[NUM_COMPONENTS * ( _minX + get_num_columns()*_minY )]);
-  return true;
+  return write_to_opengl_texture_generic(tex_id, NUM_COMPONENTS, FORMAT, TYPE,
+    BASE_BUFFER, SUBSET_BUFFER, _minX, _minY, _maxX, _maxY);
 }
