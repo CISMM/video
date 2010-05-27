@@ -670,6 +670,23 @@ bool image_wrapper::write_to_opengl_texture_generic(GLuint tex_id, GLint num_com
   GLenum  FORMAT = format;
   GLenum  TYPE = type;
 
+  // Figure out the next power-of-two size up based on the current texture size.
+  // This is because textures must be an even power of two size on each axis.
+  // XXXX It no longer seems to be the case that we need power-of-two texture
+  // sizes (5/7/2010), so I'm setting this to match.  This lets us do texture
+  // writes that are smaller and also reserves less graphics-card memory for
+  // the textures.  It also lets us do an actual write the first time to a
+  // texure ID, rather than writing an overfull empty buffer.
+  _opengl_texture_size_x = get_num_columns();//XXXX static_cast<unsigned>( pow(2.0, ceil( log( static_cast<double>(get_num_columns()) ) / log(2.0) ) ) );
+  _opengl_texture_size_y = get_num_rows();//XXXX static_cast<unsigned>( pow(2.0, ceil( log( static_cast<double>(get_num_rows()) ) / log(2.0) ) ) );
+
+  // Store away our state so that we can return it to normal when
+  // we're done and not mess up other rendering.
+  glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT | GL_CURRENT_BIT | GL_PIXEL_MODE_BIT);
+
+  // Enable 2D texture-mapping so that we can do our thing.
+  glEnable(GL_TEXTURE_2D);
+
   // We need to write an image to the texture at least once that includes all of
   // the pixels, before we can call the subimage write method below.
   if (!_opengl_texture_have_written || (tex_id != _tex_id)) {
@@ -681,6 +698,7 @@ bool image_wrapper::write_to_opengl_texture_generic(GLuint tex_id, GLint num_com
          (_opengl_texture_size_y != get_num_rows()) ) {
 
       // Allocate enough memory to handle either 8- or 16-bit arrays.
+           printf("XXXX allocating texture memory\n");
       size_t maximum_size = 2 * NUM_COMPONENTS * _opengl_texture_size_x * _opengl_texture_size_y;
       GLubyte *tempimage = new GLubyte[maximum_size];
       if (tempimage == NULL) {
@@ -730,6 +748,9 @@ bool image_wrapper::write_to_opengl_texture_generic(GLuint tex_id, GLint num_com
       minX,minY, maxX-minX+1,maxY-minY+1,
       FORMAT, TYPE, subset_base);
   }
+
+  // Put the state back the way it was
+  glPopAttrib();
 
   return true;
 }
@@ -788,16 +809,6 @@ bool image_wrapper::write_to_opengl_quad(double scale, double offset)
   glPixelTransferf(GL_BLUE_BIAS, static_cast<GLfloat>(offset));
   glPixelTransferf(GL_ALPHA_BIAS, static_cast<GLfloat>(0.0));
 
-  // Figure out the next power-of-two size up based on the current texture size.
-  // This is because textures must be an even power of two size on each axis.
-  // XXXX It no longer seems to be the case that we need power-of-two texture
-  // sizes (5/7/2010), so I'm setting this to match.  This lets us do texture
-  // writes that are smaller and also reserves less graphics-card memory for
-  // the textures.  It also lets us do an actual write the first time to a
-  // texure ID, rather than writing an overfull empty buffer.
-  _opengl_texture_size_x = get_num_columns();//XXXX static_cast<unsigned>( pow(2.0, ceil( log( static_cast<double>(get_num_columns()) ) / log(2.0) ) ) );
-  _opengl_texture_size_y = get_num_rows();//XXXX static_cast<unsigned>( pow(2.0, ceil( log( static_cast<double>(get_num_rows()) ) / log(2.0) ) ) );
-
   // Write the texture, using a virtual method call appropriate to the particular
   // camera type.  NOTE: At least the first time this function is called,
   // we must write a complete texture, which may be larger than the actual bytes
@@ -811,10 +822,8 @@ bool image_wrapper::write_to_opengl_quad(double scale, double offset)
 
   // Write the texture into an OpenGL quad, inverting as needed by the particular
   // camera or imager.
-  double xfrac = static_cast<double>(get_num_columns()) / _opengl_texture_size_x;
-  double yfrac = static_cast<double>(get_num_rows()) / _opengl_texture_size_y;
   glColor3d(1.0, 1.0, 1.0);
-  if (!write_opengl_texture_to_quad(xfrac, yfrac)) {
+  if (!write_opengl_texture_to_quad()) {
     fprintf(stderr,"image_wrapper::write_to_opengl_quad(): write_opengl_texture_to_quad() failed!\n");
     return false;
   }
@@ -852,8 +861,11 @@ bool image_wrapper::write_to_opengl_quad(double scale, double offset)
   return true;
 }
 
-bool image_wrapper::write_opengl_texture_to_quad(double xfrac, double yfrac)
+bool image_wrapper::write_opengl_texture_to_quad()
 {
+  double xfrac = static_cast<double>(get_num_columns()) / _opengl_texture_size_x;
+  double yfrac = static_cast<double>(get_num_rows()) / _opengl_texture_size_y;
+
   // Set the texture and vertex coordinates and write the quad to OpenGL.
   glBegin(GL_QUADS);
     glTexCoord2d(0.0, 0.0);

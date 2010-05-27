@@ -48,16 +48,6 @@ public:
   /// Send in-memory image over a vrpn connection
   virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1);
 
-protected:
-  FILE *d_infile;		  //< File to read from
-  // _num_rows and _num_columns come from base_camera_server base class
-  unsigned  d_header_size;        //< Number of bytes to skip at file head
-  unsigned  d_frame_header_size;  //< Number of bytes to skip at the start of each frame
-  unsigned  d_bits;               //< Number of bits per pixel
-  unsigned  d_channels;           //< Number of channels
-  vrpn_uint8  *d_buffer;	  //< Holds one frame of data from the file
-  enum {PAUSE, PLAY, SINGLE} d_mode;	  //< What we're doing right now
-
   // Write the texture, using a virtual method call appropriate to the particular
   // camera type.  NOTE: At least the first time this function is called,
   // we must write a complete texture, which may be larger than the actual bytes
@@ -70,6 +60,16 @@ protected:
   // portion of the texture (parameters passed in).  This version does not
   // flip the quad over.  The EDT version flips the image over, so we
   // don't use the base-class method.
-  virtual bool write_opengl_texture_to_quad(double xfrac, double yfrac);
+  virtual bool write_opengl_texture_to_quad();
+
+protected:
+  FILE *d_infile;		  //< File to read from
+  // _num_rows and _num_columns come from base_camera_server base class
+  unsigned  d_header_size;        //< Number of bytes to skip at file head
+  unsigned  d_frame_header_size;  //< Number of bytes to skip at the start of each frame
+  unsigned  d_bits;               //< Number of bits per pixel
+  unsigned  d_channels;           //< Number of channels
+  vrpn_uint8  *d_buffer;	  //< Holds one frame of data from the file
+  enum {PAUSE, PLAY, SINGLE} d_mode;	  //< What we're doing right now
 };
 #endif

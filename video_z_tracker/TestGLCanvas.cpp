@@ -284,7 +284,7 @@ void TestGLCanvas::OnPaint( wxPaintEvent& WXUNUSED(event) )
 		m_image->write_to_opengl_quad(m_imageGain, 1);
 	}
 	
-	//m_camera->write_opengl_texture_to_quad(1, 1);
+	//m_camera->write_opengl_texture_to_quad();
 	//printf("finished drawing!\n");
 	
     // Flush

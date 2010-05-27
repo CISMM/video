@@ -49,6 +49,14 @@ public:
   /// Send in-memory image over a vrpn connection.
   virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1);
 
+  // Write the texture, using a virtual method call appropriate to the particular
+  // camera type.  NOTE: At least the first time this function is called,
+  // we must write a complete texture, which may be larger than the actual bytes
+  // allocated for the image.  After the first time, and if we don't change the
+  // image size to be larger, we can use the subimage call to only write the
+  // pixels we have.
+  virtual bool write_to_opengl_texture(GLuint tex_id);
+
 protected:
   vrpn_uint16		      *d_buffer;	  //< Holds one frame of data from the file
   enum {PAUSE, PLAY, SINGLE}  d_mode;		  //< What we're doing right now
@@ -62,14 +70,6 @@ protected:
   bool read_image_from_file(const std::string filename);
 
   static bool ds_majickInitialized;		  //< Has ImageMagick been initialized?
-
-  // Write the texture, using a virtual method call appropriate to the particular
-  // camera type.  NOTE: At least the first time this function is called,
-  // we must write a complete texture, which may be larger than the actual bytes
-  // allocated for the image.  After the first time, and if we don't change the
-  // image size to be larger, we can use the subimage call to only write the
-  // pixels we have.
-  virtual bool write_to_opengl_texture(GLuint tex_id);
 };
 
 // Metamorph reader is not complete.  It uses the TIFF library, which does not have

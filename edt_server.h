@@ -30,6 +30,20 @@ public:
   virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,
     vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1);
 
+  // Write the texture, using a virtual method call appropriate to the particular
+  // camera type.  NOTE: At least the first time this function is called,
+  // we must write a complete texture, which may be larger than the actual bytes
+  // allocated for the image.  After the first time, and if we don't change the
+  // image size to be larger, we can use the subimage call to only write the
+  // pixels we have.
+  virtual bool write_to_opengl_texture(GLuint tex_id);
+
+  // Write from the texture to a quad.  Write only the actually-filled
+  // portion of the texture (parameters passed in).  This version does not
+  // flip the quad over.  The EDT version flips the image over, so we
+  // don't use the base-class method.
+  virtual bool write_opengl_texture_to_quad();
+
 protected:
   vrpn_uint8  *d_buffer;	  //< Points to current frame of data
   vrpn_uint8  *d_swap_buffer;	  //< Holds a line at a time during swapping, if we swap lines
@@ -48,20 +62,6 @@ protected:
   struct timeval d_timestamp;     //< When (in PC clock) the most recent image got to DMA
 
   virtual bool open_and_find_parameters(void);
-
-  // Write the texture, using a virtual method call appropriate to the particular
-  // camera type.  NOTE: At least the first time this function is called,
-  // we must write a complete texture, which may be larger than the actual bytes
-  // allocated for the image.  After the first time, and if we don't change the
-  // image size to be larger, we can use the subimage call to only write the
-  // pixels we have.
-  virtual bool write_to_opengl_texture(GLuint tex_id);
-
-  // Write from the texture to a quad.  Write only the actually-filled
-  // portion of the texture (parameters passed in).  This version does not
-  // flip the quad over.  The EDT version flips the image over, so we
-  // don't use the base-class method.
-  virtual bool write_opengl_texture_to_quad(double xfrac, double yfrac);
 };
 #endif
 

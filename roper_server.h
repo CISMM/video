@@ -32,6 +32,14 @@ public:
   /// Send in-memory image over a vrpn connection
   virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1);
 
+  // Write the texture, using a virtual method call appropriate to the particular
+  // camera type.  NOTE: At least the first time this function is called,
+  // we must write a complete texture, which may be larger than the actual bytes
+  // allocated for the image.  After the first time, and if we don't change the
+  // image size to be larger, we can use the subimage call to only write the
+  // pixels we have.
+  virtual bool write_to_opengl_texture(GLuint tex_id);
+
 protected:
   int16	  _camera_handle;     //< Used to access the camera
   bool	  _circbuffer_on;     //< Can it do circular buffers?
@@ -56,14 +64,6 @@ protected:
   virtual bool read_continuous(const int16 camera_handle,
 		       const rgn_type &region_description,
 		       const uns32 exposure_time_millisecs);
-
-  // Write the texture, using a virtual method call appropriate to the particular
-  // camera type.  NOTE: At least the first time this function is called,
-  // we must write a complete texture, which may be larger than the actual bytes
-  // allocated for the image.  After the first time, and if we don't change the
-  // image size to be larger, we can use the subimage call to only write the
-  // pixels we have.
-  virtual bool write_to_opengl_texture(GLuint tex_id);
 };
 
 // The following class does not require the Roper header files.  It is
@@ -104,12 +104,6 @@ public:
   /// Send in-memory image over a vrpn connection
   virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1);
 
-protected:
-  FILE *d_infile;		  //< File to read from
-  unsigned  d_numFrames;	  //< Number of frames in the file
-  vrpn_uint16  *d_buffer;	  //< Holds one frame of data from the file
-  enum {PAUSE, PLAY, SINGLE} d_mode;	  //< What we're doing right now
-
   // Write the texture, using a virtual method call appropriate to the particular
   // camera type.  NOTE: At least the first time this function is called,
   // we must write a complete texture, which may be larger than the actual bytes
@@ -122,7 +116,13 @@ protected:
   // portion of the texture (parameters passed in).  This version does not
   // flip the quad over.  The EDT version flips the image over, so we
   // don't use the base-class method.
-  virtual bool write_opengl_texture_to_quad(double xfrac, double yfrac);
+  virtual bool write_opengl_texture_to_quad();
+
+protected:
+  FILE *d_infile;		  //< File to read from
+  unsigned  d_numFrames;	  //< Number of frames in the file
+  vrpn_uint16  *d_buffer;	  //< Holds one frame of data from the file
+  enum {PAUSE, PLAY, SINGLE} d_mode;	  //< What we're doing right now
 };
 #endif
 

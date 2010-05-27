@@ -45,6 +45,14 @@ public:
   /// Send in-memory image over a vrpn connection
   virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1);
 
+  // Write the texture, using a virtual method call appropriate to the particular
+  // camera type.  NOTE: At least the first time this function is called,
+  // we must write a complete texture, which may be larger than the actual bytes
+  // allocated for the image.  After the first time, and if we don't change the
+  // image size to be larger, we can use the subimage call to only write the
+  // pixels we have.
+  virtual bool write_to_opengl_texture(GLuint tex_id);
+
 protected:
   vrpn_Imager_Remote  *_imager;           //< Imager to use
   vrpn_File_Connection *_fileCon;	  //< File connection, if we have one.
@@ -71,13 +79,5 @@ protected:
   // The min and max coordinates specified here should be without regard to
   // binning.  That is, they should be in the full-resolution device coordinates.
   virtual bool read_one_frame(unsigned short minX, unsigned short maxX, unsigned short minY, unsigned short maxY, unsigned exposure_time_millisecs);
-
-  // Write the texture, using a virtual method call appropriate to the particular
-  // camera type.  NOTE: At least the first time this function is called,
-  // we must write a complete texture, which may be larger than the actual bytes
-  // allocated for the image.  After the first time, and if we don't change the
-  // image size to be larger, we can use the subimage call to only write the
-  // pixels we have.
-  virtual bool write_to_opengl_texture(GLuint tex_id);
 };
 #endif

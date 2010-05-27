@@ -1,3 +1,32 @@
+2010-05-27  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* SEM_camera_server.h : Refactored the way OpenGL texture writes are
+		done so that the derived class call a base-class generic method
+		with paramaters suitable to their situation.  Then implemented a
+		write that uses non-power-of-2 texture sizes and thus avoids
+		having to allocate and write a huge blank chunk of bytes before
+		sending the actual bytes.
+	* VRPN_Imager_camera_server.h : Same.
+	* base_camera_server.cpp : Same.
+	* base_camera_server.h : Same.
+	* cooke_server.h : Same.
+	* diaginc_server.h : Same.
+	* directx_camera_server.h : Same.
+	* edt_server.cpp : Same.
+	* edt_server.h : Same.
+	* file_stack_server.h : Same.
+	* point_grey_server.h : Same.
+	* raw_file_server.cpp : Same.
+	* raw_file_server.h : Same.
+	* roper_server.cpp : Same.
+	* roper_server.h : Same.
+	* stereo_spin.cpp : Removed a bunch of controls that were there because
+		it was copied from spot tracker.  Has it load all of the frames from
+		a video and let the user move between them with the mouse or spin
+		using the keyboard.  Enables left- and right-spinning movies to
+		both work.
+	* stereo_spin.tcl : Same.
+
 2010-05-07  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* base_camera_server.cpp : Moved multiple copies of the OpenGL texture-

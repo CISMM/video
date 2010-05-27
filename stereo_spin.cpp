@@ -7,6 +7,10 @@
 // things that depend on these definitions.  They may need to be changed
 // as well, depending on where the libraries were installed.
 
+// XXXX Add stereo support
+// XXXX Add responses for + and - to change disparity
+// XXXX Update instructions with new commands.
+
 #ifdef _WIN32
 #define	VST_USE_DIRECTX
 #endif
@@ -77,7 +81,6 @@ image_wrapper       *g_image;                     //< Image, possibly from camer
 copy_of_image	    *g_last_image = NULL;	  //< Copy of the last image we had, if any
 
 Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
-Tclvar_int_with_button	g_frame_number("frame_number",NULL,-1);  //< Keeps track of video frame number
 #ifdef _WIN32
 Tclvar_int_with_button	g_window_offset_x("window_offset_x",NULL,0);  //< Offset windows more in some arch
 Tclvar_int_with_button	g_window_offset_y("window_offset_y",NULL,0);  //< Offset windows more in some arch
@@ -89,10 +92,15 @@ Tclvar_int_with_button	g_window_offset_y("window_offset_y",NULL,-10);  //< Offse
 int		    g_tracking_window;		  //< Glut window displaying tracking
 unsigned char	    *g_glut_image = NULL;	  //< Pointer to the storage for the image
 vector<GLuint>      g_texture_ids;                //< Keeps track of the texture IDs
+int                 g_which_image = 0;            //< Which image to show now?
+int                 g_image_delta = 1;            //< How much to add to get to the next image to show?
+bool                g_spin_left = true;           //< Does the movie spin towards the left?
+float               g_exposure = 10;              //< Not used, but must pass to camera.
 
 bool		    g_ready_to_display = false;	  //< Don't unless we get an image
 bool		    g_already_posted = false;	  //< Posted redisplay since the last display?
 int		    g_mousePressX, g_mousePressY; //< Where the mouse was when the button was pressed
+int                 g_mousePressImage;            //< What image number was the button pressed on?
 int		    g_whichDragAction;		  //< What action to take for mouse drag
 
 bool                g_quit_at_end_of_video = false; //< When we reach the end of the video, should we quit?
@@ -108,19 +116,7 @@ void  device_filename_changed(char *newvalue, void *);
 #else
 void  device_filename_changed(const char *newvalue, void *);
 #endif
-Tclvar_float_with_scale	*g_minX;
-Tclvar_float_with_scale	*g_maxX;
-Tclvar_float_with_scale	*g_minY;
-Tclvar_float_with_scale	*g_maxY;
-Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
-Tclvar_float_with_scale	g_colorIndex("red_green_blue", NULL, 0, 2, 0);
-Tclvar_float_with_scale	g_brighten("brighten", "", 0, 8, 0);
-Tclvar_int_with_button	g_full_area("full_area",NULL);
-Tclvar_int_with_button	g_show_video("show_video","",1);
-Tclvar_int_with_button	g_opengl_video("use_texture_video","",1);
-Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
 Tclvar_int_with_button	g_quit("quit",NULL);
-Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
 bool g_video_valid = false; // Do we have a valid video frame in memory?
 
 //--------------------------------------------------------------------------
@@ -201,9 +197,6 @@ static void  dirtyexit(void)
   // Get rid of any trackers.
   if (g_camera) { delete g_camera; g_camera = NULL; }
   if (g_glut_image) { delete [] g_glut_image; g_glut_image = NULL; };
-  if (g_play) { delete g_play; g_play = NULL; };
-  if (g_rewind) { delete g_rewind; g_rewind = NULL; };
-  if (g_step) { delete g_step; g_step = NULL; };
 }
 
 static void  cleanup(void)
@@ -229,11 +222,39 @@ static	double	timediff(struct timeval t1, struct timeval t2)
 	       (t1.tv_sec - t2.tv_sec);
 }
 
+GLenum check_for_opengl_errors(const char *msg)
+{
+  GLenum  errcode;
+  if ( (errcode = glGetError()) != GL_NO_ERROR) {
+    switch (errcode) {
+        case GL_INVALID_ENUM:
+            fprintf(stderr,"%s:Warning: GL error GL_INVALID_ENUM occurred\n", msg);
+            break;
+        case GL_INVALID_VALUE:
+            fprintf(stderr,"%s:Warning: GL error GL_INVALID_VALUE occurred\n", msg);
+            break;
+        case GL_INVALID_OPERATION:
+            fprintf(stderr,"%s:Warning: GL error GL_INVALID_OPERATION occurred\n", msg);
+            break;
+        case GL_STACK_OVERFLOW:
+            fprintf(stderr,"%s:Warning: GL error GL_STACK_OVERFLOW occurred\n", msg);
+            break;
+        case GL_STACK_UNDERFLOW:
+            fprintf(stderr,"%s:Warning: GL error GL_STACK_UNDERFLOW occurred\n", msg);
+            break;
+        case GL_OUT_OF_MEMORY:
+            fprintf(stderr,"%s:Warning: GL error GL_OUT_OF_MEMORY occurred\n", msg);
+            break;
+        default:
+            fprintf(stderr,"%s:Warning: GL error (code 0x%x) occurred\n", msg, errcode);
+    }
+  }
+  // This will be GL_NO_ERROR (0) if no error was found.
+  return errcode;
+}
+
 void myDisplayFunc(void)
 {
-  unsigned  r,c;
-  vrpn_uint16  uns_pix;
-
   if (!g_ready_to_display) { return; }
 
   // Clear the window and prepare to draw in the back buffer
@@ -241,89 +262,60 @@ void myDisplayFunc(void)
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT);
 
-  if (g_show_video) {
-    // Copy pixels into the image buffer.  Flip the image over in
-    // Y so that the image coordinates display correctly in OpenGL.
-#ifdef DEBUG
-    printf("Filling pixels %d,%d through %d,%d\n", (int)(*g_minX),(int)(*g_minY), (int)(*g_maxX), (int)(*g_maxY));
-#endif
+  //--------------------------------------------------------------------
+  // Display whichever image we're supposed to, based on the settings
+  // for current image, then advance the image however we're supposed
+  // to, based on the delta-image value.  These are controlled by the
+  // mouse and keyboard events.
+  // Cycle through the available images, displaying them one at at time.
 
-    // Figure out how many bits we need to shift to the right.
-    // This depends on how many bits the camera has above zero minus
-    // the number of bits we want to shift to brighten the image.
-    // If this number is negative, clamp to zero.
-    int shift_due_to_camera = static_cast<int>(g_camera_bit_depth) - 8;
-    int total_shift = shift_due_to_camera - g_brighten;
-    if (total_shift < 0) { total_shift = 0; }
+  if (g_which_image < static_cast<int>(g_texture_ids.size())) {
 
-    if (g_opengl_video) {
-      // If we can't write using OpenGL, turn off the feature for next frame.
-      if (!g_image->write_to_opengl_quad(pow(2.0,static_cast<double>(g_brighten)))) {
-        g_opengl_video = false;
-      }
-    } else {
-      int shift = total_shift;
-      for (r = *g_minY; r <= *g_maxY; r++) {
-        unsigned lowc = *g_minX, hic = *g_maxX; //< Speeds things up.
-        unsigned char *pixel_base = &g_glut_image[ 4*(lowc + g_image->get_num_columns() * r) ]; //< Speeds things up
-        for (c = lowc; c <= hic; c++) {
-	  if (!g_image->read_pixel(c, r, uns_pix, g_colorIndex)) {
-	    fprintf(stderr, "Cannot read pixel from region\n");
-	    cleanup();
-      	    exit(-1);
-	  }
+    // Store away our state so that we can return it to normal when
+    // we're done and not mess up other rendering.
+    glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT | GL_CURRENT_BIT | GL_PIXEL_MODE_BIT);
 
-	  // This assumes that the pixels are actually 8-bit values
-	  // and will clip if they go above this.  It also writes pixels
-	  // from the first channel into all colors of the image.  It uses
-	  // RGBA so that we don't have to worry about byte-alignment problems
-	  // that plagued us when using RGB pixels.
+    // Figure out if the movie spins to the right or to the left.  If to the left,
+    // which is the default, then play the movie normally.  If to the right, then
+    // we leave all of the controls the same but at the last minute switch the
+    // direction we move through the images, for both the left and right eyes.
+    int left_eye = g_which_image;
+    if (!g_spin_left) {
+      left_eye = (g_texture_ids.size()-1) - left_eye;
+    }
 
-          // Storing the uns_pix >> shift into an unsigned char and then storing
-          // it into all three is actually SLOWER than just storing it into all
-          // three directly.  Argh!
-          *(pixel_base++) = uns_pix >> shift;     // Stored in red
-          *(pixel_base++) = uns_pix >> shift;     // Stored in green
-          *(pixel_base++) = uns_pix >> shift;     // Stored in blue
-          pixel_base++;   // Skip alpha, it doesn't matter. //*(pixel_base++) = 255;                  // Stored in alpha
+    // Enable 2D texture-mapping so that we can do our thing.
+    // Bind the appropriate texture
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, g_texture_ids[left_eye]);
 
-#ifdef DEBUG
-	  // If we're debugging, fill the border pixels with green
-	  if ( (r == *g_minY) || (r == *g_maxY) || (c == *g_minX) || (c == *g_maxX) ) {
-	    g_glut_image[0 + 4 * (c + g_image->get_num_columns() * r)] = 0;
-	    g_glut_image[1 + 4 * (c + g_image->get_num_columns() * r)] = 255;
-	    g_glut_image[2 + 4 * (c + g_image->get_num_columns() * r)] = 0;
-	    g_glut_image[3 + 4 * (c + g_image->get_num_columns() * r)] = 255;
-	  }
-#endif
-        }
-      }
+    // Set the clamping behavior and such, which should not have any
+    // effect because we should always be at the right scale
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
 
-      // Store the pixels from the image into the frame buffer
-      // so that they cover the entire image (starting from lower-left
-      // corner, which is at (-1,-1)).
-      glRasterPos2f(-1, -1);
-#ifdef DEBUG
-      printf("Drawing %dx%d pixels\n", g_image->get_num_columns(), g_image->get_num_rows());
-#endif
-      // At one point, I changed this to GL_LUMINANCE and then we had to do
-      // only 1/4 of the pixel moving in the loop above and we have only 1/4
-      // of the memory use, so I figured things would render much more rapidly.
-      // In fact, the program ran more slowly (5.0 fps vs. 5.2 fps) with the
-      // LUMINANCE than with the RGBA.  Dunno how this could be, but it was.
-      // This happened again when I tried it with a raw file, got slightly slower
-      // with GL_LUMINANCE.  It must be that the glDrawPixels routine is not
-      // optimized to do that function as well as mine, perhaps because it has
-      // to write to the alpha channel as well.  Sure enough -- If I switch and
-      // write into the Alpha channel, it goes the same speed as when I use
-      // the GL_LUMINANCE call here.  Drat!  XXX How about if we make it an
-      // RGB rendering window and deal with the alignment issues and then make
-      // it a LUMINANCE DrawPixels... probably won't make anything faster but
-      // it may make it more confusing.
-      glDrawPixels(g_image->get_num_columns(),g_image->get_num_rows(),
-        GL_RGBA, GL_UNSIGNED_BYTE, g_glut_image);
-    } // End of "not g_opengl_video for texture"
+    // Write the texture to the quad in the appropriate orientation for
+    // this camera.
+    g_camera->write_opengl_texture_to_quad();
+
+    // Put the state back the way it was
+    glPopAttrib();
   }
+
+  // Go to the next image we're supposed to show, keeping us in
+  // bounds.
+  g_which_image += g_image_delta;
+  while (g_which_image >= static_cast<int>(g_texture_ids.size())) {
+    g_which_image -= g_texture_ids.size();
+  }
+  while (g_which_image < 0) {
+    g_which_image += g_texture_ids.size();
+  }
+
+  // Check for OpenGL errors during our action here.
+  check_for_opengl_errors("myDisplayFunc after drawing");
 
   // Swap buffers so we can see it.
   glutSwapBuffers();
@@ -350,94 +342,83 @@ void myIdleFunc(void)
     fprintf(stderr,"Tclvar Mainloop failed\n");
   }
 
-  //------------------------------------------------------------
-  // If we have a video object, let the video controls operate
-  // on it.
-  if (g_video) {
-    static  int	last_play = 0;
+  //------------------------------------------------------------------
+  // This is called after all of the setup has been done and we've got
+  // a frame to render in.  The first time we get here, go ahead and
+  // pull in all of the images of the video.  Put them into an array of
+  // texture IDs on the graphics card so that they are ready to be rendered
+  // onto Quads.  Keep track of how many frames there are so that the slider
+  // setting the frame number can be used to pick from among them.  If we
+  // run out of texture memory, then say so and quit.
+  // XXX Why is this using a ton of system memory for an AVI file (and raw file)?
+  //     It must be allocated system memory to match the GPU memory down inside
+  //     OpenGL in case it needs to swap...
+  static bool loaded_images = false;
+  if (!loaded_images) {
 
-    // If the user has pressed step, then run the video for a
-    // single step and pause it.
-    if (*g_step) {
-      g_video->single_step();
-      *g_play = 0;
-      *g_step = 0;
+    //------------------------------------------------------------------
+    // Present a dialog box that lets the user quit if they want to, rather
+    // than waiting forever for the video to load.
+    char  command[256];
+    if (Tcl_Eval(g_tk_control_interp, "show_quit_loading_dialog") != TCL_OK) {
+      fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command, g_tk_control_interp->result);
+      cleanup();
+      exit(-1);
+    } 
+
+    while (g_camera->read_image_to_memory(0,g_camera->get_num_columns()-1,
+                                          0,g_camera->get_num_rows()-1, g_exposure)) {
+
+      // Get a new texture ID for this frame.
+      GLuint  new_id;
+      glGenTextures(1, &new_id);
+      g_texture_ids.push_back(new_id);
+      glBindTexture(GL_TEXTURE_2D, new_id);
+
+      // Store the video from this frame into a the OpengL texture whose ID has
+      // just been created.
+      if (!g_camera->write_to_opengl_texture(new_id)) {
+        fprintf(stderr,"Could not write frame %d to texture ID %d\n",
+          g_texture_ids.size()-1, new_id);
+        dirtyexit();
+      } else {
+        printf("Wrote image to OpenGL texture %d\n", new_id);
+      }
+      if (check_for_opengl_errors("main() after writing texture") != GL_NO_ERROR) {
+        fprintf(stderr, "Failed to read the video into OpenGL for rendering\n");
+        dirtyexit();
+      }
+
+      // Display the loaded images in a movie loop while they are coming in,
+      // to give the user something to watch while it is loading.
+      g_ready_to_display = true;
+      myDisplayFunc();
+
+      // Handle Tcl events, so the user can quit if they want to.
+      // See if they asked us to quit.
+      while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
+      if (g_quit) {
+        cleanup();
+        exit(0);
+      }
     }
 
-    // If the user has pressed play, start the video playing
-    if (!last_play && *g_play) {
-      g_video->play();
-      *g_rewind = 0;
-    }
+    // Don't need the dialog box anymore -- the images are all loaded.
+    if (Tcl_Eval(g_tk_control_interp, "remove_quit_loading_dialog") != TCL_OK) {
+      fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command, g_tk_control_interp->result);
+      cleanup();
+      exit(-1);
+    } 
 
-    // If the user has cleared play, then pause the video
-    if (last_play && !(*g_play)) {
-      g_video->pause();
-    }
-    last_play = *g_play;
+    // We're ready to display an image.
+    g_ready_to_display = true;
+    myDisplayFunc();
 
-    // If the user has pressed rewind, go the the beginning of
-    // the stream and then pause (by clearing play).  This has
-    // to come after the checking for stop play above so that the
-    // video doesn't get paused.  Also, reset the frame count
-    // when we rewind.  Also, turn off logging when we rewind
-    // (if it was on).  Also clear any logged traces.
-    if (*g_rewind) {
-      *g_play = 0;
-      *g_rewind = 0;
-
-      // Do the rewind and setting after clearing the logging, so that
-      // the last logged frame has the correct index.
-      g_video->rewind();
-      g_frame_number = -1;
-    }
-  }
-
-  // Read an image from the camera into memory, within a structure that
-  // is wrapped by an image_wrapper object that the tracker can use.
-  // Tell Glut that it can display an image.
-  // We ignore the error return if we're doing a video file because
-  // this can happen due to timeouts when we're paused or at the
-  // end of a file.
-
-  if (!g_camera->read_image_to_memory((int)(*g_minX),(int)(*g_maxX), (int)(*g_minY),(int)(*g_maxY), g_exposure)) {
-    if (!g_video) {
-	fprintf(stderr, "Can't read image to memory!\n");
-	cleanup();
-	exit(-1);
-    } else {
-	// We timed out; either paused or at the end.  Don't log in this case.
-	g_video_valid = false;
-
-	// If we are playing, then say that we've finished the run and
-	// stop playing.
-	if (((int)(*g_play)) != 0) {
-	  // If we are supposed to quit at the end of the video, do so.
-	  if (g_quit_at_end_of_video) {
-	    printf("Exiting at the end of the video\n");
-	    g_quit = 1;
-	  } else {
-#ifdef	_WIN32
-	    if (!PlaySound("end_of_video.wav", NULL, SND_FILENAME | SND_ASYNC)) {
-	      fprintf(stderr,"Cannot play sound %s\n", "end_of_video.wav");
-	    }
-#endif
-	  }
-	  *g_play = 0;
-	}
-    }
-  } else {
-    // Got a valid video frame; can log it.  Add to the frame number.
-    g_video_valid = true;
-	  g_gotNewFrame = true;
-    g_frame_number++;
+    loaded_images = true;
   }
 
   // Point the image to use at the camera's image.
   g_image = g_camera;
-
-  // We're ready to display an image.
-  g_ready_to_display = true;
 
   //------------------------------------------------------------
   // Post a redisplay so that Glut will draw the new image
@@ -470,10 +451,37 @@ void keyboardCallbackForGLUT(unsigned char key, int x, int y)
     g_quit = 1;
     break;
 
+  case '>': // Spin faster in the negative direction
+  case '.':
+    g_image_delta -= 1;
+    break;
+
+  case '<': // Spin faster in the positive direction
+  case ',':
+    g_image_delta += 1;
+    break;
+
+  case ' ': // Stop spinning
+    g_image_delta = 0;
+    break;
+
+  case 'r': // The movie spins towards the right
+  case 'R':
+    g_spin_left = false;
+    break;
+
+  case 'l': // The movie spins towards the left
+  case 'L':
+    g_spin_left = true;
+    break;
+
   case 8:   // Backspace
   case 127: // Delete on Windows
      // Nothing to do for now.
     break;
+
+  default:
+    printf("Unrecognized key: %c (%d)\n", key, key);
   }
 }
 
@@ -502,9 +510,14 @@ void mouseCallbackForGLUT(int button, int state, int raw_x, int raw_y)
     // The new tracker becomes the active tracker.
     case GLUT_LEFT_BUTTON:
       if (state == GLUT_DOWN) {
-	// Nothing to do at press.
+        // Left button pans window.  Stop any automatic spinning that
+        // is going on.
+        g_whichDragAction = 1;
+        g_image_delta = 0;
+        g_mousePressImage = g_which_image;
       } else {
-	// Nothing to do at release.
+        // We're done dragging.
+        g_whichDragAction = 0;
       }
       break;
 
@@ -541,6 +554,22 @@ void motionCallbackForGLUT(int raw_x, int raw_y)
   switch (g_whichDragAction) {
 
   case 0: //< Do nothing on drag.
+    break;
+
+  case 1: {
+      // Change the viewed image by an amount such that panning over the
+      // whole window in X will spin all the way around (show all of the frames).
+      int x_motion_in_pixels = g_mousePressX - raw_x;
+      xScale = (g_texture_ids.size()*1.0)/glutGet(GLUT_WINDOW_WIDTH);
+      int delta_frames = x_motion_in_pixels * xScale;
+      g_which_image = g_mousePressImage + delta_frames;
+      while (g_which_image >= static_cast<int>(g_texture_ids.size())) {
+        g_which_image -= g_texture_ids.size();
+      }
+      while (g_which_image < 0) {
+        g_which_image += g_texture_ids.size();
+      }
+    }
     break;
 
   default:
@@ -759,49 +788,6 @@ int main(int argc, char *argv[])
   }
   g_exposure = exposure;
 
-  if (g_video) {  // Put these in a separate control panel?
-    // Start out paused at the beginning of the file.
-    g_play = new Tclvar_int_with_button("play_video","",0);
-    g_rewind = new Tclvar_int_with_button("rewind_video","",1);
-    g_step = new Tclvar_int_with_button("single_step_video","");
-    sprintf(command, "frame .frame");
-    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
-	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
-		    g_tk_control_interp->result);
-	    return(-1);
-    }
-    sprintf(command, "pack .frame");
-    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
-	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
-		    g_tk_control_interp->result);
-	    return(-1);
-    }
-    sprintf(command, "label .frame.frametitle -text FrameNum");
-    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
-	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
-		    g_tk_control_interp->result);
-	    return(-1);
-    }
-    sprintf(command, "pack .frame.frametitle -side left");
-    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
-	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
-		    g_tk_control_interp->result);
-	    return(-1);
-    }
-    sprintf(command, "label .frame.framevalue -textvariable frame_number");
-    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
-	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
-		    g_tk_control_interp->result);
-	    return(-1);
-    }
-    sprintf(command, "pack .frame.framevalue -side right");
-    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
-	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
-		    g_tk_control_interp->result);
-	    return(-1);
-    }
-  }
-
   // Verify that the camera is working.
   if (!g_camera->working()) {
     fprintf(stderr,"Could not establish connection to camera\n");
@@ -812,21 +798,13 @@ int main(int argc, char *argv[])
   g_image = g_camera;
 
   //------------------------------------------------------------------
-  // Initialize the controls for the clipping based on the size of
-  // the image we got.
-  g_minX = new Tclvar_float_with_scale("minX", ".clipping", 0, g_camera->get_num_columns()-1, 0);
-  g_maxX = new Tclvar_float_with_scale("maxX", ".clipping", 0, g_camera->get_num_columns()-1, g_camera->get_num_columns()-1);
-  g_minY = new Tclvar_float_with_scale("minY", ".clipping", 0, g_camera->get_num_rows()-1, 0);
-  g_maxY = new Tclvar_float_with_scale("maxY", ".clipping", 0, g_camera->get_num_rows()-1, g_camera->get_num_rows()-1);
-
-  //------------------------------------------------------------------
   // Initialize GLUT and create the window that will display the
   // video -- name the window after the device that has been
   // opened in VRPN.  Also set mouse callbacks.
   if (g_use_gui) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-    glutInitWindowPosition(175 + g_window_offset_x, 210 + g_window_offset_y);
+    glutInitWindowPosition(10 + g_window_offset_x, 180 + g_window_offset_y);
     glutInitWindowSize(g_camera->get_num_columns(), g_camera->get_num_rows());
   #ifdef DEBUG
     printf("initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());
@@ -838,24 +816,17 @@ int main(int argc, char *argv[])
   }
 
   //------------------------------------------------------------------
-  // Load in all of the frames of the video.  Put them into an array of
-  // texture IDs on the graphics card so that they are ready to be rendered
-  // onto Quads.  Keep track of how many frames there are so that the slider
-  // setting the frame number can be used to pick from among them.  If we
-  // run out of texture memory, then say so and quit.
-  // XXX Display the video in the OpenGL window while we're loading these.
-  // XXX Display a "cancel" dialog box saying that we're loading.
-  /*XXX
-  while (XXX) {
-
-    // Get a new texture ID for this frame.
-    GLuint  new_id;
-    glGenTextures(1, &new_id);
-    g_texture_ids.push_back(new_id);
-
-    XXX;
+  // Set the video to play, so that it will try and read in all of the
+  // frames from the video.
+  if (g_video) {
+    g_video->play();
+  } else {
+    fprintf(stderr,"Could not play video\n");
+    if (g_camera) { delete g_camera; g_camera = NULL; }
+    cleanup();
+    exit(-1);
   }
-*/
+
   //------------------------------------------------------------------
   // Create the buffer that Glut will use to send to the tracking window.  This is allocating an
   // RGBA buffer.  It needs to be 4-byte aligned, so we allocated it as a group of

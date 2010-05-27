@@ -25,13 +25,6 @@ public:
   virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,
     vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1);
 
-
-protected:
-  PGRCam* m_cam;
-  
-
-  struct timeval m_timestamp;     // timestamp of our most recent image
-
   // Write the texture, using a virtual method call appropriate to the particular
   // camera type.  NOTE: At least the first time this function is called,
   // we must write a complete texture, which may be larger than the actual bytes
@@ -39,12 +32,19 @@ protected:
   // image size to be larger, we can use the subimage call to only write the
   // pixels we have.
   virtual bool write_to_opengl_texture(GLuint tex_id);
+
 /*
   // Write from the texture to a quad.  Write only the actually-filled
   // portion of the texture (parameters passed in).  This version does not
   // flip the quad over.
-  virtual bool write_opengl_texture_to_quad(double xfrac, double yfrac);
+  virtual bool write_opengl_texture_to_quad();
 */
+
+protected:
+  PGRCam* m_cam;
+  
+
+  struct timeval m_timestamp;     // timestamp of our most recent image
 
 };
 

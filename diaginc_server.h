@@ -29,6 +29,14 @@ public:
   /// Send in-memory image over a vrpn connection
   virtual bool  send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrcon,double g_exposure,int svrchan, int num_chans = 1);
 
+  // Write the texture, using a virtual method call appropriate to the particular
+  // camera type.  NOTE: At least the first time this function is called,
+  // we must write a complete texture, which may be larger than the actual bytes
+  // allocated for the image.  After the first time, and if we don't change the
+  // image size to be larger, we can use the subimage call to only write the
+  // pixels we have.
+  virtual bool write_to_opengl_texture(GLuint tex_id);
+
 protected:
   unsigned short _binMin, _binMax;//< Range of values that binning can be set to
   unsigned short _bitDepth;	  //< Bit depth that is set
@@ -52,13 +60,6 @@ protected:
   virtual bool read_one_frame(unsigned short minX, unsigned short maxX, unsigned short minY, unsigned short maxY, unsigned exposure_time_millisecs);
 //  virtual bool read_continuous(int minX, int maxX, int minY, int maxY, unsigned	exposure_time_millisecs);
 
-  // Write the texture, using a virtual method call appropriate to the particular
-  // camera type.  NOTE: At least the first time this function is called,
-  // we must write a complete texture, which may be larger than the actual bytes
-  // allocated for the image.  After the first time, and if we don't change the
-  // image size to be larger, we can use the subimage call to only write the
-  // pixels we have.
-  virtual bool write_to_opengl_texture(GLuint tex_id);
 };
 #endif
 

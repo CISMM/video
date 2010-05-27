@@ -175,6 +175,15 @@ public:
   // Not const because we need to set _opengl_texture_size_x and _y.
   virtual bool write_to_opengl_quad(double scale = 1.0, double offset = 0.0);
 
+  // Write the texture, using a virtual method call appropriate to the particular
+  // camera type.
+  virtual bool write_to_opengl_texture(GLuint tex_id) {return false;};
+
+  // Write from the texture to a quad.  Write only the actually-filled
+  // portion of the texture (parameters passed in).  This version does not
+  // flip the quad over.  A derived class can flip as needed.
+  virtual bool write_opengl_texture_to_quad();
+
 protected:
   // These are used to keep track of the actual OpenGL texture size,
   // which must be an even power of two in each dimension.
@@ -196,15 +205,6 @@ protected:
           GLenum format, GLenum type, const GLvoid *buffer_base,
           const GLvoid *subset_base,
           unsigned minX, unsigned minY, unsigned maxX, unsigned maxY);
-
-  // Write the texture, using a virtual method call appropriate to the particular
-  // camera type.
-  virtual bool write_to_opengl_texture(GLuint tex_id) {return false;};
-
-  // Write from the texture to a quad.  Write only the actually-filled
-  // portion of the texture (parameters passed in).  This version does not
-  // flip the quad over.  A derived class can flip as needed.
-  virtual bool write_opengl_texture_to_quad(double xfrac, double yfrac);
 };
 
 //----------------------------------------------------------------------------
@@ -728,6 +728,9 @@ public:
     minx = _minX; miny = _minY; maxx = _maxX; maxy = _maxY;
   }
 
+  // Require all cameras to implement this function.
+  virtual bool write_to_opengl_texture(GLuint tex_id) = 0;
+
 protected:
   bool	    _status;			//< True is working, false is not
   unsigned  _num_rows, _num_columns;    //< Size of the memory buffer
@@ -739,9 +742,6 @@ protected:
     _binning = binning;
     if (_binning < 1) { _binning = 1; }
   };
-
-  // Require all cameras to implement this function.
-  virtual bool write_to_opengl_texture(GLuint tex_id) = 0;
 };
 
 // This class will compute an object's spread function (for a point, this

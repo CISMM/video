@@ -818,8 +818,11 @@ bool spe_file_server::write_to_opengl_texture(GLuint tex_id)
     BASE_BUFFER, SUBSET_BUFFER, _minX, _minY, _maxX, _maxY);
 }
 
-bool spe_file_server::write_opengl_texture_to_quad(double xfrac, double yfrac)
+bool spe_file_server::write_opengl_texture_to_quad()
 {
+  double xfrac = static_cast<double>(get_num_columns()) / _opengl_texture_size_x;
+  double yfrac = static_cast<double>(get_num_rows()) / _opengl_texture_size_y;
+
   // Flip over while writing.
   // Set the texture and vertex coordinates and write the quad to OpenGL.
   glBegin(GL_QUADS);
