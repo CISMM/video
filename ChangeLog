@@ -1,3 +1,8 @@
+2010-05-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* stereo_spin.tcl : Removing variables and functions that are no
+		longer used.
+
 2010-05-27  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* stereo_spin.tcl : Added back in file-load dialog needed when the

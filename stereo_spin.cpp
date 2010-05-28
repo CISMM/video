@@ -98,10 +98,6 @@ int		    g_mousePressX, g_mousePressY; //< Where the mouse was when the button w
 int                 g_mousePressImage;            //< What image number was the button pressed on?
 int		    g_whichDragAction;		  //< What action to take for mouse drag
 
-bool                g_quit_at_end_of_video = false; //< When we reach the end of the video, should we quit?
-
-bool g_gotNewFrame = false;
-
 //--------------------------------------------------------------------------
 // Tcl controls and displays
 #ifdef	_WIN32
@@ -110,40 +106,6 @@ void  device_filename_changed(char *newvalue, void *);
 void  device_filename_changed(const char *newvalue, void *);
 #endif
 Tclvar_int_with_button	g_quit("quit",NULL);
-bool g_video_valid = false; // Do we have a valid video frame in memory?
-
-//--------------------------------------------------------------------------
-// Return the length of the named file.  Used to help figure out what
-// kind of raw file is being opened.  Returns -1 on failure.
-// NOTE: Some of our files are longer than 2GB, which means that
-// a 32-bit long will wrap and so be unable to determine the file
-// length.
-#ifndef	_WIN32
-  #define __int64 long
-  #define _fseeki64 fseek
-  #define _ftelli64 ftell
-#endif
-static __int64 determine_file_length(const char *filename)
-{
-#ifdef	_WIN32
-  FILE *f = fopen(filename, "rb");
-#else
-  FILE *f = fopen(filename, "r");
-#endif
-  if (f == NULL) {
-    perror("determine_file_length(): Could not open file for reading");
-    return -1;
-  }
-  __int64 val;
-  if ( (val = _fseeki64(f, 0, SEEK_END)) != 0) {
-    fprintf(stderr, "determine_file_length(): fseek() returned %ld", val);
-    fclose(f);
-    return -1;
-  }
-  __int64 length = _ftelli64(f);
-  fclose(f);
-  return length;
-}
 
 //--------------------------------------------------------------------------
 // Helper routine to get the Y coordinate right when going between camera
@@ -155,19 +117,6 @@ double	flip_y(double y)
 
 //--------------------------------------------------------------------------
 // Glut callback routines.
-
-void drawStringAtXY(double x, double y, char *string)
-{
-  void *font = GLUT_BITMAP_TIMES_ROMAN_24;
-  int len, i;
-
-  glRasterPos2f(x, y);
-  len = (int) strlen(string);
-  for (i = 0; i < len; i++) {
-    glutBitmapCharacter(font, string[i]);
-  }
-}
-
 
 // This is called when someone kills the task by closing Glut or some
 // other means we don't have control over.  If we try to delete the VRPN
@@ -207,12 +156,6 @@ static void  cleanup(void)
 
   // Do the dirty-exit stuff, then clean up VRPN stuff.
   dirtyexit();
-}
-
-static	double	timediff(struct timeval t1, struct timeval t2)
-{
-	return (t1.tv_usec - t2.tv_usec) / 1e6 +
-	       (t1.tv_sec - t2.tv_sec);
 }
 
 GLenum check_for_opengl_errors(const char *msg)
@@ -636,7 +579,7 @@ void  device_filename_changed(const char *newvalue, void *)
 
 void Usage(const char *progname)
 {
-    fprintf(stderr, "Usage: %s [-nogui] [filename]\n", progname);
+    fprintf(stderr, "Usage: %s [filename]\n", progname);
     fprintf(stderr, "       filename: The source file for tracking can be specified here (default is\n");
     fprintf(stderr, "                 a dialog box)\n");
     exit(-1);
