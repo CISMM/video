@@ -58,7 +58,7 @@ proc show_nostereo_dialog { } {
 
 	button .nostereo.bottom.quit -text "Quit" -command { set quit 1 }
 	pack .nostereo.bottom.quit -fill x
-	button .nostereo.bottom.continue -text "Continue" -command { wm withdraw .nostereo }
+	button .nostereo.bottom.continue -text "Continue (Cross-eyed)" -command { wm withdraw .nostereo }
 	pack .nostereo.bottom.continue -fill x
 }
 

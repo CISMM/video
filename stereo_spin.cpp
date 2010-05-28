@@ -58,7 +58,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.00";
+const char *Version_string = "01.01";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -199,9 +199,12 @@ void myDisplayFunc(void)
   glClear(GL_COLOR_BUFFER_BIT);
 
   // Prepare to draw in the back left buffer (if stereo is enabled); otherwise,
-  // just leave things set to the back buffer.
+  // set the viewport to display in the right half of the window (where the left
+  // eye will be displayed in cross-eyed stereo).
   if (g_stereo) {
     glDrawBuffer(GL_BACK_LEFT);
+  } else {
+    glViewport(g_camera->get_num_columns(), 0, g_camera->get_num_columns(), g_camera->get_num_rows());
   }
 
   //--------------------------------------------------------------------
@@ -237,9 +240,14 @@ void myDisplayFunc(void)
     g_camera->write_opengl_texture_to_quad();
 
     // If we're doing stereo, then set the display to the right eye and
-    // draw its image.
+    // draw its image.  Otherwise, set the viewport back to the left half
+    // of the window and draw the right eye there for cross-eyed stereo.
     if (g_stereo) {
       glDrawBuffer(GL_BACK_RIGHT);
+      glBindTexture(GL_TEXTURE_2D, g_texture_ids[right_eye]);
+      g_camera->write_opengl_texture_to_quad();
+    } else {
+      glViewport(0, 0, g_camera->get_num_columns(), g_camera->get_num_rows());
       glBindTexture(GL_TEXTURE_2D, g_texture_ids[right_eye]);
       g_camera->write_opengl_texture_to_quad();
     }
@@ -370,6 +378,13 @@ void myIdleFunc(void)
       cleanup();
       exit(-1);
     } 
+
+    //------------------------------------------------------------------
+    // If stereo is not available, double the Glut window's size so that
+    // we can do cross-eyed stereo.
+    if (!g_stereo) {
+      glutReshapeWindow(g_camera->get_num_columns() * 2, g_camera->get_num_rows());
+    }
 
     // We're ready to display an image.
     g_ready_to_display = true;
@@ -781,7 +796,7 @@ int main(int argc, char *argv[])
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_STEREO);
   } else {
     g_stereo = false;
-    fprintf(stderr,"Warning: Stereo not available, displaying in mono!\n");
+    fprintf(stderr,"Warning: Stereo not available, displaying cross-eyed!\n");
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE );
   }
   glutInitWindowPosition(10 + g_window_offset_x, 180 + g_window_offset_y);

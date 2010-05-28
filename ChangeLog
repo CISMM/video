@@ -1,6 +1,12 @@
 2010-05-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
-	* stereo_spin.tcl : Removing variables and functions that are no
+	* stereo_spin.cpp : Version 01.01, includes cross-eyed stereo when
+		there is not hardware stereo available.
+	* stereo_spin.tcl : Same.
+
+2010-05-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* stereo_spin.cpp : Removing variables and functions that are no
 		longer used.
 
 2010-05-27  Russell M. Taylor II  <taylorr@cs.unc.edu>
