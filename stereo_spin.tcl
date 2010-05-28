@@ -7,12 +7,15 @@
 button .quit -text "Quit" -command { set quit 1 }
 pack .quit -side top -fill x
 
+# Quit the program if the main window is destroyed.
+bind . <Destroy> {global quit ; set quit 1} 
+
 ###########################################################
 # Write the instructions for use of the program.
 
 label .instruct1 -text "Use the mouse to move select a viewpoint"
 label .instruct2 -text "Keys: (q)uit, (<) spin left, (>) spin right, spacebar stop,"
-label .instruct3 -text "(R)ight-spinning movie, (L)eft-spinning movie (default)"
+label .instruct3 -text "(-) Decrease stereo, (+) Increase stereo, (R)ight-spinning movie, (L)eft-spinning movie (default)"
 pack .instruct1 -side top
 pack .instruct2 -side top
 pack .instruct3 -side top
@@ -37,5 +40,25 @@ proc show_quit_loading_dialog { } {
 
 proc remove_quit_loading_dialog { } {
 	wm withdraw .quitload
+}
+
+###########################################################
+# Create a stereo-not-available dialog box.
+
+proc show_nostereo_dialog { } {
+	global quit
+
+	toplevel .nostereo
+	wm geometry .nostereo +500+10
+	frame .nostereo.bottom
+	pack .nostereo.bottom -side bottom -fill x
+
+	label .nostereo.xlabel -text "Stereo not available on this computer (check display settings)"
+	pack .nostereo.xlabel
+
+	button .nostereo.bottom.quit -text "Quit" -command { set quit 1 }
+	pack .nostereo.bottom.quit -fill x
+	button .nostereo.bottom.continue -text "Continue" -command { wm withdraw .nostereo }
+	pack .nostereo.bottom.continue -fill x
 }
 

@@ -1,15 +1,6 @@
 //---------------------------------------------------------------------------
-// This section contains configuration settings for the Stereo Spin appliaction.
-// It is used to make it possible to compile and link the code when one or
-// more of the camera- or file- driver libraries are unavailable. First comes
-// a list of definitions.  These should all be defined when building the
-// program for distribution.  Following that comes a list of paths and other
-// things that depend on these definitions.  They may need to be changed
-// as well, depending on where the libraries were installed.
-
-// XXXX Add stereo support
-// XXXX Add responses for + and - to change disparity
-// XXXX Update instructions with new commands.
+// stereo_spin.cpp : Source code to read in an AVI or stack of TIFF files and
+// display it in stereo, spinning or using the mouse to control viewpoint.
 
 #ifdef _WIN32
 #define	VST_USE_DIRECTX
@@ -96,6 +87,8 @@ int                 g_which_image = 0;            //< Which image to show now?
 int                 g_image_delta = 1;            //< How much to add to get to the next image to show?
 bool                g_spin_left = true;           //< Does the movie spin towards the left?
 float               g_exposure = 10;              //< Not used, but must pass to camera.
+bool                g_stereo = false;             //< Can we display in stereo?
+int                 g_disparity = 1;             //< How many frames between eyes?
 
 bool		    g_ready_to_display = false;	  //< Don't unless we get an image
 bool		    g_already_posted = false;	  //< Posted redisplay since the last display?
@@ -104,8 +97,6 @@ int                 g_mousePressImage;            //< What image number was the 
 int		    g_whichDragAction;		  //< What action to take for mouse drag
 
 bool                g_quit_at_end_of_video = false; //< When we reach the end of the video, should we quit?
-
-bool                g_use_gui = true;             //< Use 3D and 2D GUI?
 
 bool g_gotNewFrame = false;
 
@@ -257,10 +248,16 @@ void myDisplayFunc(void)
 {
   if (!g_ready_to_display) { return; }
 
-  // Clear the window and prepare to draw in the back buffer
+  // Clear the window (both buffers)
   glDrawBuffer(GL_BACK);
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT);
+
+  // Prepare to draw in the back left buffer (if stereo is enabled); otherwise,
+  // just leave things set to the back buffer.
+  if (g_stereo) {
+    glDrawBuffer(GL_BACK_LEFT);
+  }
 
   //--------------------------------------------------------------------
   // Display whichever image we're supposed to, based on the settings
@@ -279,26 +276,28 @@ void myDisplayFunc(void)
     // which is the default, then play the movie normally.  If to the right, then
     // we leave all of the controls the same but at the last minute switch the
     // direction we move through the images, for both the left and right eyes.
-    int left_eye = g_which_image;
+    size_t left_eye = g_which_image;
+    size_t right_eye = g_which_image + g_disparity;
+    while (right_eye >= g_texture_ids.size()) { right_eye -= g_texture_ids.size(); }
     if (!g_spin_left) {
       left_eye = (g_texture_ids.size()-1) - left_eye;
+      right_eye = (g_texture_ids.size()-1) - right_eye;
     }
 
     // Enable 2D texture-mapping so that we can do our thing.
-    // Bind the appropriate texture
     glEnable(GL_TEXTURE_2D);
+
+    // Bind the appropriate texture and write the texture.
     glBindTexture(GL_TEXTURE_2D, g_texture_ids[left_eye]);
-
-    // Set the clamping behavior and such, which should not have any
-    // effect because we should always be at the right scale
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-
-    // Write the texture to the quad in the appropriate orientation for
-    // this camera.
     g_camera->write_opengl_texture_to_quad();
+
+    // If we're doing stereo, then set the display to the right eye and
+    // draw its image.
+    if (g_stereo) {
+      glDrawBuffer(GL_BACK_RIGHT);
+      glBindTexture(GL_TEXTURE_2D, g_texture_ids[right_eye]);
+      g_camera->write_opengl_texture_to_quad();
+    }
 
     // Put the state back the way it was
     glPopAttrib();
@@ -357,9 +356,18 @@ void myIdleFunc(void)
   if (!loaded_images) {
 
     //------------------------------------------------------------------
+    // If stereo is not available, throw a warning dialog to let them exit
+    // if they want.
+    char  command[256];
+    if (!g_stereo) if (Tcl_Eval(g_tk_control_interp, "show_nostereo_dialog") != TCL_OK) {
+      fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command, g_tk_control_interp->result);
+      cleanup();
+      exit(-1);
+    } 
+
+    //------------------------------------------------------------------
     // Present a dialog box that lets the user quit if they want to, rather
     // than waiting forever for the video to load.
-    char  command[256];
     if (Tcl_Eval(g_tk_control_interp, "show_quit_loading_dialog") != TCL_OK) {
       fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command, g_tk_control_interp->result);
       cleanup();
@@ -374,6 +382,14 @@ void myIdleFunc(void)
       glGenTextures(1, &new_id);
       g_texture_ids.push_back(new_id);
       glBindTexture(GL_TEXTURE_2D, new_id);
+
+      // Set the clamping behavior and such.  This has to be done either
+      // each time before the texure is uploaded or each time it is displayed
+      // (after it is bound).
+      glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+      glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+      glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+      glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
 
       // Store the video from this frame into a the OpengL texture whose ID has
       // just been created.
@@ -422,7 +438,7 @@ void myIdleFunc(void)
 
   //------------------------------------------------------------
   // Post a redisplay so that Glut will draw the new image
-  if (g_use_gui && !g_already_posted) {
+  if (!g_already_posted) {
     glutSetWindow(g_tracking_window);
     glutPostRedisplay();
     g_already_posted = true;
@@ -473,6 +489,17 @@ void keyboardCallbackForGLUT(unsigned char key, int x, int y)
   case 'l': // The movie spins towards the left
   case 'L':
     g_spin_left = true;
+    break;
+
+  case '+': // larger stereo separation
+  case '=':
+    g_disparity += 1;
+    break;
+
+  case '-': // smaller stereo separation
+  case '_':
+    g_disparity -= 1;
+    if (g_disparity <= 0) { g_disparity = 1; }
     break;
 
   case 8:   // Backspace
@@ -715,8 +742,8 @@ int main(int argc, char *argv[])
   // These defaults are set for a Pulnix camera
 
   for (i = 1; i < argc; i++) {
-    if (!strncmp(argv[i], "-nogui", strlen("-nogui"))) {
-      g_use_gui = false;
+    if (!strncmp(argv[i], "-XXX", strlen("-XXX"))) {
+      //XXX;
     } else if (argv[i][0] == '-') {
       Usage(argv[0]);
     } else {
@@ -801,19 +828,26 @@ int main(int argc, char *argv[])
   // Initialize GLUT and create the window that will display the
   // video -- name the window after the device that has been
   // opened in VRPN.  Also set mouse callbacks.
-  if (g_use_gui) {
-    glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-    glutInitWindowPosition(10 + g_window_offset_x, 180 + g_window_offset_y);
-    glutInitWindowSize(g_camera->get_num_columns(), g_camera->get_num_rows());
-  #ifdef DEBUG
-    printf("initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());
-  #endif
-    g_tracking_window = glutCreateWindow(g_device_name);
-    glutMotionFunc(motionCallbackForGLUT);
-    glutMouseFunc(mouseCallbackForGLUT);
-    glutKeyboardFunc(keyboardCallbackForGLUT);
+  glutInit(&argc, argv);
+  unsigned char uc;	
+  glGetBooleanv(GL_STEREO, &uc);
+  if(uc) {
+    g_stereo = true;
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_STEREO);
+  } else {
+    g_stereo = false;
+    fprintf(stderr,"Warning: Stereo not available, displaying in mono!\n");
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE );
   }
+  glutInitWindowPosition(10 + g_window_offset_x, 180 + g_window_offset_y);
+  glutInitWindowSize(g_camera->get_num_columns(), g_camera->get_num_rows());
+#ifdef DEBUG
+  printf("initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());
+#endif
+  g_tracking_window = glutCreateWindow(g_device_name);
+  glutMotionFunc(motionCallbackForGLUT);
+  glutMouseFunc(mouseCallbackForGLUT);
+  glutKeyboardFunc(keyboardCallbackForGLUT);
 
   //------------------------------------------------------------------
   // Set the video to play, so that it will try and read in all of the
@@ -845,18 +879,12 @@ int main(int argc, char *argv[])
   //------------------------------------------------------------------
   // Set the display functions for each window and idle function for GLUT (they
   // will do all the work) and then give control over to GLUT.
-  if (g_use_gui) {
-    glutSetWindow(g_tracking_window);
-    glutDisplayFunc(myDisplayFunc);
-    glutShowWindow();
-    glutIdleFunc(myIdleFunc);
-  }
+  glutSetWindow(g_tracking_window);
+  glutDisplayFunc(myDisplayFunc);
+  glutShowWindow();
+  glutIdleFunc(myIdleFunc);
 
-  if (g_use_gui) {
-    glutMainLoop();
-  } else {
-    while (true) { myIdleFunc(); }
-  }
+  glutMainLoop();
   // glutMainLoop() NEVER returns.  Wouldn't it be nice if it did when Glut was done?
   // Nope: Glut calls exit(0);
 

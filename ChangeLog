@@ -1,5 +1,14 @@
 2010-05-27  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* stereo_spin.cpp : Added check for stereo at system start and code to
+		handle stereo if it is available.  Also added dialog box to give
+		warning if it is not avaialable.  Added disparity-adjustment
+		keyboard commands.  None of this is tested on a stereo display,
+		but in theory everything should work.
+	* stereo_spin.tcl : Same.
+
+2010-05-27  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* SEM_camera_server.h : Refactored the way OpenGL texture writes are
 		done so that the derived class call a base-class generic method
 		with paramaters suitable to their situation.  Then implemented a
