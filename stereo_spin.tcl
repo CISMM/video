@@ -62,3 +62,27 @@ proc show_nostereo_dialog { } {
 	pack .nostereo.bottom.continue -fill x
 }
 
+###########################################################
+# Global variable to remember where they are saving files.
+set fileinfo(open_dir) "C:\\"
+
+###########################################################
+# Ask user for the name of the video file they want to open,
+# or else set the quit value.  The variable to set for the
+# name is "device_filename".
+
+set device_filename ""
+proc ask_user_for_filename { } {
+	global device_filename quit fileinfo
+		
+	set types { {"Image Stack Files" "*.avi *.tif *.bmp *.raw *.spe"} }
+	set device_filename [tk_getOpenFile -filetypes $types \
+		-defaultextension ".avi" \
+		-initialdir $fileinfo(open_dir) \
+		-title "Specify a video file to track in"]
+	# If we don't have a name, quit.
+	if {$device_filename == ""} {
+		set quit 1
+	} 	
+}
+

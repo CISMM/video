@@ -1,0 +1,132 @@
+<title>Stereo Spin V01.00</title>
+
+<h1>Stereo Spin version 01.00</h1>
+
+<p>The <i><b>Stereo Spin </b></i> program is used to display stereo images from 
+  a spinning video from a <a href="http://www.microsoft.com/directx">Microsoft 
+  DirectShow</a>-compatible video file or from a set of TIFF, PPM, PGM, BMP files. 
+  It can also read raw, uncompressed 8-bit video files. The program currently 
+  runs only on Windows, but it uses the portable openGL library for rendering, 
+  the portable Tcl/Tk for user interface control, and the portable <a href="http://www.imagemagic.org">ImageMagick</a> 
+  package for reading images.</p>
+
+<h2>Downloading and installing the program</h2>
+<p>An installer for the program and manual can be downloaded from the <a href="http://www.cs.unc.edu/Research/nano/cismm/download/index.html">CISMM 
+  software download page</a>. It requires <a href="http://www.microsoft.com/directx">Microsoft 
+  <i>Direct X</i></a> version 9.0a or higher to be able to read movie files on 
+  Windows.</p>
+<p>The program installs itself by default into <i>C:\Program Files\CISMM</i>, 
+  and puts its running shortcuts into <i><b>Start Menu/All Programs/CISMM/Stereo 
+  Spin</b></i>.</p>
+<h2>Cost of Use</h2>
+<p>The development, dissemination, and support of this program is paid for by 
+  the National Institutes of Health <a href="http://www.nibib.nih.gov/">National 
+  Institute for Biomedical Imaging and Bioengineering</a> through its National 
+  Research Resource in <a href="http://www.cs.unc.edu/nano/cismm">Computer-Integrated 
+  Systems for Microscopy and Manipulation</a> at the University of North Carolina 
+  at Chapel Hill. This program is distributed without charge, subject to the following 
+  terms: </p>
+<ul>
+  <li>Acknowledgement in any publication, written, videotaped, or otherwise produced, 
+    that results from using this program. The acknowledgement should credit: CISMM 
+    at UNC-CH, supported by the NIH NIBIB (NIH 5-P41-RR02170).</li>
+  <li>Furnish a reference to (and preferably a copy of) any publication, including 
+    videotape, that you produce and disseminate outside your group using our program. 
+    These should be addressed to: taylorr@cs.unc.edu; Russell M. Taylor II, Department 
+    of Computer Science, Sitterson Hall,University of North Carolina at Chapel 
+    Hill, Chapel Hill, NC 27599-3175.</li>
+</ul>
+<h2>Running the program</h2>
+
+<p>The program is run by dragging a video file or image file onto the desktop 
+  icon that was created when the program was installed. To select a stack of image 
+  files that are numbered consecutively, drag any one of the files onto the icon. 
+  It can also be run by selecting it from <i><b>Start Menu/All Programs/CISMM/Stereo 
+  Spin</b></i>. If you run the program directly by double-clicking on the icon, 
+  it will ask for a video or image file (AVI, TIF, or BMP, PPM, raw) that it should 
+  open.</p>
+<h3>Required Hardware and drivers</h3>
+<p> <i>Stereo Spin</i> uses OpenGL stereo, and requires a video card and driver 
+  set that supports this. For <i>nVidia</i> graphics, this requires a Quadro-type 
+  card with an external stereo-sync connector to work with the glasses (the DirectX/GeForce 
+  game-type stereo does not work with this program). For other manufacturers, 
+  check their specifications and drivers to ensure that they support OpenGL stereo.</p>
+<p></p>
+<h3>Required Video Formats</h3>
+<p>This program assumes that the video file being read in is a 360-degree spinning-viewpoint 
+  movie, where there is an even separation in angles between frames in the movie. 
+  The last frame in the movie <i>should not</i> be the same as the first frame, 
+  but rather should have the same angle separation from the first frame as each 
+  frame in the movie has from its neighbor. Movies that play as a continuous spinning 
+  loop without jerkiness when shown in a repeating mode in a media browser should 
+  work fine.</p>
+<p>The rotational-movie mode from the <a href="http://www.imagesurfer.org">ImageSurfer</a> 
+  program can generate such movies, as can other programs.</p>
+<p>The movie can spin either to the left or to the right. The program starts expecting 
+  movies where the object spins to the left, but the <b><i>L</i></b> and <b><i>R</i></b> 
+  keys can be used to switch direction as described below.</p>
+<h2><img src="main_tcl.jpg" width="452" height="138" align="right">Using the program</h2>
+
+<p>When the program is run and a file is selected, three windows will appear. 
+  The control panel named <b><i>tk</i></b> that appears on the top when the program 
+  is run (shown here to the right) has instructions for using the keyboard and 
+  mouse to control the view, and a button to quit the program. The image window 
+  that appears below it shows the frames as they are being loaded from the video 
+  file and then a (by default) spinning stereo view of the file.</p>
+<p><img src="quatload.jpg" width="183" height="81" align="right">While the frames 
+  from the video are being loaded, the dialog box to the right will appear (and 
+  each frame will be displayed as it is loaded). If you want to interrupt the 
+  loading and quit the program, simply press the <b><i>Quit</i></b> button on 
+  this dialog box. Once the entire video file has been loaded, this box will disappear.</p>
+<p>If the program cannot display stereo on this computer, a warning dialog box 
+  will appear to the right of the main <b><i>tk</i></b> window to let you know 
+  that it is not available.</p>
+<h3></h3>
+<h3>Mouse Controls</h3>
+<p>The left mouse button can be used to control the viewpoint. Press the button 
+  and then move either left or right to spin the stereo view around the object. 
+  If the view seems to move in the wrong direction and the stereo seems wrong, 
+  use the <b><i>R</i></b> key to switch the direction of motion away from the 
+  default.</p>
+<p>The stereo window by default shows up at the same size as the original movie. 
+  You can resize the window however you like, and the movie's size will be adjusted.</p>
+<h2></h2>
+
+<h3>Keyboard Commands</h3>
+
+<p>The key commands for the program are only available when the 3D window has 
+  focus; click on its title bar to enable them if focus is lost. The commands 
+  are not case-sensitive, either shifted or unshifted characters will work. The 
+  program recogizes the following commands:</p>
+<ul>
+  <li><b>R</b>: Right-spinning movie. The default for the program is a left-spinning 
+    movie. If stereo looks backwards and the mouse and keyboard commands are not 
+    working in the right direction, use this to fix it.</li>
+  <li><b>L</b>: Left-spinning movie, the default.</li>
+  <li>&lt;: Spin the movie more towards the left. If it is spinning to the right, 
+    it slows it down. If it is stopped, it starts it spinning to the left. if 
+    it is spinning to the left, it spins faster.</li>
+  <li>&gt;: Spin the movie more towards the right. If it is spinning to the left, 
+    it slows it down. If it is stopped, it starts it spinning to the right. if 
+    it is spinning to the right, it spins faster.</li>
+  <li><b>space</b>: The spacebar stops motion.</li>
+  <li><b>+</b>: Increase stereo disparity. This makes the separation between left- 
+    and right-eye views larger, making the image pop out of the screen more. This 
+    will also make it more difficult to fuse the images into a 3D percept. The 
+    default is a single frame (the minimum).</li>
+  <li><b>-</b>: Decrease stereo disparity. This makes the separation between left- 
+    and right-eye views smaller, making the image pop out of the screen less. 
+    This will also make it easier to fuse the images into a 3D percept. The default 
+    is a single frame (the minimum).</li>
+  <li><b>Q</b>: Quits the program.</li>
+</ul>
+<h3>Version Information</h3>
+
+<h3>Version 01.00:</h3>
+
+<ul>
+  <li> Original release version with basic funcionality. Ability to select left/right 
+    spinning images, move through the video with the mouse, adjust the disparity, 
+    and cause the movie to spin in either direction using keyboard shortcuts.</li>
+  </ul>
+
