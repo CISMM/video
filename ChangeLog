@@ -1,3 +1,10 @@
+2010-05-31  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* stereo_spin.cpp : Version 01.02, includes the ability to play
+		non-looping videos and correctly handles resizing of the
+		window in cross-eyed stereo mode.
+	* stereo_spin.tcl : Same.
+
 2010-05-28  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* stereo_spin.cpp : Version 01.01, includes cross-eyed stereo when

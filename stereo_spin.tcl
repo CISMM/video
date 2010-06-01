@@ -2,23 +2,43 @@
 # Sets up the control panel for the stereo_spin program.
 
 ###########################################################
-# Put in a big "Quit" button at the top of the main window.
-
-button .quit -text "Quit" -command { set quit 1 }
-pack .quit -side top -fill x
-
 # Quit the program if the main window is destroyed.
+
 bind . <Destroy> {global quit ; set quit 1} 
 
 ###########################################################
-# Write the instructions for use of the program.
+# Put a frame on the left for controls.  Put the program name
+# in there.
 
-label .instruct1 -text "Use the mouse to move select a viewpoint"
-label .instruct2 -text "Keys: (q)uit, (<) spin left, (>) spin right, spacebar stop,"
-label .instruct3 -text "(-) Decrease stereo, (+) Increase stereo, (R)ight-spinning movie, (L)eft-spinning movie (default)"
-pack .instruct1 -side top
-pack .instruct2 -side top
-pack .instruct3 -side top
+frame .cont
+pack .cont -side left
+set program_name ""
+label .cont.versionlabel -textvariable program_name
+pack .cont.versionlabel
+
+###########################################################
+# Put in a big "Quit" button at the top of the main window.
+
+button .cont.quit -text "Quit" -command { set quit 1 }
+pack .cont.quit -side top -fill x
+
+###########################################################
+# Put a checkbutton (default on) for looping the video
+checkbutton .cont.loop -text loop -variable loop
+pack .cont.loop
+
+###########################################################
+# Write the instructions for use of the program into a frame
+# to the right of the controls.
+
+frame .inst
+pack .inst -side left
+label .inst.instruct1 -text "Use the mouse to move select a viewpoint"
+label .inst.instruct2 -text "Keys: (q)uit, (<) spin left, (>) spin right, spacebar stop,"
+label .inst.instruct3 -text "(-) Decrease stereo, (+) Increase stereo, (R)ight-spinning movie, (L)eft-spinning movie (default)"
+pack .inst.instruct1 -side top
+pack .inst.instruct2 -side top
+pack .inst.instruct3 -side top
 
 ###########################################################
 # Create and destroy a quit dialog box.
@@ -49,7 +69,7 @@ proc show_nostereo_dialog { } {
 	global quit
 
 	toplevel .nostereo
-	wm geometry .nostereo +500+10
+	wm geometry .nostereo +600+10
 	frame .nostereo.bottom
 	pack .nostereo.bottom -side bottom -fill x
 

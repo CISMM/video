@@ -1,6 +1,6 @@
-<title>Stereo Spin V01.01</title>
+<title>Stereo Spin V01.02</title>
 
-<h1>Stereo Spin version 01.01</h1>
+<h1>Stereo Spin version 01.02</h1>
 
 <p>The <i><b>Stereo Spin </b></i> program is used to display stereo images from 
   a spinning video from a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -68,7 +68,15 @@
 <p>The movie can spin either to the left or to the right. The program starts expecting 
   movies where the object spins to the left, but the <b><i>L</i></b> and <b><i>R</i></b> 
   keys can be used to switch direction as described below.</p>
-<h2><img src="main_tcl.jpg" width="452" height="138" align="right">Using the program</h2>
+<p><b>Non-looped video:</b> It is also possible to use <i>Stereo Spin</i> to show 
+  videos that do not loop; for example, images taken by a camera that has been 
+  translated along a rail to produce views that can be fused into stereo but which 
+  do not form a cycle -- the last image cannot be fused with the first. In this 
+  case, uncheck the <b><i>loop</i></b> checkbox to prevent the video from running 
+  past the end. Optionally, this can be done using the <i>-noloop </i>command-line 
+  argument when the program is started.</p>
+<p></p>
+<h2><img src="main_tcl.jpg" width="558" height="108" align="right">Using the program</h2>
 
 <p>When the program is run and a file is selected, three windows will appear. 
   The control panel named <b><i>tk</i></b> that appears on the top when the program 
@@ -140,6 +148,12 @@
 </ul>
 <h2>Version Information</h2>
 
+<h3>Version 01.02:</h3>
+<ul>
+  <li>Enables display of non-looped videos.</li>
+  <li>Properly resizes in cross-eyed stereo mode.</li>
+</ul>
+<h3></h3>
 <h3>Version 01.01:</h3>
 <ul>
   <li>When hardware stereo is not available, displays cross-eyed stereo..</li>

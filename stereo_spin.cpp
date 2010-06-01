@@ -2,8 +2,6 @@
 // stereo_spin.cpp : Source code to read in an AVI or stack of TIFF files and
 // display it in stereo, spinning or using the mouse to control viewpoint.
 
-// XXX Support cross-eyed stereo when hardware is not available?
-
 #ifdef _WIN32
 #define	VST_USE_DIRECTX
 #endif
@@ -58,7 +56,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.01";
+const char *Version_string = "01.02";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -81,6 +79,8 @@ Tclvar_int_with_button	g_window_offset_y("window_offset_y",NULL,0);  //< Offset 
 Tclvar_int_with_button	g_window_offset_x("window_offset_x",NULL,25);  //< Offset windows more in some arch
 Tclvar_int_with_button	g_window_offset_y("window_offset_y",NULL,-10);  //< Offset windows more in some arch
 #endif
+Tclvar_selector		g_program_name("program_name", NULL, NULL, "");
+Tclvar_int_with_button	g_loop("loop",NULL,1);    //< Does the video work in a loop?
 
 int		    g_tracking_window;		  //< Glut window displaying tracking
 unsigned char	    *g_glut_image = NULL;	  //< Pointer to the storage for the image
@@ -189,6 +189,31 @@ GLenum check_for_opengl_errors(const char *msg)
   return errcode;
 }
 
+// Check to make sure that we stay within the bounds of the images we can
+// show.  If we're looping, then we can go past the left and right
+// boundaries and keep showing.  Otherwise, we need to stop when the
+// appropriate eye hits its boundary.
+static void check_image_bounds(void)
+{
+  if (g_loop) {
+    while (g_which_image >= static_cast<int>(g_texture_ids.size())) {
+      g_which_image -= g_texture_ids.size();
+    }
+    while (g_which_image < 0) {
+      g_which_image += g_texture_ids.size();
+    }
+  } else {
+    if (g_which_image + g_disparity >= static_cast<int>(g_texture_ids.size())) {
+      g_which_image = g_texture_ids.size() - g_disparity - 1;
+      g_image_delta = 0;
+    }
+    if (g_which_image < 0) {
+      g_which_image = 0;
+      g_image_delta = 0;
+    }
+  }
+}
+
 void myDisplayFunc(void)
 {
   if (!g_ready_to_display) { return; }
@@ -204,7 +229,7 @@ void myDisplayFunc(void)
   if (g_stereo) {
     glDrawBuffer(GL_BACK_LEFT);
   } else {
-    glViewport(g_camera->get_num_columns(), 0, g_camera->get_num_columns(), g_camera->get_num_rows());
+    glViewport(glutGet(GLUT_WINDOW_WIDTH)/2, 0, glutGet(GLUT_WINDOW_WIDTH)/2, glutGet(GLUT_WINDOW_HEIGHT));
   }
 
   //--------------------------------------------------------------------
@@ -247,7 +272,7 @@ void myDisplayFunc(void)
       glBindTexture(GL_TEXTURE_2D, g_texture_ids[right_eye]);
       g_camera->write_opengl_texture_to_quad();
     } else {
-      glViewport(0, 0, g_camera->get_num_columns(), g_camera->get_num_rows());
+      glViewport(0, 0, glutGet(GLUT_WINDOW_WIDTH)/2, glutGet(GLUT_WINDOW_HEIGHT));
       glBindTexture(GL_TEXTURE_2D, g_texture_ids[right_eye]);
       g_camera->write_opengl_texture_to_quad();
     }
@@ -259,12 +284,7 @@ void myDisplayFunc(void)
   // Go to the next image we're supposed to show, keeping us in
   // bounds.
   g_which_image += g_image_delta;
-  while (g_which_image >= static_cast<int>(g_texture_ids.size())) {
-    g_which_image -= g_texture_ids.size();
-  }
-  while (g_which_image < 0) {
-    g_which_image += g_texture_ids.size();
-  }
+  check_image_bounds();
 
   // Check for OpenGL errors during our action here.
   check_for_opengl_errors("myDisplayFunc after drawing");
@@ -359,8 +379,12 @@ void myIdleFunc(void)
       }
 
       // Display the loaded images in a movie loop while they are coming in,
-      // to give the user something to watch while it is loading.
+      // to give the user something to watch while it is loading.  The right
+      // eye is what is displayed in the left part of the image, so we should
+      // keep it as the one we want to show.
       g_ready_to_display = true;
+      g_which_image = g_texture_ids.size() - g_disparity - 1;
+      check_image_bounds();
       myDisplayFunc();
 
       // Handle Tcl events, so the user can quit if they want to.
@@ -389,6 +413,15 @@ void myIdleFunc(void)
     // We're ready to display an image.
     g_ready_to_display = true;
     myDisplayFunc();
+
+    //------------------------------------------------------------------
+    // Start spinning the object if we're in a looped video.  This will
+    // have been stopped by the loading code in check_image_bounds() because
+    // we tried to display a stereo view when there was only one image
+    // loaded.
+    if (g_loop) {
+      g_image_delta = 1;
+    }
 
     loaded_images = true;
   }
@@ -451,9 +484,12 @@ void keyboardCallbackForGLUT(unsigned char key, int x, int y)
     g_spin_left = true;
     break;
 
-  case '+': // larger stereo separation
+  case '+': // larger stereo separation.
   case '=':
     g_disparity += 1;
+    if (g_disparity >= static_cast<int>(g_texture_ids.size())) {
+      g_disparity = g_texture_ids.size() - 1;
+    }
     break;
 
   case '-': // smaller stereo separation
@@ -550,12 +586,7 @@ void motionCallbackForGLUT(int raw_x, int raw_y)
       xScale = (g_texture_ids.size()*1.0)/glutGet(GLUT_WINDOW_WIDTH);
       int delta_frames = x_motion_in_pixels * xScale;
       g_which_image = g_mousePressImage + delta_frames;
-      while (g_which_image >= static_cast<int>(g_texture_ids.size())) {
-        g_which_image -= g_texture_ids.size();
-      }
-      while (g_which_image < 0) {
-        g_which_image += g_texture_ids.size();
-      }
+      check_image_bounds();
     }
     break;
 
@@ -594,7 +625,8 @@ void  device_filename_changed(const char *newvalue, void *)
 
 void Usage(const char *progname)
 {
-    fprintf(stderr, "Usage: %s [filename]\n", progname);
+    fprintf(stderr, "Usage: %s [-noloop] [filename]\n", progname);
+    fprintf(stderr,"        -noloop: Don't loop from the end of the movie back to the beginning\n");
     fprintf(stderr, "       filename: The source file for tracking can be specified here (default is\n");
     fprintf(stderr, "                 a dialog box)\n");
     exit(-1);
@@ -649,19 +681,9 @@ int main(int argc, char *argv[])
   }
 
   //------------------------------------------------------------------
-  // Put the version number into the main window.
-  sprintf(command, "label .versionlabel -text Stereo_Spin_v:%s", Version_string);
-  if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
-          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
-                  g_tk_control_interp->result);
-          return(-1);
-  }
-  sprintf(command, "pack .versionlabel");
-  if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
-          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
-                  g_tk_control_interp->result);
-          return(-1);
-  }
+  // Fill in the program name/version number for the GUI to display.
+  sprintf(command, "Stereo_Spin_v:%s", Version_string);
+  g_program_name = command;
 
   //------------------------------------------------------------------
   // Load the specialized Tcl code needed by this program.  This must
@@ -702,8 +724,8 @@ int main(int argc, char *argv[])
   // These defaults are set for a Pulnix camera
 
   for (i = 1; i < argc; i++) {
-    if (!strncmp(argv[i], "-XXX", strlen("-XXX"))) {
-      //XXX;
+    if (!strncmp(argv[i], "-noloop", strlen("-noloop"))) {
+      g_loop = 0;
     } else if (argv[i][0] == '-') {
       Usage(argv[0]);
     } else {
