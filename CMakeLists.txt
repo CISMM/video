@@ -5,6 +5,11 @@ PROJECT(CISMM_VIDEO)
 # XXX Things to make better.
 # 
 
+# Needed for Cmake 2.8.1 to avoid complaints
+if(COMMAND cmake_policy)
+      cmake_policy(SET CMP0003 NEW)
+endif(COMMAND cmake_policy)
+
 #-----------------------------------------------------------------------------
 # Compiler flags we got from Hans
 if(WIN32) # MS-Windows, both 32 and 64 bits
@@ -64,11 +69,22 @@ install(TARGETS base_camera_server_library
 
 set(FS_SOURCES file_stack_server.cpp file_list.cpp)
 set(FS_PUBLIC_HEADERS file_stack_server.h)
+ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
 ADD_LIBRARY (file_stack_library
 	${FS_SOURCES} ${FS_PUBLIC_HEADERS}
 )
 set_property(TARGET file_stack_library PROPERTY PUBLIC_HEADER ${FS_PUBLIC_HEADERS})
 install(TARGETS file_stack_library
+	ARCHIVE DESTINATION lib
+	PUBLIC_HEADER DESTINATION include)
+
+set(FS_SOURCES Tcl_Linkvar.C)
+set(FS_PUBLIC_HEADERS Tcl_Linkvar.h)
+ADD_LIBRARY (Tcl_Linkvar
+	${FS_SOURCES} ${FS_PUBLIC_HEADERS}
+)
+set_property(TARGET Tcl_Linkvar PROPERTY PUBLIC_HEADER ${FS_PUBLIC_HEADERS})
+install(TARGETS Tcl_Linkvar
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
 
@@ -145,6 +161,34 @@ if (BUILD_DIRECTSHOW_VIDEO_SERVER)
 		${ImageMagick_Needed_Libs}
 	)
 	SET_TARGET_PROPERTIES(test_directx_library PROPERTIES SOLUTION_FOLDER tests)
+
+	FIND_PACKAGE(TCL REQUIRED)
+	FIND_PACKAGE(GLUT REQUIRED)
+	SET(X11_INCLUDE_DIR ${TCL_INCLUDE_PATH}/../../X11/include)	# Normally in Tcl, but NSRG buildtime has it elsewhere...
+	INCLUDE_DIRECTORIES(
+		${TCL_INCLUDE_PATH}
+		${TK_INCLUDE_PATH}
+		${X11_INCLUDE_DIR}
+		${GLUT_INCLUDE_DIR}
+	)
+	SET(TARGET_NAME stereo_spin)
+	ADD_EXECUTABLE(stereo_spin stereo_spin.cpp)
+	TARGET_LINK_LIBRARIES(stereo_spin
+		directx_library
+		base_camera_server_library
+		file_stack_library
+		Tcl_Linkvar
+		${VRPN_LIBRARIES} ${QUATLIB_LIBRARIES}
+		${DirectShow_LIBS}
+		${PTHREAD_LIBRARY}
+		${OPENGL_gl_LIBRARY}
+		${ImageMagick_Needed_Libs}
+		${TCL_LIBRARY}
+		${TK_LIBRARY}
+		${GLUT_LIBRARIES}
+	)
+	SET_TARGET_PROPERTIES(stereo_spin PROPERTIES SOLUTION_FOLDER servers)
+
 endif (BUILD_DIRECTSHOW_VIDEO_SERVER)
 
 #-----------------------------------------------------------------------------
