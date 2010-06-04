@@ -1,3 +1,10 @@
+2010-06-03  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
+	* stereo_spin.cpp : Version 01.03, includes the ability to spin the
+		object slower than 1 frame/second.  Also includes example stereo
+		pair and spin movie in the installer.
+	* stereo_spin.tcl : Same.
+
 2010-05-31  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* stereo_spin.cpp : Version 01.02, includes the ability to play

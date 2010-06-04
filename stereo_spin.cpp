@@ -56,7 +56,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.02";
+const char *Version_string = "01.03";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -85,8 +85,8 @@ Tclvar_int_with_button	g_loop("loop",NULL,1);    //< Does the video work in a lo
 int		    g_tracking_window;		  //< Glut window displaying tracking
 unsigned char	    *g_glut_image = NULL;	  //< Pointer to the storage for the image
 vector<GLuint>      g_texture_ids;                //< Keeps track of the texture IDs
-int                 g_which_image = 0;            //< Which image to show now?
-int                 g_image_delta = 1;            //< How much to add to get to the next image to show?
+double              g_which_image = 0;            //< Which image to show now?
+double              g_image_delta = 1;            //< How much to add to get to the next image to show?
 bool                g_spin_left = true;           //< Does the movie spin towards the left?
 float               g_exposure = 10;              //< Not used, but must pass to camera.
 bool                g_stereo = false;             //< Can we display in stereo?
@@ -383,7 +383,7 @@ void myIdleFunc(void)
       // eye is what is displayed in the left part of the image, so we should
       // keep it as the one we want to show.
       g_ready_to_display = true;
-      g_which_image = g_texture_ids.size() - g_disparity - 1;
+      g_which_image = g_texture_ids.size() - g_disparity - 1.0;
       check_image_bounds();
       myDisplayFunc();
 
@@ -460,14 +460,22 @@ void keyboardCallbackForGLUT(unsigned char key, int x, int y)
     g_quit = 1;
     break;
 
-  case '>': // Spin faster in the negative direction
-  case '.':
-    g_image_delta -= 1;
+  case '>': // Spin faster in the negative direction.
+  case '.': // If we're below magnitude 1, step by 1/5
+    if ( (g_image_delta <= 1) && (g_image_delta > -1) ) {
+      g_image_delta -= 1.0/5;
+    } else {
+      g_image_delta -= 1;
+    }
     break;
 
   case '<': // Spin faster in the positive direction
-  case ',':
-    g_image_delta += 1;
+  case ',': // If we're below magnitude 1, step by 1/5
+    if ( (g_image_delta >= -1) && (g_image_delta < 1) ) {
+      g_image_delta += 1.0/5;
+    } else {
+      g_image_delta += 1;
+    }
     break;
 
   case ' ': // Stop spinning
@@ -585,7 +593,7 @@ void motionCallbackForGLUT(int raw_x, int raw_y)
       int x_motion_in_pixels = g_mousePressX - raw_x;
       xScale = (g_texture_ids.size()*1.0)/glutGet(GLUT_WINDOW_WIDTH);
       int delta_frames = x_motion_in_pixels * xScale;
-      g_which_image = g_mousePressImage + delta_frames;
+      g_which_image = g_mousePressImage + static_cast<int>(delta_frames);
       check_image_bounds();
     }
     break;
