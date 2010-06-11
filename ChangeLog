@@ -1,5 +1,12 @@
 2010-06-11  Ryan Schubert <res@cs.unc.edu>
 
+	* stereo_spin.cpp : Version 1.04 works on stereo hardware.  The auto-
+		detect feature did not work (and there is not an effective one
+		you can do in Glut), so this version has a command-line argument
+		that selects between hardware stereo and cross-eyed stereo.
+
+2010-06-11  Ryan Schubert <res@cs.unc.edu>
+
 	* stack_collector.* : Fixed glut directory in project settings;
 		Added support for Point Grey cameras.
 

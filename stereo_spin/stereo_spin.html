@@ -1,6 +1,6 @@
-<title>Stereo Spin V01.03</title>
+<title>Stereo Spin V01.04</title>
 
-<h1>Stereo Spin version 01.03</h1>
+<h1>Stereo Spin version 01.04</h1>
 
 <p>The <i><b>Stereo Spin </b></i> program is used to display stereo images from 
   a spinning video from a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -51,6 +51,8 @@
   card with an external stereo-sync connector to work with the glasses (the DirectX/GeForce 
   game-type stereo does not work with this program). For other manufacturers, 
   check their specifications and drivers to ensure that they support OpenGL stereo.</p>
+<p>If you do not have hardware stereo that works with OpenGL, use the <i>-cross</i> 
+  command-line argument to have it use cross-eyed stereo.</p>
 <p></p>
 <h3>Required Video Formats</h3>
 <p>This program assumes that the video file being read in is a 360-degree spinning-viewpoint 
@@ -148,6 +150,14 @@
 </ul>
 <h2>Version Information</h2>
 
+<h3>Version 01.04:</h3>
+<ul>
+  <li>The code to detect whether hardware stereo was available did not work, and 
+    it seems to be impossible when using Glut to do this, so this version has 
+    a command-line argument that tells whether to run with hardware stereo or 
+    cross-eyed stereo.</li>
+  </ul>
+<h3></h3>
 <h3>Version 01.03:</h3>
 <ul>
   <li>Lets the object spin more slowly than 1 frame per second, which was too 

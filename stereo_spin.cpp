@@ -6,6 +6,9 @@
 #define	VST_USE_DIRECTX
 #endif
 
+// XXX When images are different sizes, the camera fails to load later ones
+//      but we don't find out in the code, so strange things happen.
+
 // END configuration section.
 //---------------------------------------------------------------------------
 
@@ -56,7 +59,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.03";
+const char *Version_string = "01.04";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -89,8 +92,8 @@ double              g_which_image = 0;            //< Which image to show now?
 double              g_image_delta = 1;            //< How much to add to get to the next image to show?
 bool                g_spin_left = true;           //< Does the movie spin towards the left?
 float               g_exposure = 10;              //< Not used, but must pass to camera.
-bool                g_stereo = false;             //< Can we display in stereo?
-int                 g_disparity = 1;             //< How many frames between eyes?
+bool                g_stereo = true;              //< Can we display in stereo?
+int                 g_disparity = 1;              //< How many frames between eyes?
 
 bool		    g_ready_to_display = false;	  //< Don't unless we get an image
 bool		    g_already_posted = false;	  //< Posted redisplay since the last display?
@@ -332,11 +335,13 @@ void myIdleFunc(void)
     // If stereo is not available, throw a warning dialog to let them exit
     // if they want.
     char  command[256];
+#if FIXED_STUPID_GLUT_STEREO_REQUEST
     if (!g_stereo) if (Tcl_Eval(g_tk_control_interp, "show_nostereo_dialog") != TCL_OK) {
       fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command, g_tk_control_interp->result);
       cleanup();
       exit(-1);
-    } 
+    }
+#endif
 
     //------------------------------------------------------------------
     // Present a dialog box that lets the user quit if they want to, rather
@@ -425,9 +430,6 @@ void myIdleFunc(void)
 
     loaded_images = true;
   }
-
-  // Point the image to use at the camera's image.
-  g_image = g_camera;
 
   //------------------------------------------------------------
   // Post a redisplay so that Glut will draw the new image
@@ -633,8 +635,9 @@ void  device_filename_changed(const char *newvalue, void *)
 
 void Usage(const char *progname)
 {
-    fprintf(stderr, "Usage: %s [-noloop] [filename]\n", progname);
+    fprintf(stderr, "Usage: %s [-noloop] [-cross] [filename]\n", progname);
     fprintf(stderr,"        -noloop: Don't loop from the end of the movie back to the beginning\n");
+    fprintf(stderr,"        -cross: Do cross-eyed stereo (not hardware OpenGL stereo)\n");
     fprintf(stderr, "       filename: The source file for tracking can be specified here (default is\n");
     fprintf(stderr, "                 a dialog box)\n");
     exit(-1);
@@ -734,6 +737,8 @@ int main(int argc, char *argv[])
   for (i = 1; i < argc; i++) {
     if (!strncmp(argv[i], "-noloop", strlen("-noloop"))) {
       g_loop = 0;
+    } else if (!strncmp(argv[i], "-cross", strlen("-noloop"))) {
+      g_stereo = false;
     } else if (argv[i][0] == '-') {
       Usage(argv[0]);
     } else {
@@ -817,24 +822,48 @@ int main(int argc, char *argv[])
   //------------------------------------------------------------------
   // Initialize GLUT and create the window that will display the
   // video -- name the window after the device that has been
-  // opened in VRPN.  Also set mouse callbacks.
+  // opened in VRPN.  Also set mouse callbacks.  Believe it or not,
+  // a comment in Vlib says that you cannot check for stereo using
+  // glGetBooleanv(GL_STEREO, ...) until after you've created the
+  // window; so we need to ask for a stereo window and then check
+  // to see if stereo is available.  Unfortunately, it cannot create
+  // a window with the stereo display mode unless there is a stereo
+  // display available, so what we need to do is create the window
+  // with stereo and see if it fails.  If so, we try to get one without
+  // stereo.  Even more unfortunately, Glut exits when it cannot
+  // create the window you asked for, so we can't do it that way
+  // either... we end up asking for a stereo window and failing
+  // if we don't get it.  So we now need a command-line argument to
+  // ask for cross-eyed stereo and somehow have to fix things with
+  // shortcuts or something so that it gets called when we want that
+  // one.  This is confirmed by postings on the nVidia forum.
+  // But what if we create one window without stereo and then
+  // ask if stereo is available and then create another one with
+  // stereo (after destroying the first)?  If this works, post a
+  // response onto the nVidia forum question I bookmarked.
   glutInit(&argc, argv);
-  unsigned char uc;	
-  glGetBooleanv(GL_STEREO, &uc);
-  if(uc) {
-    g_stereo = true;
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_STEREO);
-  } else {
-    g_stereo = false;
-    fprintf(stderr,"Warning: Stereo not available, displaying cross-eyed!\n");
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE );
-  }
   glutInitWindowPosition(10 + g_window_offset_x, 180 + g_window_offset_y);
   glutInitWindowSize(g_camera->get_num_columns(), g_camera->get_num_rows());
 #ifdef DEBUG
   printf("initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());
 #endif
+
+  // We have to have created a window before we can query whether stereo is
+  // available (otherwise, glGetBooleanv(GL_STEREO,...) always returns false.
+  // But if we try to create a stereo context on a platform that cannot provide
+  // it, the program exits with a fatal error before we can recover.  If we
+  // open a non-stereo window, then ask whether we can have stereo, it says
+  // that we do not.  So we're hosed and have to specify whether we want to try
+  // stereo or not on the command line.
+  if(g_stereo) {
+    fprintf(stderr,"Attempting openGL stereo; if this exits due to a pixel-format error, try re-running with '-cross' option.\n");
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_STEREO);
+  } else {
+    fprintf(stderr,"Displaying cross-eyed stereo\n");
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
+  }
   g_tracking_window = glutCreateWindow(g_device_name);
+
   glutMotionFunc(motionCallbackForGLUT);
   glutMouseFunc(mouseCallbackForGLUT);
   glutKeyboardFunc(keyboardCallbackForGLUT);

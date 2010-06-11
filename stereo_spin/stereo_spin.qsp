@@ -8,10 +8,10 @@ OperatingSystem=WinXP  5.1  2600 (Service Pack 3)
 ProjectName=stereo_spin
 ProjectDirectory=F:\taylorr\STM\src\video\stereo_spin
 NonSFXDirectory=F:\taylorr\STM\src\video\stereo_spin\NonSFX
-MediaFileName=setup_stereo_spin_v01_03
+MediaFileName=setup_stereo_spin_v01_04
 CopyMediaToFName=
 ProgramDescriptiveName=Stereo Spin
-ProgramVersion=01.03
+ProgramVersion=01.04
 CompanyName=www.cismm.org
 ProgVerLiveUpdate=0
 RegisterAsApp=1
@@ -62,7 +62,7 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|
 CompanyUrl=www.cs.unc.edu/cismm
 
 [TargetExe]
-TargetDirectory=<AbsoluteDir>C:\Program Files\CISMM\stereo_spin_v01.03
+TargetDirectory=<AbsoluteDir>C:\Program Files\CISMM\stereo_spin_v01.04
 CommonDirectory=<AbsoluteDir>C:\CISMM\external
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\stereo_spin.bat
@@ -106,7 +106,7 @@ ShowCopyrightWarning=1
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=CISMM\Stereo Spin 01.03
+ProgramLinkFolder=CISMM\Stereo Spin 01.04
 ProgramLinkName=Stereo_spin
 ProgramLinkParam=
 ProgramLinkWorkDir=<Application Folder>
@@ -114,7 +114,7 @@ ProgramLinkRun=Minimized
 ProgramLinkIconFile=
 ProgramLinkIconNum=0
 StartMenuLinkName=Video Spot Tracker
-DesktopLinkName=Stereo Spin 01.03
+DesktopLinkName=Stereo Spin 01.04
 SendToLinkName=Video Spot Tracker
 StartUpLinkName=Video Spot Tracker
 QuickLaunchLinkName=Video Spot Tracker
@@ -134,6 +134,9 @@ Item-000=*|Manual|<Application Folder>\stereo_spin.html|||<Application Folder>|N
 Item-001=*|Stereo Sequence|<Application Folder>\stereo_spin.bat|<Desktop>|-noloop|<Application Folder>|Minimized||0|1||0|
 Item-002=*|Example stereo pair|<Application Folder>\stereo_spin.bat||-noloop SD102_IMG_1103.JPG.vga.jpg|<Application Folder>|Minimized||0|1||0|
 Item-003=*|Example Stereo Spin|<Application Folder>\stereo_spin.bat||4TNA.avi|<Application Folder>|Minimized||0|1||0|
+Item-004=*|Cross-eyed Stereo Spin|<Application Folder>\stereo_spin.bat|<Desktop>|-cross|<Application Folder>|Normal Window||0|1||0|
+Item-005=*|Cross-eyed spin|<Application Folder>\stereo_spin.bat||-cross|<Application Folder>|Normal Window||0|1||0|
+Item-006=*|Cross-eyed sequence|<Application Folder>\stereo_spin.bat||-cross -noloop|<Application Folder>|Normal Window||0|1||0|
 
 [Billboard]
 AddBillboard=1
