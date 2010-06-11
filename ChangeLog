@@ -1,4 +1,4 @@
-2010-06-11  Ryan Schubert <res@cs.unc.edu>
+2010-06-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* stereo_spin.cpp : Version 1.04 works on stereo hardware.  The auto-
 		detect feature did not work (and there is not an effective one
