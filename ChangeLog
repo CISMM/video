@@ -1,3 +1,8 @@
+2010-06-11  Ryan Schubert <res@cs.unc.edu>
+
+	* stack_collector.* : Fixed glut directory in project settings;
+		Added support for Point Grey cameras.
+
 2010-06-03  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* stereo_spin.cpp : Version 01.03, includes the ability to spin the

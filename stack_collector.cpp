@@ -25,6 +25,7 @@
 #include "directx_videofile_server.h"
 #include "diaginc_server.h"
 #include "edt_server.h"
+#include "point_grey_server.h"
 #include "cooke_server.h"
 #include <tcl.h>
 #include <tk.h>
@@ -141,6 +142,9 @@ bool  get_camera(const char *type, base_camera_server **camera)
   } else if (!strcmp(type, "edt")) {
     *camera = new edt_server();
     g_exposure = 100;
+  } else if (!strcmp(type, "pgr")) {
+    *camera = new point_grey_server();
+    g_exposure = 17;
   } else if (!strcmp(type, "directx")) {
     // Passing width and height as zero leaves it open to whatever the camera has
     directx_camera_server *d = new directx_camera_server(1,0,0);	// Use camera #1 (first one found)
