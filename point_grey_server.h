@@ -6,7 +6,7 @@
 
 class point_grey_server : public base_camera_server {
 public:
-  point_grey_server(double framerate = -1, double msExposure = -1);
+  point_grey_server(double framerate = -1, double msExposure = -1, int binning = 1);
   virtual ~point_grey_server(void);
 
   /// Read an image to a memory buffer.

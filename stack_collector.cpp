@@ -143,7 +143,7 @@ bool  get_camera(const char *type, base_camera_server **camera)
     *camera = new edt_server();
     g_exposure = 100;
   } else if (!strcmp(type, "pgr")) {
-    *camera = new point_grey_server();
+    *camera = new point_grey_server(60);
     g_exposure = 17;
   } else if (!strcmp(type, "directx")) {
     // Passing width and height as zero leaves it open to whatever the camera has

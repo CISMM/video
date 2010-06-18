@@ -140,7 +140,7 @@ bool  init_camera_code(const char *type, int which = 1)
     }
   } else if (!strcmp(type, "pgr")) {
 	  printf("Opening Point Grey Camera\n");
-	  g_camera = new point_grey_server(g_framerate, g_exposure);
+	  g_camera = new point_grey_server(g_framerate, g_exposure, g_bincount);
 	  g_numchannels = 1;
 	  g_maxval = 255;
 	  if (!g_camera->working()) {

@@ -1,3 +1,13 @@
+2010-06-18  Ryan Schubert <res@cs.unc.edu>
+
+	* PGRCam.* : Adding support for 2x2 binning with Point Grey Cameras.
+	* point_grey_server.* : Same.
+	* video_imager_server.cpp : Same.
+	* stack_collector.cpp : Hard-coded framerate with pgr option (60)
+		so that it did not default to something way too low.
+	* video_imager_server.vcproj : Added vrpn.lib to list of additional
+		libraries--not sure how this wasn't in here already?
+
 2010-06-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* stereo_spin.cpp : Version 1.04 works on stereo hardware.  The auto-

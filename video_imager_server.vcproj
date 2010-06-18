@@ -71,7 +71,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="SpotCamVC.lib pvcam32.lib tcl83.lib tk83.lib opengl32.lib odbc32.lib odbccp32.lib PGRFlycapture.lib"
+				AdditionalDependencies="SpotCamVC.lib pvcam32.lib tcl83.lib tk83.lib opengl32.lib odbc32.lib odbccp32.lib PGRFlycapture.lib vrpn.lib"
 				OutputFile=".\Release/video_imager_server.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
@@ -165,7 +165,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="SpotCamVC.lib pvcam32.lib tcl83.lib tk83.lib opengl32.lib odbc32.lib odbccp32.lib PGRFlycapture.lib"
+				AdditionalDependencies="SpotCamVC.lib pvcam32.lib tcl83.lib tk83.lib opengl32.lib odbc32.lib odbccp32.lib PGRFlycapture.lib vrpn.lib"
 				OutputFile=".\Debug/video_imager_server.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"

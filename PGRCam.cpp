@@ -30,7 +30,7 @@ reportCameraInfo( const FlyCaptureInfoEx* pinfo )
       printf( "%s: %s\n", function, flycaptureErrorToString( error ) ); \
    } \
 
-PGRCam::PGRCam(double framerate, double msExposure, int camera) {
+PGRCam::PGRCam(double framerate, double msExposure, int binning, int camera) {
 	connected = false;
 	imageConverted.pData = NULL;
 
@@ -76,12 +76,17 @@ PGRCam::PGRCam(double framerate, double msExposure, int camera) {
 	printf( "Camera info:\n" );
 	reportCameraInfo(&info);
 
+	int mode = 0; // mode 0 = no binning
+	if (binning == 2) {
+		mode = 1; // mode 1 = 2x2 binning
+	}
+
 	//err = flycaptureStart(context, FLYCAPTURE_VIDEOMODE_ANY, FLYCAPTURE_FRAMERATE_ANY);
-	err = flycaptureStartCustomImage(context, 0, 0, 0, PGR_WIDTH, PGR_HEIGHT, 100, FLYCAPTURE_MONO8);
+	err = flycaptureStartCustomImage(context, mode, 0, 0, PGR_WIDTH / binning, PGR_HEIGHT / binning, 100, FLYCAPTURE_MONO8);
 	//err = flycaptureStart(context, FLYCAPTURE_VIDEOMODE_1024x768Y8, FLYCAPTURE_FRAMERATE_30);
 	_HANDLE_ERROR(err, "flycaptureStart()");
-	cols = PGR_WIDTH;
-	rows = PGR_HEIGHT;
+	cols = PGR_WIDTH / binning;
+	rows = PGR_HEIGHT / binning;
 
 	bool framerateAuto = (framerate == -1);
 	if (framerateAuto)

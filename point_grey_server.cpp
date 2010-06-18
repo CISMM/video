@@ -1,8 +1,8 @@
 #include "point_grey_server.h"
 
-point_grey_server::point_grey_server(double framerate, double msExposure) {
+point_grey_server::point_grey_server(double framerate, double msExposure, int binning) {
 	_status = false;
-	m_cam = new PGRCam(framerate, msExposure);
+	m_cam = new PGRCam(framerate, msExposure, binning);
 
 	_num_columns = m_cam->cols;
 	_num_rows = m_cam->rows;
