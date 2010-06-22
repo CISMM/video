@@ -1,3 +1,8 @@
+2010-06-22  Ryan Schubert <res@cs.unc.edu>
+
+	* video_imager_server.cpp : Re-formatted tabs in main().  Can also
+		now specify -listen_port and -log_port on the command line.
+
 2010-06-18  Ryan Schubert <res@cs.unc.edu>
 
 	* PGRCam.* : Adding support for 2x2 binning with Point Grey Cameras.

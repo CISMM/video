@@ -49,13 +49,15 @@ void handle_cntl_c(int) {
 
 void  Usage(const char *s)
 {
-  fprintf(stderr,"Usage: %s [-expose msecs] [-every_nth_frame N] [-bin count] [-res x y] [-swap_edt] [-buffers N] [devicename [devicenum]]\n",s);
+  fprintf(stderr,"Usage: %s [-expose msecs] [-every_nth_frame N] [-bin count] [-res x y] [-swap_edt] [-buffers N] [-listen_port N] [-log_port N] [devicename [devicenum]]\n",s);
   fprintf(stderr,"       -expose: Exposure time in milliseconds (default 250)\n");
   fprintf(stderr,"       -every_nth_frame: Discard all but every Nth frame (default 1)\n");
   fprintf(stderr,"       -bin: How many pixels to average in x and y (default 1)\n");
   fprintf(stderr,"       -res: Resolution in x and y (default 320 200)\n");
   fprintf(stderr,"       -swap_edt: Swap lines to fix a bug in the EDT camera\n");
   fprintf(stderr,"       -buffers: use N camera (may only work with the EDT camera) (default 360)\n");
+  fprintf(stderr,"       -listen_port: Port to listen on for incoming vrpn connections (default is vrpn default)\n");
+  fprintf(stderr,"       -log_port: Port used internally to log video (default is 9999)\n");
   fprintf(stderr,"       devicename: roper, edt, cooke, diaginc, or directx (default is directx)\n");
   fprintf(stderr,"       devicenum: Which (starting with 1) if there are multiple (default 1)\n");
   fprintf(stderr,"       logfilename: Name of file to store outgoing log in (default NULL)\n");
@@ -77,6 +79,11 @@ int                 g_maxval = 4095;    //< Maximum value available in a channel
 bool                g_swap_edt = false; //< Swap lines in EDT to fix bug in driver
 unsigned            g_camera_buffers = 360; //< How many camera buffers to ask for
 double		g_framerate = -1; //< -1 for use max framerate given exposure, if an option
+
+// we may want to change these to have multiple vrpn servers running on the same machine
+int g_svrPORT = 9999;
+int g_strPORT = vrpn_DEFAULT_LISTEN_PORT_NO;
+
 
 /// Open the camera we want to use (the type is based on the name passed in)
 bool  init_camera_code(const char *type, int which = 1)
@@ -208,9 +215,7 @@ void imager_server_thread_func(vrpn_ThreadData &threadData)
 
 bool  init_server_code(const char *outgoing_logfile_name, bool do_color)
 {
-  const int svrPORT = 9999;
-  const int strPORT = vrpn_DEFAULT_LISTEN_PORT_NO;
-  if ( (svrcon = vrpn_create_server_connection(svrPORT, NULL, outgoing_logfile_name)) == NULL) {
+  if ( (svrcon = vrpn_create_server_connection(g_svrPORT, NULL, outgoing_logfile_name)) == NULL) {
     fprintf(stderr, "Could not open imager server connection\n");
     return false;
   }
@@ -251,21 +256,21 @@ bool  init_server_code(const char *outgoing_logfile_name, bool do_color)
     fprintf(stderr,"Can't start server thread\n");
     return false;
   }
-  printf("Local loopback server thread on %d\n", svrPORT);
+  printf("Local loopback server thread on %d\n", g_svrPORT);
 
   // Now handle the main thread's code, which will run an
   // imager forwarder.
-  if ( (strcon = vrpn_create_server_connection(strPORT)) == NULL) {
+  if ( (strcon = vrpn_create_server_connection(g_strPORT)) == NULL) {
     fprintf(stderr, "Could not open imager stream buffer connection\n");
     return false;
   }
   char  svrname[1024];
-  sprintf(svrname,"TestImage@localhost:%d", svrPORT);
+  sprintf(svrname,"TestImage@localhost:%d", g_svrPORT);
   if ( (str = new vrpn_Imager_Stream_Buffer("TestImage", svrname, strcon)) == NULL) {
     fprintf(stderr, "Could not open imager stream buffer\n");
     return false;
   }
-  printf("Waiting for video connections on %d\n", strPORT);
+  printf("Waiting for video connections on %d\n", g_strPORT);
 
   return true;
 }
@@ -285,100 +290,106 @@ void  teardown_server_code(void)
 
 int main(int argc, char *argv[])
 {
-  int	i, realparams;		  // How many non-flag command-line arguments
-  char	*devicename = "directx";  // Name of the device to open
-  int	devicenum = 1;		  // Which, if there are more than one, to open
-  char	*logfilename = NULL;	  // Outgoing log file name.
+	int	i, realparams;		  // How many non-flag command-line arguments
+	char	*devicename = "directx";  // Name of the device to open
+	int	devicenum = 1;		  // Which, if there are more than one, to open
+	char	*logfilename = NULL;	  // Outgoing log file name.
 
-  realparams = 0;
-  for (i = 1; i < argc; i++) {
-    if (!strncmp(argv[i], "-bin", strlen("-bin"))) {
-      if (++i > argc) { Usage(argv[0]); }
-      g_bincount = atoi(argv[i]);
-      if ( (g_bincount < 1) || (g_bincount > 16) ) {
-	fprintf(stderr,"Invalid bincount (1-16 allowed, %d entered)\n", g_bincount);
-	exit(-1);
-      }
-    } else if (!strncmp(argv[i], "-every_nth_frame", strlen("-every_nth_frame"))) {
-      if (++i > argc) { Usage(argv[0]); }
-      g_every_nth_frame = atoi(argv[i]);
-      printf("Only sending one frame in %d\n", g_every_nth_frame);
-      if ( (g_every_nth_frame < 1) || (g_every_nth_frame > 4000) ) {
-	fprintf(stderr,"Invalid frame skip (1-4000 allowed, %d entered)\n", g_every_nth_frame);
-	exit(-1);
-      }
-    } else if (!strncmp(argv[i], "-expose", strlen("-expose"))) {
-      if (++i > argc) { Usage(argv[0]); }
-      g_exposure = atof(argv[i]);
-      if ( (g_exposure < 1) || (g_exposure > 4000) ) {
-	fprintf(stderr,"Invalid exposure (1-4000 allowed, %f entered)\n", g_exposure);
-	exit(-1);
-      }
-    } else if (!strncmp(argv[i], "-buffers", strlen("-buffers"))) {
-      if (++i > argc) { Usage(argv[0]); }
-      g_camera_buffers = atoi(argv[i]);
-      if ( (g_camera_buffers < 1) || (g_camera_buffers > 1000) ) {
-	fprintf(stderr,"Invalid number of buffers (1-1000 allowed, %d entered)\n", g_camera_buffers);
-	exit(-1);
-      }
-    } else if (!strncmp(argv[i], "-res", strlen("-res"))) {
-      if (++i > argc) { Usage(argv[0]); }
-      g_width = atoi(argv[i]);
-      if ( (g_width < 1) || (g_width > 1600) ) {
-	fprintf(stderr,"Invalid width (1-1600 allowed, %f entered)\n", g_width);
-	exit(-1);
-      }
-      if (++i > argc) { Usage(argv[0]); }
-      g_height = atoi(argv[i]);
-      if ( (g_height < 1) || (g_height > 1200) ) {
-	fprintf(stderr,"Invalid height (1-1200 allowed, %f entered)\n", g_height);
-	exit(-1);
-	  }
-	} else if (!strncmp(argv[i], "-swap_edt", strlen("-swap_edt"))) {
-		g_swap_edt = true;
-	} else if (!strncmp(argv[i], "-framerate", strlen("-framerate"))) {
-		if (++i > argc) { Usage(argv[0]); }
-		g_framerate = atof(argv[i]);
-		if ( (g_framerate < 1) || (g_framerate > 1000) ) {
-			fprintf(stderr,"Invalid framerate (1-1000 allowed, %d entered)\n", g_framerate);
-			exit(-1);
+	realparams = 0;
+	for (i = 1; i < argc; i++) {
+		if (!strncmp(argv[i], "-bin", strlen("-bin"))) {
+			if (++i > argc) { Usage(argv[0]); }
+			g_bincount = atoi(argv[i]);
+			if ( (g_bincount < 1) || (g_bincount > 16) ) {
+				fprintf(stderr,"Invalid bincount (1-16 allowed, %d entered)\n", g_bincount);
+				exit(-1);
+			}
+		} else if (!strncmp(argv[i], "-every_nth_frame", strlen("-every_nth_frame"))) {
+			if (++i > argc) { Usage(argv[0]); }
+			g_every_nth_frame = atoi(argv[i]);
+			printf("Only sending one frame in %d\n", g_every_nth_frame);
+			if ( (g_every_nth_frame < 1) || (g_every_nth_frame > 4000) ) {
+				fprintf(stderr,"Invalid frame skip (1-4000 allowed, %d entered)\n", g_every_nth_frame);
+				exit(-1);
+			}
+		} else if (!strncmp(argv[i], "-expose", strlen("-expose"))) {
+			if (++i > argc) { Usage(argv[0]); }
+			g_exposure = atof(argv[i]);
+			if ( (g_exposure < 1) || (g_exposure > 4000) ) {
+				fprintf(stderr,"Invalid exposure (1-4000 allowed, %f entered)\n", g_exposure);
+				exit(-1);
+			}
+		} else if (!strncmp(argv[i], "-buffers", strlen("-buffers"))) {
+			if (++i > argc) { Usage(argv[0]); }
+			g_camera_buffers = atoi(argv[i]);
+			if ( (g_camera_buffers < 1) || (g_camera_buffers > 1000) ) {
+				fprintf(stderr,"Invalid number of buffers (1-1000 allowed, %d entered)\n", g_camera_buffers);
+				exit(-1);
+			}
+		} else if (!strncmp(argv[i], "-res", strlen("-res"))) {
+			if (++i > argc) { Usage(argv[0]); }
+			g_width = atoi(argv[i]);
+			if ( (g_width < 1) || (g_width > 1600) ) {
+				fprintf(stderr,"Invalid width (1-1600 allowed, %f entered)\n", g_width);
+				exit(-1);
+			}
+			if (++i > argc) { Usage(argv[0]); }
+			g_height = atoi(argv[i]);
+			if ( (g_height < 1) || (g_height > 1200) ) {
+				fprintf(stderr,"Invalid height (1-1200 allowed, %f entered)\n", g_height);
+				exit(-1);
+			}
+		} else if (!strncmp(argv[i], "-listen_port", strlen("-listen_port"))) {
+			if (++i > argc) { Usage(argv[0]); }
+			g_strPORT = atoi(argv[i]);
+		} else if (!strncmp(argv[i], "-log_port", strlen("-log_port"))) {
+			if (++i > argc) { Usage(argv[0]); }
+			g_svrPORT = atoi(argv[i]);
+		} else if (!strncmp(argv[i], "-swap_edt", strlen("-swap_edt"))) {
+			g_swap_edt = true;
+		} else if (!strncmp(argv[i], "-framerate", strlen("-framerate"))) {
+			if (++i > argc) { Usage(argv[0]); }
+			g_framerate = atof(argv[i]);
+			if ( (g_framerate < 1) || (g_framerate > 1000) ) {
+				fprintf(stderr,"Invalid framerate (1-1000 allowed, %d entered)\n", g_framerate);
+				exit(-1);
+			}
+		} else {
+			switch (++realparams) {
+	  case 1:
+		  devicename = argv[i];
+		  break;
+	  case 2:
+		  devicenum = atoi(argv[i]);
+		  break;
+	  case 3:
+		  logfilename = argv[i];
+		  break;
+	  default:
+		  Usage(argv[0]);
+			}
 		}
-	} else {
-		switch (++realparams) {
-      case 1:
-	devicename = argv[i];
-	break;
-      case 2:
-	devicenum = atoi(argv[i]);
-	break;
-      case 3:
-	logfilename = argv[i];
-	break;
-      default:
-	Usage(argv[0]);
-      }
-    }
-  }
-    
-  // Set up handler for all these signals to set done
-  signal(SIGINT, handle_cntl_c);
+	}
 
-  printf("video_vrpnImager_server version %02d.%02d\n", MAJOR_VERSION, MINOR_VERSION);
+	// Set up handler for all these signals to set done
+	signal(SIGINT, handle_cntl_c);
 
-  if (!init_camera_code(devicename, devicenum)) { return -1; }
-  printf("Opened camera\n");
-  if (!init_server_code(logfilename, (g_numchannels > 1) )) { return -1; }
+	printf("video_vrpnImager_server version %02d.%02d\n", MAJOR_VERSION, MINOR_VERSION);
 
-  while (!g_camera_done) {
-    str->mainloop();
-    strcon->mainloop();
+	if (!init_camera_code(devicename, devicenum)) { return -1; }
+	printf("Opened camera\n");
+	if (!init_server_code(logfilename, (g_numchannels > 1) )) { return -1; }
 
-    // Sleep to avoid eating the whole processor.  The camera-watching thread
-    // does not sleep, so that it gets frames as fast as it can.
-    vrpn_SleepMsecs(1);
-  }
+	while (!g_camera_done) {
+		str->mainloop();
+		strcon->mainloop();
 
-  printf("Deleting camera and connection objects\n");
-  teardown_server_code();
-  return 0;
+		// Sleep to avoid eating the whole processor.  The camera-watching thread
+		// does not sleep, so that it gets frames as fast as it can.
+		vrpn_SleepMsecs(1);
+	}
+
+	printf("Deleting camera and connection objects\n");
+	teardown_server_code();
+	return 0;
 }
