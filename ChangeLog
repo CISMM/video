@@ -1,3 +1,10 @@
+2010-07-12  Ryan Schubert <res@cs.unc.edu>
+
+	* PanopticNerve : New directory for PanopticNerve source, which
+		was previously its own CVS module.
+	* PanopticNerve.vcproj : PanopticNerve project file.
+	* video.sln : Added PanopticNerve project.
+
 2010-06-22  Ryan Schubert <res@cs.unc.edu>
 
 	* video_imager_server.cpp : Re-formatted tabs in main().  Can also
