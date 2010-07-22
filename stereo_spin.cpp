@@ -6,6 +6,8 @@
 #define	VST_USE_DIRECTX
 #endif
 
+// XXX Add JPG/jpg/JPEG/jpeg to the file formats that are opened automatically
+//     by the dialog box that pops up when run.
 // XXX When images are different sizes, the camera fails to load later ones
 //      but we don't find out in the code, so strange things happen.
 
