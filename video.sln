@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 9.00
 # Visual Studio 2005
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DirectShow_baseclasses", "DirectShow_baseclasses.vcproj", "{20DDF491-4D8C-455B-90A3-013E6502F698}"
@@ -231,7 +231,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SEM", "SEM", "{01D347D4-440
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Libraries", "Libraries", "{FC8A3CC4-4974-402F-8004-2352AFC60D13}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "quatlib", "..\quat\quatlib.vcproj", "{0C16E98C-A372-4E58-990D-EE276B32644E}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "quatlib", "..\vrpn\quat\quatlib.vcproj", "{0C16E98C-A372-4E58-990D-EE276B32644E}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "point_grey_library", "point_grey_library.vcproj", "{40C9FE2C-560A-4CAB-AA65-A54B74A8F332}"
 EndProject

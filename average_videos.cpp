@@ -10,7 +10,7 @@
 #define	VST_USE_DIRECTX
 #define VST_USE_VRPN_IMAGER
 
-#pragma comment(lib,"C:\\Program Files\\Roper Scientific\\PVCAM\\pvcam32.lib")
+//#pragma comment(lib,"C:\\Program Files\\Roper Scientific\\PVCAM\\pvcam32.lib")
 
 #include <math.h>
 #include <stdio.h>
@@ -241,7 +241,8 @@ int main(int argc, char *argv[])
         //------------------------------------------------------------------
         // Open the camera and image wrapper.  If we have a video file, then
         // press play.
-        if (!get_camera(g_device_name, &g_bitdepth, &g_exposure, &g_camera, &g_video)) {
+        if (!get_camera(g_device_name, &g_bitdepth, &g_exposure, &g_camera, &g_video,
+                        648,484,1,0,0)) {
           fprintf(stderr,"Cannot open camera/imager\n");
           if (g_camera) { delete g_camera; g_camera = NULL; }
           exit(-1);
@@ -262,6 +263,9 @@ int main(int argc, char *argv[])
         break;
       }
     }
+  }
+  if (realparams == 0) {
+    Usage(argv[0]);
   }
 
   if (g_camera) { delete g_camera; g_camera = NULL; }
