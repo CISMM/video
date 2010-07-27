@@ -39,7 +39,10 @@ using namespace std;
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "02.00";
+const char *Version_string = "02.01";
+
+typedef enum { MEAN_IMAGE, MAX_IMAGE, MIN_IMAGE } g_ACCUMULATION_TYPE;
+static g_ACCUMULATION_TYPE  g_accum_type = MEAN_IMAGE;
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -50,7 +53,7 @@ static void  cleanup(void);
 
 char  *g_device_name = NULL;			  //< Name of the device to open
 base_camera_server  *g_camera = NULL;		  //< Camera used to get an image
-image_metric	    *g_mean_image = NULL;	  //< Accumulates mean of images
+image_metric	    *g_composite_image = NULL;	  //< Accumulates composite image
 Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
 unsigned            g_bitdepth = 8;               //< Bit depth of the input image
 float               g_exposure = 0;               //< Exposure for live camera
@@ -63,8 +66,8 @@ int                 g_max_frames = 0;             //< How many frames to average
 // not have to be called otherwise.
 static	bool  store_summed_image(void)
 {
-  if (!g_mean_image) {
-    fprintf(stderr, "store_summed_image(): No mean image available\n");
+  if (!g_composite_image) {
+    fprintf(stderr, "store_summed_image(): No composite image available\n");
     return false;
   }
 
@@ -83,12 +86,12 @@ static	bool  store_summed_image(void)
   } else {
     temp = strstr(g_device_name, "file:");
     if (temp) {
-      sprintf(filename, "%s.avg.tif", temp + strlen("file:"));
+      sprintf(filename, "%s.composite.tif", temp + strlen("file:"));
     } else {
-      sprintf(filename, "%s.avg.tif", g_device_name);
+      sprintf(filename, "%s.composite.tif", g_device_name);
     }
   }
-  printf("Saving mean image to %s\n", filename);
+  printf("Saving composite image to %s\n", filename);
 
   // Figure out whether the image will be sixteen bits, and also
   // the gain to apply (256 if 8-bit, 1 if 16-bit).  If it is 8-bit
@@ -102,7 +105,7 @@ static	bool  store_summed_image(void)
     bitshift_gain /= pow(2.0,static_cast<double>(g_bitdepth - 8));
   }
 
-  if (!g_mean_image->write_to_tiff_file(filename, bitshift_gain, 0, do_sixteen)) {
+  if (!g_composite_image->write_to_tiff_file(filename, bitshift_gain, 0, do_sixteen)) {
     delete [] filename;
     return false;
   }
@@ -124,8 +127,10 @@ static void  dirtyexit(void)
   }
 
   // Save the output file
-  if (!store_summed_image()) {
-    fprintf(stderr,"dirtyexit(): Could not save mean image\n");
+  if (g_composite_image) {
+    if (!store_summed_image()) {
+      fprintf(stderr,"dirtyexit(): Could not save composite image\n");
+    }
   }
 
   // Done with the camera and other objects.
@@ -148,8 +153,7 @@ static void  cleanup(void)
   dirtyexit();
 }
 
-// Returns true if there are more frames to do, false (and saves
-// the mean image) if not.
+// Returns true if there are more frames to do, false if not.
 bool do_next_frame(void)
 {
   // Read an image from the camera into memory, within a structure that
@@ -167,10 +171,22 @@ bool do_next_frame(void)
     }
   }
 
-  if (!g_mean_image) {
-    g_mean_image = new mean_image(*g_camera);
+  if (!g_composite_image) {
+    switch (g_accum_type) {
+      case MEAN_IMAGE:
+        g_composite_image = new mean_image(*g_camera);
+        break;
+      case MIN_IMAGE:
+        g_composite_image = new minimum_image(*g_camera);
+        break;
+      case MAX_IMAGE:
+        g_composite_image = new maximum_image(*g_camera);
+        break;
+      default:
+        fprintf(stderr,"Unknown composition type (%d)\n", g_accum_type);
+    }
   }
-  (*g_mean_image) += *g_camera;
+  (*g_composite_image) += *g_camera;
 
   // If we've done enough frames, we're done.
   g_num_frames++;
@@ -183,8 +199,11 @@ bool do_next_frame(void)
 
 void Usage(const char *s)
 {
-    fprintf(stderr, "Usage: %s [-f num] [roper|diaginc|directx|directx640x480|VRPN imager name|filename]\n", s);
+    fprintf(stderr, "Usage: %s [-f num] [-min] [-max] [-mean] [roper|diaginc|directx|directx640x480|VRPN imager name|filename]\n", s);
     fprintf(stderr, "       -f: Number of frames to average over (0 means all, and is the default)\n");
+    fprintf(stderr, "     -min: Accumulate minimum image (default mean)\n");
+    fprintf(stderr, "     -max: Accumulate maximum image (default mean)\n");
+    fprintf(stderr, "    -mean: Accumulate mean image (default)\n");
     exit(-1);
 }
 
@@ -222,6 +241,12 @@ int main(int argc, char *argv[])
       } else {
         printf("Using all frames in each file\n");
       }
+    } else if (!strncmp(argv[i], "-min", strlen("-min"))) {
+       g_accum_type = MIN_IMAGE;
+    } else if (!strncmp(argv[i], "-max", strlen("-max"))) {
+       g_accum_type = MAX_IMAGE;
+    } else if (!strncmp(argv[i], "-mean", strlen("-mean"))) {
+       g_accum_type = MEAN_IMAGE;
     } else if (argv[i][0] == '-') {
       Usage(argv[0]);
     } else {
@@ -235,7 +260,7 @@ int main(int argc, char *argv[])
         //------------------------------------------------------------------
         // Clean up our state for the beginning of a new file.
         if (g_camera) { delete g_camera; g_camera = NULL; }
-        if (g_mean_image) { delete g_mean_image; g_mean_image = NULL; }
+        if (g_composite_image) { delete g_composite_image; g_composite_image = NULL; }
         g_num_frames = 0;
 
         //------------------------------------------------------------------
@@ -258,7 +283,14 @@ int main(int argc, char *argv[])
           g_video->play();
         }
 
+        // Read and process all of the frames
         while (do_next_frame()) {}
+
+        // Store the composite image and then delete it.
+        if (!store_summed_image()) {
+          fprintf(stderr,"dirtyexit(): Could not save composite image\n");
+        }
+        if (g_composite_image) { delete g_composite_image; g_composite_image = NULL; }
 
         break;
       }
