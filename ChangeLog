@@ -1,5 +1,11 @@
 2010-08-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
+	* stereo_spin.cpp : Version 02.01, fixes a bug where loading two
+		videos and showing them on hardware stereo didn't actually
+		do stereo unless the eyes were reversed.
+
+2010-08-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
+
 	* stereo_spin.cpp : Version 02.00, includes the ability to load two
 		different movies (one for left eye and one for right).
 

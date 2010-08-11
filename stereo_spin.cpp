@@ -261,7 +261,7 @@ void myDisplayFunc(void)
     if (g_texture_ids2.size() > 0) {
       if (g_spin_left) {
         left_eye_id = g_texture_ids[g_which_image];
-        right_eye_id = g_texture_ids[g_which_image];
+        right_eye_id = g_texture_ids2[g_which_image];
       } else {
         // Swap left and right eye.
         left_eye_id = g_texture_ids2[g_which_image];
