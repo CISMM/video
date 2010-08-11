@@ -61,7 +61,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "01.04";
+const char *Version_string = "02.00";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -69,14 +69,17 @@ const char *Version_string = "01.04";
 
 Tcl_Interp	    *g_tk_control_interp;
 
-char		    *g_device_name = NULL;	  //< Name of the camera/video/file device to open
+char		    *g_device_name = NULL;	  //< Name of the camera/video/file device to open for the left (or only) movie
+char		    *g_device2_name = NULL;	  //< Name of the camera/video/file device to open for the right movie
 base_camera_server  *g_camera;			  //< Camera used to get an image
+base_camera_server  *g_camera2 = NULL;	          //< Camera used to get right-eye images (if there are two videos)
 unsigned            g_camera_bit_depth = 8;       //< Bit depth of the particular camera
 
 image_wrapper       *g_image;                     //< Image, possibly from camera and possibly computed
 copy_of_image	    *g_last_image = NULL;	  //< Copy of the last image we had, if any
 
-Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
+Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them for the left (or only) eye
+Controllable_Video  *g_video2 = NULL;		  //< Video controls, if we have them for the right eye
 #ifdef _WIN32
 Tclvar_int_with_button	g_window_offset_x("window_offset_x",NULL,0);  //< Offset windows more in some arch
 Tclvar_int_with_button	g_window_offset_y("window_offset_y",NULL,0);  //< Offset windows more in some arch
@@ -89,7 +92,8 @@ Tclvar_int_with_button	g_loop("loop",NULL,1);    //< Does the video work in a lo
 
 int		    g_tracking_window;		  //< Glut window displaying tracking
 unsigned char	    *g_glut_image = NULL;	  //< Pointer to the storage for the image
-vector<GLuint>      g_texture_ids;                //< Keeps track of the texture IDs
+vector<GLuint>      g_texture_ids;                //< Keeps track of the texture IDs for the left-eye (or only) video
+vector<GLuint>      g_texture_ids2;               //< Keeps track of the texture IDs for any separate right-eye video
 double              g_which_image = 0;            //< Which image to show now?
 double              g_image_delta = 1;            //< How much to add to get to the next image to show?
 bool                g_spin_left = true;           //< Does the movie spin towards the left?
@@ -250,23 +254,45 @@ void myDisplayFunc(void)
     // we're done and not mess up other rendering.
     glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT | GL_CURRENT_BIT | GL_PIXEL_MODE_BIT);
 
-    // Figure out if the movie spins to the right or to the left.  If to the left,
-    // which is the default, then play the movie normally.  If to the right, then
-    // we leave all of the controls the same but at the last minute switch the
-    // direction we move through the images, for both the left and right eyes.
-    size_t left_eye = g_which_image;
-    size_t right_eye = g_which_image + g_disparity;
-    while (right_eye >= g_texture_ids.size()) { right_eye -= g_texture_ids.size(); }
-    if (!g_spin_left) {
-      left_eye = (g_texture_ids.size()-1) - left_eye;
-      right_eye = (g_texture_ids.size()-1) - right_eye;
+    // If we have two movies, then we index the same texture_id for each
+    // of them, just one each from two different sets.
+    GLuint  left_eye_id;
+    GLuint  right_eye_id;
+    if (g_texture_ids2.size() > 0) {
+      if (g_spin_left) {
+        left_eye_id = g_texture_ids[g_which_image];
+        right_eye_id = g_texture_ids[g_which_image];
+      } else {
+        // Swap left and right eye.
+        left_eye_id = g_texture_ids2[g_which_image];
+        right_eye_id = g_texture_ids[g_which_image];
+      }
+    } else {
+
+      // We're using the same video for both eyes (either spinning or panning),
+      // so we need to figure out which direction we're going, what the offset
+      // is, and then look up both IDs from the same image.
+
+      // Figure out if the movie spins to the right or to the left.  If to the left,
+      // which is the default, then play the movie normally.  If to the right, then
+      // we leave all of the controls the same but at the last minute switch the
+      // direction we move through the images, for both the left and right eyes.
+      size_t left_eye = g_which_image;
+      size_t right_eye = g_which_image + g_disparity;
+      while (right_eye >= g_texture_ids.size()) { right_eye -= g_texture_ids.size(); }
+      if (!g_spin_left) {
+        left_eye = (g_texture_ids.size()-1) - left_eye;
+        right_eye = (g_texture_ids.size()-1) - right_eye;
+      }
+      left_eye_id = g_texture_ids[left_eye];
+      right_eye_id = g_texture_ids[right_eye];  // Look up in same texture-ID table
     }
 
     // Enable 2D texture-mapping so that we can do our thing.
     glEnable(GL_TEXTURE_2D);
 
     // Bind the appropriate texture and write the texture.
-    glBindTexture(GL_TEXTURE_2D, g_texture_ids[left_eye]);
+    glBindTexture(GL_TEXTURE_2D, left_eye_id);
     g_camera->write_opengl_texture_to_quad();
 
     // If we're doing stereo, then set the display to the right eye and
@@ -274,11 +300,11 @@ void myDisplayFunc(void)
     // of the window and draw the right eye there for cross-eyed stereo.
     if (g_stereo) {
       glDrawBuffer(GL_BACK_RIGHT);
-      glBindTexture(GL_TEXTURE_2D, g_texture_ids[right_eye]);
+      glBindTexture(GL_TEXTURE_2D, right_eye_id);
       g_camera->write_opengl_texture_to_quad();
     } else {
       glViewport(0, 0, glutGet(GLUT_WINDOW_WIDTH)/2, glutGet(GLUT_WINDOW_HEIGHT));
-      glBindTexture(GL_TEXTURE_2D, g_texture_ids[right_eye]);
+      glBindTexture(GL_TEXTURE_2D, right_eye_id);
       g_camera->write_opengl_texture_to_quad();
     }
 
@@ -400,6 +426,66 @@ void myIdleFunc(void)
       if (g_quit) {
         cleanup();
         exit(0);
+      }
+    }
+
+    //------------------------------------------------------------------
+    // If we have a second camera to read the right-eye videos from, then
+    // go ahead and grab those into a separate set of textures.
+    if (g_camera2) {
+      while (g_camera2->read_image_to_memory(0,g_camera2->get_num_columns()-1,
+                                            0,g_camera2->get_num_rows()-1, g_exposure)) {
+
+        // Get a new texture ID for this frame.
+        GLuint  new_id;
+        glGenTextures(1, &new_id);
+        g_texture_ids2.push_back(new_id);
+        glBindTexture(GL_TEXTURE_2D, new_id);
+
+        // Set the clamping behavior and such.  This has to be done either
+        // each time before the texure is uploaded or each time it is displayed
+        // (after it is bound).
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+
+        // Store the video from this frame into a the OpengL texture whose ID has
+        // just been created.
+        if (!g_camera2->write_to_opengl_texture(new_id)) {
+          fprintf(stderr,"Could not write frame %d to texture ID %d\n",
+            g_texture_ids2.size()-1, new_id);
+          dirtyexit();
+        } else {
+          printf("Wrote right-eye image to OpenGL texture %d\n", new_id);
+        }
+        if (check_for_opengl_errors("main() after writing texture") != GL_NO_ERROR) {
+          fprintf(stderr, "Failed to read right-eye video into OpenGL for rendering\n");
+          dirtyexit();
+        }
+
+        // Display the loaded images in a movie loop while they are coming in,
+        // to give the user something to watch while it is loading.  The right
+        // eye is what is displayed in the left part of the image, so we should
+        // keep it as the one we want to show.
+        g_ready_to_display = true;
+        g_which_image = g_texture_ids2.size() - g_disparity - 1.0;
+        check_image_bounds();
+        myDisplayFunc();
+
+        // Handle Tcl events, so the user can quit if they want to.
+        // See if they asked us to quit.
+        while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
+        if (g_quit) {
+          cleanup();
+          exit(0);
+        }
+      }
+
+      // Make sure that the number of texture IDs match for the two eyes.
+      if (g_texture_ids.size() != g_texture_ids2.size()) {
+          fprintf(stderr, "Left and right videos have different numbers of frames\n");
+          dirtyexit();
       }
     }
 
@@ -637,11 +723,14 @@ void  device_filename_changed(const char *newvalue, void *)
 
 void Usage(const char *progname)
 {
-    fprintf(stderr, "Usage: %s [-noloop] [-cross] [filename]\n", progname);
+    fprintf(stderr, "Usage: %s [-noloop] [-cross] [filename] [filename2]\n", progname);
     fprintf(stderr,"        -noloop: Don't loop from the end of the movie back to the beginning\n");
     fprintf(stderr,"        -cross: Do cross-eyed stereo (not hardware OpenGL stereo)\n");
     fprintf(stderr, "       filename: The source file for tracking can be specified here (default is\n");
     fprintf(stderr, "                 a dialog box)\n");
+    fprintf(stderr, "       filename2: If the left and right eye movies are in different sets\n");
+    fprintf(stderr, "                 of files or in different movie files, this names the\n");
+    fprintf(stderr, "                 set to use.\n");
     exit(-1);
 }
 
@@ -745,13 +834,18 @@ int main(int argc, char *argv[])
       Usage(argv[0]);
     } else {
       switch (++realparams) {
-      case 1:
-        // Filename argument: open the file specified.
-        g_device_name = argv[i];
-        break;
+        case 1:
+          // Filename argument: open the file specified.
+          g_device_name = argv[i];
+          break;
 
-      default:
-        Usage(argv[0]);
+        case 2:
+          // Filename argument: open the file specified.
+          g_device2_name = argv[i];
+          break;
+
+        default:
+          Usage(argv[0]);
       }
     }
   }
@@ -822,6 +916,41 @@ int main(int argc, char *argv[])
   g_image = g_camera;
 
   //------------------------------------------------------------------
+  // If they have specified a second file name, we open it to be used as
+  // a second stream of video to show in the right eye.  Check to ensure
+  // that the video size is the same in this window.  If we have a video file, then
+  // set up the Tcl controls to run it.  Also, report the frame number.
+  if (g_device2_name != NULL) {
+    if (!get_camera(g_device2_name, &g_camera_bit_depth, &exposure,
+                    &g_camera2, &g_video2, 648,484,1,0,0)) {
+      fprintf(stderr,"Cannot open right-eye camera\n");
+      if (g_camera) { delete g_camera; g_camera = NULL; }
+      if (g_camera2) { delete g_camera2; g_camera2 = NULL; }
+      cleanup();
+      exit(-1);
+    }
+
+    // Verify that the camera is working.
+    if (!g_camera2->working()) {
+      fprintf(stderr,"Could not establish connection to right-eye camera\n");
+      if (g_camera) { delete g_camera; g_camera = NULL; }
+      if (g_camera2) { delete g_camera2; g_camera2 = NULL; }
+      cleanup();
+      exit(-1);
+    }
+
+    // Verify that the image size is the same for both cameras.
+    if ( (g_camera->get_num_columns() != g_camera2->get_num_columns()) ||
+         (g_camera->get_num_rows() != g_camera2->get_num_rows()) ) {
+      fprintf(stderr,"Left and right eye videos have different image sizes\n");
+      if (g_camera) { delete g_camera; g_camera = NULL; }
+      if (g_camera2) { delete g_camera2; g_camera2 = NULL; }
+      cleanup();
+      exit(-1);
+    }
+  }
+
+  //------------------------------------------------------------------
   // Initialize GLUT and create the window that will display the
   // video -- name the window after the device that has been
   // opened in VRPN.  Also set mouse callbacks.  Believe it or not,
@@ -875,6 +1004,9 @@ int main(int argc, char *argv[])
   // frames from the video.
   if (g_video) {
     g_video->play();
+    if (g_video2) {
+      g_video2->play();
+    }
   } else {
     fprintf(stderr,"Could not play video\n");
     if (g_camera) { delete g_camera; g_camera = NULL; }

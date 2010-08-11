@@ -1,6 +1,6 @@
-<title>Stereo Spin V01.04</title>
+<title>Stereo Spin V02.00</title>
 
-<h1>Stereo Spin version 01.04</h1>
+<h1>Stereo Spin version 02.00</h1>
 
 <p>The <i><b>Stereo Spin </b></i> program is used to display stereo images from 
   a spinning video from a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -45,6 +45,10 @@
   Spin</b></i>. If you run the program directly by double-clicking on the icon, 
   it will ask for a video or image file (AVI, TIF, or BMP, PPM, raw) that it should 
   open.</p>
+<p><b>Two movies:</b> If you have two different movies, one for the left eye and 
+  one for the right, select both and drag them onto the desktop icon. If you have 
+  two file sets, select one file from each and drag them both onto the desktop 
+  icon. </p>
 <h3>Required Hardware and drivers</h3>
 <p> <i>Stereo Spin</i> uses OpenGL stereo, and requires a video card and driver 
   set that supports this. For <i>nVidia</i> graphics, this requires a Quadro-type 
@@ -129,8 +133,10 @@
 <ul>
   <li><b>R</b>: Right-spinning movie. The default for the program is a left-spinning 
     movie. If stereo looks backwards and the mouse and keyboard commands are not 
-    working in the right direction, use this to fix it.</li>
-  <li><b>L</b>: Left-spinning movie, the default.</li>
+    working in the right direction, use this to fix it. When two movies are loaded, 
+    one for each eye, this assumes that the right one is listed first.</li>
+  <li><b>L</b>: Left-spinning movie, the default. When two movies are loaded, 
+    one for each eye, this assumes that the left one is listed first.</li>
   <li>&lt;: Spin the movie more towards the left. If it is spinning to the right, 
     it slows it down. If it is stopped, it starts it spinning to the left. if 
     it is spinning to the left, it spins faster.</li>
@@ -141,15 +147,23 @@
   <li><b>+</b>: Increase stereo disparity. This makes the separation between left- 
     and right-eye views larger, making the image pop out of the screen more. This 
     will also make it more difficult to fuse the images into a 3D percept. The 
-    default is a single frame (the minimum).</li>
+    default is a single frame (the minimum). This has no effect if two different 
+    movies were loaded for the left and right eyes.</li>
   <li><b>-</b>: Decrease stereo disparity. This makes the separation between left- 
     and right-eye views smaller, making the image pop out of the screen less. 
     This will also make it easier to fuse the images into a 3D percept. The default 
-    is a single frame (the minimum).</li>
+    is a single frame (the minimum). This has no effect if two different movies 
+    were loaded for the left and right eyes.</li>
   <li><b>Q</b>: Quits the program.</li>
 </ul>
 <h2>Version Information</h2>
 
+<h3>Version 02.00:</h3>
+<ul>
+  <li>This version can open to independent movies: one for the right eye and one 
+    for the left. This is done by dropping both movies onto the desktop icon.</li>
+</ul>
+<h3></h3>
 <h3>Version 01.04:</h3>
 <ul>
   <li>The code to detect whether hardware stereo was available did not work, and 
