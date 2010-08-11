@@ -61,7 +61,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "02.00";
+const char *Version_string = "02.02";
 
 //--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
@@ -246,7 +246,7 @@ void myDisplayFunc(void)
   // for current image, then advance the image however we're supposed
   // to, based on the delta-image value.  These are controlled by the
   // mouse and keyboard events.
-  // Cycle through the available images, displaying them one at at time.
+  // Cycle through the available images, displaying them one at a time.
 
   if (g_which_image < static_cast<int>(g_texture_ids.size())) {
 
@@ -261,6 +261,13 @@ void myDisplayFunc(void)
     if (g_texture_ids2.size() > 0) {
       if (g_spin_left) {
         left_eye_id = g_texture_ids[g_which_image];
+        // While loading the images, we may have the case that we have a
+        // larger g_which_image ID than there are right images; we need
+        // to not crash in that case, and it doesn't matter a lot what
+        // we draw.  This brings it back down into range.
+        while (g_which_image >= static_cast<int>(g_texture_ids2.size())) {
+          g_which_image -= g_texture_ids2.size();
+        }
         right_eye_id = g_texture_ids2[g_which_image];
       } else {
         // Swap left and right eye.
