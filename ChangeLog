@@ -1,3 +1,9 @@
+2010-08-12  Ryan Schubert <res@cs.unc.edu>
+
+	* PanopticNerve.vcproj : Adding ImageAnalyzer class to do
+		focus measure calculations.
+	* video.sln : Removed extra newline at beginning of file.
+
 2010-08-11  Russell M. Taylor II  <taylorr@cs.unc.edu>
 
 	* stereo_spin.cpp : Version 2.02, fixes a crash bug when

@@ -176,6 +176,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\PanopticNerve\ImageAnalyzer.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\video\PanopticNerve\NerveTest.cpp"
 				>
 			</File>
@@ -199,6 +203,10 @@
 			>
 			<File
 				RelativePath="..\video\PanopticNerve\cameraImage.h"
+				>
+			</File>
+			<File
+				RelativePath=".\PanopticNerve\ImageAnalyzer.h"
 				>
 			</File>
 			<File
