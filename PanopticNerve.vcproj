@@ -39,7 +39,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\video;..\vrpn;..\vrpn\server_src;..\quat"
+				AdditionalIncludeDirectories="..\vrpn\quat;..\video;..\vrpn;..\vrpn\server_src;..\quat"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -59,7 +59,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="vrpn.lib quat.lib opengl32.lib glut32.lib glu32.lib"
-				AdditionalLibraryDirectories="..\quat\pc_win32\Release;..\vrpn\pc_win32\Release;C:\NSRG\external\pc_win32\GL\lib;C:\nsrg\external\pc_win32\ImageMagick\lib"
+				AdditionalLibraryDirectories="..\vrpn\quat\pc_win32\Debug;..\vrpn\pc_win32\Debug;..\quat\pc_win32\Release;..\vrpn\pc_win32\Release;C:\NSRG\external\pc_win32\GL\lib;C:\nsrg\external\pc_win32\ImageMagick\lib"
 				GenerateDebugInformation="true"
 				TargetMachine="1"
 			/>

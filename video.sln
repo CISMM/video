@@ -256,6 +256,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PanopticNerve", "PanopticNe
 		{91C28129-4CA6-4833-88B5-25CCA8B16722} = {91C28129-4CA6-4833-88B5-25CCA8B16722}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PointGrey_ROI", "PointGrey_ROI\PointGrey_ROI.vcproj", "{B3FBB925-EFFF-473C-B889-47502D447D81}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -438,6 +440,10 @@ Global
 		{F9994AC3-FD12-4EE4-9C4E-74DEFD252C12}.Debug|Win32.Build.0 = Debug|Win32
 		{F9994AC3-FD12-4EE4-9C4E-74DEFD252C12}.Release|Win32.ActiveCfg = Release|Win32
 		{F9994AC3-FD12-4EE4-9C4E-74DEFD252C12}.Release|Win32.Build.0 = Release|Win32
+		{B3FBB925-EFFF-473C-B889-47502D447D81}.Debug|Win32.ActiveCfg = Debug|Win32
+		{B3FBB925-EFFF-473C-B889-47502D447D81}.Debug|Win32.Build.0 = Debug|Win32
+		{B3FBB925-EFFF-473C-B889-47502D447D81}.Release|Win32.ActiveCfg = Release|Win32
+		{B3FBB925-EFFF-473C-B889-47502D447D81}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
