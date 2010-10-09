@@ -547,7 +547,8 @@ static void  dirtyexit(void)
 
   // Make the log file name empty so that the logging thread
   // will notice and close its file.
-  // Wait until the logging thread exits.
+  // Wait until the logging thread exits.  Also, we need to call
+  // the Tcl callback here to make sure it notices the change.
   g_logfilename = "";
   logfilename_changed("", NULL);
   while (g_logging_thread->running()) {
@@ -2218,14 +2219,14 @@ bool find_more_trackers(unsigned how_many_more)
 	vertCandidates.clear();
 	horiCandidates.clear();
 
-  int i, radius;
-  int minx, maxx, miny, maxy;
-  g_image->read_range(minx, maxx, miny, maxy);
+        int i, radius;
+        int minx, maxx, miny, maxy;
+        g_image->read_range(minx, maxx, miny, maxy);
 
-  int x, y;
+        int x, y;
 
-  // We'll do a simple gaussian filter on our image before looking for beads.
-  // For this we'll use OpenCV.
+        // We'll do a simple gaussian filter on our image before looking for beads.
+        // For this we'll use OpenCV.
 
 	CvSize imgSize;
 	imgSize.width = maxx - minx + 1;
@@ -2508,7 +2509,7 @@ bool find_more_trackers(unsigned how_many_more)
 	for (loop = potentialTrackers.begin(); loop != potentialTrackers.end(); loop++) {
 		// if our candidate tracker isn't lost, then we add it to our list of real trackers
 		optimize_tracker((*loop));
-		if (!(*loop)->lost() && (*loop)->xytracker()->get_fitness() < 0) {
+		if (!(*loop)->lost()) {
 			++numnotlost;
                         g_trackers.push_back(new Spot_Information(create_appropriate_xytracker((*loop)->xytracker()->get_x(),(*loop)->xytracker()->get_y(),g_Radius),create_appropriate_ztracker()));
                         g_active_tracker = g_trackers.back();
@@ -2595,7 +2596,6 @@ void myIdleFunc(void)
       *g_rewind = 0;
       g_logging = 0;
       g_logfilename = "";
-      logfilename_changed("", NULL);
       g_logged_traces.clear();
 
       // Do the rewind and setting after clearing the logging, so that
@@ -3613,6 +3613,88 @@ void  handle_save_state_change(int newvalue, void *)
   fclose(f);
 }
 
+bool load_trackers_from_file(const char *inname)
+{
+  int  max_frame_number = 0;
+
+  //------------------------------------------------------------
+  // Open the file and read through it to find the largest frame
+  // number for any report in the file.  Then close the file so
+  // we can go through it again below.  Make sure that the header
+  // line matches what we expect (so we know that this is the right
+  // type of file).
+  FILE *f = fopen(inname, "r");
+  if (f == NULL) {
+    perror("Cannot open file for reading");
+    fprintf(stderr, "  (%s)\n", inname);
+    return false;
+  }
+
+  // Check the format of the header line to make sure it matches
+  // what we expect in a CSV file that we wrote.
+  char  line[4096];
+  if (!fgets(line, sizeof(line)-1, f)) {
+    fprintf(stderr, "load_trackers_from_file(): Could not read header line.\n");
+    return false;
+  }
+  if (strncmp(line, "FrameNumber,", strlen("FrameNumber,")) != 0) {
+    fprintf(stderr, "load_trackers_from_file(): Bad header line: %s\n", line);
+    return false;
+  }
+  while (fgets(line, sizeof(line)-1, f)) {
+    int frame_number;
+    if (sscanf(line, "%d", &frame_number) <= 0) {
+      fprintf(stderr, "load_trackers_from_file(): Bad data line: %s\n", line);
+    }
+    if (frame_number > max_frame_number) {
+      max_frame_number = frame_number;
+    }
+  }
+  fclose(f);
+
+  //------------------------------------------------------------
+  // Open the file again and read through it to pull out all
+  // tracker lines with a frame number matching the max.  When
+  // we find one, start a tracker there.
+  f = fopen(inname, "r");
+  if (f == NULL) {
+    perror("Cannot open file for re-reading");
+    fprintf(stderr, "  (%s)\n", inname);
+    return false;
+  }
+
+  // Check the format of the header line to make sure it matches
+  // what we expect in a CSV file that we wrote.
+  if (!fgets(line, sizeof(line)-1, f)) {
+    fprintf(stderr, "load_trackers_from_file(): Could not read header line.\n");
+    return false;
+  }
+  if (strncmp(line, "FrameNumber,", strlen("FrameNumber,")) != 0) {
+    fprintf(stderr, "load_trackers_from_file(): Bad header line: %s\n", line);
+    return false;
+  }
+  while (fgets(line, sizeof(line)-1, f)) {
+    int frame_number, spot_id;
+    double x,y,z,r;
+    if (sscanf(line, "%d,%d,%lg,%lg,%lg,%lg", &frame_number, &spot_id, &x, &y, &z, &r) <= 0) {
+      fprintf(stderr, "load_trackers_from_file(): Bad data line: %s\n", line);
+    }
+    if (frame_number == max_frame_number) {
+      g_X = x;
+      g_Y = y;
+      g_Radius = r;
+      g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(g_X,g_Y,g_Radius),create_appropriate_ztracker()));
+      g_active_tracker = g_trackers.back();
+      if (g_active_tracker->ztracker()) {
+        g_active_tracker->ztracker()->set_depth_accuracy(0.25);
+      }
+    }
+  }
+  fclose(f);
+
+  return true;
+}
+
 bool load_state_from_file(const char *inname)
 {
   //------------------------------------------------------------
@@ -3745,7 +3827,7 @@ void Usage(const char *progname)
     fprintf(stderr, "           [-radius R] [-tracker X Y R] [-tracker X Y R] ...\n");
     fprintf(stderr, "           [-FIONA_background BG]\n");
     fprintf(stderr, "           [-raw_camera_params sizex sizey bitdepth channels headersize frameheadersize]\n");
-    fprintf(stderr, "           [-load_state FILE] [-log_video N]\n");
+    fprintf(stderr, "           [-load_state FILE] [-log_video N] [-continue_from FILE]\n");
     fprintf(stderr, "           [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n");
     fprintf(stderr, "       -nogui: Run without the video display window (no Glut/OpenGL)\n");
     fprintf(stderr, "       -kernel: Use kernels of the specified type (default symmetric)\n");
@@ -3780,6 +3862,7 @@ void Usage(const char *progname)
     fprintf(stderr, "                 (default throws a dialog box to ask you for them)\n");
     fprintf(stderr, "       -load_state: Load program state from FILE\n");
     fprintf(stderr, "       -log_video: Log every Nth frame of video (in addition to every tracker every frame)\n");
+    fprintf(stderr, "       -continue_from: Load trackers from last frame in the specified CSV FILE and continue tracking\n");
     fprintf(stderr, "       source: The source file for tracking can be specified here (default is\n");
     fprintf(stderr, "                 a dialog box)\n");
     exit(-1);
@@ -4032,7 +4115,7 @@ int main(int argc, char *argv[])
       if (++i > argc) { Usage(argv[0]); }
       char *name = new char[strlen(argv[i])+6];
       sprintf(name, "%s.vrpn", argv[i]);
-      logfilename_changed(name, NULL);
+      g_logfilename = name;
     } else if (!strncmp(argv[i], "-rod3", strlen("-rod3"))) {
       if (++i > argc) { Usage(argv[0]); }
       g_length = atof(argv[i]);
@@ -4057,36 +4140,38 @@ int main(int argc, char *argv[])
       g_Radius = atof(argv[i]);
       g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(g_X,g_Y,g_Radius),create_appropriate_ztracker()));
       g_active_tracker = g_trackers.back();
-      if (g_active_tracker->ztracker()) { g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
-	} else if (!strncmp(argv[i], "-lost_tracking_sensitivity", strlen("-lost_tracking_sensitivity"))) {
-		if (++i > argc) { Usage(argv[0]); }
-		g_lossSensitivity = atof(argv[i]);
-	} else if (!strncmp(argv[i], "-intensity_lost_sensitivity", strlen("-intensity_lost_sensitivity"))) {
-		if (++i > argc) { Usage(argv[0]); }
-		g_intensityLossSensitivity = atof(argv[i]);	
-	} else if (!strncmp(argv[i], "-dead_zone_around_border", strlen("-dead_zone_around_border"))) {
-		if (++i > argc) { Usage(argv[0]); }
-		g_borderDeadZone = atof(argv[i]);
-	} else if (!strncmp(argv[i], "-dead_zone_around_trackers", strlen("-dead_zone_around_trackers"))) {
-		if (++i > argc) { Usage(argv[0]); }
-		g_trackerDeadZone = atof(argv[i]);
-	} else if (!strncmp(argv[i], "-maintain_this_many_beads", strlen("-maintain_this_many_beads"))) {
-		if (++i > argc) { Usage(argv[0]); }
-		g_findThisManyBeads = atof(argv[i]);
-	} else if (!strncmp(argv[i], "-candidate_spot_threshold", strlen("-candidate_spot_threshold"))) {
-		if (++i > argc) { Usage(argv[0]); }
-		g_candidateSpotThreshold = atof(argv[i]);
-	} else if (!strncmp(argv[i], "-lost_behavior", strlen("-lost_behavior"))) {
-		if (++i > argc) { Usage(argv[0]); }
-		g_lostBehavior = atof(argv[i]);
-	} else if (!strncmp(argv[i], "-sliding_window_radius", strlen("-sliding_window_radius"))) {
-		if (++i > argc) { Usage(argv[0]); }
-		g_slidingWindowRadius = atof(argv[i]);
-	} else if (!strncmp(argv[i], "-radius", strlen("-radius"))) {
-		if (++i > argc) { Usage(argv[0]); }
-		g_Radius = atof(argv[i]);
-	} else if (!strncmp(argv[i], "-show_lost_and_found", strlen("-show_lost_and_found"))) {
-		g_showLostAndFound = true;
+      if (g_active_tracker->ztracker()) {
+        g_active_tracker->ztracker()->set_depth_accuracy(0.25);
+      }
+    } else if (!strncmp(argv[i], "-lost_tracking_sensitivity", strlen("-lost_tracking_sensitivity"))) {
+	if (++i > argc) { Usage(argv[0]); }
+	g_lossSensitivity = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-intensity_lost_sensitivity", strlen("-intensity_lost_sensitivity"))) {
+	if (++i > argc) { Usage(argv[0]); }
+	g_intensityLossSensitivity = atof(argv[i]);	
+    } else if (!strncmp(argv[i], "-dead_zone_around_border", strlen("-dead_zone_around_border"))) {
+	if (++i > argc) { Usage(argv[0]); }
+	g_borderDeadZone = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-dead_zone_around_trackers", strlen("-dead_zone_around_trackers"))) {
+	if (++i > argc) { Usage(argv[0]); }
+	g_trackerDeadZone = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-maintain_this_many_beads", strlen("-maintain_this_many_beads"))) {
+	if (++i > argc) { Usage(argv[0]); }
+	g_findThisManyBeads = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-candidate_spot_threshold", strlen("-candidate_spot_threshold"))) {
+	if (++i > argc) { Usage(argv[0]); }
+	g_candidateSpotThreshold = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-lost_behavior", strlen("-lost_behavior"))) {
+	if (++i > argc) { Usage(argv[0]); }
+	g_lostBehavior = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-sliding_window_radius", strlen("-sliding_window_radius"))) {
+	if (++i > argc) { Usage(argv[0]); }
+	g_slidingWindowRadius = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-radius", strlen("-radius"))) {
+	if (++i > argc) { Usage(argv[0]); }
+	g_Radius = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-show_lost_and_found", strlen("-show_lost_and_found"))) {
+	g_showLostAndFound = true;
     } else if (!strncmp(argv[i], "-load_state", strlen("-load_state"))) {
       if (++i > argc) { Usage(argv[0]); }
       if (!load_state_from_file(argv[i])) {
@@ -4097,6 +4182,12 @@ int main(int argc, char *argv[])
       if (++i > argc) { Usage(argv[0]); }
       g_log_video = 1;
       g_video_full_frame_every = atoi(argv[i]);
+    } else if (!strncmp(argv[i], "-continue_from", strlen("-continue_from"))) {
+      if (++i > argc) { Usage(argv[0]); }
+      if (!load_trackers_from_file(argv[i])) {
+        fprintf(stderr,"-contintue_from: Could not load trackers from %s\n", argv[i]);
+        exit(-1);
+      }
     } else if (argv[i][0] == '-') {
       Usage(argv[0]);
     } else {
