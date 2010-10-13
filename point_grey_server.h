@@ -10,9 +10,12 @@ public:
   virtual ~point_grey_server(void);
 
   /// Read an image to a memory buffer.
+  // If we are in external-trigger mode, this will timeout and return false
+  // after 100 milliseconds so that the caller can keep doing whatever it
+  // needs to do in the meantime (XXX Hack).
   virtual bool	read_image_to_memory(unsigned minX = 0, unsigned maxX = 0,
-			     unsigned minY = 0, unsigned maxY = 0,
-				 double exposure_time_millisecs = 0.0);
+			              unsigned minY = 0, unsigned maxY = 0,
+			              double exposure_time_millisecs = 0.0);
 
   /// Get pixels out of the memory buffer
   virtual bool	get_pixel_from_memory(unsigned X, unsigned Y, vrpn_uint8 &val, int RGB = 0) const;

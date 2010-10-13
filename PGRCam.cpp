@@ -24,12 +24,14 @@ void reportCameraInfo( const FlyCaptureInfoEx* pinfo )
 // Helper code to handle a FlyCapture error.
 //
 #define _HANDLE_ERROR( error, function ) \
-   if( error != FLYCAPTURE_OK ) \
+   if( (error != FLYCAPTURE_OK) && (error != FLYCAPTURE_TIMEOUT) ) \
    { \
       printf( "%s: %s\n", function, flycaptureErrorToString( error ) ); \
    } \
 
-PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, int camera) {
+PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, int camera)
+        : triggered(trigger)
+{
 	connected = false;
 	imageConverted.pData = NULL;
 
@@ -87,8 +89,7 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, i
 	   elsewhere, unless the camera is being triggered externally that is, in which case the frame rate setting is 
 	   irrelevant.
 	*/ 
-	err = flycaptureStartCustomImage(context, mode, 0, 0, PGR_WIDTH / binning, PGR_HEIGHT / binning, 100, FLYCAPTURE_MONO8);
-	
+	err = flycaptureStartCustomImage(context, mode, 0, 0, PGR_WIDTH / binning, PGR_HEIGHT / binning, 100, FLYCAPTURE_MONO8);	
 	//err = flycaptureStart(context, FLYCAPTURE_VIDEOMODE_1024x768Y8, FLYCAPTURE_FRAMERATE_30);
 	_HANDLE_ERROR(err, "flycaptureStart()");
 	cols = PGR_WIDTH / binning;
@@ -157,7 +158,13 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, i
 	if( trigger ){
 		err = flycaptureSetTrigger(context, true, 0, 0, 1, 0);
 		_HANDLE_ERROR(err, "flycaptureSetTrigger()");
+
+                // If we're in trigger mode, set the capture timeout to 100 milliseconds,
+                // so we won't wait forever for an image.
+	        err = flycaptureSetGrabTimeoutEx(context, 100);	
+	        _HANDLE_ERROR(err, "flycaptureSetGrabTimeoutEx()");
 	}
+
 	/* if you set a grab timeout using flycaptureSetGrabTimeoutEx(), this timeout will be used in asynchronous 
 	   trigger mode as well: flycaptureGrabImage*() will return with the image when you either trigger the camera,
 	   or the timeout value expires. because we do not want the camera to return anything unless we actually
@@ -217,6 +224,11 @@ bool PGRCam::GetNewImage() {
 	printf("2");*/
 	err = flycaptureGrabImage2(context, &image);
 	_HANDLE_ERROR(err, "flycaptureGrabImage2()");
+
+        // If we timed out, go ahead and return false.
+        if (err == FLYCAPTURE_TIMEOUT) {
+          return false;
+        }
 	//*/
 	/*
 	err = flycaptureLockLatest(context, &image);

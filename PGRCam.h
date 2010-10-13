@@ -23,6 +23,8 @@ private:
 	FlyCaptureInfoEx info;
 	FlyCaptureError err;
 
+        bool triggered;
+
 	unsigned char* testImage;
 
 	unsigned char* imgPtr;

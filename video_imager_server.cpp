@@ -196,7 +196,16 @@ void imager_server_thread_func(vrpn_ThreadData &threadData)
     // reading again.
     for (skip = 1; skip <= g_every_nth_frame; skip++) {
       // Setting the min to be larger than the max means "the whole image"
-	  g_camera->read_image_to_memory(1,0,1,0,g_exposure);
+      // The point-grey camera, when in external-trigger mode, will time out
+      // on the read and return without an image.  This lets us keep servicing
+      // the connection in the meantime so that the rest of the system doesn'
+      // lock up.  We only make progress in the skip count when we actually
+      // get an image.
+      while (!g_camera->read_image_to_memory(1,0,1,0,g_exposure)) {
+        svr->mainloop();
+        svrcon->mainloop();
+        svrcon->save_log_so_far();
+      }
     }
     // Send the non-skipped frame to VRPN and log.
     if (!g_camera->send_vrpn_image(svr,svrcon,g_exposure,svrchan, g_numchannels)) {
