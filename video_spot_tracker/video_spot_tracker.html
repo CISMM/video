@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v06.01</title>
+<title>Video Spot Tracker v06.03</title>
 
-<h1>Video Spot Tracker version 06.02</h1>
+<h1>Video Spot Tracker version 06.03</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots in a <a href="http://www.microsoft.com/directx">Microsoft 
@@ -393,6 +393,17 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 6.03:</h3>
+<ul>
+  <li>Fixed a bug that kept it from writing a VRPN-format output file when it 
+    was asked to log at the command line.</li>
+  <li>Fixed a bug that kept auto-finding from work with non-symmetric kernels 
+    (in particular, it is known to have failed with the cone kernel).</li>
+  <li>Adds a command-line argument to make it restart tracking using the last 
+    tracking positions found in a stored CSV file from a previous run. This enables 
+    chaining tracking runs across multiple video files.</li>
+</ul>
+<h3></h3>
 <h3>Version 6.02:</h3>
 <ul>
   <li>Made it so that the program can load arbitrarily-sized 8-bit, single-channel 
