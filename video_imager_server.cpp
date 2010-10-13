@@ -69,21 +69,21 @@ void  Usage(const char *s)
 // values.  The server code reads values from the camera and sends
 // them over the network.
 
-base_camera_server  *g_camera;	    //< The camera we're going to read from
-int		    g_bincount = 1; //< How many pixels to average into one bin in X and Y
-double		    g_exposure = 250.0;	//< How long to expose in milliseconds
-int		    g_every_nth_frame = 1;	//< Discard all but every nth frame
-unsigned	    g_width = 0, g_height = 0;  //< Resolution for DirectX cameras (use default)
-int                 g_numchannels = 1;  //< How many channels to send (3 for RGB cameras, 1 otherwise)
-int                 g_maxval = 4095;    //< Maximum value available in a channel for this device
+base_camera_server  *g_camera; //< The camera we're going to read from
+int					g_bincount = 1; //< How many pixels to average into one bin in X and Y
+double				g_exposure = 250.0;	//< How long to expose in milliseconds
+int					g_every_nth_frame = 1; //< Discard all but every nth frame
+unsigned			g_width = 0, g_height = 0; //< Resolution for DirectX cameras (use default)
+int                 g_numchannels = 1; //< How many channels to send (3 for RGB cameras, 1 otherwise)
+int                 g_maxval = 4095; //< Maximum value available in a channel for this device
 bool                g_swap_edt = false; //< Swap lines in EDT to fix bug in driver
 unsigned            g_camera_buffers = 360; //< How many camera buffers to ask for
-double		g_framerate = -1; //< -1 for use max framerate given exposure, if an option
+double				g_framerate = -1; //< -1 for use max framerate given exposure, if an option
+bool				g_trigger = false; //< External trigger setting, on or off
 
 // we may want to change these to have multiple vrpn servers running on the same machine
 int g_svrPORT = 9999;
 int g_strPORT = vrpn_DEFAULT_LISTEN_PORT_NO;
-
 
 /// Open the camera we want to use (the type is based on the name passed in)
 bool  init_camera_code(const char *type, int which = 1)
@@ -147,7 +147,7 @@ bool  init_camera_code(const char *type, int which = 1)
     }
   } else if (!strcmp(type, "pgr")) {
 	  printf("Opening Point Grey Camera\n");
-	  g_camera = new point_grey_server(g_framerate, g_exposure, g_bincount);
+	  g_camera = new point_grey_server(g_framerate, g_exposure, g_bincount, g_trigger);
 	  g_numchannels = 1;
 	  g_maxval = 255;
 	  if (!g_camera->working()) {
@@ -198,7 +198,6 @@ void imager_server_thread_func(vrpn_ThreadData &threadData)
       // Setting the min to be larger than the max means "the whole image"
 	  g_camera->read_image_to_memory(1,0,1,0,g_exposure);
     }
-
     // Send the non-skipped frame to VRPN and log.
     if (!g_camera->send_vrpn_image(svr,svrcon,g_exposure,svrchan, g_numchannels)) {
       fprintf(stderr, "Could not send VRPN frame\n");
@@ -347,6 +346,8 @@ int main(int argc, char *argv[])
 			g_svrPORT = atoi(argv[i]);
 		} else if (!strncmp(argv[i], "-swap_edt", strlen("-swap_edt"))) {
 			g_swap_edt = true;
+		} else if (!strncmp(argv[i], "-trigger", strlen("-trigger"))) { // enable external triggering
+			g_trigger = true;
 		} else if (!strncmp(argv[i], "-framerate", strlen("-framerate"))) {
 			if (++i > argc) { Usage(argv[0]); }
 			g_framerate = atof(argv[i]);

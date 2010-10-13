@@ -6,8 +6,7 @@
 #define PGR_HEIGHT 480
 
 
-void
-reportCameraInfo( const FlyCaptureInfoEx* pinfo )
+void reportCameraInfo( const FlyCaptureInfoEx* pinfo )
 {
    //
    // Print out camera information. This can be obtained by calling
@@ -30,7 +29,7 @@ reportCameraInfo( const FlyCaptureInfoEx* pinfo )
       printf( "%s: %s\n", function, flycaptureErrorToString( error ) ); \
    } \
 
-PGRCam::PGRCam(double framerate, double msExposure, int binning, int camera) {
+PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, int camera) {
 	connected = false;
 	imageConverted.pData = NULL;
 
@@ -64,7 +63,6 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, int camera) {
 		return;
 	}
 
-
 	// set camera reset
 	err = flycaptureSetCameraRegister(context, 0, 0x80000000);
 	_HANDLE_ERROR(err, "flycaptureSetCameraRegister()");
@@ -82,7 +80,15 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, int camera) {
 	}
 
 	//err = flycaptureStart(context, FLYCAPTURE_VIDEOMODE_ANY, FLYCAPTURE_FRAMERATE_ANY);
+
+	/* the following call initializes the camera into Format 7, custom image format. see flycaptureStartCustomImage() on 
+	   line 1288 of pgrflycapture.h for more details. this is where you will set the left/top and width/height of your
+	   desired ROI, as well as the maximum packet size to send. however, you will still need to set the frame rate 
+	   elsewhere, unless the camera is being triggered externally that is, in which case the frame rate setting is 
+	   irrelevant.
+	*/ 
 	err = flycaptureStartCustomImage(context, mode, 0, 0, PGR_WIDTH / binning, PGR_HEIGHT / binning, 100, FLYCAPTURE_MONO8);
+	
 	//err = flycaptureStart(context, FLYCAPTURE_VIDEOMODE_1024x768Y8, FLYCAPTURE_FRAMERATE_30);
 	_HANDLE_ERROR(err, "flycaptureStart()");
 	cols = PGR_WIDTH / binning;
@@ -133,7 +139,6 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, int camera) {
 	err = flycaptureSetCameraRegister(context, 0x12fc, 0x80000000);
 	_HANDLE_ERROR(err, "flycaptureSetCameraRegister()");
 
-
 	/*
 	float shutter = -1, framerate = -1;
 	err = flycaptureGetCameraAbsProperty(context, FLYCAPTURE_SHUTTER, &shutter);
@@ -141,19 +146,28 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, int camera) {
 	err = flycaptureGetCameraAbsProperty(context, FLYCAPTURE_FRAME_RATE, &framerate);
 	_HANDLE_ERROR(err, "getting FLYCAPTURE_FRAME_RATE");
 
-
 	printf("Camera set to:\n");
 	printf("\tshutter speed = \t%f ms\n", shutter);
 	printf("\tframerate = \t%f fps\n", framerate);
-*/
-
-
-	err = flycaptureSetGrabTimeoutEx(context, 5000);
-	_HANDLE_ERROR(err, "flycaptureSetGrabTimeoutEx()");
-
-
-
-
+	*/
+	
+	/* the following call puts the camera into external triggering mode. see flycaptureSetTrigger() on 
+	   line 2376 of pgrflycapture.h for more details. 
+	*/ 
+	if( trigger ){
+		err = flycaptureSetTrigger(context, true, 0, 0, 1, 0);
+		_HANDLE_ERROR(err, "flycaptureSetTrigger()");
+	}
+	/* if you set a grab timeout using flycaptureSetGrabTimeoutEx(), this timeout will be used in asynchronous 
+	   trigger mode as well: flycaptureGrabImage*() will return with the image when you either trigger the camera,
+	   or the timeout value expires. because we do not want the camera to return anything unless we actually
+	   trigger it, set this value only when the camera is *not* initialized in external triggering mode.
+	*/
+	else{
+		err = flycaptureSetGrabTimeoutEx(context, 5000);
+		_HANDLE_ERROR(err, "flycaptureSetGrabTimeoutEx()");
+	}
+	
 	testImage = NULL;
 	/*
 	const int w = 256;
@@ -173,7 +187,7 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, int camera) {
 		}
 	}
 	*/
-
+	
 	counter = 0;
 	xmitErrorCountLast = 0;
 }

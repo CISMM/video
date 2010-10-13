@@ -93,7 +93,7 @@
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
-			CharacterSet="2"
+			CharacterSet="0"
 			WholeProgramOptimization="1"
 			>
 			<Tool
@@ -113,7 +113,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="..\video;..\vrpn;..\vrpn\server_src;..\quat"
+				AdditionalIncludeDirectories="..\SyncControlAPI;..\video;..\vrpn;..\vrpn\server_src;..\vrpn\quat;..\quat"
 				RuntimeLibrary="2"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="true"
@@ -131,7 +131,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="vrpn.lib quat.lib opengl32.lib glut32.lib glu32.lib"
-				AdditionalLibraryDirectories="..\quat\pc_win32\Release;..\vrpn\pc_win32\Release;C:\NSRG\external\pc_win32\GL\lib;C:\nsrg\external\pc_win32\ImageMagick\lib"
+				AdditionalLibraryDirectories="..\vrpn\quat\pc_win32\Release;..\quat\pc_win32\Release;..\vrpn\pc_win32\Release;C:\NSRG\external\pc_win32\GL\lib;C:\nsrg\external\pc_win32\ImageMagick\lib"
 				GenerateDebugInformation="true"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
@@ -192,12 +192,36 @@
 				>
 			</File>
 			<File
-				RelativePath="..\video\PanopticNerve\USBMAC6000.cpp"
+				RelativePath="..\SyncControlAPI\sciString2send.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\video\PanopticNerve\Varioptic.cpp"
+				RelativePath="..\SyncControlAPI\SyncControl.cpp"
 				>
+			</File>
+			<File
+				RelativePath="..\vrpn\vrpn_Serial.C"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\vrpn\vrpn_Shared.C"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
 			</File>
 		</Filter>
 		<Filter
@@ -218,11 +242,15 @@
 				>
 			</File>
 			<File
-				RelativePath="..\video\PanopticNerve\USBMAC6000.h"
+				RelativePath="..\SyncControlAPI\sciString2send.h"
 				>
 			</File>
 			<File
-				RelativePath="..\video\PanopticNerve\Varioptic.h"
+				RelativePath="..\SyncControlAPI\SyncControl.h"
+				>
+			</File>
+			<File
+				RelativePath=".\PanopticNerve\USBMAC6000.h"
 				>
 			</File>
 		</Filter>
