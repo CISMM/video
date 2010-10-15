@@ -195,10 +195,10 @@ void imager_server_thread_func(vrpn_ThreadData &threadData)
     // Throw away all but every Nth frame.  We do this by reading them and then
     // reading again.
     for (skip = 1; skip <= g_every_nth_frame; skip++) {
-      // Setting the min to be larger than the max means "the whole image"
+      // Setting the min to be larger than the max means "the whole image".
       // The point-grey camera, when in external-trigger mode, will time out
-      // on the read and return without an image.  This lets us keep servicing
-      // the connection in the meantime so that the rest of the system doesn'
+      // on the read and return false without an image.  This lets us keep servicing
+      // the connection in the meantime so that the rest of the system doesn't
       // lock up.  We only make progress in the skip count when we actually
       // get an image.
       while (!g_camera->read_image_to_memory(1,0,1,0,g_exposure)) {
