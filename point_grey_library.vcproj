@@ -39,7 +39,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\NSRG\external\pc_win32\PointGrey\include;..\vrpn"
+				AdditionalIncludeDirectories="&quot;C:\Program Files\Point Grey Research\FlyCapture2\include&quot;;C:\NSRG\external\pc_win32\PointGrey\include;..\vrpn"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -100,7 +100,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="C:\NSRG\external\pc_win32\PointGrey\include;..\vrpn"
+				AdditionalIncludeDirectories="&quot;C:\Program Files\Point Grey Research\FlyCapture2\include&quot;;C:\NSRG\external\pc_win32\PointGrey\include;..\vrpn"
 				RuntimeLibrary="2"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="true"

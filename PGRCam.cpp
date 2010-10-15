@@ -1,116 +1,139 @@
 #include <stdio.h>
 #include "PGRCam.h"
 
+using namespace FlyCapture2;
 
-#define PGR_WIDTH 640
-#define PGR_HEIGHT 480
+#define PGR_WIDTH 648
+#define PGR_HEIGHT 488
 
-
-void reportCameraInfo( const FlyCaptureInfoEx* pinfo )
+void PrintCameraInfo( CameraInfo* pCamInfo )
 {
-   //
-   // Print out camera information. This can be obtained by calling
-   // flycaptureGetCameraInfo() anytime after the camera has been initialized.
-   //
-   printf( "Serial number: %d\n", pinfo->SerialNumber );
-   printf( "Camera model: %s\n", pinfo->pszModelName );
-   printf( "Camera vendor: %s\n", pinfo->pszVendorName );
-   printf( "Sensor: %s\n", pinfo->pszSensorInfo );
-   printf( "DCAM compliance: %1.2f\n", (float)pinfo->iDCAMVer / 100.0 );
-   printf( "Bus position: (%d,%d).\n", pinfo->iBusNum, pinfo->iNodeNum );
+    printf(
+        "\n*** CAMERA INFORMATION ***\n"
+        "Serial number - %u\n"
+        "Camera model - %s\n"
+        "Camera vendor - %s\n"
+        "Sensor - %s\n"
+        "Resolution - %s\n"
+        "Firmware version - %s\n"
+        "Firmware build time - %s\n\n",
+        pCamInfo->serialNumber,
+        pCamInfo->modelName,
+        pCamInfo->vendorName,
+        pCamInfo->sensorInfo,
+        pCamInfo->sensorResolution,
+        pCamInfo->firmwareVersion,
+        pCamInfo->firmwareBuildTime );
 }
 
 //
 // Helper code to handle a FlyCapture error.
 //
-#define _HANDLE_ERROR( error, function ) \
-   if( (error != FLYCAPTURE_OK) && (error != FLYCAPTURE_TIMEOUT) ) \
-   { \
-      printf( "%s: %s\n", function, flycaptureErrorToString( error ) ); \
-   } \
+void PrintError( Error error , const char *function_name)
+{
+  fprintf(stderr,"Error in function: %s ", function_name);
+  error.PrintErrorTrace();
+}
 
 PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, int camera)
         : triggered(trigger)
 {
-	connected = false;
-	imageConverted.pData = NULL;
+  connected = false;
 
-	const int maxCameras = 32;
-	unsigned int numFound = maxCameras;
-	FlyCaptureInfoEx infos[maxCameras];
+  BusManager busMgr;
+  unsigned int numCameras;
+  error = busMgr.GetNumOfCameras(&numCameras);
+  if (error != PGRERROR_OK)
+  {
+      PrintError( error , "GetNumOfCameras" );
+      return;
+  }
+  if (numCameras < 1) {
+    printf("*** Warning: no PGR cameras dectected! ***\n");
+    return;
+  }
 
-	err = flycaptureBusEnumerateCamerasEx(infos, &numFound);
-	_HANDLE_ERROR(err, "flycaptureBusEnumerateCamerasEx()");
+  PGRGuid guid;
+  error = busMgr.GetCameraFromIndex(camera, &guid);
+  if (error != PGRERROR_OK)
+  {
+      PrintError( error, "GetCameraFromIndex");
+      return;
+  }
 
-	if (numFound < 1)
-		printf("*** Warning: no PGR cameras dectected! ***\n");
-/*
-	for (int i = 0; i < numFound; ++i) {
-		printf("Camera %i:\n", i);
-		reportCameraInfo(&(infos[i]));
-	}
-*/
-	err = flycaptureCreateContext(&context);
-	_HANDLE_ERROR(err, "flycaptureCreateContext()");
-	
-	//err = flycaptureInitializePlus(context, camera, 32, NULL);
-	//_HANDLE_ERROR(err, "flycaptureInitialize()");
-	err = flycaptureInitialize(context, camera);
-	_HANDLE_ERROR(err, "flycaptureInitialize()");
+  // Connect to a camera
+  error = cam.Connect(&guid);
+  if (error != PGRERROR_OK)
+  {
+      PrintError( error, "PGR camera CONNECT" );
+      return;
+  }
 
-	if( err == FLYCAPTURE_OK ) {
-		connected = true;
-	}
-	else {
-		return;
-	}
+  // Get the camera information
+  error = cam.GetCameraInfo(&camInfo);
+  if (error != PGRERROR_OK)
+  {
+      PrintError( error, "GetCameraInfo");
+      return;
+  }
 
-	// set camera reset
-	err = flycaptureSetCameraRegister(context, 0, 0x80000000);
-	_HANDLE_ERROR(err, "flycaptureSetCameraRegister()");
+  PrintCameraInfo(&camInfo);
 
+  if (binning != 1) {
+    fprintf(stderr, "XXX Binning not yet implemented in new PGR interface\n");
+    return;
+  } 
+  cols = PGR_WIDTH / binning;   // XXX Horrible hack!  Fix this to look it up.
+  rows = PGR_HEIGHT / binning;
 
-	err = flycaptureGetCameraInfo(context, &info);
-	_HANDLE_ERROR(err, "flycaptureGetCameraInfo()");
-
-	printf( "Camera info:\n" );
-	reportCameraInfo(&info);
-
+        /* XXX Fix this later so that it works.
 	int mode = 0; // mode 0 = no binning
 	if (binning == 2) {
 		mode = 1; // mode 1 = 2x2 binning
 	}
-
-	//err = flycaptureStart(context, FLYCAPTURE_VIDEOMODE_ANY, FLYCAPTURE_FRAMERATE_ANY);
-
-	/* the following call initializes the camera into Format 7, custom image format. see flycaptureStartCustomImage() on 
-	   line 1288 of pgrflycapture.h for more details. this is where you will set the left/top and width/height of your
-	   desired ROI, as well as the maximum packet size to send. however, you will still need to set the frame rate 
-	   elsewhere, unless the camera is being triggered externally that is, in which case the frame rate setting is 
-	   irrelevant.
-	*/ 
 	err = flycaptureStartCustomImage(context, mode, 0, 0, PGR_WIDTH / binning, PGR_HEIGHT / binning, 100, FLYCAPTURE_MONO8);	
-	//err = flycaptureStart(context, FLYCAPTURE_VIDEOMODE_1024x768Y8, FLYCAPTURE_FRAMERATE_30);
-	_HANDLE_ERROR(err, "flycaptureStart()");
-	cols = PGR_WIDTH / binning;
-	rows = PGR_HEIGHT / binning;
+        */
 
-	bool framerateAuto = (framerate == -1);
-	if (framerateAuto)
-		framerate = 1000.0f / msExposure;
+  bool framerateAuto = (framerate == -1);
+  if (framerateAuto) {
+    framerate = 1000.0f / msExposure;
+  }
 
-	bool shutterAuto = (msExposure == -1);
-	if (shutterAuto)
-		msExposure = 1000.0f / framerate;
-/*
-	printf("framerateAuto = ");
-	if (framerateAuto)
-		printf("true.\n");
-	else
-		printf("false.\n");
-	printf("framerate = %f\n", framerate);
-*/
+  bool shutterAuto = (msExposure == -1);
+  if (shutterAuto) {
+    msExposure = 1000.0f / framerate;
+  }
 
+  if (trigger) {
+    // Get current trigger settings
+    TriggerMode triggerMode;
+    error = cam.GetTriggerMode( &triggerMode );
+    if (error != PGRERROR_OK)
+    {
+        PrintError( error, "GetTriggerMode" );
+        return;
+    }
+
+    // Set camera to trigger mode 0
+    triggerMode.onOff = true;
+    triggerMode.mode = 1;
+    triggerMode.parameter = 0;
+
+    // Triggering the camera externally using source 0.
+    triggerMode.source = 0;
+
+    error = cam.SetTriggerMode( &triggerMode );
+    if (error != PGRERROR_OK)
+    {
+        PrintError( error, "SetTriggerMode" );
+        return;
+    }
+
+  } else {
+    fprintf(stderr, "XXX PGR non-triggered mode not yet implemented in new interface\n");
+    return;
+
+  /* XXX Fix this so it works in new interface.
 	err = flycaptureSetCameraAbsPropertyEx(context, FLYCAPTURE_FRAME_RATE, false, true, framerateAuto, framerate);
 	_HANDLE_ERROR(err, "setting FLYCAPTURE_FRAME_RATE (ex)");
 	
@@ -121,14 +144,6 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, i
 			printf("Exposure limited to %f by specified framerate!\n", msExposure);
 		}
 	}
-/*
-	printf("shutterAuto = ");
-	if (shutterAuto)
-		printf("true.\n");
-	else
-		printf("false.\n");
-	printf("msExposure = %f\n", msExposure);
-*/
 	err = flycaptureSetCameraAbsPropertyEx(context, FLYCAPTURE_SHUTTER, false, true, shutterAuto, msExposure);
 	_HANDLE_ERROR(err, "setting FLYCAPTURE_SHUTTER");
 
@@ -139,158 +154,111 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, i
 
 	err = flycaptureSetCameraRegister(context, 0x12fc, 0x80000000);
 	_HANDLE_ERROR(err, "flycaptureSetCameraRegister()");
+*/
+  }
 
-	/*
-	float shutter = -1, framerate = -1;
-	err = flycaptureGetCameraAbsProperty(context, FLYCAPTURE_SHUTTER, &shutter);
-	_HANDLE_ERROR(err, "getting FLYCAPTURE_SHUTTER");
-	err = flycaptureGetCameraAbsProperty(context, FLYCAPTURE_FRAME_RATE, &framerate);
-	_HANDLE_ERROR(err, "getting FLYCAPTURE_FRAME_RATE");
+  // XXX Do we have to poll for trigger ready here?  This happened in the
+  // example AsyncTriggerEx.cpp code.
 
-	printf("Camera set to:\n");
-	printf("\tshutter speed = \t%f ms\n", shutter);
-	printf("\tframerate = \t%f fps\n", framerate);
-	*/
-	
-	/* the following call puts the camera into external triggering mode. see flycaptureSetTrigger() on 
-	   line 2376 of pgrflycapture.h for more details. 
-	*/ 
-	if( trigger ){
-		err = flycaptureSetTrigger(context, true, 0, 0, 1, 0);
-		_HANDLE_ERROR(err, "flycaptureSetTrigger()");
+  // Get the camera configuration
+  FC2Config config;
+  error = cam.GetConfiguration( &config );
+  if (error != PGRERROR_OK)
+  {
+      PrintError( error , "GetConfiguration" );
+      return;
+  } 
+  
+  // Otherwise, set the grab timeout to 5 seconds
+  // If we're in trigger mode, set the capture timeout to 100 milliseconds,
+  // so we won't wait forever for an image.  This will cause the higher-level
+  // code to get control again at a reasonable rate.
+  if (trigger) {
+    config.grabTimeout = 100;
+  } else {
+    config.grabTimeout = 5000;
+  }
 
-                // If we're in trigger mode, set the capture timeout to 100 milliseconds,
-                // so we won't wait forever for an image.
-	        err = flycaptureSetGrabTimeoutEx(context, 100);	
-	        _HANDLE_ERROR(err, "flycaptureSetGrabTimeoutEx()");
-	}
+  // Set the camera configuration
+  error = cam.SetConfiguration( &config );
+  if (error != PGRERROR_OK)
+  {
+      PrintError( error, "SetConfiguration" );
+      return;
+  }
 
-	/* if you set a grab timeout using flycaptureSetGrabTimeoutEx(), this timeout will be used in asynchronous 
-	   trigger mode as well: flycaptureGrabImage*() will return with the image when you either trigger the camera,
-	   or the timeout value expires. because we do not want the camera to return anything unless we actually
-	   trigger it, set this value only when the camera is *not* initialized in external triggering mode.
-	*/
-	else{
-		err = flycaptureSetGrabTimeoutEx(context, 5000);
-		_HANDLE_ERROR(err, "flycaptureSetGrabTimeoutEx()");
-	}
-	
-	testImage = NULL;
-	/*
-	const int w = 256;
-	const int h = 256;
+  // Camera is ready, start capturing images
+  error = cam.StartCapture();
+  if (error != PGRERROR_OK)
+  {
+      PrintError( error, "StartCapture" );
+      return;
+  }   
 
-	rows = h;
-	cols = w;
-
-	testImage = new unsigned char[w * h * 3];
-	int i = 0;
-	for (int x = 0; x < w; ++x) {
-		for (int y = 0; y < h; ++y) {
-			testImage[3 * (x + w * y) + 0] = i % 255;
-			testImage[3 * (x + w * y) + 1] = i % 255;
-			testImage[3 * (x + w * y) + 2] = i % 255;
-			++i;
-		}
-	}
-	*/
-	
-	counter = 0;
-	xmitErrorCountLast = 0;
+  connected = true;
 }
 
 PGRCam::~PGRCam() {
-	err = flycaptureStop(context);
-	_HANDLE_ERROR(err, "flycaptureStop()");
-	if (imageConverted.pData != NULL)
-		delete[] imageConverted.pData;
-	if (testImage != NULL)
-		delete[] testImage;
+  // Stop capturing images
+  error = cam.StopCapture();
+  if (error != PGRERROR_OK)
+  {
+      PrintError( error, "StopCapture" );
+      return;
+  }      
+
+  // Turn off trigger mode
+  TriggerMode triggerMode;
+  error = cam.GetTriggerMode( &triggerMode );
+  if (error != PGRERROR_OK)
+  {
+      PrintError( error, "GetTriggerMode" );
+      return;
+  }
+  triggerMode.onOff = false;
+  error = cam.SetTriggerMode( &triggerMode );
+  if (error != PGRERROR_OK)
+  {
+      PrintError( error, "SetTriggerMode" );
+      return;
+  }    
+
+  // Disconnect the camera
+  error = cam.Disconnect();
+  if (error != PGRERROR_OK)
+  {
+      PrintError( error, "Disconnect" );
+      return;
+  }
 }
 
 bool PGRCam::GetNewImage() {
-	if (!connected)
-		return false;
-	//*
-/*
-	printf("1");
+  if (!connected) {
+    return false;
+  }
 
-	if (context == NULL)
-		printf("NULLiFied biatch!\n");
+  error = cam.RetrieveBuffer( &image );
+  if ( (error != PGRERROR_OK) && (error != PGRERROR_TIMEOUT) )
+  {
+      PrintError( error, "RetrieveBuffer" );
+      return false;
+  }
 
-	printf("image.iCols = %i\n", image.iCols);
+  // If we timed out, go ahead and return false.
+  if (error == PGRERROR_TIMEOUT) {
+    return false;
+  }
 
-	getchar();
-	printf("2");*/
-	err = flycaptureGrabImage2(context, &image);
-	_HANDLE_ERROR(err, "flycaptureGrabImage2()");
+  // update iRows and iCols
+  rows = image.GetRows();
+  cols = image.GetCols();
 
-        // If we timed out, go ahead and return false.
-        if (err == FLYCAPTURE_TIMEOUT) {
-          return false;
-        }
-	//*/
-	/*
-	err = flycaptureLockLatest(context, &image);
-	_HANDLE_ERROR(err, "flycaptureLockLatest()");
-	//*/
+  imgPtr = image.GetData();
 
-	// update iRows and iCols if we're NOT using a test image
-	if (testImage == NULL) {
-		rows = image.iRows;
-		cols = image.iCols;
-	}
-
-	imgPtr = image.pData;
-
-	/*
-	if (imageConverted.pData == NULL)
-		imageConverted.pData = new unsigned char[ image.iCols * image.iRows * 4 ];
-
-	imageConverted.pixelFormat = FLYCAPTURE_BGRU;
-	imgPtr = NULL;
-	err = flycaptureConvertImage( context, &image, &imageConverted );
-	imgPtr = imageConverted.pData;
-	_HANDLE_ERROR(err, "flycaptureConvertImage()");
-	*/
-
-	/*
-	unsigned long xmitErrorCount = 0;
-	err = flycaptureGetCameraRegister(context, 0x12fc, &xmitErrorCount);
-	_HANDLE_ERROR(err, "flycaptureGetCameraRegister()");
-
-	
-	if (xmitErrorCountLast != xmitErrorCount)
-		printf("xmitErrorCount = %i\n", xmitErrorCount);
-
-	xmitErrorCountLast = xmitErrorCount;
-	//*/
-
-	/*
-	char path[256];
-	sprintf_s(path, 256, "D:\\tmpshr\\adesk\\PGRWrapper\\capture\\image_%i.pgm", counter);
-	err = flycaptureSaveImage(context, &image, path, FLYCAPTURE_FILEFORMAT_PGM);
-	_HANDLE_ERROR(err, "flycaptureSaveImage()");
-
-	sprintf_s(path, 256, "D:\\tmpshr\\adesk\\PGRWrapper\\capture\\cimage_%i.jpg", counter++);
-	err = flycaptureSaveImage(context, &imageConverted, path, FLYCAPTURE_FILEFORMAT_JPG);
-	_HANDLE_ERROR(err, "flycaptureSaveImage()");
-	//*/
-
-	/*
-	err = flycaptureUnlock(context, image.uiBufferIndex);
-	_HANDLE_ERROR(err, "flycaptureUnlock()");
-	//*/
-
-	return (err == 0);
+  return (error == PGRERROR_OK);
 }
 
 unsigned char* PGRCam::GetImagePointer() {
-	//printf( "Converting image.\n" );
 	
-	if (testImage != NULL)
-		return testImage;
-
-	//return imageConverted.pData;
 	return imgPtr;
 }

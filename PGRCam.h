@@ -1,5 +1,4 @@
-#include "PGRFlyCapture.h"
-#include "PGRFlyCapturePlus.h"
+#include "FlyCapture2.h"
 
 class PGRCam {
 public:
@@ -13,22 +12,16 @@ public:
 	int rows;
 	int cols;
 
-	FlyCaptureImage image;
-	FlyCaptureImage imageConverted;
-
 	bool connected;
 
 private:
-	FlyCaptureContext context;
-	FlyCaptureInfoEx info;
-	FlyCaptureError err;
+  FlyCapture2::Image image;
 
-        bool triggered;
+  FlyCapture2::Camera cam;
+  FlyCapture2::CameraInfo camInfo;
+  FlyCapture2::Error error;
 
-	unsigned char* testImage;
+  bool triggered;
 
-	unsigned char* imgPtr;
-
-	int counter;
-	unsigned long xmitErrorCountLast;
+  unsigned char* imgPtr;
 };
