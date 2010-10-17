@@ -3,8 +3,8 @@
 
 using namespace FlyCapture2;
 
-#define PGR_WIDTH 648
-#define PGR_HEIGHT 488
+#define PGR_WIDTH 640
+#define PGR_HEIGHT 480
 
 void PrintCameraInfo( CameraInfo* pCamInfo )
 {
