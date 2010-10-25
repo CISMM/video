@@ -92,7 +92,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "06.03";
+const char *Version_string = "06.04";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -2649,7 +2649,6 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
   //printf("XXX Looking for %d fluorescent beads.\n", how_many_more);
 
   // Find out how large the image is.
-  int i, radius;
   int minx, maxx, miny, maxy;
   g_image->read_range(minx, maxx, miny, maxy);
 
