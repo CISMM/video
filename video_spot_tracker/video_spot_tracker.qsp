@@ -62,8 +62,8 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|
 CompanyUrl=www.cs.unc.edu/cismm
 
 [TargetExe]
-TargetDirectory=<AbsoluteDir>C:\Program Files\NSRG\video_spot_tracker_v06.04
-CommonDirectory=<AbsoluteDir>C:\NSRG\external
+TargetDirectory=<AbsoluteDir>C:\Program Files\CISMM\video_spot_tracker_v06.04
+CommonDirectory=<AbsoluteDir>
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\video_spot_tracker.bat
 RunTimeDir_1=|||||||1||||1||1|<ProgramFilesDir>|||||
