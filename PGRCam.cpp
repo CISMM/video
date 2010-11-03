@@ -3,8 +3,8 @@
 
 using namespace FlyCapture2;
 
-#define PGR_WIDTH 648
-#define PGR_HEIGHT 488
+#define PGR_WIDTH 640
+#define PGR_HEIGHT 480
 
 void PrintCameraInfo( CameraInfo* pCamInfo )
 {
@@ -35,7 +35,7 @@ void PrintError( Error error , const char *function_name)
   error.PrintErrorTrace();
 }
 
-PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, int camera)
+PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, float gain, int camera)
         : triggered(trigger)
 {
   connected = false;
@@ -132,7 +132,38 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, i
   } else {
     fprintf(stderr, "XXX PGR non-triggered mode not yet implemented in new interface\n");
     return;
+/*    
+    //creating the property struct and setting the type to be GAIN
+    Property prop;
+    prop.type = GAIN;
 
+    //Reading the property from the camera first, not necessary to do this step
+    error = cam.GetProperty(&prop);
+    if (error != PGRERROR_OK){
+	PrintError( error, "GetProperty" );
+	return;
+    }
+
+    //setting to absolute value mode
+    prop.absControl = true;
+    //setting to manual mode
+    prop.autoManualMode = false;
+    //making sure the property is enabled
+    prop.onOff = true;
+    //making sure the OnePush feature is disabled
+    prop.onePush = false;
+    //setting to 0dB
+    prop.absValue = gain;
+
+    printf("GAIN = %f\n", gain);
+
+    //setting the property to the camera
+    error = cam.SetProperty(&prop);
+    if (error != PGRERROR_OK){
+	PrintError( error, "SetProperty" );
+	return;
+    }
+*/
   /* XXX Fix this so it works in new interface.
 	err = flycaptureSetCameraAbsPropertyEx(context, FLYCAPTURE_FRAME_RATE, false, true, framerateAuto, framerate);
 	_HANDLE_ERROR(err, "setting FLYCAPTURE_FRAME_RATE (ex)");
@@ -186,6 +217,37 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, i
       PrintError( error, "SetConfiguration" );
       return;
   }
+
+    //creating the property struct and setting the type to be GAIN
+    Property prop;
+    prop.type = GAIN;
+
+    //Reading the property from the camera first, not necessary to do this step
+    error = cam.GetProperty(&prop);
+    if (error != PGRERROR_OK){
+	PrintError( error, "GetProperty" );
+	return;
+    }
+
+    //setting to absolute value mode
+    prop.absControl = true;
+    //setting to manual mode
+    prop.autoManualMode = false;
+    //making sure the property is enabled
+    prop.onOff = true;
+    //making sure the OnePush feature is disabled
+    prop.onePush = false;
+    //setting to 0dB
+    prop.absValue = gain;
+
+    printf("GAIN = %f\n", gain);
+
+    //setting the property to the camera
+    error = cam.SetProperty(&prop);
+    if (error != PGRERROR_OK){
+	PrintError( error, "SetProperty" );
+	return;
+    }
 
   // Camera is ready, start capturing images
   error = cam.StartCapture();

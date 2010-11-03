@@ -80,6 +80,7 @@ bool                g_swap_edt = false; //< Swap lines in EDT to fix bug in driv
 unsigned            g_camera_buffers = 360; //< How many camera buffers to ask for
 double				g_framerate = -1; //< -1 for use max framerate given exposure, if an option
 bool				g_trigger = false; //< External trigger setting, on or off
+float				g_gain = 0; //< The gain setting of the camera 
 
 // we may want to change these to have multiple vrpn servers running on the same machine
 int g_svrPORT = 9999;
@@ -147,7 +148,7 @@ bool  init_camera_code(const char *type, int which = 1)
     }
   } else if (!strcmp(type, "pgr")) {
 	  printf("Opening Point Grey Camera\n");
-	  g_camera = new point_grey_server(g_framerate, g_exposure, g_bincount, g_trigger);
+	  g_camera = new point_grey_server(g_framerate, g_exposure, g_bincount, g_trigger, g_gain);
 	  g_numchannels = 1;
 	  g_maxval = 255;
 	  if (!g_camera->working()) {
@@ -364,6 +365,11 @@ int main(int argc, char *argv[])
 				fprintf(stderr,"Invalid framerate (1-1000 allowed, %d entered)\n", g_framerate);
 				exit(-1);
 			}
+		} else if (!strncmp(argv[i], "-gain", strlen("-gain"))) {
+			if (++i > argc) { Usage(argv[0]); }
+			g_gain = atof(argv[i]);
+			fprintf(stderr,"The current gain setting is %f)\n", g_gain);
+			
 		} else {
 			switch (++realparams) {
 	  case 1:

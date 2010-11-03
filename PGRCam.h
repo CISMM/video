@@ -2,7 +2,7 @@
 
 class PGRCam {
 public:
-	PGRCam(double framerate = -1, double msExposure = -1, int binning = 1, bool trigger = 0, int camera = 0);
+	PGRCam(double framerate = -1, double msExposure = -1, int binning = 1, bool trigger = 0, float gain = 0, int camera = 0);
 	~PGRCam();
 
 	bool GetNewImage();

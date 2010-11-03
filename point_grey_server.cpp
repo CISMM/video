@@ -1,8 +1,8 @@
 #include "point_grey_server.h"
 
-point_grey_server::point_grey_server(double framerate, double msExposure, int binning, bool trigger) {
+point_grey_server::point_grey_server(double framerate, double msExposure, int binning, bool trigger, float gain) {
 	_status = false;
-	m_cam = new PGRCam(framerate, msExposure, binning, trigger); // initialize the camera inside this constructor call
+	m_cam = new PGRCam(framerate, msExposure, binning, trigger, gain); // initialize the camera inside this constructor call
 
 	_num_columns = m_cam->cols;
 	_num_rows = m_cam->rows;
