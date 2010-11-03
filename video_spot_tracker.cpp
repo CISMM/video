@@ -92,7 +92,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "06.03";
+const char *Version_string = "06.04";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -284,7 +284,8 @@ vector<ThreadInfo *>    g_tracking_threads;           //< The threads to use for
 
 vector<int> vertCandidates;
 vector<int> horiCandidates;
-bool g_gotNewFrame = false;
+bool g_gotNewFrame = false;             // Used by autofind.
+bool g_gotNewFluorescentFrame = false;  // Used by autofind.
 
 //--------------------------------------------------------------------------
 // Tcl controls and displays
@@ -322,9 +323,11 @@ Tclvar_float_with_scale g_lossSensitivity("kernel_lost_tracking_sensitivity", ".
 Tclvar_float_with_scale g_intensityLossSensitivity("intensity_lost_tracking_sensitivity", ".lost_and_found_controls.top", 0.0, 10.0, 0.0);
 Tclvar_float_with_scale g_borderDeadZone("dead_zone_around_border", ".lost_and_found_controls.top", 0.0, 30.0, 0.0);
 Tclvar_float_with_scale g_trackerDeadZone("dead_zone_around_trackers", ".lost_and_found_controls.top", 0.0, 3.0, 0.0);
-Tclvar_float_with_scale g_findThisManyBeads("maintain_this_many_beads", ".lost_and_found_controls.bottom", 0.0, 100.0, 0.0);
-Tclvar_float_with_scale g_candidateSpotThreshold("candidate_spot_threshold", ".lost_and_found_controls.bottom", 0.0, 5.0, 5.0);
-Tclvar_float_with_scale g_slidingWindowRadius("sliding_window_radius", ".lost_and_found_controls.bottom", 5.0, 15.0, 10.0);
+Tclvar_float_with_scale g_findThisManyFluorescentBeads("maintain_fluorescent_beads", ".lost_and_found_controls.bottom", 0.0, 100.0, 0.0);
+Tclvar_float_with_scale g_fluorescentSpotThreshold("fluorescent_spot_threshold", ".lost_and_found_controls.bottom", 0.0, 1.0, 0.5);
+Tclvar_float_with_scale g_findThisManyBeads("maintain_this_many_beads", ".lost_and_found_controls.middle", 0.0, 100.0, 0.0);
+Tclvar_float_with_scale g_candidateSpotThreshold("candidate_spot_threshold", ".lost_and_found_controls.middle", 0.0, 5.0, 5.0);
+Tclvar_float_with_scale g_slidingWindowRadius("sliding_window_radius", ".lost_and_found_controls.middle", 5.0, 15.0, 10.0);
 Tclvar_int_with_button  g_lostBehavior("lost_behavior",NULL,0);
 Tclvar_int_with_button	g_showLostAndFound("show_lost_and_found","",0);
 Tclvar_int_with_button	g_invert("dark_spot",NULL,0, rebuild_trackers);
@@ -2538,6 +2541,238 @@ bool find_more_trackers(unsigned how_many_more)
   return true;
 }
 
+//----------------------------------------------------------------------------
+// Class to deal with storing a list of locations on the image
+
+class Flood_Position {
+public:
+  Flood_Position(int x, int y) { d_x = x; d_y = y; };
+  int x(void) const { return d_x; };
+  int y(void) const { return d_y; };
+  void set_x(int x) { d_x = x; };
+  void set_y(int y) { d_y = y; };
+
+protected:
+  int   d_x;
+  int   d_y;
+};
+
+//--------------------------------------------------------------------------
+// Helper routine that fills all pixels that are connected to
+// the indicated pixel and which have a value of -1 with the new value that
+// is specified.  Recursion failed due to stack overflow when
+// the whole image was one region, so the new algorithm keeps a list of
+// "border positions" and repeatedly goes through that list until it is
+// empty.
+
+static void flood_connected_component(double_image *img, int x, int y, double value)
+{
+  int minx, maxx, miny, maxy;
+  img->read_range(minx, maxx, miny, maxy);
+
+  //------------------------------------------------------------
+  // Fill in the first pixel as requested, and add it to the
+  // boundary list.
+  list<Flood_Position>  boundary;
+  img->write_pixel_nocheck(x,y, value);
+  boundary.push_front(Flood_Position(x,y));
+
+  //------------------------------------------------------------
+  // Go looking for ways to expand the boundary so long as the
+  // boundary is not empty.  Once each boundary pixel has been
+  // completely handled, delete it from the boundary list.  
+  while (!boundary.empty()) {
+    list<Flood_Position>::iterator  i;
+
+    // We add new boundary pixels to the beginning of the list so that
+    // we won't see them while traversing the list: each time through,
+    // we only consider the positions that were on the boundary when
+    // we started through that time.
+    i = boundary.begin();
+    while (i != boundary.end()) {
+
+      // Move to the location of the pixel and check around it.
+      x = i->x();
+      y = i->y();
+
+      // If any of the four neighbors are valid new boundary elements,
+      // mark them and insert them into the boundary list.
+      if ( x-1 >= minx ) {
+        if (img->read_pixel_nocheck(x-1,y) == -1) {
+          img->write_pixel_nocheck(x-1,y, value);
+          boundary.push_front(Flood_Position(x-1,y));
+        }
+      }
+      if ( x+1 <= maxx ) {
+        if (img->read_pixel_nocheck(x+1,y) == -1) {
+          img->write_pixel_nocheck(x+1,y, value);
+          boundary.push_front(Flood_Position(x+1,y));
+        }
+      }
+      if ( y-1 >= miny ) {
+        if (img->read_pixel_nocheck(x,y-1) == -1) {
+          img->write_pixel_nocheck(x,y-1, value);
+          boundary.push_front(Flood_Position(x,y-1));
+        }
+      }
+      if ( y+1 <= maxy ) {
+        if (img->read_pixel_nocheck(x,y+1) == -1) {
+          img->write_pixel_nocheck(x,y+1, value);
+          boundary.push_front(Flood_Position(x,y+1));
+        }
+      }
+      
+      // Get rid of this entry, stepping to the next one before doing so.
+      list<Flood_Position>::iterator j = i;
+      ++i;
+      boundary.erase(j);
+    }
+  }
+}
+
+
+// Find the specified number of additional trackers, which should be placed
+// at the highest-response fluorescenct locations in the image that are not
+// within one tracker radius of an existing tracker or within one tracker radius of the
+// border.  Create new trackers at those locations.  Returns true if it was
+// able to find them, false if not (or error).  It may in fact locate more
+// trackers than requested.
+bool find_more_fluorescent_trackers(unsigned how_many_more)
+{
+  // make sure we only try to auto-find once per new frame of video
+  if (!g_gotNewFluorescentFrame) {
+    return true;
+  } else {
+    g_gotNewFluorescentFrame = false;
+  }
+
+  //printf("XXX Looking for %d fluorescent beads.\n", how_many_more);
+
+  // Find out how large the image is.
+  int minx, maxx, miny, maxy;
+  g_image->read_range(minx, maxx, miny, maxy);
+
+
+  // first, find the max and min pixel value and scale our threshold
+  int x, y;
+  double maxi = 0, mini = 1e50;
+  double curi;
+  for (y = miny; y <= maxy; ++y) {
+    for (x = minx; x <= maxx; ++x) {
+      curi = g_image->read_pixel_nocheck(x, y);
+      if (curi > maxi) { maxi = curi; }
+      if (curi < mini) { mini = curi; }
+    }
+  }
+  double threshold = mini + (maxi-mini)*g_fluorescentSpotThreshold;
+
+  // Make a threshold image that has 0 everywhere our original image was
+  // below threshold and -1 everywhere it was at or above threshold.  The
+  // -1 value means "no label yet selected".
+  double_image *threshold_image = new double_image(minx, maxx, miny, maxy);
+  if (threshold_image == NULL) {
+    fprintf(stderr,"find_more_fluorescent_trackers(): Out of memory\n");
+    return false;
+  }
+  for (y = miny; y <= maxy; ++y) {
+    for (x = minx; x <= maxx; ++x) {
+      if (g_image->read_pixel_nocheck(x,y) >= threshold) {
+        threshold_image->write_pixel_nocheck(x, y, -1.0);
+      } else {
+        threshold_image->write_pixel_nocheck(x, y, 0.0);
+      }
+    }
+  }
+
+  // Go through the threshold image and label each component with a number
+  // greater than zero (starting with 1).  This replaces the "-1" values from
+  // above along the way.  This leaves us with a set of labeled components
+  // embedded in the image.
+  int index = 0;
+  for (x =  minx; x <= maxx; x++) {
+    for (y = miny; y <= maxy; y++) {
+      if (threshold_image->read_pixel_nocheck(x,y) == -1) {
+        index++;
+        flood_connected_component(threshold_image, x,y, index);
+      }
+    }
+  }
+
+  ///printf("XXX Found %d components.\n", index);
+
+  // Compute the center of mass of each connected component.  If we do not have a
+  // tracker already too close to this center of mass, create a potential tracker there.
+
+  list <Spot_Information *>::iterator loop;
+  list<Spot_Information*> potentialTrackers;
+  double tooClose = g_trackerDeadZone;
+
+  int comp;
+  for (comp = 1; comp <= index; comp++) {
+
+    // Compute the center of mass for this component.  All components exist
+    // and have at least one pixel in them.
+    double cx = 0, cy = 0;
+    unsigned count = 0;
+    for (x = minx; x <= maxx; x++) {
+      for (y = miny; y <= maxy; y++) {
+        if (threshold_image->read_pixel_nocheck(x,y) == comp) {
+          count++;
+          cx += x;
+          cy += y;
+        }
+      }
+    }
+    cx /= count;
+    cy /= count;
+    bool safe = true;
+
+    // check to make sure we don't already have a tracker too close.
+    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++)  {
+      double curX, curY;  
+      spot_tracker_XY *curTracker = (*loop)->xytracker();
+      curX = curTracker->get_x();
+      curY = curTracker->get_y();
+      if (cx >= curX - tooClose && cx <= curX + tooClose &&
+          cy >= curY - tooClose && cy <= curY + tooClose ) {
+        safe = false;
+      }
+    }
+    if (safe) {
+      // last argument = true tells Spot_Information that this isn't an official, logged tracker
+      potentialTrackers.push_back(new Spot_Information(create_appropriate_xytracker(cx,cy,g_Radius),create_appropriate_ztracker(), true));
+    }
+  }
+
+  // Check to see which candidate spots aren't immediately lost.  Add each one that is
+  // not onto the list of actual trackers.  We keep track of how many are lost and not
+  // lost in case we later want to print debugging info.
+  int numlost = 0;
+  int numnotlost = 0;
+  for (loop = potentialTrackers.begin(); loop != potentialTrackers.end(); loop++) {
+    // if our candidate tracker isn't lost, then we add it to our list of real trackers
+    optimize_tracker((*loop));
+    if (!(*loop)->lost()) {
+      ++numnotlost;
+      g_trackers.push_back(new Spot_Information(create_appropriate_xytracker((*loop)->xytracker()->get_x(),(*loop)->xytracker()->get_y(),g_Radius),create_appropriate_ztracker()));
+      g_active_tracker = g_trackers.back();
+      if (g_active_tracker->ztracker()) {
+        g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
+      } else {
+        ++numlost;
+    }
+  }
+
+  // clean up candidate spots memory
+  potentialTrackers.remove_if( deleteAll );
+
+  // Clean up our temporary images in reverse order to make it easier for the
+  // memory allocator.
+  delete threshold_image;
+
+  return true;
+}
+
 
 void myIdleFunc(void)
 {
@@ -2713,7 +2948,8 @@ void myIdleFunc(void)
     } else {
       // Got a valid video frame; can log it.  Add to the frame number.
       g_video_valid = true;
-	  g_gotNewFrame = true;
+      g_gotNewFrame = true;
+      g_gotNewFluorescentFrame = true;
       g_frame_number++;
     }
   }
@@ -2820,6 +3056,9 @@ void myIdleFunc(void)
   // finding the closest pixel value).
   if (g_findThisManyBeads > g_trackers.size()) {
     find_more_trackers(g_findThisManyBeads - g_trackers.size());
+  }
+  if (g_findThisManyFluorescentBeads > g_trackers.size()) {
+    find_more_fluorescent_trackers(g_findThisManyFluorescentBeads - g_trackers.size());
   }
 
   // Nobody is known to be lost yet...
@@ -3588,6 +3827,8 @@ void  handle_save_state_change(int newvalue, void *)
   fprintf(f, "set intensity_lost_tracking_sensitivity %lg\n", (double)(g_intensityLossSensitivity));
   fprintf(f, "set dead_zone_around_border %lg\n", (double)(g_borderDeadZone));
   fprintf(f, "set dead_zone_around_trackers %lg\n", (double)(g_trackerDeadZone));
+  fprintf(f, "set maintain_fluorescent_beads %lg\n", (double)(g_findThisManyFluorescentBeads));
+  fprintf(f, "set fluorescent_spot_threshold %lg\n", (double)(g_fluorescentSpotThreshold));
   fprintf(f, "set maintain_this_many_beads %lg\n", (double)(g_findThisManyBeads));
   fprintf(f, "set candidate_spot_threshold %lg\n", (double)(g_candidateSpotThreshold));
   fprintf(f, "set sliding_window_radius %lg\n", (double)(g_slidingWindowRadius));
@@ -3822,6 +4063,7 @@ void Usage(const char *progname)
     fprintf(stderr, "           [-precision P] [-sample_spacing S] [-show_lost_and_found]\n");
     fprintf(stderr, "           [-lost_behavior B] [-lost_tracking_sensitivity L]\n");
     fprintf(stderr, "           [-intensity_lost_sensitivity IL] [-dead_zone_around_border DB]\n");
+    fprintf(stderr, "           [-maintain_fluorescent_beads M] [-fluorescent_spot_threshold FT]\n");
     fprintf(stderr, "           [-maintain_this_many_beads M] [-dead_zone_around_trackers DT]\n");
     fprintf(stderr, "           [-candidate_spot_threshold T] [-sliding_window_radius SR]\n");
     fprintf(stderr, "           [-radius R] [-tracker X Y R] [-tracker X Y R] ...\n");
@@ -3845,7 +4087,14 @@ void Usage(const char *progname)
     fprintf(stderr, "                 edge within which new trackers will not be found\n");
     fprintf(stderr, "       -dead_zone_around_trackers: Set a dead zone around all current trackers\n");
     fprintf(stderr, "                 within which new trackers will not be found\n");
+    fprintf(stderr, "       -maintain_fluorescent_beads: Try to autofind up to M fluorescent beads at every\n");
+    fprintf(stderr, "                 if there are not that many already.\n");
+    fprintf(stderr, "       -fluorescent_spot_threshold: Set the threshold for possible spots when\n");
+    fprintf(stderr, "                 autofinding.  0 means the minimum intensity in the image, 1 means the max.\n");
+    fprintf(stderr, "                 Setting this lower will not miss as many spots,\n");
+    fprintf(stderr, "                 but will also find garbage (default 0.5)\n");
     fprintf(stderr, "       -maintain_this_many_beads: Try to autofind up to M beads at every frame\n");
+    fprintf(stderr, "                 if there are not that many already.\n");
     fprintf(stderr, "       -candidate_spot_threshold: Set the threshold for possible spots when\n");
     fprintf(stderr, "                 autofinding.  Setting this lower will not miss as many spots,\n");
     fprintf(stderr, "                 but will also find garbage (default 5)\n");
@@ -4155,6 +4404,12 @@ int main(int argc, char *argv[])
     } else if (!strncmp(argv[i], "-dead_zone_around_trackers", strlen("-dead_zone_around_trackers"))) {
 	if (++i > argc) { Usage(argv[0]); }
 	g_trackerDeadZone = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-maintain_fluorescent_beads", strlen("-maintain_fluorescent_beads"))) {
+	if (++i > argc) { Usage(argv[0]); }
+	g_findThisManyFluorescentBeads = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-fluorescent_spot_threshold", strlen("-fluorescent_spot_threshold"))) {
+	if (++i > argc) { Usage(argv[0]); }
+	g_fluorescentSpotThreshold = atof(argv[i]);
     } else if (!strncmp(argv[i], "-maintain_this_many_beads", strlen("-maintain_this_many_beads"))) {
 	if (++i > argc) { Usage(argv[0]); }
 	g_findThisManyBeads = atof(argv[i]);

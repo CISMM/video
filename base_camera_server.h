@@ -222,8 +222,8 @@ public:
 
   // Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.
-  virtual bool	read_pixel(int x, int y, double &result, unsigned /* RGB ignored */) const;
-  virtual double read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) const;
+  virtual bool	read_pixel(int x, int y, double &result, unsigned ignored = 0) const;
+  virtual double read_pixel_nocheck(int x, int y, unsigned ignored = 0) const;
 
   /// Return the number of colors that the image has
   virtual unsigned  get_num_colors() const { return 1; }

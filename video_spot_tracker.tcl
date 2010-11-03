@@ -185,6 +185,8 @@ pack .lost_and_found_controls.behavior.delete -side left
 pack .lost_and_found_controls.behavior.hover -side left
 frame .lost_and_found_controls.top -relief raised -borderwidth 1
 pack .lost_and_found_controls.top -side top
+frame .lost_and_found_controls.middle -relief raised -borderwidth 1
+pack .lost_and_found_controls.middle
 frame .lost_and_found_controls.bottom -relief raised -borderwidth 1
 pack .lost_and_found_controls.bottom
 wm withdraw .lost_and_found_controls
