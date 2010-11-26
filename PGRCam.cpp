@@ -3,9 +3,6 @@
 
 using namespace FlyCapture2;
 
-#define PGR_WIDTH 640
-#define PGR_HEIGHT 480
-
 void PrintCameraInfo( CameraInfo* pCamInfo )
 {
     printf(
@@ -26,9 +23,25 @@ void PrintCameraInfo( CameraInfo* pCamInfo )
         pCamInfo->firmwareBuildTime );
 }
 
-//
+void PrintFormat7Capabilities( Format7Info fmt7Info )
+{
+    printf(
+		"Camera Initialized into FORMAT_7 ...\n\n"
+		"*** FORMAT_7 CAPABILITIES ***\n"
+        "Max image pixels: (%u, %u)\n"
+        "Image Unit size: (%u, %u)\n"
+        "Offset Unit size: (%u, %u)\n"
+        "Pixel format bitfield: 0x%08x\n\n",
+        fmt7Info.maxWidth,
+        fmt7Info.maxHeight,
+        fmt7Info.imageHStepSize,
+        fmt7Info.imageVStepSize,
+        fmt7Info.offsetHStepSize,
+        fmt7Info.offsetVStepSize,
+        fmt7Info.pixelFormatBitField );
+}
+
 // Helper code to handle a FlyCapture error.
-//
 void PrintError( Error error , const char *function_name)
 {
   fprintf(stderr,"Error in function: %s ", function_name);
@@ -39,222 +52,199 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, f
         : triggered(trigger)
 {
   connected = false;
-
+  
   BusManager busMgr;
   unsigned int numCameras;
   error = busMgr.GetNumOfCameras(&numCameras);
-  if (error != PGRERROR_OK)
-  {
-      PrintError( error , "GetNumOfCameras" );
-      return;
+  if(error != PGRERROR_OK){
+    PrintError(error, "GetNumOfCameras");
+    return;
   }
-  if (numCameras < 1) {
+  
+  if(numCameras<1){
     printf("*** Warning: no PGR cameras dectected! ***\n");
     return;
   }
-
+  
   PGRGuid guid;
   error = busMgr.GetCameraFromIndex(camera, &guid);
-  if (error != PGRERROR_OK)
-  {
-      PrintError( error, "GetCameraFromIndex");
-      return;
+  if(error != PGRERROR_OK){
+    PrintError(error, "GetCameraFromIndex");
+    return;
   }
-
+  
   // Connect to a camera
   error = cam.Connect(&guid);
-  if (error != PGRERROR_OK)
-  {
-      PrintError( error, "PGR camera CONNECT" );
-      return;
+  if(error != PGRERROR_OK){
+    PrintError(error, "PGR camera CONNECT");
+    return;
   }
-
+  
   // Get the camera information
   error = cam.GetCameraInfo(&camInfo);
-  if (error != PGRERROR_OK)
-  {
-      PrintError( error, "GetCameraInfo");
-      return;
+  if(error != PGRERROR_OK){
+    PrintError(error, "GetCameraInfo");
+    return;
   }
-
+  
+  // Print the camera information
   PrintCameraInfo(&camInfo);
 
-  if (binning != 1) {
-    fprintf(stderr, "XXX Binning not yet implemented in new PGR interface\n");
+  // Initialize the camera into Format7 custom imaging mode
+  const PixelFormat k_fmt7PixFmt = PIXEL_FORMAT_MONO8;
+  
+  Mode k_fmt7Mode;
+  if(binning == 1)
+    k_fmt7Mode = MODE_0; // MODE_0 = no binning
+  else
+    k_fmt7Mode = MODE_1; // MODE_1 = 2x2 binning
+
+  // Query for available Format 7 modes
+  Format7Info fmt7Info;
+  bool supported;
+  fmt7Info.mode = k_fmt7Mode;
+  error = cam.GetFormat7Info(&fmt7Info, &supported);
+  if(error != PGRERROR_OK){
+    PrintError(error, "GetFormat7Info");
+    return;
+  }
+
+  PrintFormat7Capabilities(fmt7Info);
+
+  if((k_fmt7PixFmt & fmt7Info.pixelFormatBitField)==0){
+    // Pixel format not supported!
+	printf("Pixel format is not supported\n");
+    return;
+  }
+    
+  Format7ImageSettings fmt7ImageSettings;
+  fmt7ImageSettings.mode = k_fmt7Mode;
+  fmt7ImageSettings.offsetX = 0;
+  fmt7ImageSettings.offsetY = 0;
+  fmt7ImageSettings.width = fmt7Info.maxWidth;
+  fmt7ImageSettings.height = fmt7Info.maxHeight;
+  fmt7ImageSettings.pixelFormat = k_fmt7PixFmt;
+
+  bool valid;
+  Format7PacketInfo fmt7PacketInfo;
+
+  // Validate the settings to make sure that they are valid
+  error = cam.ValidateFormat7Settings(
+    &fmt7ImageSettings,
+    &valid,
+    &fmt7PacketInfo);
+  if(error!=PGRERROR_OK){
+    PrintError(error, "ValidateFormat7Settings");
+    return;
+  }
+
+  if(!valid){
+    // Settings are not valid
+    printf("Format7 settings are not valid\n");
+    return;
+  }
+
+  // Set the settings to the camera
+  error = cam.SetFormat7Configuration(
+    &fmt7ImageSettings,
+	fmt7PacketInfo.maxBytesPerPacket);
+  if(error!=PGRERROR_OK){
+    PrintError(error, "SetFormat7Configuration");
+    return;
+  }
+
+  // Get the camera configuration to configure the timeout setting
+  FC2Config config;
+  error = cam.GetConfiguration(&config);
+  if(error!=PGRERROR_OK){
+    PrintError(error, "GetConfiguration");
     return;
   } 
-  cols = PGR_WIDTH / binning;   // XXX Horrible hack!  Fix this to look it up.
-  rows = PGR_HEIGHT / binning;
 
-        /* XXX Fix this later so that it works.
-	int mode = 0; // mode 0 = no binning
-	if (binning == 2) {
-		mode = 1; // mode 1 = 2x2 binning
-	}
-	err = flycaptureStartCustomImage(context, mode, 0, 0, PGR_WIDTH / binning, PGR_HEIGHT / binning, 100, FLYCAPTURE_MONO8);	
-        */
-
-  bool framerateAuto = (framerate == -1);
-  if (framerateAuto) {
-    framerate = 1000.0f / msExposure;
-  }
-
-  bool shutterAuto = (msExposure == -1);
-  if (shutterAuto) {
-    msExposure = 1000.0f / framerate;
-  }
-
-  if (trigger) {
-    // Get current trigger settings
+  // Configure the camera triggered mode
+  if(trigger){
     TriggerMode triggerMode;
-    error = cam.GetTriggerMode( &triggerMode );
-    if (error != PGRERROR_OK)
-    {
-        PrintError( error, "GetTriggerMode" );
-        return;
+    error = cam.GetTriggerMode(&triggerMode);
+    if(error!=PGRERROR_OK){
+      PrintError(error, "GetTriggerMode");
+      return;
     }
-
+    
     // Set camera to trigger mode 0
     triggerMode.onOff = true;
     triggerMode.mode = 1;
     triggerMode.parameter = 0;
-
+    
     // Triggering the camera externally using source 0.
     triggerMode.source = 0;
-
-    error = cam.SetTriggerMode( &triggerMode );
-    if (error != PGRERROR_OK)
-    {
-        PrintError( error, "SetTriggerMode" );
-        return;
-    }
-
-  } else {
-    fprintf(stderr, "XXX PGR non-triggered mode not yet implemented in new interface\n");
-    return;
-/*    
-    //creating the property struct and setting the type to be GAIN
-    Property prop;
-    prop.type = GAIN;
-
-    //Reading the property from the camera first, not necessary to do this step
-    error = cam.GetProperty(&prop);
-    if (error != PGRERROR_OK){
-	PrintError( error, "GetProperty" );
-	return;
-    }
-
-    //setting to absolute value mode
-    prop.absControl = true;
-    //setting to manual mode
-    prop.autoManualMode = false;
-    //making sure the property is enabled
-    prop.onOff = true;
-    //making sure the OnePush feature is disabled
-    prop.onePush = false;
-    //setting to 0dB
-    prop.absValue = gain;
-
-    printf("GAIN = %f\n", gain);
-
-    //setting the property to the camera
-    error = cam.SetProperty(&prop);
-    if (error != PGRERROR_OK){
-	PrintError( error, "SetProperty" );
-	return;
-    }
-*/
-  /* XXX Fix this so it works in new interface.
-	err = flycaptureSetCameraAbsPropertyEx(context, FLYCAPTURE_FRAME_RATE, false, true, framerateAuto, framerate);
-	_HANDLE_ERROR(err, "setting FLYCAPTURE_FRAME_RATE (ex)");
-	
-	// verify that the exposure is possible given the specified framerate
-	if (!framerateAuto) {
-		if (msExposure > (1000.0f / framerate)) {
-			msExposure = (1000.0f / framerate);
-			printf("Exposure limited to %f by specified framerate!\n", msExposure);
-		}
-	}
-	err = flycaptureSetCameraAbsPropertyEx(context, FLYCAPTURE_SHUTTER, false, true, shutterAuto, msExposure);
-	_HANDLE_ERROR(err, "setting FLYCAPTURE_SHUTTER");
-
-
-	err = flycaptureSetColorProcessingMethod(context, FLYCAPTURE_NEAREST_NEIGHBOR_FAST);
-	_HANDLE_ERROR(err, "flycaptureSetColorProcessingMethod()");
-
-
-	err = flycaptureSetCameraRegister(context, 0x12fc, 0x80000000);
-	_HANDLE_ERROR(err, "flycaptureSetCameraRegister()");
-*/
-  }
-
-  // XXX Do we have to poll for trigger ready here?  This happened in the
-  // example AsyncTriggerEx.cpp code.
-
-  // Get the camera configuration
-  FC2Config config;
-  error = cam.GetConfiguration( &config );
-  if (error != PGRERROR_OK)
-  {
-      PrintError( error , "GetConfiguration" );
+    
+    error = cam.SetTriggerMode(&triggerMode);
+    if(error!=PGRERROR_OK){
+      PrintError(error, "SetTriggerMode");
       return;
-  } 
-  
-  // Otherwise, set the grab timeout to 5 seconds
-  // If we're in trigger mode, set the capture timeout to 100 milliseconds,
-  // so we won't wait forever for an image.  This will cause the higher-level
-  // code to get control again at a reasonable rate.
-  if (trigger) {
+    }
+
+	// If we're in trigger mode, set the capture timeout to 100 milliseconds,
+    // so we won't wait forever for an image. This will cause the higher-level
+    // code to get control again at a reasonable rate. Otherwise, set the grab 
+    // timeout to 5 seconds.
     config.grabTimeout = 100;
-  } else {
+  }
+  // Configure the camera non-triggered mode
+  else{
+    // Set the grab timeout to 5 seconds
     config.grabTimeout = 5000;
+
+    printf("XXX PGR non-triggered mode not yet implemented in new interface\n");
+    return;
   }
 
-  // Set the camera configuration
-  error = cam.SetConfiguration( &config );
-  if (error != PGRERROR_OK)
-  {
-      PrintError( error, "SetConfiguration" );
-      return;
+  // Set the camera configuration to configure the timeout setting
+  error = cam.SetConfiguration(&config);
+  if(error!=PGRERROR_OK){
+    PrintError(error, "SetConfiguration");
+    return;
   }
 
-    //creating the property struct and setting the type to be GAIN
-    Property prop;
-    prop.type = GAIN;
+  // Configure the camera GAIN setting
+  Property prop;
+  prop.type = GAIN;
 
-    //Reading the property from the camera first, not necessary to do this step
-    error = cam.GetProperty(&prop);
-    if (error != PGRERROR_OK){
-	PrintError( error, "GetProperty" );
-	return;
-    }
+  // Reading the GAIN value from the camera
+  error = cam.GetProperty(&prop);
+  if(error!=PGRERROR_OK){
+    PrintError(error, "GetProperty GAIN");
+    return;
+  }
+  
+  // Setting to absolute value mode
+  prop.absControl = true;
+  // Setting to manual mode
+  prop.autoManualMode = false;
+  // Making sure the property is enabled
+  prop.onOff = true;
+  // Making sure the OnePush feature is disabled
+  prop.onePush = false;
+  // Setting to 0dB
+  prop.absValue = gain;
 
-    //setting to absolute value mode
-    prop.absControl = true;
-    //setting to manual mode
-    prop.autoManualMode = false;
-    //making sure the property is enabled
-    prop.onOff = true;
-    //making sure the OnePush feature is disabled
-    prop.onePush = false;
-    //setting to 0dB
-    prop.absValue = gain;
+  printf("GAIN = %.2f\n\n", gain);
 
-    printf("GAIN = %f\n", gain);
+  // Setting the property to the camera
+  error = cam.SetProperty(&prop);
+  if (error!=PGRERROR_OK){
+  	PrintError(error, "SetProperty GAIN");
+  	return;
+  }
 
-    //setting the property to the camera
-    error = cam.SetProperty(&prop);
-    if (error != PGRERROR_OK){
-	PrintError( error, "SetProperty" );
-	return;
-    }
+  // Camera is ready, start capturing images 
+  cols = fmt7Info.maxWidth;
+  rows = fmt7Info.maxHeight;
 
-  // Camera is ready, start capturing images
   error = cam.StartCapture();
-  if (error != PGRERROR_OK)
-  {
-      PrintError( error, "StartCapture" );
-      return;
+  if(error != PGRERROR_OK){
+    PrintError(error, "StartCapture");
+    return;
   }   
 
   connected = true;
