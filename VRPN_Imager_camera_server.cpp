@@ -457,7 +457,7 @@ bool VRPN_Imager_camera_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Con
 void  VRPN_Imager_camera_server::play()
 {
   if (_fileCon) {
-    _fileCon->set_replay_rate(1.0);
+    _fileCon->set_replay_rate(100.0);   // Replay the video as quickly as possible.
     _paused = false;
   } else {
     fprintf(stderr, "VRPN_Imager_camera_server: Cannot play a non-file connection.\n");
