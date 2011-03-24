@@ -13,8 +13,8 @@ endif(COMMAND cmake_policy)
 #-----------------------------------------------------------------------------
 # Compiler flags we got from Hans
 if(WIN32) # MS-Windows, both 32 and 64 bits
-  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   /fp:fast")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fp:fast")
+  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /FIXED:NO")
 elseif(APPLE) # Apple
 #  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall")
@@ -53,6 +53,15 @@ set(ImageMagick_Needed_Libs CORE_RL_bzlib_ CORE_RL_coders_ CORE_RL_filters_
 		CORE_RL_Magick++_ CORE_RL_magick_ CORE_RL_png_ CORE_RL_tiff_
 		CORE_RL_ttf_ CORE_RL_wand_ CORE_RL_wmf_ CORE_RL_xlib_ CORE_RL_zlib_
 		X11 Xext
+)
+FIND_PACKAGE(TCL REQUIRED)
+FIND_PACKAGE(GLUT REQUIRED)
+SET(X11_INCLUDE_DIR ${TCL_INCLUDE_PATH}/../../X11/include)	# Normally in Tcl, but NSRG buildtime has it elsewhere...
+INCLUDE_DIRECTORIES(
+	${TCL_INCLUDE_PATH}
+	${TK_INCLUDE_PATH}
+	${X11_INCLUDE_DIR}
+	${GLUT_INCLUDE_DIR}
 )
 
 #-----------------------------------------------------------------------------
@@ -162,15 +171,6 @@ if (BUILD_DIRECTSHOW_VIDEO_SERVER)
 	)
 	SET_TARGET_PROPERTIES(test_directx_library PROPERTIES SOLUTION_FOLDER tests)
 
-	FIND_PACKAGE(TCL REQUIRED)
-	FIND_PACKAGE(GLUT REQUIRED)
-	SET(X11_INCLUDE_DIR ${TCL_INCLUDE_PATH}/../../X11/include)	# Normally in Tcl, but NSRG buildtime has it elsewhere...
-	INCLUDE_DIRECTORIES(
-		${TCL_INCLUDE_PATH}
-		${TK_INCLUDE_PATH}
-		${X11_INCLUDE_DIR}
-		${GLUT_INCLUDE_DIR}
-	)
 	SET(TARGET_NAME stereo_spin)
 	ADD_EXECUTABLE(stereo_spin stereo_spin.cpp)
 	TARGET_LINK_LIBRARIES(stereo_spin
@@ -189,6 +189,12 @@ if (BUILD_DIRECTSHOW_VIDEO_SERVER)
 	)
 	SET_TARGET_PROPERTIES(stereo_spin PROPERTIES SOLUTION_FOLDER servers)
 
+	INCLUDE_DIRECTORIES(
+		${DirectShow_BASECLASS_DIR} ${PLATFORM_SDK_INCLUDE_DIR}
+			${PLATFORM_SDK_ATL_INCLUDE_DIR}
+			${PLATFORM_SDK_ATL_INCLUDE_DIR} ${DIRECTX_SDK_INCLUDE_DIR}
+	)
+
 endif (BUILD_DIRECTSHOW_VIDEO_SERVER)
 
 #-----------------------------------------------------------------------------
@@ -197,9 +203,6 @@ INCLUDE_DIRECTORIES(
 	${QUATLIB_INCLUDE_DIR}
 	${VRPN_INCLUDE_DIR}
 	${ImageMagick_MagickCore_INCLUDE_DIR}
-	${DirectShow_BASECLASS_DIR} ${PLATFORM_SDK_INCLUDE_DIR}
-		${PLATFORM_SDK_ATL_INCLUDE_DIR}
-		${PLATFORM_SDK_ATL_INCLUDE_DIR} ${DIRECTX_SDK_INCLUDE_DIR}
 )
 
 #-----------------------------------------------------------------------------
