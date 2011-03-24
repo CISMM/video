@@ -2,17 +2,17 @@
 FileVersion=1.1
 FileType=QSetupIniFile
 ComposerVersion=5.0.0.0
-OperatingSystem=WinXP  5.1  2600 (Service Pack 2)
+OperatingSystem=WinXP  5.1  2600 (Service Pack 3)
 
 [Project]
 ProjectName=GLUI_take
-ProjectDirectory=D:\jcribb\video\GLUI_take
-NonSFXDirectory=D:\jcribb\video\GLUI_take\NonSFX
-MediaFileName=GLUI_take_v0_30
+ProjectDirectory=D:\jeremy\GLUItake\video\GLUI_take
+NonSFXDirectory=D:\jeremy\GLUItake\video\GLUI_take\NonSFX
+MediaFileName=GLUI_take_v1_00
 CopyMediaToFName=
 ProgramDescriptiveName=GLUI_take Pulnix Frame Grabber
-ProgramVersion=0.30
-CompanyName=UNC NSRG
+ProgramVersion=1.00
+CompanyName=UNC CISMM
 ProgVerLiveUpdate=0
 RegisterAsApp=1
 LanguageFlag=1
@@ -59,11 +59,11 @@ DialogLocation=|Center|0|0|
 TopLabelFont=|Tahoma|32|16777215|1|0|1|0|
 TopLabel2Font=|Tahoma|16|16777215|1|0|1|0|
 BottomLabelFont=|Tahoma|10|16777215|1|0|1|0|
-CompanyUrl=www.cs.unc.edu/nano
+CompanyUrl=cismm.org
 
 [TargetExe]
-TargetDirectory=<ProgramFilesDir>NSRG\GLUI_take_v00.30
-CommonDirectory=<CommonFilesDir>NSRG
+TargetDirectory=<ProgramFilesDir>CISMM\GLUI_take_v01.00
+CommonDirectory=<CommonFilesDir>
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\GLUItake.bat
 RunTimeDir_1=|||||||1||||1||1|<ProgramFilesDir>|||||
@@ -106,8 +106,8 @@ ShowCopyrightWarning=1
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=NSRG\GLUI_take Pulnix Frame Grabber v0.20
-ProgramLinkName=GLUItake v0.20
+ProgramLinkFolder=CISMM\GLUI_take Pulnix Frame Grabber v1.00
+ProgramLinkName=GLUItake v1.00
 ProgramLinkParam=
 ProgramLinkWorkDir=E:\Data\video
 ProgramLinkRun=Minimized
@@ -130,7 +130,7 @@ StartUpChecked=1
 QuickLaunchChecked=1
 SetAllUsers=1
 AddUninstallShortcut=1
-Item-000=*|GLUI_take v0.20|<Application Folder>\GLUItake.bat|<Desktop>||<Application Folder>|Minimized||0|1||0|
+Item-000=*|GLUI_take v1.00|<Application Folder>\GLUItake.bat|<Desktop>||<Application Folder>|Minimized||0|1||0|
 
 [Billboard]
 AddBillboard=1
@@ -192,7 +192,7 @@ AutorunStartApp=0
 
 [Environment]
 Env-000=*|EDTPATH|C:\EDT\pdv|Create|Remove|System|
-Env-001=*|GLUITAKEPATH|C:\Program Files\NSRG\GLUI_take_v00.20|Create|Remove|System|
+Env-001=*|GLUITAKEPATH|<ProgramFilesDir>\CISMM\GLUI_take_v01.00|Create|Remove|System|
 
 [Association]
 OpenWith=0
@@ -231,5 +231,5 @@ TypicalCompactData=15
 Description=This is the main group of files
 Item-000=Fol*<Application Folder>[0]
 Item-001=Fil*C:\NSRG\external\pc_win32\bin\glut32.dll
-Item-002=Fil*D:\jcribb\video\GLUI_take\GLUI_take_v0_20.exe
-Item-003=Fil*D:\jcribb\video\GLUI_take\GLUItake.bat
+Item-002=Fil*D:\jeremy\GLUItake\video\GLUI_take\GLUItake.bat
+Item-003=Fil*D:\jeremy\GLUItake\video\Release\GLUItake.exe

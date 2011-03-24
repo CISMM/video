@@ -45,7 +45,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="C:\NSRG\external\pc_win32\GL\include;../vrpn;C:\NSRG\external\pc_win32\glui;C:\NSRG\external\pc_win32\EDT\pdv"
+				AdditionalIncludeDirectories="C:\NSRG\external\pc_win32\GL\include;../vrpn;C:\NSRG\external\pc_win32\glui;C:\EDT\pdv"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="2"
@@ -136,7 +136,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\NSRG\external\pc_win32\GL\include;../vrpn;C:\NSRG\external\pc_win32\glui;C:\NSRG\external\pc_win32\EDT\pdv"
+				AdditionalIncludeDirectories="C:\NSRG\external\pc_win32\GL\include;../vrpn;C:\NSRG\external\pc_win32\glui;C:\EDT\pdv"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
