@@ -65,6 +65,18 @@ INCLUDE_DIRECTORIES(
 )
 
 #-----------------------------------------------------------------------------
+# Spot tracker library
+set(STL_SOURCES image_wrapper.cpp spot_math.cpp spot_tracker.cpp)
+set(STL_PUBLIC_HEADERS image_wrapper.h spot_math.h spot_tracker.h)
+ADD_LIBRARY (spot_tracker_library
+	${STL_SOURCES} ${STL_PUBLIC_HEADERS}
+)
+set_property(TARGET spot_tracker_library PROPERTY PUBLIC_HEADER ${STL_PUBLIC_HEADERS})
+install(TARGETS spot_tracker_library
+	ARCHIVE DESTINATION lib
+	PUBLIC_HEADER DESTINATION include)
+
+#-----------------------------------------------------------------------------
 # Camera-driver libraries
 set(BCS_SOURCES base_camera_server.cpp raw_file_server.cpp)
 set(BCS_PUBLIC_HEADERS base_camera_server.h raw_file_server.h controllable_video.h)
