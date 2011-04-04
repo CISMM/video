@@ -1,19 +1,29 @@
 // To be able to read 16-bit images, we need to use a version of ImageMagick
 // that is compiled with -DQuantumDepth=16.  Then, we need to #define QuantumLeap
 // before includeing magick/api.h.
+// We don't use ImageMagick at all if we're using the MinGW compiler set, because
+// we can't link against its X11 library.
+
+#if defined(__MINGW32__)
+#define VIDEO_NO_IMAGEMAGICK
+#endif
 
 #include <math.h>
 #include <stdio.h>
 #include "base_camera_server.h"
-#define QuantumLeap
-#if !defined(_VISUALC_)
-#include <magick/magick-config.h>
+
+#if !defined(VIDEO_NO_IMAGEMAGICK)
+  #define QuantumLeap
+  #if !defined(_VISUALC_)
+    #include <magick/magick-config.h>
+  #endif
+
+  // When statically linking with ImageMagick, you need to define _LIB here or
+  // in the preprocessor so it knows to link correctly.
+  // Then you also need to link with wsock32.lib.
+  #define _LIB
+  #include <magick/api.h>
 #endif
-// When statically linking with ImageMagick, you need to define _LIB here or
-// in the preprocessor so it knows to link correctly.
-// Then you also need to link with wsock32.lib.
-#define _LIB
-#include <magick/api.h>
 
 #ifndef	M_PI
 const double M_PI = 2*asin(1.0);
@@ -63,6 +73,7 @@ bool  image_wrapper::write_to_tiff_file(const char *filename, double scale, doub
       gain_buffer[2 + 3*(c + flip_r * numcols)] = offset_scale_and_clamp(value, scale, offset);
     }
   }
+#if !defined(VIDEO_NO_IMAGEMAGICK)
 
 #ifdef	_WIN32
   static bool initialized = false;
@@ -109,6 +120,10 @@ bool  image_wrapper::write_to_tiff_file(const char *filename, double scale, doub
   DestroyImage(out_image);
   delete [] gain_buffer;
   return true;
+#else
+  fprintf(stderr,"image_wrapper::write_to_tiff_file(): No ImageMagick implemented\n");
+  return false;
+#endif
 }
 
 /// Store the specified channel of the portion of the image that is in memory to a TIFF file.
@@ -144,6 +159,8 @@ bool  image_wrapper::write_to_grayscale_tiff_file(const char *filename, unsigned
       gain_buffer[c + flip_r * numcols] = offset_scale_and_clamp(value, scale, offset);
     }
   }
+
+#if !defined(VIDEO_NO_IMAGEMAGICK)
 
 #ifdef	_WIN32
   static bool initialized = false;
@@ -190,6 +207,10 @@ bool  image_wrapper::write_to_grayscale_tiff_file(const char *filename, unsigned
   DestroyImage(out_image);
   delete [] gain_buffer;
   return true;
+#else
+  fprintf(stderr,"image_wrapper::write_to_grayscale_tiff_file(): No ImageMagick implemented\n");
+  return false;
+#endif
 }
 
 double_image::double_image(int minx, int maxx, int miny, int maxy) :
