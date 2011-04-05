@@ -1,16 +1,24 @@
 // To be able to read 16-bit images, we need to use a version of ImageMagick
 // that is compiled with -DQuantumDepth=16.  Then, we need to #define QuantumLeap
 // before includeing magick/api.h.
+// We don't use ImageMagick at all if we're using the MinGW compiler set, because
+// we can't link against its X11 library.
+
+#if defined(__MINGW32__)
+#define VIDEO_NO_IMAGEMAGICK
+#endif
 
 #include "file_stack_server.h"
 #include "file_list.h"
 
-#define QuantumLeap
-// When statically linking with ImageMagick, you need to define _LIB here or
-// in the preprocessor so it knows to link correctly.
-// Then you also need to link with wsock32.lib.
-#define _LIB
-#include <magick/api.h>
+#if !defined(VIDEO_NO_IMAGEMAGICK)
+  #define QuantumLeap
+  // When statically linking with ImageMagick, you need to define _LIB here or
+  // in the preprocessor so it knows to link correctly.
+  // Then you also need to link with wsock32.lib.
+  #define _LIB
+  #include <magick/api.h>
+#endif
 
 #include <list>
 using namespace std;
@@ -37,8 +45,10 @@ d_listOfImages(NULL)
   // If we've not called MagickIncarnate(), do so now
   if (!ds_majickInitialized) {
       ds_majickInitialized = true;
+#if !defined(VIDEO_NO_IMAGEMAGICK)
 #ifdef	_WIN32
       InitializeMagick(magickfilesdir);
+#endif
 #endif
   }
 
@@ -76,11 +86,14 @@ file_stack_server::~file_stack_server(void)
     delete [] d_buffer;
   }
 
+#if !defined(VIDEO_NO_IMAGEMAGICK)
+
   // If we have a multi-layer image open, then destroy it.
   Image *image = static_cast<Image *>(d_listOfImages);
   if (image != NULL) {
     DestroyImage(image);
   }
+#endif
 }
 
 void  file_stack_server::play()
@@ -95,6 +108,8 @@ void  file_stack_server::pause()
 
 void  file_stack_server::rewind()
 {
+#if !defined(VIDEO_NO_IMAGEMAGICK)
+
   // If we have a multi-layer image open, then destroy it
   // and set our open-image pointer to NULL to indicate that
   // we don't have one open.
@@ -103,6 +118,7 @@ void  file_stack_server::rewind()
     DestroyImage(image);
     d_listOfImages = NULL;
   }
+#endif
 
   // Seek back to the first file
   d_whichFile = d_fileNames.begin();
@@ -126,6 +142,8 @@ void  file_stack_server::single_step()
 // than going to the next image in the file list.
 bool  file_stack_server::read_image_from_file(const string filename)
 {
+#if !defined(VIDEO_NO_IMAGEMAGICK)
+
   ExceptionInfo	  exception;
   Image		  *image;
   ImageInfo       *image_info;
@@ -216,6 +234,9 @@ bool  file_stack_server::read_image_from_file(const string filename)
     d_listOfImages = next;
   }
   return true;
+#else
+  fprintf(stderr, "file_stack_server::read_image_from_file(): ImageMagick not compiled in\n");
+#endif
 }
 
 //*** Note: This routine is complicated by the fact that some images (TIFF files
