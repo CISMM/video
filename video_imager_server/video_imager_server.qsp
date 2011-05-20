@@ -8,10 +8,10 @@ OperatingSystem=WinXP  5.1  2600 (Service Pack 3)
 ProjectName=video_imager_server
 ProjectDirectory=F:\taylorr\STM\src\video\video_imager_server
 NonSFXDirectory=F:\taylorr\STM\src\video\video_imager_server\NonSFX
-MediaFileName=video_imager_server_v03_08
+MediaFileName=video_imager_server_v03_09
 CopyMediaToFName=
 ProgramDescriptiveName=Video Imager Server
-ProgramVersion=03_08
+ProgramVersion=03_09
 CompanyName=UNC NSRG
 ProgVerLiveUpdate=0
 RegisterAsApp=1
@@ -62,7 +62,7 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|1|0|
 CompanyUrl=
 
 [TargetExe]
-TargetDirectory=<ProgramFilesDir>CISMM\video_imager_server_03_08
+TargetDirectory=<ProgramFilesDir>CISMM\video_imager_server_03_09
 CommonDirectory=<CommonFilesDir>www.cismm.org
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\video_imager_server.bat
@@ -106,7 +106,7 @@ ShowCopyrightWarning=1
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=CISMM\Video Imager Server v03_08
+ProgramLinkFolder=CISMM\Video Imager Server v03_09
 ProgramLinkName=Video_imager_server
 ProgramLinkParam=
 ProgramLinkWorkDir=<Application Folder>
@@ -140,6 +140,7 @@ Item-006=*|Video_imager_server for Roper (bin 2x2)|<Application Folder>\video_im
 Item-007=*|Video Imager Client|<Application Folder>\testimager_client.exe|||<Application Folder>|Normal Window||0|1||0|
 Item-008=*|Setup EDT board to use Pulnix|<Application Folder>\setup_edt_for_pulnix.bat||||Normal Window||0|1||0|
 Item-009=*|Video Imager Server (1 of 3 frames)|<Application Folder>\video_imager_server.bat||-every_nth_frame 3|<Application Folder>|Normal Window||0|1||0|
+Item-010=*|video_imager_server for Panoptes|<Application Folder>\video_imager_server.exe||-trigger pgr|<Application Folder>|Normal Window||0|1||0|
 
 [Billboard]
 AddBillboard=1
