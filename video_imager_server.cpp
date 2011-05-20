@@ -367,7 +367,7 @@ int main(int argc, char *argv[])
 			}
 		} else if (!strncmp(argv[i], "-gain", strlen("-gain"))) {
 			if (++i > argc) { Usage(argv[0]); }
-			g_gain = atof(argv[i]);
+			g_gain = static_cast<float>(atof(argv[i]));
 			fprintf(stderr,"The current gain setting is %f)\n", g_gain);
 			
 		} else {

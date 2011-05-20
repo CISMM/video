@@ -1,6 +1,8 @@
 #ifndef	EDT_SERVER_H
 #define	EDT_SERVER_H
 
+// On 5/20/2011, built against version 4.1.9.6 of the library.  It linked fine.
+
 #include "base_camera_server.h"
 #include "raw_file_server.h"
 
