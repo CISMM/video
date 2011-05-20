@@ -1743,7 +1743,7 @@ static void optimize_tracker(Spot_Information *tracker)
       used_search_radius = 3;
     }
 
-    // Create an image spot tracker and initize it at the location where the current
+    // Create an image spot tracker and initialize it at the location where the current
     // tracker started this frame (before prediction), but in the last image.  Grab enough
     // of the image that we will be able to check over the used_search_radius for a match.
     // Use the faster twolines version of the image-based tracker.
