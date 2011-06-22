@@ -4327,7 +4327,7 @@ int main(int argc, char *argv[])
 
   for (i = 1; i < argc; i++) {
     if (!strncmp(argv[i], "-kernel", strlen("-kernel"))) {
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       if (!strncmp(argv[i], "disc", strlen("disc"))) {
         g_kernel_type = KERNEL_DISK;
       } else if (!strncmp(argv[i], "cone", strlen("cone"))) {
@@ -4347,45 +4347,45 @@ int main(int argc, char *argv[])
     } else if (!strncmp(argv[i], "-follow_jumps", strlen("-follow_jumps"))) {
       g_follow_jumps = 1;
     } else if (!strncmp(argv[i], "-raw_camera_params", strlen("-raw_camera_params"))) {
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       raw_camera_numx = atoi(argv[i]);
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       raw_camera_numy = atoi(argv[i]);
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       raw_camera_bitdepth = atoi(argv[i]);
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       raw_camera_channels = atoi(argv[i]);
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       raw_camera_headersize = atoi(argv[i]);
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       raw_camera_frameheadersize = atoi(argv[i]);
       raw_camera_params_valid = true;
     } else if (!strncmp(argv[i], "-outfile", strlen("-outfile"))) {
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       char *name = new char[strlen(argv[i])+6];
       sprintf(name, "%s.vrpn", argv[i]);
       g_logfilename = name;
     } else if (!strncmp(argv[i], "-rod3", strlen("-rod3"))) {
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       g_length = atof(argv[i]);
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       g_orientation = atof(argv[i]);
       g_rod = 1;
     } else if (!strncmp(argv[i], "-precision", strlen("-precision"))) {
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       g_precision = atof(argv[i]);
     } else if (!strncmp(argv[i], "-sample_spacing", strlen("-sample_spacing"))) {
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       g_sampleSpacing = atof(argv[i]);
     } else if (!strncmp(argv[i], "-FIONA_background", strlen("-FIONA_background"))) {
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       g_FIONA_background = atof(argv[i]);
     } else if (!strncmp(argv[i], "-tracker", strlen("-tracker"))) {
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       g_X = atof(argv[i]);
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       g_Y = atof(argv[i]);
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       g_Radius = atof(argv[i]);
       g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(g_X,g_Y,g_Radius),create_appropriate_ztracker()));
       g_active_tracker = g_trackers.back();
@@ -4393,52 +4393,52 @@ int main(int argc, char *argv[])
         g_active_tracker->ztracker()->set_depth_accuracy(0.25);
       }
     } else if (!strncmp(argv[i], "-lost_tracking_sensitivity", strlen("-lost_tracking_sensitivity"))) {
-	if (++i > argc) { Usage(argv[0]); }
+	if (++i >= argc) { Usage(argv[0]); }
 	g_lossSensitivity = atof(argv[i]);
     } else if (!strncmp(argv[i], "-intensity_lost_sensitivity", strlen("-intensity_lost_sensitivity"))) {
-	if (++i > argc) { Usage(argv[0]); }
+	if (++i >= argc) { Usage(argv[0]); }
 	g_intensityLossSensitivity = atof(argv[i]);	
     } else if (!strncmp(argv[i], "-dead_zone_around_border", strlen("-dead_zone_around_border"))) {
-	if (++i > argc) { Usage(argv[0]); }
+	if (++i >= argc) { Usage(argv[0]); }
 	g_borderDeadZone = atof(argv[i]);
     } else if (!strncmp(argv[i], "-dead_zone_around_trackers", strlen("-dead_zone_around_trackers"))) {
-	if (++i > argc) { Usage(argv[0]); }
+	if (++i >= argc) { Usage(argv[0]); }
 	g_trackerDeadZone = atof(argv[i]);
     } else if (!strncmp(argv[i], "-maintain_fluorescent_beads", strlen("-maintain_fluorescent_beads"))) {
-	if (++i > argc) { Usage(argv[0]); }
+	if (++i >= argc) { Usage(argv[0]); }
 	g_findThisManyFluorescentBeads = atof(argv[i]);
     } else if (!strncmp(argv[i], "-fluorescent_spot_threshold", strlen("-fluorescent_spot_threshold"))) {
-	if (++i > argc) { Usage(argv[0]); }
+	if (++i >= argc) { Usage(argv[0]); }
 	g_fluorescentSpotThreshold = atof(argv[i]);
     } else if (!strncmp(argv[i], "-maintain_this_many_beads", strlen("-maintain_this_many_beads"))) {
-	if (++i > argc) { Usage(argv[0]); }
+	if (++i >= argc) { Usage(argv[0]); }
 	g_findThisManyBeads = atof(argv[i]);
     } else if (!strncmp(argv[i], "-candidate_spot_threshold", strlen("-candidate_spot_threshold"))) {
-	if (++i > argc) { Usage(argv[0]); }
+	if (++i >= argc) { Usage(argv[0]); }
 	g_candidateSpotThreshold = atof(argv[i]);
     } else if (!strncmp(argv[i], "-lost_behavior", strlen("-lost_behavior"))) {
-	if (++i > argc) { Usage(argv[0]); }
+	if (++i >= argc) { Usage(argv[0]); }
 	g_lostBehavior = atof(argv[i]);
     } else if (!strncmp(argv[i], "-sliding_window_radius", strlen("-sliding_window_radius"))) {
-	if (++i > argc) { Usage(argv[0]); }
+	if (++i >= argc) { Usage(argv[0]); }
 	g_slidingWindowRadius = atof(argv[i]);
     } else if (!strncmp(argv[i], "-radius", strlen("-radius"))) {
-	if (++i > argc) { Usage(argv[0]); }
+	if (++i >= argc) { Usage(argv[0]); }
 	g_Radius = atof(argv[i]);
     } else if (!strncmp(argv[i], "-show_lost_and_found", strlen("-show_lost_and_found"))) {
 	g_showLostAndFound = true;
     } else if (!strncmp(argv[i], "-load_state", strlen("-load_state"))) {
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       if (!load_state_from_file(argv[i])) {
         fprintf(stderr,"Could not load state file from %s\n", argv[i]);
         exit(-1);
       }
     } else if (!strncmp(argv[i], "-log_video", strlen("-log_video"))) {
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       g_log_video = 1;
       g_video_full_frame_every = atoi(argv[i]);
     } else if (!strncmp(argv[i], "-continue_from", strlen("-continue_from"))) {
-      if (++i > argc) { Usage(argv[0]); }
+      if (++i >= argc) { Usage(argv[0]); }
       if (!load_trackers_from_file(argv[i])) {
         fprintf(stderr,"-contintue_from: Could not load trackers from %s\n", argv[i]);
         exit(-1);
