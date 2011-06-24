@@ -2,8 +2,9 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="8.00"
-	Name="make_moving_spot_video"
-	ProjectGUID="{DA730F74-9827-4811-9F0D-3CB9BAA88E91}"
+	Name="Panoptes_Stage_Control"
+	ProjectGUID="{91F0C1E3-C659-45DB-9ADE-E2B80767C804}"
+	RootNamespace="generate_beads_dataset"
 	>
 	<Platforms>
 		<Platform
@@ -49,7 +50,7 @@
 				StringPooling="true"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
-				PrecompiledHeaderFile=".\Release/make_moving_spot_video.pch"
+				PrecompiledHeaderFile=""
 				AssemblerListingLocation=".\Release/"
 				ObjectFile=".\Release/"
 				ProgramDataBaseFileName=".\Release/"
@@ -70,7 +71,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="opengl32.lib odbc32.lib odbccp32.lib"
-				OutputFile=".\Release/make_moving_spot_video.exe"
+				OutputFile=".\Release/Panoptes_Stage_Control.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="..\vrpn\pc_win32\Release"
@@ -140,7 +141,7 @@
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
-				PrecompiledHeaderFile=".\Debug/make_moving_spot_video.pch"
+				PrecompiledHeaderFile=""
 				AssemblerListingLocation=".\Debug/"
 				ObjectFile=".\Debug/"
 				ProgramDataBaseFileName=".\Debug/"
@@ -162,7 +163,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="opengl32.lib odbc32.lib odbccp32.lib"
-				OutputFile=".\Debug/make_moving_spot_video.exe"
+				OutputFile=".\Debug/Panoptes_Stage_Control.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="..\vrpn\pc_win32\Debug"
@@ -208,26 +209,8 @@
 			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 			>
 			<File
-				RelativePath="make_moving_spot_video.cpp"
+				RelativePath=".\Panoptes_Stage_Control.cpp"
 				>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
 			</File>
 		</Filter>
 		<Filter

@@ -39,7 +39,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\vrpn\quat;..\video;..\vrpn;..\vrpn\server_src;..\quat"
+				AdditionalIncludeDirectories="E:\projects\SyncControlAPI_old\SyncControlAPI;..\vrpn\quat;..\video;..\vrpn;..\vrpn\server_src;..\quat"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -59,7 +59,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="vrpn.lib quat.lib opengl32.lib glut32.lib glu32.lib"
-				AdditionalLibraryDirectories="..\vrpn\quat\pc_win32\Debug;..\vrpn\pc_win32\Debug;..\quat\pc_win32\Release;..\vrpn\pc_win32\Release;C:\NSRG\external\pc_win32\GL\lib;C:\nsrg\external\pc_win32\ImageMagick\lib"
+				AdditionalLibraryDirectories="..\vrpn\quat\pc_win32\Debug;..\vrpn\pc_win32\Release;..\quat\pc_win32\Release;..\vrpn\quat\pc_win32\Release;C:\NSRG\external\pc_win32\GL\lib;C:\nsrg\external\pc_win32\ImageMagick\lib"
 				GenerateDebugInformation="true"
 				TargetMachine="1"
 			/>
@@ -113,8 +113,10 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="..\SyncControlAPI;..\video;..\vrpn;..\vrpn\server_src;..\vrpn\quat;..\quat"
+				AdditionalIncludeDirectories="E:\projects\SyncControlAPI_new;..\video;..\vrpn;..\vrpn\server_src;..\vrpn\quat;..\quat"
+				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				RuntimeLibrary="2"
+				ProgramDataBaseFileName="$(IntDir)\vc80.pdb"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="3"
@@ -131,7 +133,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="vrpn.lib quat.lib opengl32.lib glut32.lib glu32.lib"
-				AdditionalLibraryDirectories="..\vrpn\quat\pc_win32\Release;..\quat\pc_win32\Release;..\vrpn\pc_win32\Release;C:\NSRG\external\pc_win32\GL\lib;C:\nsrg\external\pc_win32\ImageMagick\lib"
+				AdditionalLibraryDirectories="..\vrpn\pc_win32\Release;..\vrpn\quat\pc_win32\Release;..\quat\pc_win32\Release;C:\NSRG\external\pc_win32\GL\lib;C:\nsrg\external\pc_win32\ImageMagick\lib"
 				GenerateDebugInformation="true"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
@@ -192,11 +194,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\SyncControlAPI\sciString2send.cpp"
+				RelativePath="..\SyncControlAPI_new\sciString2send.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\SyncControlAPI\SyncControl.cpp"
+				RelativePath="..\SyncControlAPI_new\SyncControl.cpp"
 				>
 			</File>
 			<File
@@ -219,14 +221,6 @@
 			</File>
 			<File
 				RelativePath="..\video\PanopticNerve\PanopticNerve.h"
-				>
-			</File>
-			<File
-				RelativePath="..\SyncControlAPI\sciString2send.h"
-				>
-			</File>
-			<File
-				RelativePath="..\SyncControlAPI\SyncControl.h"
 				>
 			</File>
 			<File

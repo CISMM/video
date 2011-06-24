@@ -1,6 +1,7 @@
-#include  <math.h>
 #include  <stdlib.h>
+#include  <math.h>
 #include  <stdio.h>
+
 #include  "image_wrapper.h"
 
 disc_image::disc_image(int minx, int maxx, int miny, int maxy,
@@ -16,7 +17,7 @@ disc_image::disc_image(int minx, int maxx, int miny, int maxy,
   // Make sure the parameters are meaningful
   if ( (_oversample <= 0) ) {
     fprintf(stderr,"disc_image::disc_image(): Bad oversample\n");
-    _minx = _maxy = _minx = _maxx = 0;
+    _minx = _maxx = _miny = _maxy = 0;
     return;
   }
 
@@ -66,6 +67,79 @@ disc_image::disc_image(int minx, int maxx, int miny, int maxy,
       if (find_index(i,j,index)) {
 	double	unit_rand = (double)(rand()) / RAND_MAX;
 	_image[index] += (unit_rand - 0.5) * 2 * noise;
+      }
+    }
+  }  
+}
+
+multi_disc_image::multi_disc_image(std::vector<bead>& b, 
+                           int minx, int maxx, int miny, int maxy,
+		                   double background, double noise,
+		                   int oversample) :
+  double_image(minx, maxx, miny, maxy),
+  _oversample(oversample)
+{
+  int i,j, index;
+  double oi,oj;	// Oversample steps
+  
+  // Make sure the parameters are meaningful
+  if ( (_oversample <= 0) ) {
+    fprintf(stderr,"multi_disc_image::multi_disc_image(): Bad oversample\n");
+    _minx = _maxx = _miny = _maxy = 0;
+    return;
+  }
+  
+  // Fill in the background intensity.
+  for (i = _minx; i <= _maxx; i++) {
+    for (j = _miny; j <= _maxy; j++) {
+      write_pixel_nocheck(i, j, background);
+    }
+  }
+  
+  // visualize all the beads in the bead vector, b
+  for(std::vector<bead>::size_type bead = 0; bead < b.size(); bead++){
+    // Add in 0.5 pixel to the X and Y positions
+    // so that we center the disc on the middle of the pixel rather than
+    // having it centered between pixels.
+    // b[bead].x += 0.5;
+    // b[bead].y += 0.5;
+  
+    // Fill in the disk intensity (the part of it that is within the image).
+    // Oversample the image by the factor specified in _oversample, averaging
+    // all results within the pixel.  
+#ifdef	DEBUG
+  printf("multi_disc_image::multi_disc_image(): Making disk of radius %lg\n", b[bead].r);
+#endif
+    double disk2 = b[bead].r * b[bead].r;
+    for (i = (int)floor(b[bead].x - b[bead].r); i <= (int)ceil(b[bead].x + b[bead].r); i++) {
+      for (j = (int)floor(b[bead].y - b[bead].r); j <= (int)ceil(b[bead].y + b[bead].r); j++) {
+        if (find_index(i,j,index)) {
+  	      _image[index] = 0;
+  	      for (oi = 0; oi < _oversample; oi++) {
+  	        for (oj = 0; oj < _oversample; oj++) {
+  	          double x = i + oi/_oversample;
+  	          double y = j + oj/_oversample;
+  	          if ( disk2 >= (x - b[bead].x)*(x - b[bead].x) + (y - b[bead].y)*(y - b[bead].y) ) {
+  	            _image[index] += b[bead].intensity;
+  	          } else {
+  	            _image[index] += background;
+  	          }
+  	        }
+  	      }
+          _image[index] /= (_oversample * _oversample);
+        }
+      }
+    }
+  }
+  
+  // Add zero-mean uniform noise to the image, with the specified width
+  for (i = _minx; i <= _maxx; i++) {
+    for (j = _miny; j <= _maxy; j++) {
+      if (find_index(i,j,index)) {
+        // This line is commented for testing because it affects the positions of points in images of different sizes.
+  	    //double unit_rand = (double)(rand()) / RAND_MAX;
+        // This line is commented because it uses the results of the previous line. 
+  	    //_image[index] += (unit_rand - 0.5) * 2 * noise;
       }
     }
   }  
@@ -142,6 +216,79 @@ cone_image::cone_image(int minx, int maxx, int miny, int maxy,
   }  
 }
 
+multi_cone_image::multi_cone_image(std::vector<bead>& b,
+               int minx, int maxx, int miny, int maxy,
+		       double background, double noise,
+		       int oversample) :
+  double_image(minx, maxx, miny, maxy),
+  _oversample(oversample)
+{ 
+  int i,j, index;
+  int oi,oj; // Oversample steps
+  
+  // Fill in the background intensity.
+  for (i = _minx; i <= _maxx; i++) {
+    for (j = _miny; j <= _maxy; j++) {
+      write_pixel_nocheck(i, j, background);
+    }
+  }
+  
+  // Compute where the samples should be taken.  These need to be taken
+  // symmetrically around the pixel center and cover all samples within
+  // the pixel exactly once.  First, compute the step size between the
+  // samples, then the one with the smallest value that lies within a
+  // half-pixel-width of the center of the pixel as the starting offset.
+  // Proceeed until we exceed a half-pixel-radius on the high side of
+  // the pixel.
+  
+  double step = 1.0 / _oversample;
+  double start;
+  if (_oversample % 2 == 1) { // Odd number of steps
+    start = - step * floor( _oversample / 2.0 );
+  } else {    // Even number of steps
+    start = - step * ( (_oversample / 2 - 1) + 0.5 );
+  }
+  
+  // Fill in the cone intensity (the part of it that is within the image).
+  for (std::vector<bead>::size_type bead = 0; bead < b.size(); bead++) {  
+#ifdef	DEBUG
+  printf("multi_cone_image::multi_cone_image(): Making cone of radius %lg\n", b[bead].r));
+#endif
+    for (i = (int)floor(b[bead].x - b[bead].r); i <= (int)ceil(b[bead].x + b[bead].r); i++) {
+      for (j = (int)floor(b[bead].y - b[bead].r); j <= (int)ceil(b[bead].y + b[bead].r); j++) {
+        if (find_index(i,j,index)) {
+          _image[index] = 0;
+          for (oi = 0; oi < _oversample; oi++) {
+            for (oj = 0; oj < _oversample; oj++) {
+              double x = i + start + oi*step;
+              double y = j + start + oj*step;
+              double dist = sqrt((x-b[bead].x)*(x-b[bead].x) + (y-b[bead].y)*(y-b[bead].y));
+              if ( b[bead].r >= dist ) {
+                double frac = dist / b[bead].r;
+                double intensity = frac * background + (1 - frac) * b[bead].intensity;
+                _image[index] += intensity;
+              } else {
+                _image[index] += background;
+              }
+	        }
+          }
+          _image[index] /= (_oversample * _oversample);
+        }
+      }
+    }
+  }
+  
+  // Add zero-mean uniform noise to the image, with the specified width
+  for (i = _minx; i <= _maxx; i++) {
+    for (j = _miny; j <= _maxy; j++) {
+      if (find_index(i,j,index)) {
+        double	unit_rand = (double)(rand()) / RAND_MAX;
+        _image[index] += (unit_rand - 0.5) * 2 * noise;
+      }
+    }
+  }
+}
+
 Integrated_Gaussian_image::Integrated_Gaussian_image(int minx, int maxx, int miny, int maxy,
 	     double background, double noise,
 	     double centerx, double centery, double std_dev,
@@ -194,6 +341,79 @@ void Integrated_Gaussian_image::recompute(double background, double noise,
 	  double  unit_rand = (double)(rand()) / RAND_MAX;
 	  _image[index] += (unit_rand - 0.5) * 2 * noise;
         }
+      }
+    }
+  }
+}
+
+Integrated_multi_Gaussian_image::Integrated_multi_Gaussian_image(std::vector<bead>& b,
+         int minx, int maxx, int miny, int maxy,
+	     double background, double noise,
+	     int oversample) :
+  double_image(minx, maxx, miny, maxy),
+  _oversample(oversample),
+  _background(background)
+{
+  multi_recompute(b, background, noise, oversample);
+}
+
+void Integrated_multi_Gaussian_image::multi_recompute(std::vector<bead>& b,
+         double background, double noise,
+	     int oversample)
+{
+  _oversample = oversample;
+  int i,j, index;
+  double summedvolume;
+
+//  XXX Verify that this centers the pixel like it should.
+  // Compute where the samples should be taken.  These need to be taken
+  // symmetrically around the pixel center and cover all samples within
+  // the pixel exactly once.  First, compute the step size between the
+  // samples, then the one with the smallest value that lies within a
+  // half-pixel-width of the center of the pixel as the starting offset.
+  // Proceeed until we exceed a half-pixel-radius on the high side of
+  // the pixel.
+
+  // Fill in the Gaussian intensity plus background plus noise (if any).
+  // Note that the area under the curve for the unit Gaussian is 1; we
+  // multiply by the summedvolume (which needs to be the sum above or
+  // below the background) to produce an overall volume matching the
+  // one requested.
+  
+  // Fill in the background intensity.
+  for (i = _minx; i <= _maxx; i++) {
+    for (j = _miny; j <= _maxy; j++) {
+      write_pixel_nocheck(i, j, background);
+    }
+  }
+  
+  for(std::vector<bead>::size_type bead = 0; bead < b.size(); bead++){
+#ifdef	DEBUG
+  printf("multi_Gaussian_image::multi_recompute(): Making Gaussian of standard deviation %lg, background %lg, volume %lg\n",
+          b[bead].r, background, b[bead].intensity * b[bead].r*b[bead].r * 2 * M_PI);
+#endif
+    for (i = _minx; i <= _maxx; i++) {
+      for (j = _miny; j <= _maxy; j++) {
+        double x0 = (i - b[bead].x) - 0.5;    // The left edge of the pixel in Gaussian space
+        double x1 = x0 + 1;                   // The right edge of the pixel in Gaussian space
+        double y0 = (j - b[bead].y) - 0.5;    // The bottom edge of the pixel in Gaussian space
+        double y1 = y0 + 1;                   // The top edge of the pixel in Gaussian space
+        if (find_index(i,j,index)) {
+          // For this call to ComputeGaussianVolume, we assume 1-meter pixels.
+          // This makes std dev and other be in pixel units without conversion.
+          summedvolume = b[bead].intensity * b[bead].r*b[bead].r * 2 * M_PI;
+          _image[index] += ComputeGaussianVolume(summedvolume, b[bead].r, x0,x1, y0,y1, _oversample); 
+        }
+      }
+    }
+  }
+  
+  // Add zero-mean uniform noise to the image, with the specified width
+  for (i = _minx; i <= _maxx; i++) {
+    for (j = _miny; j <= _maxy; j++) {
+      if (find_index(i,j,index)) {
+  	    double	unit_rand = (double)(rand()) / RAND_MAX;
+  	    _image[index] += (unit_rand - 0.5) * 2 * noise;
       }
     }
   }

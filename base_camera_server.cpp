@@ -43,7 +43,7 @@ static	vrpn_uint16 offset_scale_and_clamp(const double value, const double gain,
 
 /// Store the portion of the image that is in memory to a TIFF file.
 bool  image_wrapper::write_to_tiff_file(const char *filename, double scale, double offset, bool sixteen_bits,
-				        const char *magick_files_dir) const
+				        const char *magick_files_dir, bool skip_init) const
 {
   // Make a pointer to the image data adjusted by the scale and offset.
   vrpn_uint16	  *gain_buffer = NULL;
@@ -77,7 +77,7 @@ bool  image_wrapper::write_to_tiff_file(const char *filename, double scale, doub
 
 #ifdef	_WIN32
   static bool initialized = false;
-  if (!initialized) {
+  if (!initialized && !skip_init) {
     InitializeMagick(magick_files_dir);
     initialized = true;
   }
@@ -128,7 +128,7 @@ bool  image_wrapper::write_to_tiff_file(const char *filename, double scale, doub
 
 /// Store the specified channel of the portion of the image that is in memory to a TIFF file.
 bool  image_wrapper::write_to_grayscale_tiff_file(const char *filename, unsigned channel, double scale, double offset,
-				                  bool sixteen_bits, const char *magick_files_dir) const
+				                  bool sixteen_bits, const char *magick_files_dir, bool skip_init) const
 {
   if (channel > 2) {
       fprintf(stderr, "image_wrapper::write_to_grayscale_tiff_file(): Invalid channel (%d)\n", channel);
@@ -164,7 +164,7 @@ bool  image_wrapper::write_to_grayscale_tiff_file(const char *filename, unsigned
 
 #ifdef	_WIN32
   static bool initialized = false;
-  if (!initialized) {
+  if (!initialized && !skip_init) {
     InitializeMagick(magick_files_dir);
     initialized = true;
   }

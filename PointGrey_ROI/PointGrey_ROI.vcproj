@@ -118,7 +118,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="&quot;C:\Program Files\Point Grey Research\FlyCapture2\include&quot;"
+				AdditionalIncludeDirectories="&quot;C:\Program Files (x86)\Point Grey Research\FlyCapture2\include&quot;"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="2"
@@ -139,7 +139,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="FlyCapture2.lib"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;C:\Program Files\Point Grey Research\FlyCapture2\lib&quot;"
+				AdditionalLibraryDirectories="&quot;C:\Program Files (x86)\Point Grey Research\FlyCapture2\lib&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				OptimizeReferences="2"
