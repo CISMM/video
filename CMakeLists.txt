@@ -36,6 +36,14 @@ endif (WIN32)
 list(APPEND CMAKE_MODULE_PATH ${CISMM_VIDEO_SOURCE_DIR} ${CISMM_VIDEO_SOURCE_DIR}/cmake)
 
 #-----------------------------------------------------------------------------
+# Put this in /usr/local unless overridden.  The default on Windows is
+# in Program Files, but that breaks on Windows 7 because you have to be
+# admin to write there.
+
+set(CMAKE_INSTALL_PREFIX /usr/local/)
+
+
+#-----------------------------------------------------------------------------
 # Libraries we need to do our thing.
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${VIDEO_SOURCE_DIR})
 FIND_PACKAGE(quatlib REQUIRED)	# Sets QUATLIB_INCLUDE_DIR and QUATLIB_LIBRARIES

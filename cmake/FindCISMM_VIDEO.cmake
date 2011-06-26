@@ -9,6 +9,7 @@
 find_path(CISMM_VIDEO_INCLUDE_DIR NAMES base_camera_server.h
 		PATHS
 		"C:/Program Files/CISMM_VIDEO/include"
+		/usr/local/include
 		"../video"
 )
 mark_as_advanced(CISMM_VIDEO_INCLUDE_DIR)
@@ -17,6 +18,7 @@ mark_as_advanced(CISMM_VIDEO_INCLUDE_DIR)
 find_library(BASE_CAMERA_LIBRARY NAMES base_camera_server_library.lib libbase_camera_server_library.a
 		PATHS
 		"C:/Program Files/CISMM_VIDEO/lib"
+		/usr/local/lib
 		"../build_video"
 		"../build_video/release"
 )
