@@ -60,7 +60,7 @@ else()
 		PATHS
 		"${_progfiles}/VRPN"
 		"${_progfiles}/quatlib"
-		/user/local)
+		/usr/local)
 
 	# Look for the library.
 	find_library(QUATLIB_LIBRARY
