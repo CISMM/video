@@ -1,9 +1,18 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 PROJECT(CISMM_VIDEO)
 
 #-----------------------------------------------------------------------------
 # XXX Things to make better.
 # 
+
+#-----------------------------------------------------------------------------
+# Things you need before you can compile this on Windows:
+# 	Windows SDK (download from Microsoft, includes DirectShow)
+#		You may have to manually point at BaseClasses and include directory
+#		This still doesn't let DirectX compile under VS 2010.
+#    DirectX SDK (Download from Microsoft)
+# 	NSRG Buildtime 3.2 (download from CISMM server, includes Tcl, Glut, etc)
+#		You have to manually point at a bunch of stuff in here
 
 # Needed for Cmake 2.8.1 to avoid complaints
 if(COMMAND cmake_policy)
@@ -27,9 +36,41 @@ elseif(UNIX) # other than Apple UNIXes
 endif()
 
 # Configuration options controlling what gets included in the build.
+OPTION(VIDEO_USE_ROPER "Enable to include Roper camera code in build" OFF)
+OPTION(VIDEO_USE_COOKE "Enable to include Cooke camera code in build" OFF)
+OPTION(VIDEO_USE_EDT "Enable to include EDT camera code in build" OFF)
+OPTION(VIDEO_USE_DIAGINC "Enable to include Diag Inc camera code in build" OFF)
+OPTION(VIDEO_USE_SEM "Enable to include SEM (from nanoManipulator) camera code in build" OFF)
+OPTION(VIDEO_USE_VRPN_IMAGER "Enable to include VRPN_Imager camera code in build" ON)
+OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" OFF)
+
 if (WIN32)
-	OPTION(BUILD_DIRECTSHOW_VIDEO_SERVER "Enable to include Microsoft DirectShow code in build" ON)
+	set(VIDEO_USE_ROPER ON CACHE TYPE BOOLEAN)
+	set(VIDEO_USE_COOKE ON CACHE TYPE BOOLEAN)
+	set(VIDEO_USE_EDT ON CACHE TYPE BOOLEAN)
+	set(VIDEO_USE_DIAGINC ON CACHE TYPE BOOLEAN)
+	set(VIDEO_USE_DIRECTSHOW ON CACHE TYPE BOOLEAN)
 endif (WIN32)
+
+#-----------------------------------------------------------------------------
+# Set compile-time definitions for all projects based on what has been
+# selected.
+
+if (VIDEO_USE_ROPER)
+	ADD_DEFINITIONS(-DVST_USE_ROPER)
+endif (VIDEO_USE_ROPER)
+if (VIDEO_USE_COOKE)
+	ADD_DEFINITIONS(-DVST_USE_COOKE)
+endif (VIDEO_USE_COOKE)
+if (VIDEO_USE_EDT)
+	ADD_DEFINITIONS(-DVST_USE_EDT)
+endif (VIDEO_USE_EDT)
+if (VIDEO_USE_DIAGINC)
+	ADD_DEFINITIONS(-DVST_USE_DIAGINC)
+endif (VIDEO_USE_DIAGINC)
+if (VIDEO_USE_DIRECTSHOW)
+	ADD_DEFINITIONS(-DVST_USE_DIRECTSHOW)
+endif (VIDEO_USE_DIRECTSHOW)
 
 #-----------------------------------------------------------------------------
 # Local CMake Modules
@@ -40,7 +81,7 @@ list(APPEND CMAKE_MODULE_PATH ${CISMM_VIDEO_SOURCE_DIR} ${CISMM_VIDEO_SOURCE_DIR
 # in Program Files, but that breaks on Windows 7 because you have to be
 # admin to write there.
 
-set(CMAKE_INSTALL_PREFIX /usr/local/)
+set(CMAKE_INSTALL_PREFIX /usr/local/ CACHE TYPE STRING FORCE)
 
 
 #-----------------------------------------------------------------------------
@@ -48,11 +89,12 @@ set(CMAKE_INSTALL_PREFIX /usr/local/)
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${VIDEO_SOURCE_DIR})
 FIND_PACKAGE(quatlib REQUIRED)	# Sets QUATLIB_INCLUDE_DIR and QUATLIB_LIBRARIES
 FIND_PACKAGE(VRPN REQUIRED)
-FIND_PACKAGE(ImageMagick REQUIRED COMPONENTS MagickCore )	# Need to have ImageMagick
+FIND_PACKAGE(ImageMagick REQUIRED COMPONENTS MagickCore)	# Need to have ImageMagick
 FIND_PACKAGE(OpenGL REQUIRED)
 if (WIN32)
 	# XXX Bad evil hard-coded path for UNC.
 	link_directories( C:/NSRG/external/pc_win32/ImageMagick/lib )
+	link_directories( "C:/Program Files (x86)/CISMM/external/ImageMagick/lib" )
 else(WIN32)
 	set (PTHREAD_LIBRARY pthread)
 endif (WIN32)
@@ -71,18 +113,6 @@ INCLUDE_DIRECTORIES(
 	${X11_INCLUDE_DIR}
 	${GLUT_INCLUDE_DIR}
 )
-
-#-----------------------------------------------------------------------------
-# Spot tracker library
-set(STL_SOURCES image_wrapper.cpp spot_math.cpp spot_tracker.cpp)
-set(STL_PUBLIC_HEADERS image_wrapper.h spot_math.h spot_tracker.h)
-ADD_LIBRARY (spot_tracker_library
-	${STL_SOURCES} ${STL_PUBLIC_HEADERS}
-)
-set_property(TARGET spot_tracker_library PROPERTY PUBLIC_HEADER ${STL_PUBLIC_HEADERS})
-install(TARGETS spot_tracker_library
-	ARCHIVE DESTINATION lib
-	PUBLIC_HEADER DESTINATION include)
 
 #-----------------------------------------------------------------------------
 # Camera-driver libraries
@@ -107,21 +137,12 @@ install(TARGETS file_stack_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
 
-set(FS_SOURCES Tcl_Linkvar.C)
-set(FS_PUBLIC_HEADERS Tcl_Linkvar.h)
-ADD_LIBRARY (Tcl_Linkvar
-	${FS_SOURCES} ${FS_PUBLIC_HEADERS}
-)
-set_property(TARGET Tcl_Linkvar PROPERTY PUBLIC_HEADER ${FS_PUBLIC_HEADERS})
-install(TARGETS Tcl_Linkvar
-	ARCHIVE DESTINATION lib
-	PUBLIC_HEADER DESTINATION include)
-
 #-----------------------------------------------------------------------------
 # DirectShow base-class library (if configured)
-if (BUILD_DIRECTSHOW_VIDEO_SERVER)
+if (VIDEO_USE_DIRECTSHOW)
 	FIND_PACKAGE(DirectShow REQUIRED)	# Need to have DirectShow SDK
-	ADD_DEFINITIONS( -DCOINIT_DISABLE_OLE1DDE=0x4 )
+	# Add this if you can't compile without out.
+	# ADD_DEFINITIONS( -DCOINIT_DISABLE_OLE1DDE=0x4 )
 	ADD_LIBRARY (DirectShow_baseclasses
 		${DirectShow_BASECLASS_DIR}/amextra.cpp
 		${DirectShow_BASECLASS_DIR}/amfilter.cpp
@@ -171,7 +192,7 @@ if (BUILD_DIRECTSHOW_VIDEO_SERVER)
 	TARGET_LINK_LIBRARIES(video_imager_server_directx_only
 		directx_library
 		base_camera_server_library
-		${VRPN_LIBRARIES} ${QUATLIB_LIBRARIES}
+		${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
 		${DirectShow_LIBS}
 		${PTHREAD_LIBRARY}
 		${OPENGL_gl_LIBRARY}
@@ -210,12 +231,49 @@ if (BUILD_DIRECTSHOW_VIDEO_SERVER)
 	SET_TARGET_PROPERTIES(stereo_spin PROPERTIES SOLUTION_FOLDER servers)
 
 	INCLUDE_DIRECTORIES(
-		${DirectShow_BASECLASS_DIR} ${PLATFORM_SDK_INCLUDE_DIR}
-			${PLATFORM_SDK_ATL_INCLUDE_DIR}
-			${PLATFORM_SDK_ATL_INCLUDE_DIR} ${DIRECTX_SDK_INCLUDE_DIR}
+		${DirectShow_INCLUDE_DIRS}
 	)
 
-endif (BUILD_DIRECTSHOW_VIDEO_SERVER)
+endif (VIDEO_USE_DIRECTSHOW)
+
+#-----------------------------------------------------------------------------
+# Spot tracker library
+set(STL_SOURCES image_wrapper.cpp spot_math.cpp spot_tracker.cpp)
+set(STL_PUBLIC_HEADERS image_wrapper.h spot_math.h spot_tracker.h)
+ADD_LIBRARY (spot_tracker_library
+	${STL_SOURCES} ${STL_PUBLIC_HEADERS}
+)
+set_property(TARGET spot_tracker_library PROPERTY PUBLIC_HEADER ${STL_PUBLIC_HEADERS})
+install(TARGETS spot_tracker_library
+	ARCHIVE DESTINATION lib
+	PUBLIC_HEADER DESTINATION include)
+
+#-----------------------------------------------------------------------------
+# STOCC random-number library
+set(STC_SOURCES stocc_random_number_generator/mersenne.cpp
+			stocc_random_number_generator/stoc1.cpp
+			stocc_random_number_generator/userintf.cpp)
+set(STC_PUBLIC_HEADERS stocc_random_number_generator/stocc.h)
+ADD_LIBRARY (stocc_random_number_generator_library
+	${STC_SOURCES} ${STC_PUBLIC_HEADERS}
+)
+set_property(TARGET stocc_random_number_generator_library
+			PROPERTY PUBLIC_HEADER ${STC_PUBLIC_HEADERS})
+install(TARGETS stocc_random_number_generator_library
+	ARCHIVE DESTINATION lib
+	PUBLIC_HEADER DESTINATION include)
+
+#-----------------------------------------------------------------------------
+# Tcl-Linkvar library (not a library in the initial project file)
+set(LV_SOURCES Tcl_Linkvar.C)
+set(LV_PUBLIC_HEADERS Tcl_Linkvar.h)
+ADD_LIBRARY (Tcl_Linkvar
+	${LV_SOURCES} ${LV_PUBLIC_HEADERS}
+)
+set_property(TARGET Tcl_Linkvar PROPERTY PUBLIC_HEADER ${LV_PUBLIC_HEADERS})
+install(TARGETS Tcl_Linkvar
+	ARCHIVE DESTINATION lib
+	PUBLIC_HEADER DESTINATION include)
 
 #-----------------------------------------------------------------------------
 # Include directories needed
@@ -227,6 +285,28 @@ INCLUDE_DIRECTORIES(
 
 #-----------------------------------------------------------------------------
 # Applications that need more than one file to run.
+
+FIND_PACKAGE(OpenCV)
+if (OpenCV_FOUND)
+	INCLUDE_DIRECTORIES( ${OpenCV_INCLUDE_DIRS} )
+
+	SET(TARGET_NAME video_spot_tracker)
+	ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp thread.cpp)
+	TARGET_LINK_LIBRARIES(video_spot_tracker
+		base_camera_server_library
+		file_stack_library
+		spot_tracker_library
+		Tcl_Linkvar
+		${ImageMagick_Needed_Libs}
+		${OpenCV_LIBRARIES}
+		${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
+		${OPENGL_gl_LIBRARY}
+		${TCL_LIBRARY}
+		${TK_LIBRARY}
+		${GLUT_LIBRARIES}
+	)
+	SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER servers)
+endif (OpenCV_FOUND)
 
 #-----------------------------------------------------------------------------
 # A little utility helper macro to setup default linkages and filenames

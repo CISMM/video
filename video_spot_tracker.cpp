@@ -7,16 +7,17 @@
 // things that depend on these definitions.  They may need to be changed
 // as well, depending on where the libraries were installed.
 
-#ifdef _WIN32
-#define	VST_USE_ROPER
-#define	VST_USE_COOKE
-#define	VST_USE_EDT
-#define	VST_USE_DIAGINC
-#define	VST_USE_SEM
-#define	VST_USE_DIRECTX
-#define VST_USE_VRPN_IMAGER
-//#define USE_METAMORPH	    // Metamorph reader not completed.
-#endif
+// XXX Moved into CMAKE
+//#ifdef _WIN32
+//#define	VST_USE_ROPER
+//#define	VST_USE_COOKE
+//#define	VST_USE_EDT
+//#define	VST_USE_DIAGINC
+//#define	VST_USE_SEM
+//#define	VST_USE_DIRECTX
+//#define VST_USE_VRPN_IMAGER
+////#define USE_METAMORPH	    // Metamorph reader not completed.
+//#endif
 
 // END configuration section.
 //---------------------------------------------------------------------------
@@ -36,20 +37,6 @@
 #else
 #include "Tcl_Linkvar85.h"
 #endif
-#ifdef	VST_USE_ROPER
-#include "roper_server.h"
-#endif
-#ifdef	VST_USE_COOKE
-#include "cooke_server.h"
-#endif
-#include "directx_camera_server.h"
-#include "directx_videofile_server.h"
-#include "diaginc_server.h"
-#include "edt_server.h"
-#include "SEM_camera_server.h"
-#include "VRPN_Imager_camera_server.h"
-#include "file_stack_server.h"
-#include "image_wrapper.h"
 #include "spot_tracker.h"
 #ifdef	_WIN32
 #include <windows.h>
@@ -65,8 +52,8 @@
 #include <vrpn_Tracker.h>
 #include <vrpn_Imager.h>
 
-//NMmp source files (nanoManipulator project).
-#include <thread.h>
+//NMmp source files (Copied from nanoManipulator project).
+#include "thread.h"
 
 // OpenCV includes
 #include <cv.h>

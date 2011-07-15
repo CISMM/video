@@ -13,8 +13,10 @@
 #ifdef	VST_USE_COOKE
 #include "cooke_server.h"
 #endif
+#ifdef	VST_USE_DIRECTX
 #include "directx_camera_server.h"
 #include "directx_videofile_server.h"
+#endif
 #ifdef  VST_USE_DIAGINC
 #include "diaginc_server.h"
 #endif

@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="8.00"
+	Version="9.00"
 	Name="roper_library"
 	ProjectGUID="{B14D45A3-AFC9-4142-B872-6F38E18649AE}"
 	RootNamespace="roper_library"
+	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform

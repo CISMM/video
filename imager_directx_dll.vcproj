@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="8.00"
+	Version="9.00"
 	Name="imager_directx_dll"
 	ProjectGUID="{7C1DC199-B4CF-40D1-9334-C0CCDFD5D2E1}"
+	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform
@@ -81,6 +82,8 @@
 				IgnoreAllDefaultLibraries="true"
 				ModuleDefinitionFile=".\VRPNSource.def"
 				ProgramDatabaseFile=".\Release/VRPNSource.pdb"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				ImportLibrary=".\Release/VRPNSource.lib"
 				TargetMachine="1"
 			/>
@@ -103,9 +106,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -182,6 +182,8 @@
 				ModuleDefinitionFile=".\VRPNSource.def"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/VRPNSource.pdb"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				ImportLibrary=".\Debug/VRPNSource.lib"
 				TargetMachine="1"
 			/>
@@ -204,9 +206,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"

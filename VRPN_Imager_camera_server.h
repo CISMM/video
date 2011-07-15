@@ -81,3 +81,4 @@ protected:
   virtual bool read_one_frame(unsigned short minX, unsigned short maxX, unsigned short minY, unsigned short maxY, unsigned exposure_time_millisecs);
 };
 #endif
+
