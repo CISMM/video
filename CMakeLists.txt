@@ -291,7 +291,7 @@ INCLUDE_DIRECTORIES(
 )
 
 #-----------------------------------------------------------------------------
-# Applications that need more than one file to run.
+# Applications that need more than one file or nonstandard things.
 
 FIND_PACKAGE(OpenCV)
 if (OpenCV_FOUND)
@@ -370,6 +370,12 @@ CPP_APPLICATION(add_noise_to_image apps)
 CPP_APPLICATION(airy_maker apps)
 CPP_APPLICATION(argonot apps)
 CPP_APPLICATION(average_videos apps)
+CPP_APPLICATION(cismm_video_optimizer apps)
+CPP_APPLICATION(compare_tracking_files apps)
+if (VIDEO_USE_EDT)
+	CPP_APPLICATION(edt_video_take apps)
+endif (VIDEO_USE_EDT)
+
 
 #CAPC_APPLICATION(client_and_server tests)
 #CPP_APPLICATION(testimager_server tests)

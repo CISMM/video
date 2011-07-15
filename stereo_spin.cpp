@@ -2,9 +2,10 @@
 // stereo_spin.cpp : Source code to read in an AVI or stack of TIFF files and
 // display it in stereo, spinning or using the mouse to control viewpoint.
 
-#ifdef _WIN32
-#define	VST_USE_DIRECTX
-#endif
+// Handled in Cmake now
+//#ifdef _WIN32
+//#define	VST_USE_DIRECTX
+//#endif
 
 // XXX Add JPG/jpg/JPEG/jpeg to the file formats that are opened automatically
 //     by the dialog box that pops up when run.

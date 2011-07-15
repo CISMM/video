@@ -7,14 +7,15 @@
 // things that depend on these definitions.  They may need to be changed
 // as well, depending on where the libraries were installed.
 
-#define	VST_USE_ROPER
-#define	VST_USE_COOKE
-#define	VST_USE_EDT
-#define	VST_USE_DIAGINC
-#define	VST_USE_SEM
-#define	VST_USE_DIRECTX
-#define VST_USE_VRPN_IMAGER
-//#define USE_METAMORPH	    // Metamorph reader not completed.
+// Now defined in CMake
+//#define	VST_USE_ROPER
+//#define	VST_USE_COOKE
+//#define	VST_USE_EDT
+//#define	VST_USE_DIAGINC
+//#define	VST_USE_SEM
+//#define	VST_USE_DIRECTX
+//#define VST_USE_VRPN_IMAGER
+////#define USE_METAMORPH	    // Metamorph reader not completed.
 
 // END configuration section.
 //---------------------------------------------------------------------------
@@ -26,17 +27,6 @@
 #include <tcl.h>
 #include <tk.h>
 #include "Tcl_Linkvar.h"
-#ifdef	VST_USE_ROPER
-#include "roper_server.h"
-#endif
-#ifdef	VST_USE_COOKE
-#include "cooke_server.h"
-#endif
-#include "directx_camera_server.h"
-#include "directx_videofile_server.h"
-#include "diaginc_server.h"
-#include "edt_server.h"
-#include "SEM_camera_server.h"
 #include "file_stack_server.h"
 #include "image_wrapper.h"
 #include "spot_tracker.h"
@@ -47,6 +37,8 @@
 #include <GL/glut.h>
 #include <quat.h>
 #include <vrpn_Types.h>
+#include <vrpn_FileConnection.h>
+
 // This pragma tells the compiler not to tell us about truncated debugging info
 // due to name expansion within the string, list, and vector classes.
 #pragma warning( disable : 4786 4995 4996 )
@@ -1583,7 +1575,8 @@ int main(int argc, char *argv[])
   // set up the Tcl controls to run it.  Also, report the frame number.
   unsigned bitdepth = g_bitdepth;
   float exposure = g_exposure;
-  if (!get_camera(g_device_name, &bitdepth, &exposure, &g_camera, &g_video)) {
+  if (!get_camera(g_device_name, &bitdepth, &exposure, &g_camera, &g_video,
+	  648,484, 1, 0, 0)) {
     fprintf(stderr,"Cannot open camera/imager\n");
     if (g_camera) { delete g_camera; g_camera = NULL; }
     cleanup();
