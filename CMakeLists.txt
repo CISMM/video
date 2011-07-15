@@ -41,6 +41,7 @@ OPTION(VIDEO_USE_DIAGINC "Enable to include Diag Inc camera code in build" OFF)
 OPTION(VIDEO_USE_SEM "Enable to include SEM (from nanoManipulator) camera code in build" OFF)
 OPTION(VIDEO_USE_VRPN_IMAGER "Enable to include VRPN_Imager camera code in build" ON)
 OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" OFF)
+OPTION(VIDEO_USE_POINTGREY "Enable to include Point Grey camera code in build" OFF)
 
 if (WIN32)
 	set(VIDEO_USE_ROPER ON CACHE TYPE BOOLEAN)
@@ -48,6 +49,7 @@ if (WIN32)
 	set(VIDEO_USE_EDT ON CACHE TYPE BOOLEAN)
 	set(VIDEO_USE_DIAGINC ON CACHE TYPE BOOLEAN)
 	set(VIDEO_USE_DIRECTSHOW ON CACHE TYPE BOOLEAN)
+	set(VIDEO_USE_POINTGREY ON CACHE TYPE BOOLEAN)
 endif (WIN32)
 
 #-----------------------------------------------------------------------------
@@ -69,6 +71,9 @@ endif (VIDEO_USE_DIAGINC)
 if (VIDEO_USE_DIRECTSHOW)
 	ADD_DEFINITIONS(-DVST_USE_DIRECTX)
 endif (VIDEO_USE_DIRECTSHOW)
+if (VIDEO_USE_POINTGREY)
+	ADD_DEFINITIONS(-DVST_USE_POINTGREY)
+endif (VIDEO_USE_POINTGREY)
 
 #-----------------------------------------------------------------------------
 # Local CMake Modules
@@ -193,20 +198,6 @@ if (VIDEO_USE_DIRECTSHOW)
 		PUBLIC_HEADER DESTINATION include)
 	set (DirectShow_LIBS DirectShow_baseclasses directx_library)
 
-	ADD_DEFINITIONS( -DDIRECTX_VIDEO_ONLY )
-	SET(TARGET_NAME DIRECTX_VIDEO_ONLY)
-	ADD_EXECUTABLE( video_imager_server_directx_only video_imager_server.cpp )
-	TARGET_LINK_LIBRARIES(video_imager_server_directx_only
-		directx_library
-		base_camera_server_library
-		${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
-		${DirectShow_LIBS}
-		${PTHREAD_LIBRARY}
-		${OPENGL_gl_LIBRARY}
-		${ImageMagick_Needed_Libs}
-	)
-	SET_TARGET_PROPERTIES(video_imager_server_directx_only PROPERTIES SOLUTION_FOLDER servers)
-
 	SET(TARGET_NAME test_directx_library)
 	ADD_EXECUTABLE(test_directx_library test_directx_library.cpp)
 	TARGET_LINK_LIBRARIES(test_directx_library
@@ -313,8 +304,14 @@ if (OpenCV_FOUND)
 		${TK_LIBRARY}
 		${GLUT_LIBRARIES}
 	)
-	SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER servers)
+	SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
 endif (OpenCV_FOUND)
+
+SET(TARGET_NAME swap_ppm_lines)
+ADD_EXECUTABLE(swap_ppm_lines swap_ppm_lines.cpp ppm.C)
+TARGET_LINK_LIBRARIES(swap_ppm_lines
+)
+SET_TARGET_PROPERTIES(swap_ppm_lines PROPERTIES SOLUTION_FOLDER apps)
 
 #-----------------------------------------------------------------------------
 # A little utility helper macro to setup default linkages and filenames
@@ -329,7 +326,7 @@ MACRO(CAPC_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 	Tcl_Linkvar
 	directx_library
 	${ImageMagick_Needed_Libs}
-	${VRPN_LIBRARIES}
+	${VRPN_SERVER_LIBRARIES}
 	${QUATLIB_LIBRARIES}
 	${TCL_LIBRARY}
 	${TK_LIBRARY}
@@ -352,7 +349,7 @@ MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 	Tcl_Linkvar
 	directx_library
 	${ImageMagick_Needed_Libs}
-	${VRPN_LIBRARIES}
+	${VRPN_SERVER_LIBRARIES}
 	${QUATLIB_LIBRARIES}
 	${TCL_LIBRARY}
 	${TK_LIBRARY}
@@ -376,6 +373,18 @@ if (VIDEO_USE_EDT)
 	CPP_APPLICATION(edt_video_take apps)
 endif (VIDEO_USE_EDT)
 
+# XXX GLUItake
+# XXX roper_example
+# XXX roper_spot_tracker
+# XXX GLUItake
 
-#CAPC_APPLICATION(client_and_server tests)
-#CPP_APPLICATION(testimager_server tests)
+CPP_APPLICATION(make_moving_spot_video apps)
+CPP_APPLICATION(make_test_image apps)
+CAPC_APPLICATION(manual_capture apps)
+# CPP_APPLICATION(stack_collector apps) XXX requires vrpn_Generic_Server_Object
+CPP_APPLICATION(test_spot_tracker tests)
+CPP_APPLICATION(video_imager_server apps)
+
+# XXX Panoptes_Stage_Control
+# XXX PanopticNerve
+# XXX stocc_test_poisson

@@ -11,7 +11,7 @@
 #include <magick/api.h>
 #include "image_wrapper.h"
 
-static	char  magickfilesdir[] = "C:\NSRG\external\pc_win32\ImageMagick";
+static	char  magickfilesdir[] = "C:\\NSRG\\external\\pc_win32\\ImageMagick";
 
 void Usage (const char * s)
 {

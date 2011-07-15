@@ -12,13 +12,14 @@
 #include  <vrpn_Imager_Stream_Buffer.h>
 #include  "directx_camera_server.h"
 
-#ifndef	DIRECTX_VIDEO_ONLY
-#include  "roper_server.h"
-#include  "diaginc_server.h"
-#include  "edt_server.h"
-#include  "cooke_server.h"
-#include  "point_grey_server.h"
-#endif
+// Now handled in CMake
+///#ifndef	DIRECTX_VIDEO_ONLY
+//#include  "roper_server.h"
+//#include  "diaginc_server.h"
+//#include  "edt_server.h"
+//#include  "cooke_server.h"
+//#include  "point_grey_server.h"
+//#endif
 
 const int MAJOR_VERSION = 3;
 const int MINOR_VERSION = 9;
@@ -109,7 +110,7 @@ bool  init_camera_code(const char *type, int which = 1)
       fprintf(stderr,"init_camera_code(): Can't open DirectX camera server\n");
       return false;
     }
-#ifndef DIRECTX_VIDEO_ONLY
+#ifdef VST_USE_ROPER
   } else if (!strcmp(type, "roper")) {
     printf("Opening Roper Camera with binning at %d\n", g_bincount);
     g_camera = new roper_server(g_bincount);
@@ -119,6 +120,8 @@ bool  init_camera_code(const char *type, int which = 1)
       fprintf(stderr,"init_camera_code(): Can't open roper camera server\n");
       return false;
     }
+#endif
+#ifdef VST_USE_DIAGINC
   } else if (!strcmp(type, "diaginc")) {
     printf("Opening Diagnostics Inc Camera with binning at %d\n", g_bincount);
     g_camera = new diaginc_server(g_bincount);
@@ -128,6 +131,8 @@ bool  init_camera_code(const char *type, int which = 1)
       fprintf(stderr,"init_camera_code(): Can't open diaginc camera server\n");
       return false;
     }
+#endif
+#ifdef VST_USE_EDT
   } else if (!strcmp(type, "edt")) {
     printf("Opening ETD Camera (using %d buffers)\n", g_camera_buffers);
     g_camera = new edt_server(g_swap_edt, g_camera_buffers);
@@ -137,6 +142,8 @@ bool  init_camera_code(const char *type, int which = 1)
       fprintf(stderr,"init_camera_code(): Can't open EDT camera server\n");
       return false;
     }
+#endif
+#ifdef VST_USE_COOKE
   } else if (!strcmp(type, "cooke")) {
     printf("Opening Cooke Camera\n");
     g_camera = new cooke_server(g_bincount);
@@ -146,6 +153,8 @@ bool  init_camera_code(const char *type, int which = 1)
       fprintf(stderr,"init_camera_code(): Can't open Cooke camera server\n");
       return false;
     }
+#endif
+#ifdef VST_USE_POINTGREY
   } else if (!strcmp(type, "pgr")) {
 	  printf("Opening Point Grey Camera\n");
 	  g_camera = new point_grey_server(g_framerate, g_exposure, g_bincount, g_trigger, g_gain);
