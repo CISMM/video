@@ -112,7 +112,7 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
   // Wait until there is a sample ready in the callback handler.  If there is,
   // copy it into our buffer and then tell it we are done processing the sample.
   // If it takes too long, time out.
-  const int TIMEOUT_MSECS = 250;
+  const int TIMEOUT_MSECS = 500;
   BYTE	*imageLocation;
   if (!_pCallback->imageReady) {
     for (int i = 0; i < TIMEOUT_MSECS; i++) {
@@ -436,8 +436,13 @@ bool directx_camera_server::open_and_find_parameters(const int which, unsigned w
   VIDEOINFOHEADER *pVih;
   if (mt.formattype == FORMAT_VideoInfo) {
       pVih = reinterpret_cast<VIDEOINFOHEADER*>(mt.pbFormat);
+  } else if (mt.formattype == FORMAT_VideoInfo2) {
+      pVih = reinterpret_cast<VIDEOINFOHEADER*>(mt.pbFormat);
   } else {
     fprintf(stderr,"directx_camera_server::open_and_find_parameters(): Can't get video header type\n");
+	fprintf(stderr,"  (Expected %x or %x, got %x)\n", FORMAT_VideoInfo, FORMAT_VideoInfo2, mt.formattype);
+	fprintf(stderr,"  (GetConnectedMediaType is not valid for DirectX headers later than version 7)\n");
+	fprintf(stderr,"  (We need to re-implement reading video in some other interface)\n");
     return false;
   }
 

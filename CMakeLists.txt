@@ -69,7 +69,7 @@ if (VIDEO_USE_DIAGINC)
 	ADD_DEFINITIONS(-DVST_USE_DIAGINC)
 endif (VIDEO_USE_DIAGINC)
 if (VIDEO_USE_DIRECTSHOW)
-	ADD_DEFINITIONS(-DVST_USE_DIRECTSHOW)
+	ADD_DEFINITIONS(-DVST_USE_DIRECTX)
 endif (VIDEO_USE_DIRECTSHOW)
 
 #-----------------------------------------------------------------------------
@@ -297,6 +297,7 @@ if (OpenCV_FOUND)
 		file_stack_library
 		spot_tracker_library
 		Tcl_Linkvar
+		directx_library
 		${ImageMagick_Needed_Libs}
 		${OpenCV_LIBRARIES}
 		${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}

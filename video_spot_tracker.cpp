@@ -2908,7 +2908,7 @@ void myIdleFunc(void)
   } else {
     if (!g_camera->read_image_to_memory((int)(*g_minX),(int)(*g_maxX), (int)(*g_minY),(int)(*g_maxY), g_exposure)) {
       if (!g_video) {
-	fprintf(stderr, "Can't read image to memory!\n");
+	fprintf(stderr, "Can't read image (%d,%d to %d,%d) to memory!\n", (int)(*g_minX),(int)(*g_minY), (int)(*g_maxX),(int)(*g_maxY));
 	cleanup();
 	exit(-1);
       } else {
