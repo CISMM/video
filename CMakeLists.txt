@@ -116,6 +116,8 @@ INCLUDE_DIRECTORIES(
 	${X11_INCLUDE_DIR}
 	${GLUT_INCLUDE_DIR}
 	stocc_random_number_generator/
+	PanopticNerve/
+	${CISMM_VIDEO_SOURCE_DIR}
 )
 
 #-----------------------------------------------------------------------------
@@ -313,6 +315,20 @@ TARGET_LINK_LIBRARIES(swap_ppm_lines
 )
 SET_TARGET_PROPERTIES(swap_ppm_lines PROPERTIES SOLUTION_FOLDER apps)
 
+SET(TARGET_NAME PanopticNerve)
+ADD_EXECUTABLE(PanopticNerve
+	PanopticNerve/PanopticNerve.cpp
+	PanopticNerve/AnalysisSpeedTest.cpp
+	PanopticNerve/cameraImage.cpp
+	PanopticNerve/ImageAnalyzer.cpp
+	PanopticNerve/NerveTest.cpp
+	PanopticNerve/USBMAC6000.cpp
+)
+TARGET_LINK_LIBRARIES(PanopticNerve
+	${ImageMagick_Needed_Libs}
+)
+SET_TARGET_PROPERTIES(PanopticNerve PROPERTIES SOLUTION_FOLDER apps)
+
 #-----------------------------------------------------------------------------
 # A little utility helper macro to setup default linkages and filenames
 MACRO(CAPC_APPLICATION APPLICATION_NAME SOLUTION_NAME)
@@ -361,7 +377,7 @@ MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 ENDMACRO(CPP_APPLICATION)
 
 #-----------------------------------------------------------------------------
-# Declaration of the simple test applications that don't have extra files
+# Declaration of the simple applications that don't have extra files
 
 CPP_APPLICATION(add_noise_to_image apps)
 CPP_APPLICATION(airy_maker apps)
@@ -372,19 +388,16 @@ CPP_APPLICATION(compare_tracking_files apps)
 if (VIDEO_USE_EDT)
 	CPP_APPLICATION(edt_video_take apps)
 endif (VIDEO_USE_EDT)
-
-# XXX GLUItake
-# XXX roper_example
-# XXX roper_spot_tracker
-# XXX GLUItake
-
 CPP_APPLICATION(make_moving_spot_video apps)
 CPP_APPLICATION(make_test_image apps)
 CAPC_APPLICATION(manual_capture apps)
-# CPP_APPLICATION(stack_collector apps) XXX requires vrpn_Generic_Server_Object
 CPP_APPLICATION(test_spot_tracker tests)
 CPP_APPLICATION(video_imager_server apps)
+CPP_APPLICATION(panoptes_stage_control apps)
 
-# XXX Panoptes_Stage_Control
-# XXX PanopticNerve
 # XXX stocc_test_poisson
+# XXX GLUItake
+# XXX roper_example
+# XXX roper_spot_tracker
+# CPP_APPLICATION(stack_collector apps) XXX requires vrpn_Generic_Server_Object
+
