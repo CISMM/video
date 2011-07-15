@@ -2,13 +2,14 @@
 // XXX Why is there a red line along the right border of the averaged image?
 //     This only seems to happen in the Cilia video, not when doing AVIs...
 
-#define	VST_USE_ROPER
-#define	VST_USE_COOKE
-#define	VST_USE_EDT
-#define	VST_USE_DIAGINC
-#define	VST_USE_SEM
-#define	VST_USE_DIRECTX
-#define VST_USE_VRPN_IMAGER
+// THese were moved to CMake
+//#define	VST_USE_ROPER
+//#define	VST_USE_COOKE
+//#define	VST_USE_EDT
+//#define	VST_USE_DIAGINC
+//#define	VST_USE_SEM
+//#define	VST_USE_DIRECTX
+//#define VST_USE_VRPN_IMAGER
 
 //#pragma comment(lib,"C:\\Program Files\\Roper Scientific\\PVCAM\\pvcam32.lib")
 
@@ -16,19 +17,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "roper_server.h"
-#include "directx_camera_server.h"
-#include "directx_videofile_server.h"
-#include "diaginc_server.h"
-#include "edt_server.h"
-#include "SEM_camera_server.h"
-#include "file_stack_server.h"
 #include "image_wrapper.h"
 #ifdef	_WIN32
 #include <windows.h>
 #endif
 #include <quat.h>
 #include <vrpn_Types.h>
+#include <vrpn_FileConnection.h>
 // This pragma tells the compiler not to tell us about truncated debugging info
 // due to name expansion within the string, list, and vector classes.
 #pragma warning( disable : 4786 4995 )
@@ -102,7 +97,7 @@ static	bool  store_summed_image(void)
   int bitshift_gain = 1;
   if (!do_sixteen) {
     bitshift_gain = 256;
-    bitshift_gain /= pow(2.0,static_cast<double>(g_bitdepth - 8));
+    bitshift_gain /= static_cast<int>(pow(2.0,static_cast<double>(g_bitdepth - 8)));
   }
 
   if (!g_composite_image->write_to_tiff_file(filename, bitshift_gain, 0, do_sixteen)) {

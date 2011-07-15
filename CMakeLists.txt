@@ -8,8 +8,6 @@ PROJECT(CISMM_VIDEO)
 #-----------------------------------------------------------------------------
 # Things you need before you can compile this on Windows:
 # 	Windows SDK (download from Microsoft, includes DirectShow)
-#		You may have to manually point at BaseClasses and include directory
-#		This still doesn't let DirectX compile under VS 2010.
 #    DirectX SDK (Download from Microsoft)
 # 	NSRG Buildtime 3.2 (download from CISMM server, includes Tcl, Glut, etc)
 #		You have to manually point at a bunch of stuff in here
@@ -24,7 +22,7 @@ endif(COMMAND cmake_policy)
 if(WIN32) # MS-Windows, both 32 and 64 bits
   set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /FIXED:NO")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} wsock32.lib /FIXED:NO")
 elseif(APPLE) # Apple
 #  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall")
 #  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
@@ -112,6 +110,7 @@ INCLUDE_DIRECTORIES(
 	${TK_INCLUDE_PATH}
 	${X11_INCLUDE_DIR}
 	${GLUT_INCLUDE_DIR}
+	stocc_random_number_generator/
 )
 
 #-----------------------------------------------------------------------------
@@ -136,6 +135,14 @@ set_property(TARGET file_stack_library PROPERTY PUBLIC_HEADER ${FS_PUBLIC_HEADER
 install(TARGETS file_stack_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
+
+# XXX Need to describe how to build (and then link) the other camera libraries.
+# XXX COOKE
+# XXX DIAGINC
+# XXX EDT
+# XXX NIKON
+# XXX ROPER
+# XXX Point Grey
 
 #-----------------------------------------------------------------------------
 # DirectShow base-class library (if configured)
@@ -314,19 +321,55 @@ endif (OpenCV_FOUND)
 MACRO(CAPC_APPLICATION APPLICATION_NAME SOLUTION_NAME)
   SET(TARGET_NAME ${APPLICATION_NAME})
   ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.C)
-  TARGET_LINK_LIBRARIES(${APPLICATION_NAME} ${VRPN_LIBRARIES} ${QUATLIB_LIBRARIES} ${PTHREAD_LIBRARY})
-  SET_TARGET_PROPERTIES(${APPLICATION_NAME} PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
+  TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+	stocc_random_number_generator_library
+	base_camera_server_library
+	file_stack_library
+	spot_tracker_library
+	Tcl_Linkvar
+	directx_library
+	${ImageMagick_Needed_Libs}
+	${VRPN_LIBRARIES}
+	${QUATLIB_LIBRARIES}
+	${TCL_LIBRARY}
+	${TK_LIBRARY}
+	${GLUT_LIBRARIES}
+	${OPENGL_gl_LIBRARY}
+	${PTHREAD_LIBRARY}
+  )
+  SET_TARGET_PROPERTIES(${APPLICATION_NAME}
+	PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
 ENDMACRO(CAPC_APPLICATION)
 
 MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
   SET(TARGET_NAME ${APPLICATION_NAME})
   ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp)
-  TARGET_LINK_LIBRARIES(${APPLICATION_NAME} ${VRPN_LIBRARIES} ${QUATLIB_LIBRARIES} ${PTHREAD_LIBRARY})
+  TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+	stocc_random_number_generator_library
+	base_camera_server_library
+	file_stack_library
+	spot_tracker_library
+	Tcl_Linkvar
+	directx_library
+	${ImageMagick_Needed_Libs}
+	${VRPN_LIBRARIES}
+	${QUATLIB_LIBRARIES}
+	${TCL_LIBRARY}
+	${TK_LIBRARY}
+	${GLUT_LIBRARIES}
+	${OPENGL_gl_LIBRARY}
+	${PTHREAD_LIBRARY}
+  )
   SET_TARGET_PROPERTIES(${APPLICATION_NAME} PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
 ENDMACRO(CPP_APPLICATION)
 
 #-----------------------------------------------------------------------------
 # Declaration of the simple test applications that don't have extra files
+
+CPP_APPLICATION(add_noise_to_image apps)
+CPP_APPLICATION(airy_maker apps)
+CPP_APPLICATION(argonot apps)
+CPP_APPLICATION(average_videos apps)
 
 #CAPC_APPLICATION(client_and_server tests)
 #CPP_APPLICATION(testimager_server tests)
