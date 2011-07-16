@@ -29,6 +29,7 @@ FIND_PATH(HighGUI_INCLUDE_DIR NAMES highgui.h
 MARK_AS_ADVANCED(HighGUI_INCLUDE_DIR)
 
 # Look for the library files (picking any one from the directories we need).
+set (_libsuffixes lib)
 find_library(OpenCV_LIBRARY
 	NAMES
 	cv

@@ -29,6 +29,8 @@ FIND_PATH(TCL_INCLUDE_PATH NAMES tcl.h
 )
 MARK_AS_ADVANCED(TCL_INCLUDE_PATH)
 
+set (_libsuffixes lib)
+
 # Look for the library files (picking any one from the directories we need).
 find_library(TCL_LIBRARY
 	NAMES
@@ -36,7 +38,7 @@ find_library(TCL_LIBRARY
 	PATH_SUFFIXES
 	${_libsuffixes}
 	PATHS
-	"C:/Program Files (x86)/CISMM/external/tcl/lib"
+	"C:/Program Files (x86)/CISMM/external/tcl"
 	/usr/local
 )
 MARK_AS_ADVANCED(TCL_LIBRARY)
@@ -56,7 +58,7 @@ find_library(TK_LIBRARY
 	PATH_SUFFIXES
 	${_libsuffixes}
 	PATHS
-	"C:/Program Files (x86)/CISMM/external/tcl/lib"
+	"C:/Program Files (x86)/CISMM/external/tcl"
 	/usr/local
 )
 MARK_AS_ADVANCED(TCL_LIBRARY)
@@ -76,7 +78,7 @@ find_library(ImageMagick_MagickCore_LIBRARY
 	PATH_SUFFIXES
 	${_libsuffixes}
 	PATHS
-	"C:/Program Files (x86)/CISMM/external/ImageMagick/lib"
+	"C:/Program Files (x86)/CISMM/external/ImageMagick"
 	/usr/local
 )
 MARK_AS_ADVANCED(ImageMagick_MagickCore_LIBRARY)
@@ -84,14 +86,18 @@ MARK_AS_ADVANCED(ImageMagick_MagickCore_LIBRARY)
 # Look for the library directory
 FIND_PATH(ImageMagick_MagickCore_LIBRARY_DIR
 		NAMES CORE_RL_magick_.lib
+		PATH_SUFFIXES
+		${_libsuffixes}
 		PATHS
-		"C:/Program Files (x86)/CISMM/external/ImageMagick/lib"
-		/usr/local/lib
+		"C:/Program Files (x86)/CISMM/external/ImageMagick"
+		/usr/local
 )
 MARK_AS_ADVANCED(ImageMagick_MagickCore_LIBRARY_DIR)
 
 # Look for the header files (picking any one from the directories we need).
 FIND_PATH(GLUT_INCLUDE_DIR NAMES GL/glut.h
+		PATH_SUFFIXES
+		${_libsuffixes}
 		PATHS
 		"C:/Program Files (x86)/CISMM/external/GL/include"
 		/usr/local/include
@@ -105,7 +111,7 @@ find_library(GLUT_glut_LIBRARY
 	PATH_SUFFIXES
 	${_libsuffixes}
 	PATHS
-	"C:/Program Files (x86)/CISMM/external/GL/lib"
+	"C:/Program Files (x86)/CISMM/external/GL"
 	/usr/local
 )
 MARK_AS_ADVANCED(GLUT_glut_LIBRARY)
