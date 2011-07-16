@@ -47,9 +47,15 @@ else (Cooke_FOUND)
 	OPTION(VIDEO_USE_COOKE "Enable to include Cooke camera code in build" OFF)
 endif (Cooke_FOUND)
 
+find_package(DiagInc)
+if (DiagInc_FOUND)
+	OPTION(VIDEO_USE_DIAGINC "Enable to include DiagInc camera code in build" ON)
+else (DiagInc_FOUND)
+	OPTION(VIDEO_USE_DIAGINC "Enable to include DiagInc camera code in build" OFF)
+endif (DiagInc_FOUND)
+
 OPTION(VIDEO_USE_ROPER "Enable to include Roper camera code in build" OFF)
 OPTION(VIDEO_USE_EDT "Enable to include EDT camera code in build" OFF)
-OPTION(VIDEO_USE_DIAGINC "Enable to include Diag Inc camera code in build" OFF)
 OPTION(VIDEO_USE_SEM "Enable to include SEM (from nanoManipulator) camera code in build" OFF)
 OPTION(VIDEO_USE_VRPN_IMAGER "Enable to include VRPN_Imager camera code in build" ON)
 OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" OFF)
@@ -121,6 +127,7 @@ set(ImageMagick_Needed_Libs CORE_RL_bzlib_ CORE_RL_coders_ CORE_RL_filters_
 
 INCLUDE_DIRECTORIES(
 	${Cooke_INCLUDE_PATH}
+	${DiagInc_INCLUDE_PATH}
 	${TCL_INCLUDE_PATH}
 	${TK_INCLUDE_PATH}
 	${TCL_X11_INCLUDE_PATH}
@@ -164,11 +171,21 @@ if (VIDEO_USE_COOKE)
 	install(TARGETS cooke_library
 		ARCHIVE DESTINATION lib
 		PUBLIC_HEADER DESTINATION include)
-else (VIDEO_USE_COOKE)
-	set(cooke_library)
 endif (VIDEO_USE_COOKE)
 
-# XXX DIAGINC
+if (VIDEO_USE_DIAGINC)
+	set(DIAGINC_SOURCES diaginc_server.cpp)
+	set(DIAGINC_PUBLIC_HEADERS diaginc_server.h)
+	ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
+	ADD_LIBRARY (diaginc_library
+		${DIAGINC_SOURCES} ${DIAGINC_PUBLIC_HEADERS}
+	)
+	set_property(TARGET diaginc_library PROPERTY PUBLIC_HEADER ${DIAGINC_PUBLIC_HEADERS})
+	install(TARGETS diaginc_library
+		ARCHIVE DESTINATION lib
+		PUBLIC_HEADER DESTINATION include)
+endif (VIDEO_USE_DIAGINC)
+
 # XXX EDT
 # XXX NIKON
 # XXX ROPER
@@ -257,6 +274,12 @@ if (VIDEO_USE_DIRECTSHOW)
 			${Cooke_LIBRARIES}
 		)
 	endif (VIDEO_USE_COOKE)
+	if (VIDEO_USE_DIAGINC)
+		TARGET_LINK_LIBRARIES(stereo_spin
+			diaginc_library
+			${DiagInc_LIBRARIES}
+		)
+	endif (VIDEO_USE_DIAGINC)
 	SET_TARGET_PROPERTIES(stereo_spin PROPERTIES SOLUTION_FOLDER servers)
 
 	INCLUDE_DIRECTORIES(
@@ -345,6 +368,12 @@ if (OpenCV_FOUND)
 			${Cooke_LIBRARIES}
 		)
 	endif (VIDEO_USE_COOKE)
+	if (VIDEO_USE_DIAGINC)
+		TARGET_LINK_LIBRARIES(video_spot_tracker
+			diaginc_library
+			${DiagInc_LIBRARIES}
+		)
+	endif (VIDEO_USE_DIAGINC)
 	SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
 endif (OpenCV_FOUND)
 
@@ -387,19 +416,25 @@ MACRO(CAPC_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 	${GLUT_LIBRARIES}
 	${OPENGL_gl_LIBRARY}
 	${PTHREAD_LIBRARY}
- )
- if (VIDEO_USE_DIRECTSHOW)
+  )
+  if (VIDEO_USE_DIRECTSHOW)
     TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
 	directx_library
     )
- endif (VIDEO_USE_DIRECTSHOW)  
- if (VIDEO_USE_COOKE)
+  endif (VIDEO_USE_DIRECTSHOW)  
+  if (VIDEO_USE_COOKE)
 		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
 			cooke_library
 			${Cooke_LIBRARIES}
 		)
- endif (VIDEO_USE_COOKE)
- SET_TARGET_PROPERTIES(${APPLICATION_NAME}
+  endif (VIDEO_USE_COOKE)
+  if (VIDEO_USE_DIAGINC)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			diaginc_library
+			${DiagInc_LIBRARIES}
+		)
+  endif (VIDEO_USE_DIAGINC)
+  SET_TARGET_PROPERTIES(${APPLICATION_NAME}
 	PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
 ENDMACRO(CAPC_APPLICATION)
 
@@ -432,6 +467,12 @@ MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 			${Cooke_LIBRARIES}
 		)
   endif (VIDEO_USE_COOKE)
+  if (VIDEO_USE_DIAGINC)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			diaginc_library
+			${DiagInc_LIBRARIES}
+		)
+  endif (VIDEO_USE_DIAGINC)
   SET_TARGET_PROPERTIES(${APPLICATION_NAME} PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
 ENDMACRO(CPP_APPLICATION)
 
