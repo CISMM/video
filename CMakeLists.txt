@@ -18,6 +18,7 @@ if(WIN32) # MS-Windows, both 32 and 64 bits
   set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} wsock32.lib /FIXED:NO")
+  ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
 elseif(APPLE) # Apple
 #  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall")
 #  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
@@ -54,8 +55,14 @@ else (DiagInc_FOUND)
 	OPTION(VIDEO_USE_DIAGINC "Enable to include DiagInc camera code in build" OFF)
 endif (DiagInc_FOUND)
 
+find_package(EDT)
+if (EDT_FOUND)
+	OPTION(VIDEO_USE_EDT "Enable to include EDT camera code in build" ON)
+else (EDT_FOUND)
+	OPTION(VIDEO_USE_EDT "Enable to include EDT camera code in build" OFF)
+endif (EDT_FOUND)
+
 OPTION(VIDEO_USE_ROPER "Enable to include Roper camera code in build" OFF)
-OPTION(VIDEO_USE_EDT "Enable to include EDT camera code in build" OFF)
 OPTION(VIDEO_USE_SEM "Enable to include SEM (from nanoManipulator) camera code in build" OFF)
 OPTION(VIDEO_USE_VRPN_IMAGER "Enable to include VRPN_Imager camera code in build" ON)
 OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" OFF)
@@ -128,6 +135,7 @@ set(ImageMagick_Needed_Libs CORE_RL_bzlib_ CORE_RL_coders_ CORE_RL_filters_
 INCLUDE_DIRECTORIES(
 	${Cooke_INCLUDE_PATH}
 	${DiagInc_INCLUDE_PATH}
+	${EDT_INCLUDE_PATH}
 	${TCL_INCLUDE_PATH}
 	${TK_INCLUDE_PATH}
 	${TCL_X11_INCLUDE_PATH}
@@ -163,7 +171,6 @@ install(TARGETS file_stack_library
 if (VIDEO_USE_COOKE)
 	set(COOKE_SOURCES cooke_server.cpp)
 	set(COOKE_PUBLIC_HEADERS cooke_server.h)
-	ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
 	ADD_LIBRARY (cooke_library
 		${COOKE_SOURCES} ${COOKE_PUBLIC_HEADERS}
 	)
@@ -176,7 +183,6 @@ endif (VIDEO_USE_COOKE)
 if (VIDEO_USE_DIAGINC)
 	set(DIAGINC_SOURCES diaginc_server.cpp)
 	set(DIAGINC_PUBLIC_HEADERS diaginc_server.h)
-	ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
 	ADD_LIBRARY (diaginc_library
 		${DIAGINC_SOURCES} ${DIAGINC_PUBLIC_HEADERS}
 	)
@@ -186,7 +192,18 @@ if (VIDEO_USE_DIAGINC)
 		PUBLIC_HEADER DESTINATION include)
 endif (VIDEO_USE_DIAGINC)
 
-# XXX EDT
+if (VIDEO_USE_EDT)
+	set(EDT_SOURCES EDT_server.cpp)
+	set(EDT_PUBLIC_HEADERS EDT_server.h)
+	ADD_LIBRARY (EDT_library
+		${EDT_SOURCES} ${EDT_PUBLIC_HEADERS}
+	)
+	set_property(TARGET EDT_library PROPERTY PUBLIC_HEADER ${EDT_PUBLIC_HEADERS})
+	install(TARGETS EDT_library
+		ARCHIVE DESTINATION lib
+		PUBLIC_HEADER DESTINATION include)
+endif (VIDEO_USE_EDT)
+
 # XXX NIKON
 # XXX ROPER
 # XXX Point Grey
@@ -280,6 +297,12 @@ if (VIDEO_USE_DIRECTSHOW)
 			${DiagInc_LIBRARIES}
 		)
 	endif (VIDEO_USE_DIAGINC)
+	if (VIDEO_USE_EDT)
+		TARGET_LINK_LIBRARIES(stereo_spin
+			EDT_library
+			${EDT_LIBRARIES}
+		)
+	endif (VIDEO_USE_EDT)
 	SET_TARGET_PROPERTIES(stereo_spin PROPERTIES SOLUTION_FOLDER servers)
 
 	INCLUDE_DIRECTORIES(
@@ -374,6 +397,12 @@ if (OpenCV_FOUND)
 			${DiagInc_LIBRARIES}
 		)
 	endif (VIDEO_USE_DIAGINC)
+	if (VIDEO_USE_EDT)
+		TARGET_LINK_LIBRARIES(video_spot_tracker
+			EDT_library
+			${EDT_LIBRARIES}
+		)
+	endif (VIDEO_USE_EDT)
 	SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
 endif (OpenCV_FOUND)
 
@@ -434,6 +463,12 @@ MACRO(CAPC_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 			${DiagInc_LIBRARIES}
 		)
   endif (VIDEO_USE_DIAGINC)
+  if (VIDEO_USE_EDT)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			EDT_library
+			${EDT_LIBRARIES}
+		)
+  endif (VIDEO_USE_EDT)
   SET_TARGET_PROPERTIES(${APPLICATION_NAME}
 	PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
 ENDMACRO(CAPC_APPLICATION)
@@ -473,6 +508,12 @@ MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 			${DiagInc_LIBRARIES}
 		)
   endif (VIDEO_USE_DIAGINC)
+  if (VIDEO_USE_EDT)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			EDT_library
+			${EDT_LIBRARIES}
+		)
+  endif (VIDEO_USE_EDT)
   SET_TARGET_PROPERTIES(${APPLICATION_NAME} PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
 ENDMACRO(CPP_APPLICATION)
 
