@@ -12,15 +12,28 @@
 #include  <vrpn_Imager_Stream_Buffer.h>
 #include  "base_camera_server.h"
 
-// Now handled in CMake
-//#include  "directx_camera_server.h"
-//#ifndef	DIRECTX_VIDEO_ONLY
-//#include  "roper_server.h"
-//#include  "diaginc_server.h"
-//#include  "edt_server.h"
-//#include  "cooke_server.h"
-//#include  "point_grey_server.h"
-//#endif
+#ifdef	VST_USE_ROPER
+#include "roper_server.h"
+#endif
+#ifdef	VST_USE_COOKE
+#include "cooke_server.h"
+#endif
+#ifdef	VST_USE_DIRECTX
+#include "directx_camera_server.h"
+#include "directx_videofile_server.h"
+#endif
+#ifdef  VST_USE_DIAGINC
+#include "diaginc_server.h"
+#endif
+#ifdef  VST_USE_EDT
+#include "edt_server.h"
+#endif
+#ifdef  VST_USE_SEM
+#include "SEM_camera_server.h"
+#endif
+#ifdef  VST_USE_VRPN_IMAGER
+#include "VRPN_Imager_camera_server.h"
+#endif
 
 const int MAJOR_VERSION = 3;
 const int MINOR_VERSION = 9;

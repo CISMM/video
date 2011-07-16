@@ -32,6 +32,11 @@ elseif(UNIX) # other than Apple UNIXes
 #  set(CMAKE_VERBOSE_MAKEFILE ON)
 endif()
 
+# Override the defaults below.
+if (WIN32)
+  OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" ON)
+endif (WIN32)
+
 # Configuration options controlling what gets included in the build.
 OPTION(VIDEO_USE_ROPER "Enable to include Roper camera code in build" OFF)
 OPTION(VIDEO_USE_COOKE "Enable to include Cooke camera code in build" OFF)
@@ -41,15 +46,6 @@ OPTION(VIDEO_USE_SEM "Enable to include SEM (from nanoManipulator) camera code i
 OPTION(VIDEO_USE_VRPN_IMAGER "Enable to include VRPN_Imager camera code in build" ON)
 OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" OFF)
 OPTION(VIDEO_USE_POINTGREY "Enable to include Point Grey camera code in build" OFF)
-
-if (WIN32)
-	set(VIDEO_USE_ROPER ON CACHE TYPE BOOLEAN)
-	set(VIDEO_USE_COOKE ON CACHE TYPE BOOLEAN)
-	set(VIDEO_USE_EDT ON CACHE TYPE BOOLEAN)
-	set(VIDEO_USE_DIAGINC ON CACHE TYPE BOOLEAN)
-	set(VIDEO_USE_DIRECTSHOW ON CACHE TYPE BOOLEAN)
-	set(VIDEO_USE_POINTGREY ON CACHE TYPE BOOLEAN)
-endif (WIN32)
 
 #-----------------------------------------------------------------------------
 # Set compile-time definitions for all projects based on what has been
