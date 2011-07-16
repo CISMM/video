@@ -10,10 +10,11 @@
 #include  <vrpn_Connection.h>
 #include  <vrpn_Imager.h>
 #include  <vrpn_Imager_Stream_Buffer.h>
-#include  "directx_camera_server.h"
+#include  "base_camera_server.h"
 
 // Now handled in CMake
-///#ifndef	DIRECTX_VIDEO_ONLY
+//#include  "directx_camera_server.h"
+//#ifndef	DIRECTX_VIDEO_ONLY
 //#include  "roper_server.h"
 //#include  "diaginc_server.h"
 //#include  "edt_server.h"
@@ -90,7 +91,10 @@ int g_strPORT = vrpn_DEFAULT_LISTEN_PORT_NO;
 /// Open the camera we want to use (the type is based on the name passed in)
 bool  init_camera_code(const char *type, int which = 1)
 {
-  if (!strcmp(type, "directx")) {
+  if (false) {
+	  // This is to make all of the combinations of #ifdef below work
+#ifdef VST_USE_DIRECTX
+  } else if (!strcmp(type, "directx")) {
     printf("Opening DirectX Camera %d\n", which);
     g_camera = new directx_camera_server(which, g_width, g_height);
     g_numchannels = 3; // Send RGB
@@ -110,6 +114,7 @@ bool  init_camera_code(const char *type, int which = 1)
       fprintf(stderr,"init_camera_code(): Can't open DirectX camera server\n");
       return false;
     }
+#endif
 #ifdef VST_USE_ROPER
   } else if (!strcmp(type, "roper")) {
     printf("Opening Roper Camera with binning at %d\n", g_bincount);

@@ -306,7 +306,6 @@ if (OpenCV_FOUND)
 		file_stack_library
 		spot_tracker_library
 		Tcl_Linkvar
-		directx_library
 		${ImageMagick_Needed_Libs}
 		${OpenCV_LIBRARIES}
 		${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
@@ -315,6 +314,11 @@ if (OpenCV_FOUND)
 		${TK_LIBRARY}
 		${GLUT_LIBRARIES}
 	)
+	if (VIDEO_USE_DIRECTSHOW)
+		TARGET_LINK_LIBRARIES(video_spot_tracker
+			directx_library
+    		)
+	endif (VIDEO_USE_DIRECTSHOW)  
 	SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
 endif (OpenCV_FOUND)
 
