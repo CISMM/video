@@ -2,10 +2,6 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 PROJECT(CISMM_VIDEO)
 
 #-----------------------------------------------------------------------------
-# XXX Things to make better.
-# 
-
-#-----------------------------------------------------------------------------
 # Things you need before you can compile this on Windows:
 # 	Windows SDK (download from Microsoft, includes DirectShow)
 #    DirectX SDK (Download from Microsoft)
@@ -32,14 +28,26 @@ elseif(UNIX) # other than Apple UNIXes
 #  set(CMAKE_VERBOSE_MAKEFILE ON)
 endif()
 
+#-----------------------------------------------------------------------------
+# Local CMake Modules
+list(APPEND CMAKE_MODULE_PATH ${CISMM_VIDEO_SOURCE_DIR} ${CISMM_VIDEO_SOURCE_DIR}/cmake)
+
 # Override the defaults below.
 if (WIN32)
   OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" ON)
 endif (WIN32)
 
 # Configuration options controlling what gets included in the build.
+# Look up each of the camera-driver libraries.  If they are found, then turn them
+# on by default.
+find_package(Cooke)
+if (Cooke_FOUND)
+	OPTION(VIDEO_USE_COOKE "Enable to include Cooke camera code in build" ON)
+else (Cooke_FOUND)
+	OPTION(VIDEO_USE_COOKE "Enable to include Cooke camera code in build" OFF)
+endif (Cooke_FOUND)
+
 OPTION(VIDEO_USE_ROPER "Enable to include Roper camera code in build" OFF)
-OPTION(VIDEO_USE_COOKE "Enable to include Cooke camera code in build" OFF)
 OPTION(VIDEO_USE_EDT "Enable to include EDT camera code in build" OFF)
 OPTION(VIDEO_USE_DIAGINC "Enable to include Diag Inc camera code in build" OFF)
 OPTION(VIDEO_USE_SEM "Enable to include SEM (from nanoManipulator) camera code in build" OFF)
@@ -69,10 +77,6 @@ endif (VIDEO_USE_DIRECTSHOW)
 if (VIDEO_USE_POINTGREY)
 	ADD_DEFINITIONS(-DVST_USE_POINTGREY)
 endif (VIDEO_USE_POINTGREY)
-
-#-----------------------------------------------------------------------------
-# Local CMake Modules
-list(APPEND CMAKE_MODULE_PATH ${CISMM_VIDEO_SOURCE_DIR} ${CISMM_VIDEO_SOURCE_DIR}/cmake)
 
 #-----------------------------------------------------------------------------
 # Put this in /usr/local unless overridden.  The default on Windows is
@@ -116,6 +120,7 @@ set(ImageMagick_Needed_Libs CORE_RL_bzlib_ CORE_RL_coders_ CORE_RL_filters_
 )
 
 INCLUDE_DIRECTORIES(
+	${Cooke_INCLUDE_PATH}
 	${TCL_INCLUDE_PATH}
 	${TK_INCLUDE_PATH}
 	${TCL_X11_INCLUDE_PATH}
@@ -148,8 +153,21 @@ install(TARGETS file_stack_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
 
-# XXX Need to describe how to build (and then link) the other camera libraries.
-# XXX COOKE
+if (VIDEO_USE_COOKE)
+	set(COOKE_SOURCES cooke_server.cpp)
+	set(COOKE_PUBLIC_HEADERS cooke_server.h)
+	ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
+	ADD_LIBRARY (cooke_library
+		${COOKE_SOURCES} ${COOKE_PUBLIC_HEADERS}
+	)
+	set_property(TARGET cooke_library PROPERTY PUBLIC_HEADER ${COOKE_PUBLIC_HEADERS})
+	install(TARGETS cooke_library
+		ARCHIVE DESTINATION lib
+		PUBLIC_HEADER DESTINATION include)
+else (VIDEO_USE_COOKE)
+	set(cooke_library)
+endif (VIDEO_USE_COOKE)
+
 # XXX DIAGINC
 # XXX EDT
 # XXX NIKON
@@ -233,6 +251,12 @@ if (VIDEO_USE_DIRECTSHOW)
 		${TK_LIBRARY}
 		${GLUT_LIBRARIES}
 	)
+	if (VIDEO_USE_COOKE)
+		TARGET_LINK_LIBRARIES(stereo_spin
+			cooke_library
+			${Cooke_LIBRARIES}
+		)
+	endif (VIDEO_USE_COOKE)
 	SET_TARGET_PROPERTIES(stereo_spin PROPERTIES SOLUTION_FOLDER servers)
 
 	INCLUDE_DIRECTORIES(
@@ -315,6 +339,12 @@ if (OpenCV_FOUND)
 			directx_library
     		)
 	endif (VIDEO_USE_DIRECTSHOW)  
+	if (VIDEO_USE_COOKE)
+		TARGET_LINK_LIBRARIES(video_spot_tracker
+			cooke_library
+			${Cooke_LIBRARIES}
+		)
+	endif (VIDEO_USE_COOKE)
 	SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
 endif (OpenCV_FOUND)
 
@@ -357,13 +387,19 @@ MACRO(CAPC_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 	${GLUT_LIBRARIES}
 	${OPENGL_gl_LIBRARY}
 	${PTHREAD_LIBRARY}
-  )
-  if (VIDEO_USE_DIRECTSHOW)
+ )
+ if (VIDEO_USE_DIRECTSHOW)
     TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
 	directx_library
     )
-  endif (VIDEO_USE_DIRECTSHOW)  
-  SET_TARGET_PROPERTIES(${APPLICATION_NAME}
+ endif (VIDEO_USE_DIRECTSHOW)  
+ if (VIDEO_USE_COOKE)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			cooke_library
+			${Cooke_LIBRARIES}
+		)
+ endif (VIDEO_USE_COOKE)
+ SET_TARGET_PROPERTIES(${APPLICATION_NAME}
 	PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
 ENDMACRO(CAPC_APPLICATION)
 
@@ -390,6 +426,12 @@ MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 	directx_library
     )
   endif (VIDEO_USE_DIRECTSHOW)  
+  if (VIDEO_USE_COOKE)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			cooke_library
+			${Cooke_LIBRARIES}
+		)
+  endif (VIDEO_USE_COOKE)
   SET_TARGET_PROPERTIES(${APPLICATION_NAME} PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
 ENDMACRO(CPP_APPLICATION)
 
