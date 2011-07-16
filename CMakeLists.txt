@@ -10,7 +10,6 @@ PROJECT(CISMM_VIDEO)
 # 	Windows SDK (download from Microsoft, includes DirectShow)
 #    DirectX SDK (Download from Microsoft)
 # 	NSRG Buildtime 3.2 (download from CISMM server, includes Tcl, Glut, etc)
-#		You have to manually point at a bunch of stuff in here
 
 # Needed for Cmake 2.8.1 to avoid complaints
 if(COMMAND cmake_policy)
@@ -92,28 +91,38 @@ set(CMAKE_INSTALL_PREFIX /usr/local/ CACHE TYPE STRING FORCE)
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${VIDEO_SOURCE_DIR})
 FIND_PACKAGE(quatlib REQUIRED)	# Sets QUATLIB_INCLUDE_DIR and QUATLIB_LIBRARIES
 FIND_PACKAGE(VRPN REQUIRED)
-FIND_PACKAGE(ImageMagick REQUIRED COMPONENTS MagickCore)	# Need to have ImageMagick
 FIND_PACKAGE(OpenGL REQUIRED)
+
+# Try to find NSRG Buildtime (NSRGBUILD) to set all we need for ImageMagic,
+# TCL, and Glut.  If not, then find the individual packages.
+FIND_PACKAGE(NSRGBUILD)
+if (NOT NSRGBUILD_FOUND)
+	FIND_PACKAGE(ImageMagick REQUIRED COMPONENTS MagickCore)	# Need to have ImageMagick
+	FIND_PACKAGE(TCL REQUIRED)
+	FIND_PACKAGE(GLUT REQUIRED)
+endif (NOT NSRGBUILD_FOUND)
+
+link_directories( ${ImageMagick_MagickCore_LIBRARY_DIR} )
+
 if (WIN32)
-	# XXX Bad evil hard-coded path for UNC.
-	link_directories( C:/NSRG/external/pc_win32/ImageMagick/lib )
-	link_directories( "C:/Program Files (x86)/CISMM/external/ImageMagick/lib" )
+	# To avoid warnings in case we're using Visual Studio
+	ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
+	ADD_DEFINITIONS( -D_CRT_NONSTDC_NO_DEPRECATE )
 else(WIN32)
 	set (PTHREAD_LIBRARY pthread)
 endif (WIN32)
+
 set(ImageMagick_Needed_Libs CORE_RL_bzlib_ CORE_RL_coders_ CORE_RL_filters_
 		CORE_RL_jbig_ CORE_RL_jp2_ CORE_RL_jpeg_ CORE_RL_lcms_ CORE_RL_libxml_
 		CORE_RL_Magick++_ CORE_RL_magick_ CORE_RL_png_ CORE_RL_tiff_
 		CORE_RL_ttf_ CORE_RL_wand_ CORE_RL_wmf_ CORE_RL_xlib_ CORE_RL_zlib_
 		X11 Xext
 )
-FIND_PACKAGE(TCL REQUIRED)
-FIND_PACKAGE(GLUT REQUIRED)
-SET(X11_INCLUDE_DIR ${TCL_INCLUDE_PATH}/../../X11/include)	# Normally in Tcl, but NSRG buildtime has it elsewhere...
+
 INCLUDE_DIRECTORIES(
 	${TCL_INCLUDE_PATH}
 	${TK_INCLUDE_PATH}
-	${X11_INCLUDE_DIR}
+	${TCL_X11_INCLUDE_PATH}
 	${GLUT_INCLUDE_DIR}
 	stocc_random_number_generator/
 	PanopticNerve/
