@@ -62,7 +62,13 @@ else (EDT_FOUND)
 	OPTION(VIDEO_USE_EDT "Enable to include EDT camera code in build" OFF)
 endif (EDT_FOUND)
 
-OPTION(VIDEO_USE_ROPER "Enable to include Roper camera code in build" OFF)
+find_package(ROPER)
+if (ROPER_FOUND)
+	OPTION(VIDEO_USE_ROPER "Enable to include Roper camera code in build" ON)
+else (ROPER_FOUND)
+	OPTION(VIDEO_USE_ROPER "Enable to include Roper camera code in build" OFF)
+endif (ROPER_FOUND)
+
 OPTION(VIDEO_USE_SEM "Enable to include SEM (from nanoManipulator) camera code in build" OFF)
 OPTION(VIDEO_USE_VRPN_IMAGER "Enable to include VRPN_Imager camera code in build" ON)
 OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" OFF)
@@ -136,6 +142,7 @@ INCLUDE_DIRECTORIES(
 	${Cooke_INCLUDE_PATH}
 	${DiagInc_INCLUDE_PATH}
 	${EDT_INCLUDE_PATH}
+	${ROPER_INCLUDE_PATH}
 	${TCL_INCLUDE_PATH}
 	${TK_INCLUDE_PATH}
 	${TCL_X11_INCLUDE_PATH}
@@ -204,9 +211,20 @@ if (VIDEO_USE_EDT)
 		PUBLIC_HEADER DESTINATION include)
 endif (VIDEO_USE_EDT)
 
-# XXX NIKON
-# XXX ROPER
+if (VIDEO_USE_ROPER)
+	set(ROPER_SOURCES roper_server.cpp)
+	set(ROPER_PUBLIC_HEADERS roper_server.h)
+	ADD_LIBRARY (ROPER_library
+		${ROPER_SOURCES} ${ROPER_PUBLIC_HEADERS}
+	)
+	set_property(TARGET ROPER_library PROPERTY PUBLIC_HEADER ${ROPER_PUBLIC_HEADERS})
+	install(TARGETS ROPER_library
+		ARCHIVE DESTINATION lib
+		PUBLIC_HEADER DESTINATION include)
+endif (VIDEO_USE_ROPER)
+
 # XXX Point Grey
+# XXX NIKON
 
 #-----------------------------------------------------------------------------
 # DirectShow base-class library (if configured)
@@ -303,6 +321,12 @@ if (VIDEO_USE_DIRECTSHOW)
 			${EDT_LIBRARIES}
 		)
 	endif (VIDEO_USE_EDT)
+	if (VIDEO_USE_ROPER)
+		TARGET_LINK_LIBRARIES(stereo_spin
+			ROPER_library
+			${ROPER_LIBRARIES}
+		)
+	endif (VIDEO_USE_ROPER)
 	SET_TARGET_PROPERTIES(stereo_spin PROPERTIES SOLUTION_FOLDER servers)
 
 	INCLUDE_DIRECTORIES(
@@ -403,6 +427,12 @@ if (OpenCV_FOUND)
 			${EDT_LIBRARIES}
 		)
 	endif (VIDEO_USE_EDT)
+	if (VIDEO_USE_ROPER)
+		TARGET_LINK_LIBRARIES(video_spot_tracker
+			ROPER_library
+			${ROPER_LIBRARIES}
+		)
+	endif (VIDEO_USE_ROPER)
 	SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
 endif (OpenCV_FOUND)
 
@@ -469,6 +499,12 @@ MACRO(CAPC_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 			${EDT_LIBRARIES}
 		)
   endif (VIDEO_USE_EDT)
+  if (VIDEO_USE_ROPER)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			ROPER_library
+			${ROPER_LIBRARIES}
+		)
+  endif (VIDEO_USE_ROPER)
   SET_TARGET_PROPERTIES(${APPLICATION_NAME}
 	PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
 ENDMACRO(CAPC_APPLICATION)
@@ -514,6 +550,12 @@ MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 			${EDT_LIBRARIES}
 		)
   endif (VIDEO_USE_EDT)
+  if (VIDEO_USE_ROPER)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			ROPER_library
+			${ROPER_LIBRARIES}
+		)
+  endif (VIDEO_USE_ROPER)
   SET_TARGET_PROPERTIES(${APPLICATION_NAME} PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
 ENDMACRO(CPP_APPLICATION)
 
