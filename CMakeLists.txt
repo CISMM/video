@@ -231,8 +231,8 @@ if (VIDEO_USE_ROPER)
 endif (VIDEO_USE_ROPER)
 
 if (VIDEO_USE_POINTGREY)
-	set(POINTGREY_SOURCES point_grey_server.cpp)
-	set(POINTGREY_PUBLIC_HEADERS point_grey_server.h)
+	set(POINTGREY_SOURCES point_grey_server.cpp PGRCam.cpp)
+	set(POINTGREY_PUBLIC_HEADERS point_grey_server.h PGRCam.h)
 	ADD_LIBRARY (point_grey_library
 		${POINTGREY_SOURCES} ${POINTGREY_PUBLIC_HEADERS}
 	)
