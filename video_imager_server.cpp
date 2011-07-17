@@ -28,6 +28,9 @@
 #ifdef  VST_USE_EDT
 #include "edt_server.h"
 #endif
+#ifdef  VST_USE_POINTGREY
+#include "point_grey_server.h"
+#endif
 #ifdef  VST_USE_SEM
 #include "SEM_camera_server.h"
 #endif
