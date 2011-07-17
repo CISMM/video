@@ -18,6 +18,8 @@
 #  GLUT_INCLUDE_DIR
 #  GLUT_glut_LIBRARY
 #  GLUT_LIBRARIES
+#  GLUI_INCLUDE_PATH
+#  GLUI_LIBRARIES
 #  
 #  NSRGBUILD_FOUND        - True if we found what we were looking for
 
@@ -116,6 +118,26 @@ find_library(GLUT_glut_LIBRARY
 )
 MARK_AS_ADVANCED(GLUT_glut_LIBRARY)
 
+# Look for the header files (picking any one from the directories we need).
+FIND_PATH(GLUI_INCLUDE_PATH NAMES glui.h
+		PATHS
+		"C:/Program Files (x86)/CISMM/external/glui"
+		/usr/local/include
+)
+MARK_AS_ADVANCED(GLUI_INCLUDE_DIR)
+
+# Look for the library files (picking any one from the directories we need).
+find_library(GLUI_LIBRARY
+	NAMES
+	glui32
+	PATH_SUFFIXES
+	${_libsuffixes}
+	PATHS
+	"C:/Program Files (x86)/CISMM/external/glui"
+	/usr/local
+)
+MARK_AS_ADVANCED(GLUI_glut_LIBRARY)
+
 # Normally in Tcl, but NSRG buildtime has it elsewhere...
 SET(TCL_X11_INCLUDE_PATH ${TCL_INCLUDE_PATH}/../../X11/include
 	CACHE TYPE STRING)
@@ -127,6 +149,8 @@ INCLUDE(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(NSRGBUILD DEFAULT_MSG
 	GLUT_INCLUDE_DIR
 	GLUT_glut_LIBRARY
+	GLUI_INCLUDE_PATH
+	GLUI_LIBRARY
 	ImageMagick_MagickCore_INCLUDE_DIR
 	ImageMagick_MagickCore_LIBRARY
 	ImageMagick_MagickCore_LIBRARY_DIR
@@ -137,4 +161,7 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(NSRGBUILD DEFAULT_MSG
 )
 
 SET(GLUT_LIBRARIES ${GLUT_glut_LIBRARY}
-	CACHE TYPE STRING)
+	CACHE STRING "Location of GLUT library")
+SET(GLUI_LIBRARIES ${GLUI_LIBRARY}
+	CACHE STRING "Location of GLUI library")
+

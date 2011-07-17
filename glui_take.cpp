@@ -17,8 +17,9 @@
 #include <string.h>
 #include <process.h>
 #include <windows.h>
-#include <GL/glut.h>
+#include <string>
 #include "glui.h"
+#include <GL/glut.h>
 #include "edtinc.h"
 #include "vrpn_shared.h"
 

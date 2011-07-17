@@ -158,6 +158,7 @@ INCLUDE_DIRECTORIES(
 	${TK_INCLUDE_PATH}
 	${TCL_X11_INCLUDE_PATH}
 	${GLUT_INCLUDE_DIR}
+	${GLUI_INCLUDE_PATH}
 	stocc_random_number_generator/
 	PanopticNerve/
 	${CISMM_VIDEO_SOURCE_DIR}
@@ -490,6 +491,22 @@ TARGET_LINK_LIBRARIES(PanopticNerve
 )
 SET_TARGET_PROPERTIES(PanopticNerve PROPERTIES SOLUTION_FOLDER apps)
 
+if (VIDEO_USE_EDT)
+	SET(TARGET_NAME GLUItake)
+	ADD_EXECUTABLE(GLUItake
+		glui_take.cpp
+	)
+	TARGET_LINK_LIBRARIES(GLUItake
+		EDT_library
+		${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
+		${EDT_LIBRARIES}
+		${GLUI_LIBRARIES}
+		${GLUT_LIBRARIES}
+		${OPENGL_gl_LIBRARY}
+	)
+	SET_TARGET_PROPERTIES(GLUItake PROPERTIES SOLUTION_FOLDER apps)
+endif (VIDEO_USE_EDT)
+
 #-----------------------------------------------------------------------------
 # A little utility helper macro to setup default linkages and filenames
 MACRO(CAPC_APPLICATION APPLICATION_NAME SOLUTION_NAME)
@@ -629,6 +646,5 @@ if (VIDEO_USE_ROPER)
 endif (VIDEO_USE_ROPER)
 
 # XXX stocc_test_poisson
-# XXX GLUItake
 # CPP_APPLICATION(stack_collector apps) XXX requires vrpn_Generic_Server_Object
 
