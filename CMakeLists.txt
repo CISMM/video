@@ -623,10 +623,12 @@ CAPC_APPLICATION(manual_capture apps)
 CPP_APPLICATION(test_spot_tracker tests)
 CPP_APPLICATION(video_imager_server apps)
 CPP_APPLICATION(panoptes_stage_control apps)
+if (VIDEO_USE_ROPER)
+	CPP_APPLICATION(roper_example apps)
+	CPP_APPLICATION(roper_spot_tracker apps)
+endif (VIDEO_USE_ROPER)
 
 # XXX stocc_test_poisson
 # XXX GLUItake
-# XXX roper_example
-# XXX roper_spot_tracker
 # CPP_APPLICATION(stack_collector apps) XXX requires vrpn_Generic_Server_Object
 
