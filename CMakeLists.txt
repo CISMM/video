@@ -6,6 +6,10 @@ PROJECT(CISMM_VIDEO)
 # 	Windows SDK (download from Microsoft, includes DirectShow)
 #    DirectX SDK (Download from Microsoft)
 # 	NSRG Buildtime 3.2 (download from CISMM server, includes Tcl, Glut, etc)
+#	Point Grey libraries: The strange thing is that you have to copy the
+#		32-bit version onto a 64-bit machine because it installs the 64-bit
+#		libraries, which you can't link when using a 32-bit link.  Copy them
+#		into C:\Program Files (x86)\Point Grey Research\FlyCapture2
 
 # Needed for Cmake 2.8.1 to avoid complaints
 if(COMMAND cmake_policy)

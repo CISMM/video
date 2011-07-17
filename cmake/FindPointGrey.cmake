@@ -7,6 +7,7 @@
 # Look for the header files (picking any one from the directories we need).
 FIND_PATH(POINTGREY_INCLUDE_PATH NAMES FlyCapture2.h
 		PATHS
+		"C:/Program Files (x86)/Point Grey Research/FlyCapture2/include"
 		"C:/Program Files/Point Grey Research/FlyCapture2/include"
 		"C:/Program Files (x86)/CISMM/external/PointGrey/include"
 		/usr/local/include
@@ -22,6 +23,18 @@ find_library(POINTGREY_FlyCap_LIBRARY
 	PATH_SUFFIXES
 	${_libsuffixes}
 	PATHS
+	"C:/Program Files (x86)/Point Grey Research/FlyCapture2"
+	"C:/Program Files/Point Grey Research/FlyCapture2"
+	"C:/Program Files (x86)/CISMM/external/PointGrey"
+	/usr/local
+)
+find_library(POINTGREY_GUI_LIBRARY
+	NAMES
+	FlyCapture2GUI
+	PATH_SUFFIXES
+	${_libsuffixes}
+	PATHS
+	"C:/Program Files (x86)/Point Grey Research/FlyCapture2"
 	"C:/Program Files/Point Grey Research/FlyCapture2"
 	"C:/Program Files (x86)/CISMM/external/PointGrey"
 	/usr/local
@@ -34,11 +47,13 @@ INCLUDE(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(POINTGREY DEFAULT_MSG
 	POINTGREY_INCLUDE_PATH
 	POINTGREY_FlyCap_LIBRARY
+	POINTGREY_GUI_LIBRARY
 )
 
 IF(POINTGREY_FOUND)
   SET(POINTGREY_LIBRARIES
 	${POINTGREY_FlyCap_LIBRARY}
+	${POINTGREY_GUI_LIBRARY}
 	CACHE STRING "Libraries needed to link to for Point Grey camera"
   )
   SET(POINTGREY_FOUND ON)
