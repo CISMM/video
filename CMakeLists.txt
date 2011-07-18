@@ -485,6 +485,8 @@ ADD_EXECUTABLE(PanopticNerve
 	PanopticNerve/ImageAnalyzer.cpp
 	PanopticNerve/NerveTest.cpp
 	PanopticNerve/USBMAC6000.cpp
+	PanopticNerve/SyncControl.cpp
+	PanopticNerve/sciString2send.cpp
 )
 TARGET_LINK_LIBRARIES(PanopticNerve
 	${ImageMagick_Needed_Libs}
