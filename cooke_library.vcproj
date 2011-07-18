@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9.00"
+	Version="8.00"
 	Name="cooke_library"
 	ProjectGUID="{0D9CC8E9-7FD3-4A99-AFEF-4E644515C0FE}"
 	RootNamespace="cooke_library"
-	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform

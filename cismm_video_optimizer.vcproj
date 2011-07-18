@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9.00"
+	Version="8.00"
 	Name="cismm_video_optimizer"
 	ProjectGUID="{3EEE226A-08FA-4A61-9CC0-DE21D288C7FA}"
-	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform
@@ -78,8 +77,6 @@
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\tcl\lib;C:\NSRG\external\pc_win32\GL\lib;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\OpenCV\lib;../vrpn/pc_win32/Release;../quat/pc_win32/Release;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;C:\nsrg\external\pc_win32\ImageMagick\lib;C:\NSRG\external\pc_win32\diaginc;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;C:\NSRG\external\pc_win32\EDT\pdv;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;"
 				SubSystem="1"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -102,6 +99,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -174,8 +174,6 @@
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/cismm_video_optimizer.pdb"
 				SubSystem="1"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -197,6 +195,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"

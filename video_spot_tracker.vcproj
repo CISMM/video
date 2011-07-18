@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9.00"
+	Version="8.00"
 	Name="video_spot_tracker"
 	ProjectGUID="{04742E5F-FD68-4746-81EE-CD6BE17E6CB3}"
 	RootNamespace="video_spot_tracker"
-	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform
@@ -82,8 +81,6 @@
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/video_spot_tracker.pdb"
 				SubSystem="1"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -105,6 +102,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -175,8 +175,6 @@
 				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\tcl\lib;C:\NSRG\external\pc_win32\GL\lib;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\OpenCV\lib;../vrpn/pc_win32/Release;../vrpn/quat/pc_win32/Release;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;C:\nsrg\external\pc_win32\ImageMagick\lib;C:\NSRG\external\pc_win32\diaginc;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;C:\NSRG\external\pc_win32\EDT\pdv;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;"
 				IgnoreDefaultLibraryNames=""
 				SubSystem="1"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -199,6 +197,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"

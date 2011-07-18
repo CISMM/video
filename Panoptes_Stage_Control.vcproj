@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9.00"
+	Version="8.00"
 	Name="Panoptes_Stage_Control"
 	ProjectGUID="{91F0C1E3-C659-45DB-9ADE-E2B80767C804}"
 	RootNamespace="generate_beads_dataset"
-	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform
@@ -78,8 +77,6 @@
 				AdditionalLibraryDirectories="..\vrpn\pc_win32\Release"
 				ProgramDatabaseFile=".\Release/make_moving_spot_video.pdb"
 				SubSystem="1"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -101,6 +98,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -171,8 +171,6 @@
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/make_moving_spot_video.pdb"
 				SubSystem="1"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -194,6 +192,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"

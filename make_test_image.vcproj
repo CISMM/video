@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9.00"
+	Version="8.00"
 	Name="make_test_image"
 	ProjectGUID="{D600D7F2-B55B-4B79-B001-39453EA96AB6}"
-	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform
@@ -80,8 +79,6 @@
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/make_test_image.pdb"
 				SubSystem="1"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -103,6 +100,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -171,8 +171,6 @@
 				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\ImageMagick\lib;..\vrpn\pc_win32\Release;&quot;C:\nsrg\external\pc_win32\ImageMagick-6.2.3_staticDLL\lib&quot;;C:\nsrg\external\pc_win32\lib"
 				ProgramDatabaseFile=".\Release/make_test_image.pdb"
 				SubSystem="1"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -194,6 +192,9 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"

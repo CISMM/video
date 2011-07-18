@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9.00"
+	Version="8.00"
 	Name="file_stack_library"
 	ProjectGUID="{3EC043E1-84AB-4975-8298-6AC796B6F406}"
 	RootNamespace="file_stack_library"
-	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform

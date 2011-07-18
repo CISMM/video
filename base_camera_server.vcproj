@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9.00"
+	Version="8.00"
 	Name="base_camera_server"
 	ProjectGUID="{91C28129-4CA6-4833-88B5-25CCA8B16722}"
 	RootNamespace="base_camera_server"
-	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform
