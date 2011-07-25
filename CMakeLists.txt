@@ -107,13 +107,34 @@ if (VIDEO_USE_POINTGREY)
 	ADD_DEFINITIONS(-DVST_USE_POINTGREY)
 endif (VIDEO_USE_POINTGREY)
 
-#-----------------------------------------------------------------------------
-# Put this in /usr/local unless overridden.  The default on Windows is
-# in Program Files, but that breaks on Windows 7 because you have to be
-# admin to write there.
-
-set(CMAKE_INSTALL_PREFIX /usr/local/ CACHE TYPE STRING FORCE)
-
+###
+# On Windows 7, it does not work to install in the default location,
+# which is the Program Files directory, because you have to not only have
+# file permission to write there but also "run as administrator."  This
+# means that "make install" from a Visual Studio project fails.  To get
+# around that, we need to set CMAKE_INSTALL_PREFIX to something other
+# than the default.  However, it is a cache variable that has already been
+# set.  If we make a local variable, it uses this rather than the cache
+# variable and never tells the poor user what happened (the GUI location
+# looks standard but the files end up somewhere else).  If we make it a
+# non-forced cache variable, it already has a value so does not change.
+# If we make it a forced cache variable, it gets overwritten everytime
+# and the user cannot change it on the GUI.  So we have a workaround here.
+# We make a cache variable that records whether we have ever forced the
+# install prefix.  If not, we force it.  If so, we don't force it again.
+# This has the effect of setting it the first time cmake is run, showing
+# the change in the GUI, and also letting the user change the value in
+# the GUI if they don't like what we did.  If I knew how to do this only
+# happen on Windows 7, I'd make the if(WIN32) more specific.
+if (WIN32)
+        if (NOT ONCE_SET_CMAKE_INSTALL_PREFIX)
+                set(ONCE_SET_CMAKE_INSTALL_PREFIX true CACHE BOOL
+                        "Have we set the install prefix yet?" FORCE)
+                set(CMAKE_INSTALL_PREFIX /usr/local CACHE PATH
+                    "Install path prefix, prepended onto install directories"
+                    FORCE)
+        endif (NOT ONCE_SET_CMAKE_INSTALL_PREFIX)
+endif (WIN32)
 
 #-----------------------------------------------------------------------------
 # Libraries we need to do our thing.
@@ -489,8 +510,48 @@ ADD_EXECUTABLE(PanopticNerve
 	PanopticNerve/sciString2send.cpp
 )
 TARGET_LINK_LIBRARIES(PanopticNerve
+	base_camera_server_library
+	file_stack_library
 	${ImageMagick_Needed_Libs}
+	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
+	${GLUT_LIBRARIES}
+	${OPENGL_gl_LIBRARY}
 )
+  if (VIDEO_USE_DIRECTSHOW)
+    TARGET_LINK_LIBRARIES(PanopticNerve
+	directx_library
+    )
+  endif (VIDEO_USE_DIRECTSHOW)  
+  if (VIDEO_USE_COOKE)
+		TARGET_LINK_LIBRARIES(PanopticNerve
+			cooke_library
+			${Cooke_LIBRARIES}
+		)
+  endif (VIDEO_USE_COOKE)
+  if (VIDEO_USE_DIAGINC)
+		TARGET_LINK_LIBRARIES(PanopticNerve
+			diaginc_library
+			${DiagInc_LIBRARIES}
+		)
+  endif (VIDEO_USE_DIAGINC)
+  if (VIDEO_USE_EDT)
+		TARGET_LINK_LIBRARIES(PanopticNerve
+			EDT_library
+			${EDT_LIBRARIES}
+		)
+  endif (VIDEO_USE_EDT)
+  if (VIDEO_USE_ROPER)
+		TARGET_LINK_LIBRARIES(PanopticNerve
+			Roper_library
+			${ROPER_LIBRARIES}
+		)
+  endif (VIDEO_USE_ROPER)
+  if (VIDEO_USE_POINTGREY)
+		TARGET_LINK_LIBRARIES(PanopticNerve
+			point_grey_library
+			${POINTGREY_LIBRARIES}
+		)
+  endif (VIDEO_USE_POINTGREY)
 SET_TARGET_PROPERTIES(PanopticNerve PROPERTIES SOLUTION_FOLDER apps)
 
 if (VIDEO_USE_EDT)
