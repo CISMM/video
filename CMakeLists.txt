@@ -45,6 +45,8 @@ endif (WIN32)
 # Configuration options controlling what gets included in the build.
 # Look up each of the camera-driver libraries.  If they are found, then turn them
 # on by default.
+OPTION(VIDEO_BUILD_APPLICATIONS "Enable to build applications" ON)
+
 find_package(Cooke)
 if (Cooke_FOUND)
 	OPTION(VIDEO_USE_COOKE "Enable to include Cooke camera code in build" ON)
@@ -141,7 +143,9 @@ endif (WIN32)
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${VIDEO_SOURCE_DIR})
 FIND_PACKAGE(quatlib REQUIRED)	# Sets QUATLIB_INCLUDE_DIR and QUATLIB_LIBRARIES
 FIND_PACKAGE(VRPN REQUIRED)
-FIND_PACKAGE(OpenGL REQUIRED)
+if (WIN32)
+	FIND_PACKAGE(OpenGL REQUIRED)
+endif (WIN32)
 
 # Try to find NSRG Buildtime (NSRGBUILD) to set all we need for ImageMagic,
 # TCL, and Glut.  If not, then find the individual packages.
@@ -331,6 +335,7 @@ if (VIDEO_USE_DIRECTSHOW)
 	)
 	SET_TARGET_PROPERTIES(test_directx_library PROPERTIES SOLUTION_FOLDER tests)
 
+  if (VIDEO_BUILD_APPLICATIONS)
 	SET(TARGET_NAME stereo_spin)
 	ADD_EXECUTABLE(stereo_spin stereo_spin.cpp)
 	TARGET_LINK_LIBRARIES(stereo_spin
@@ -382,6 +387,7 @@ if (VIDEO_USE_DIRECTSHOW)
 	INCLUDE_DIRECTORIES(
 		${DirectShow_INCLUDE_DIRS}
 	)
+  endif (VIDEO_BUILD_APPLICATIONS)
 
 endif (VIDEO_USE_DIRECTSHOW)
 
@@ -414,6 +420,7 @@ install(TARGETS stocc_random_number_generator_library
 
 #-----------------------------------------------------------------------------
 # Tcl-Linkvar library (not a library in the initial project file)
+if (VIDEO_BUILD_APPLICATIONS)
 set(LV_SOURCES Tcl_Linkvar.C)
 set(LV_PUBLIC_HEADERS Tcl_Linkvar.h)
 ADD_LIBRARY (Tcl_Linkvar
@@ -423,6 +430,7 @@ set_property(TARGET Tcl_Linkvar PROPERTY PUBLIC_HEADER ${LV_PUBLIC_HEADERS})
 install(TARGETS Tcl_Linkvar
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
+endif (VIDEO_BUILD_APPLICATIONS)
 
 #-----------------------------------------------------------------------------
 # Include directories needed
@@ -434,6 +442,7 @@ INCLUDE_DIRECTORIES(
 
 #-----------------------------------------------------------------------------
 # Applications that need more than one file or nonstandard things.
+if (VIDEO_BUILD_APPLICATIONS)
 
 FIND_PACKAGE(OpenCV)
 if (OpenCV_FOUND)
@@ -711,3 +720,4 @@ endif (VIDEO_USE_ROPER)
 # XXX stocc_test_poisson
 # CPP_APPLICATION(stack_collector apps) XXX requires vrpn_Generic_Server_Object
 
+endif (VIDEO_BUILD_APPLICATIONS)
