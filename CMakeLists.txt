@@ -37,6 +37,59 @@ endif()
 # Local CMake Modules
 list(APPEND CMAKE_MODULE_PATH ${CISMM_VIDEO_SOURCE_DIR} ${CISMM_VIDEO_SOURCE_DIR}/cmake)
 
+#-----------------------------------------------------------------------------
+# Libraries we need to do our thing.
+set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${VIDEO_SOURCE_DIR})
+FIND_PACKAGE(quatlib REQUIRED)	# Sets QUATLIB_INCLUDE_DIR and QUATLIB_LIBRARIES
+FIND_PACKAGE(VRPN REQUIRED)
+if (WIN32)
+	FIND_PACKAGE(OpenGL REQUIRED)
+endif (WIN32)
+
+# Try to find NSRG Buildtime (NSRGBUILD) to set all we need for ImageMagic,
+# TCL, and Glut.  If not, then find the individual packages.
+FIND_PACKAGE(NSRGBUILD)
+if (NSRGBUILD_FOUND)
+	set(ImageMagick_FOUND true CACHE BOOL "NSRG found, so ImageMagick found")
+
+	INCLUDE_DIRECTORIES(
+		${GLUI_INCLUDE_PATH}
+	)
+else (NSRGBUILD_FOUND)
+	FIND_PACKAGE(ImageMagick REQUIRED COMPONENTS MagickCore)	# Need to have ImageMagick
+  if (VIDEO_BUILD_APPLICATIONS)
+	FIND_PACKAGE(TCL REQUIRED)
+	FIND_PACKAGE(GLUT REQUIRED)
+  else (VIDEO_BUILD_APPLICATIONS)
+	FIND_PACKAGE(TCL)
+	FIND_PACKAGE(GLUT)
+  endif (VIDEO_BUILD_APPLICATIONS)
+endif (NSRGBUILD_FOUND)
+
+link_directories( ${ImageMagick_MagickCore_LIBRARY_DIR} )
+
+if (WIN32)
+	# To avoid warnings in case we're using Visual Studio
+	ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
+	ADD_DEFINITIONS( -D_CRT_NONSTDC_NO_DEPRECATE )
+	set(ImageMagick_Needed_Libs CORE_RL_bzlib_ CORE_RL_coders_ CORE_RL_filters_
+		CORE_RL_jbig_ CORE_RL_jp2_ CORE_RL_jpeg_ CORE_RL_lcms_ CORE_RL_libxml_
+		CORE_RL_Magick++_ CORE_RL_magick_ CORE_RL_png_ CORE_RL_tiff_
+		CORE_RL_ttf_ CORE_RL_wand_ CORE_RL_wmf_ CORE_RL_xlib_ CORE_RL_zlib_
+		X11 Xext
+	)
+else(WIN32)
+	set (PTHREAD_LIBRARY pthread)
+	set (ImageMagick_Needed_Libs MagickCore MagickWand)
+endif (WIN32)
+
+
+if (ImageMagick_FOUND)
+	OPTION(VIDEO_USE_IMAGEMAGICK "Enable to include ImageMagick code in build" ON)
+else (ImageMagick_FOUND)
+	OPTION(VIDEO_USE_IMAGEMAGICK "Enable to include ImageMagick code in build" OFF)
+endif (ImageMagick_FOUND)
+
 # Override the defaults below.
 if (WIN32)
   OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" ON)
@@ -90,6 +143,9 @@ OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in buil
 # Set compile-time definitions for all projects based on what has been
 # selected.
 
+if (VIDEO_USE_IMAGEMAGICK)
+	ADD_DEFINITIONS(-DVST_USE_FILESTACK)
+endif (VIDEO_USE_IMAGEMAGICK)
 if (VIDEO_USE_ROPER)
 	ADD_DEFINITIONS(-DVST_USE_ROPER)
 endif (VIDEO_USE_ROPER)
@@ -138,41 +194,6 @@ if (WIN32)
         endif (NOT ONCE_SET_CMAKE_INSTALL_PREFIX)
 endif (WIN32)
 
-#-----------------------------------------------------------------------------
-# Libraries we need to do our thing.
-set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${VIDEO_SOURCE_DIR})
-FIND_PACKAGE(quatlib REQUIRED)	# Sets QUATLIB_INCLUDE_DIR and QUATLIB_LIBRARIES
-FIND_PACKAGE(VRPN REQUIRED)
-if (WIN32)
-	FIND_PACKAGE(OpenGL REQUIRED)
-endif (WIN32)
-
-# Try to find NSRG Buildtime (NSRGBUILD) to set all we need for ImageMagic,
-# TCL, and Glut.  If not, then find the individual packages.
-FIND_PACKAGE(NSRGBUILD)
-if (NOT NSRGBUILD_FOUND)
-	FIND_PACKAGE(ImageMagick REQUIRED COMPONENTS MagickCore)	# Need to have ImageMagick
-	FIND_PACKAGE(TCL REQUIRED)
-	FIND_PACKAGE(GLUT REQUIRED)
-endif (NOT NSRGBUILD_FOUND)
-
-link_directories( ${ImageMagick_MagickCore_LIBRARY_DIR} )
-
-if (WIN32)
-	# To avoid warnings in case we're using Visual Studio
-	ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
-	ADD_DEFINITIONS( -D_CRT_NONSTDC_NO_DEPRECATE )
-else(WIN32)
-	set (PTHREAD_LIBRARY pthread)
-endif (WIN32)
-
-set(ImageMagick_Needed_Libs CORE_RL_bzlib_ CORE_RL_coders_ CORE_RL_filters_
-		CORE_RL_jbig_ CORE_RL_jp2_ CORE_RL_jpeg_ CORE_RL_lcms_ CORE_RL_libxml_
-		CORE_RL_Magick++_ CORE_RL_magick_ CORE_RL_png_ CORE_RL_tiff_
-		CORE_RL_ttf_ CORE_RL_wand_ CORE_RL_wmf_ CORE_RL_xlib_ CORE_RL_zlib_
-		X11 Xext
-)
-
 INCLUDE_DIRECTORIES(
 	${Cooke_INCLUDE_PATH}
 	${DiagInc_INCLUDE_PATH}
@@ -183,7 +204,6 @@ INCLUDE_DIRECTORIES(
 	${TK_INCLUDE_PATH}
 	${TCL_X11_INCLUDE_PATH}
 	${GLUT_INCLUDE_DIR}
-	${GLUI_INCLUDE_PATH}
 	stocc_random_number_generator/
 	PanopticNerve/
 	${CISMM_VIDEO_SOURCE_DIR}
@@ -201,16 +221,18 @@ install(TARGETS base_camera_server_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
 
-set(FS_SOURCES file_stack_server.cpp file_list.cpp)
-set(FS_PUBLIC_HEADERS file_stack_server.h)
-ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
-ADD_LIBRARY (file_stack_library
-	${FS_SOURCES} ${FS_PUBLIC_HEADERS}
-)
-set_property(TARGET file_stack_library PROPERTY PUBLIC_HEADER ${FS_PUBLIC_HEADERS})
-install(TARGETS file_stack_library
-	ARCHIVE DESTINATION lib
-	PUBLIC_HEADER DESTINATION include)
+if (VIDEO_USE_IMAGEMAGICK)
+	set(FS_SOURCES file_stack_server.cpp file_list.cpp)
+	set(FS_PUBLIC_HEADERS file_stack_server.h)
+	ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
+	ADD_LIBRARY (file_stack_library
+		${FS_SOURCES} ${FS_PUBLIC_HEADERS}
+	)
+	set_property(TARGET file_stack_library PROPERTY PUBLIC_HEADER ${FS_PUBLIC_HEADERS})
+	install(TARGETS file_stack_library
+		ARCHIVE DESTINATION lib
+		PUBLIC_HEADER DESTINATION include)
+endif (VIDEO_USE_IMAGEMAGICK)
 
 if (VIDEO_USE_COOKE)
 	set(COOKE_SOURCES cooke_server.cpp)
@@ -341,17 +363,21 @@ if (VIDEO_USE_DIRECTSHOW)
 	TARGET_LINK_LIBRARIES(stereo_spin
 		directx_library
 		base_camera_server_library
-		file_stack_library
 		Tcl_Linkvar
 		${VRPN_LIBRARIES} ${QUATLIB_LIBRARIES}
 		${DirectShow_LIBS}
 		${PTHREAD_LIBRARY}
 		${OPENGL_gl_LIBRARY}
-		${ImageMagick_Needed_Libs}
 		${TCL_LIBRARY}
 		${TK_LIBRARY}
 		${GLUT_LIBRARIES}
 	)
+	if (VIDEO_USE_IMAGEMAGICK)
+		TARGET_LINK_LIBRARIES(stereo_spin
+			file_stack_library
+			${ImageMagick_Needed_Libs}
+		)
+	endif (VIDEO_USE_IMAGEMAGICK)
 	if (VIDEO_USE_COOKE)
 		TARGET_LINK_LIBRARIES(stereo_spin
 			cooke_library
@@ -450,19 +476,12 @@ if (OpenCV_FOUND)
 
 	SET(TARGET_NAME video_spot_tracker)
 	ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp thread.cpp)
-	TARGET_LINK_LIBRARIES(video_spot_tracker
-		base_camera_server_library
-		file_stack_library
-		spot_tracker_library
-		Tcl_Linkvar
-		${ImageMagick_Needed_Libs}
-		${OpenCV_LIBRARIES}
-		${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
-		${OPENGL_gl_LIBRARY}
-		${TCL_LIBRARY}
-		${TK_LIBRARY}
-		${GLUT_LIBRARIES}
-	)
+	if (VIDEO_USE_IMAGEMAGICK)
+		TARGET_LINK_LIBRARIES(video_spot_tracker
+			file_stack_library
+			${ImageMagick_Needed_Libs}
+		)
+	endif (VIDEO_USE_IMAGEMAGICK)
 	if (VIDEO_USE_DIRECTSHOW)
 		TARGET_LINK_LIBRARIES(video_spot_tracker
 			directx_library
@@ -498,6 +517,17 @@ if (OpenCV_FOUND)
 			${POINTGREY_LIBRARIES}
 		)
 	endif (VIDEO_USE_POINTGREY)
+	TARGET_LINK_LIBRARIES(video_spot_tracker
+		spot_tracker_library
+		base_camera_server_library
+		Tcl_Linkvar
+		${OpenCV_LIBRARIES}
+		${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
+		${OPENGL_gl_LIBRARY}
+		${TCL_LIBRARY}
+		${TK_LIBRARY}
+		${GLUT_LIBRARIES}
+	)
 	SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
 endif (OpenCV_FOUND)
 
@@ -507,6 +537,7 @@ TARGET_LINK_LIBRARIES(swap_ppm_lines
 )
 SET_TARGET_PROPERTIES(swap_ppm_lines PROPERTIES SOLUTION_FOLDER apps)
 
+if (WIN32)
 SET(TARGET_NAME PanopticNerve)
 ADD_EXECUTABLE(PanopticNerve
 	PanopticNerve/PanopticNerve.cpp
@@ -518,14 +549,12 @@ ADD_EXECUTABLE(PanopticNerve
 	PanopticNerve/SyncControl.cpp
 	PanopticNerve/sciString2send.cpp
 )
-TARGET_LINK_LIBRARIES(PanopticNerve
-	base_camera_server_library
-	file_stack_library
-	${ImageMagick_Needed_Libs}
-	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
-	${GLUT_LIBRARIES}
-	${OPENGL_gl_LIBRARY}
-)
+  if (VIDEO_USE_IMAGEMAGICK)
+	TARGET_LINK_LIBRARIES(PanopticNerve
+		file_stack_library
+		${ImageMagick_Needed_Libs}
+    )
+  endif (VIDEO_USE_IMAGEMAGICK)
   if (VIDEO_USE_DIRECTSHOW)
     TARGET_LINK_LIBRARIES(PanopticNerve
 	directx_library
@@ -561,7 +590,14 @@ TARGET_LINK_LIBRARIES(PanopticNerve
 			${POINTGREY_LIBRARIES}
 		)
   endif (VIDEO_USE_POINTGREY)
+TARGET_LINK_LIBRARIES(PanopticNerve
+	base_camera_server_library
+	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
+	${GLUT_LIBRARIES}
+	${OPENGL_gl_LIBRARY}
+)
 SET_TARGET_PROPERTIES(PanopticNerve PROPERTIES SOLUTION_FOLDER apps)
+endif (WIN32)
 
 if (VIDEO_USE_EDT)
 	SET(TARGET_NAME GLUItake)
@@ -586,19 +622,16 @@ MACRO(CAPC_APPLICATION APPLICATION_NAME SOLUTION_NAME)
   ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.C)
   TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
 	stocc_random_number_generator_library
-	base_camera_server_library
-	file_stack_library
 	spot_tracker_library
+	base_camera_server_library
 	Tcl_Linkvar
-	${ImageMagick_Needed_Libs}
-	${VRPN_SERVER_LIBRARIES}
-	${QUATLIB_LIBRARIES}
-	${TCL_LIBRARY}
-	${TK_LIBRARY}
-	${GLUT_LIBRARIES}
-	${OPENGL_gl_LIBRARY}
-	${PTHREAD_LIBRARY}
   )
+  if (VIDEO_USE_IMAGEMAGICK)
+	TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+		file_stack_library
+		${ImageMagick_Needed_Libs}
+	)
+  endif (VIDEO_USE_IMAGEMAGICK)
   if (VIDEO_USE_DIRECTSHOW)
     TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
 	directx_library
@@ -634,6 +667,15 @@ MACRO(CAPC_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 			${POINTGREY_LIBRARIES}
 		)
   endif (VIDEO_USE_POINTGREY)
+  TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+	${VRPN_SERVER_LIBRARIES}
+	${QUATLIB_LIBRARIES}
+	${TCL_LIBRARY}
+	${TK_LIBRARY}
+	${GLUT_LIBRARIES}
+	${OPENGL_gl_LIBRARY}
+	${PTHREAD_LIBRARY}
+  )
   SET_TARGET_PROPERTIES(${APPLICATION_NAME}
 	PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
 ENDMACRO(CAPC_APPLICATION)
@@ -643,19 +685,16 @@ MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
   ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp)
   TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
 	stocc_random_number_generator_library
-	base_camera_server_library
-	file_stack_library
 	spot_tracker_library
+	base_camera_server_library
 	Tcl_Linkvar
-	${ImageMagick_Needed_Libs}
-	${VRPN_SERVER_LIBRARIES}
-	${QUATLIB_LIBRARIES}
-	${TCL_LIBRARY}
-	${TK_LIBRARY}
-	${GLUT_LIBRARIES}
-	${OPENGL_gl_LIBRARY}
-	${PTHREAD_LIBRARY}
   )
+  if (VIDEO_USE_IMAGEMAGICK)
+	TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+		file_stack_library
+		${ImageMagick_Needed_Libs}
+	)
+  endif (VIDEO_USE_IMAGEMAGICK)
   if (VIDEO_USE_DIRECTSHOW)
     TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
 	directx_library
@@ -691,6 +730,15 @@ MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 			${POINTGREY_LIBRARIES}
 		)
   endif (VIDEO_USE_POINTGREY)
+  TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+	${VRPN_SERVER_LIBRARIES}
+	${QUATLIB_LIBRARIES}
+	${TCL_LIBRARY}
+	${TK_LIBRARY}
+	${GLUT_LIBRARIES}
+	${OPENGL_gl_LIBRARY}
+	${PTHREAD_LIBRARY}
+  )
   SET_TARGET_PROPERTIES(${APPLICATION_NAME} PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
 ENDMACRO(CPP_APPLICATION)
 
@@ -699,23 +747,25 @@ ENDMACRO(CPP_APPLICATION)
 
 CPP_APPLICATION(add_noise_to_image apps)
 CPP_APPLICATION(airy_maker apps)
-CPP_APPLICATION(argonot apps)
+if (WIN32)
+	CPP_APPLICATION(argonot apps)
+endif (WIN32)
 CPP_APPLICATION(average_videos apps)
 CPP_APPLICATION(cismm_video_optimizer apps)
 CPP_APPLICATION(compare_tracking_files apps)
 if (VIDEO_USE_EDT)
 	CPP_APPLICATION(edt_video_take apps)
+	CAPC_APPLICATION(manual_capture apps)
 endif (VIDEO_USE_EDT)
 CPP_APPLICATION(make_moving_spot_video apps)
 CPP_APPLICATION(make_test_image apps)
-CAPC_APPLICATION(manual_capture apps)
-CPP_APPLICATION(test_spot_tracker tests)
 CPP_APPLICATION(video_imager_server apps)
-CPP_APPLICATION(panoptes_stage_control apps)
+CPP_APPLICATION(Panoptes_Stage_Control apps)
 if (VIDEO_USE_ROPER)
 	CPP_APPLICATION(roper_example apps)
 	CPP_APPLICATION(roper_spot_tracker apps)
 endif (VIDEO_USE_ROPER)
+CPP_APPLICATION(test_spot_tracker tests)
 
 # XXX stocc_test_poisson
 # CPP_APPLICATION(stack_collector apps) XXX requires vrpn_Generic_Server_Object

@@ -50,10 +50,9 @@ IF(EDT_FOUND)
 	${EDTMMX_LIBRARY}
 	CACHE STRING "Libraries needed to link to for EDT camera"
   )
-  SET(EDT_FOUND ON)
 ELSE(EDT_FOUND)
-  SET(EDT_INCLUDE_PATH)
-  SET(EDT_LIBRARIES)
+  SET(EDT_INCLUDE_PATH "" CACHE PATH "Path to EDT camera include files" FORCE)
+  SET(EDT_LIBRARIES "" CACHE STRING "Libraries needed to link to for EDT camera" FORCE)
 ENDIF(EDT_FOUND)
 MARK_AS_ADVANCED(EDT_LIBRARIES)
 

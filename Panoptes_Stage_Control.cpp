@@ -515,7 +515,7 @@ int main(int argc, char *argv[])
   // Generate the bead vector, containing the desired number of randomly placed beads.
   std::vector<bead> beads; // list of all beads in the well
   std::vector<bead> fov_beads; // list of all beads in the current FOV
-  std::vector<std::vector<bead>> all_fovs_beads; //list of all beads in the FOV for all frames  
+  std::vector<std::vector<bead> > all_fovs_beads; //list of all beads in the FOV for all frames  
   bead random_bead; // an individual randomly placed bead
   
   // a black point in the current frame denoting the next location of the fov_center
@@ -686,7 +686,7 @@ int main(int argc, char *argv[])
 
   // Print the number of beads visible in each of the frames.
   cout << "Number of beads in each FOV: ";
-  for(std::vector<std::vector<bead>>::size_type i = 0; i < all_fovs_beads.size(); i++) {
+  for(std::vector<std::vector<bead> >::size_type i = 0; i < all_fovs_beads.size(); i++) {
     if(i == all_fovs_beads.size()-1)
       cout << all_fovs_beads[i].size();
     else
