@@ -1648,11 +1648,16 @@ radial_average_tracker_Z::radial_average_tracker_Z(const char *in_filename, doub
 {
     // Read in the radially-averaged point-spread function from the file whose
     // name is given.
+#if defined(VIDEO_USE_IMAGEMAGICK)
     d_radial_image = new file_stack_server(in_filename);
     if (d_radial_image == NULL) {
       fprintf(stderr,"radial_average_tracker_Z::radial_average_tracker_Z(): Could not read radial image\n");
       return;
     }
+#else
+      fprintf(stderr,"radial_average_tracker_Z::radial_average_tracker_Z(): file_stack_server not compiled in\n");
+      return;
+#endif
 
     // Set the minimum and maximum Z and the radius based on the file information.
     // X size in the file maps to radius (reduced by one for the zero element)
