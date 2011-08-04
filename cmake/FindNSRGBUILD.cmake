@@ -27,6 +27,7 @@
 FIND_PATH(TCL_INCLUDE_PATH NAMES tcl.h
 		PATHS
 		"C:/Program Files (x86)/CISMM/external/tcl/include"
+		"C:/Program Files/CISMM/external/tcl/include"
 		/usr/local/include
 )
 MARK_AS_ADVANCED(TCL_INCLUDE_PATH)
@@ -41,6 +42,7 @@ find_library(TCL_LIBRARY
 	${_libsuffixes}
 	PATHS
 	"C:/Program Files (x86)/CISMM/external/tcl"
+	"C:/Program Files/CISMM/external/tcl"
 	/usr/local
 )
 MARK_AS_ADVANCED(TCL_LIBRARY)
@@ -49,6 +51,7 @@ MARK_AS_ADVANCED(TCL_LIBRARY)
 FIND_PATH(TK_INCLUDE_PATH NAMES tk.h
 		PATHS
 		"C:/Program Files (x86)/CISMM/external/tcl/include"
+		"C:/Program Files/CISMM/external/tcl/include"
 		/usr/local/include
 )
 MARK_AS_ADVANCED(TK_INCLUDE_PATH)
@@ -61,6 +64,7 @@ find_library(TK_LIBRARY
 	${_libsuffixes}
 	PATHS
 	"C:/Program Files (x86)/CISMM/external/tcl"
+	"C:/Program Files/CISMM/external/tcl"
 	/usr/local
 )
 MARK_AS_ADVANCED(TCL_LIBRARY)
@@ -69,6 +73,7 @@ MARK_AS_ADVANCED(TCL_LIBRARY)
 FIND_PATH(ImageMagick_MagickCore_INCLUDE_DIR NAMES magick/magick.h
 		PATHS
 		"C:/Program Files (x86)/CISMM/external/ImageMagick/include"
+		"C:/Program Files/CISMM/external/ImageMagick/include"
 		/usr/local/include
 )
 MARK_AS_ADVANCED(ImageMagick_MagickCore_INCLUDE_DIR)
@@ -81,6 +86,7 @@ find_library(ImageMagick_MagickCore_LIBRARY
 	${_libsuffixes}
 	PATHS
 	"C:/Program Files (x86)/CISMM/external/ImageMagick"
+	"C:/Program Files/CISMM/external/ImageMagick"
 	/usr/local
 )
 MARK_AS_ADVANCED(ImageMagick_MagickCore_LIBRARY)
@@ -92,6 +98,7 @@ FIND_PATH(ImageMagick_MagickCore_LIBRARY_DIR
 		${_libsuffixes}
 		PATHS
 		"C:/Program Files (x86)/CISMM/external/ImageMagick"
+		"C:/Program Files/CISMM/external/ImageMagick"
 		/usr/local
 )
 MARK_AS_ADVANCED(ImageMagick_MagickCore_LIBRARY_DIR)
@@ -102,6 +109,7 @@ FIND_PATH(GLUT_INCLUDE_DIR NAMES GL/glut.h
 		${_libsuffixes}
 		PATHS
 		"C:/Program Files (x86)/CISMM/external/GL/include"
+		"C:/Program Files/CISMM/external/GL/include"
 		/usr/local/include
 )
 MARK_AS_ADVANCED(GLUT_INCLUDE_DIR)
@@ -114,6 +122,7 @@ find_library(GLUT_glut_LIBRARY
 	${_libsuffixes}
 	PATHS
 	"C:/Program Files (x86)/CISMM/external/GL"
+	"C:/Program Files/CISMM/external/GL"
 	/usr/local
 )
 MARK_AS_ADVANCED(GLUT_glut_LIBRARY)
@@ -122,6 +131,7 @@ MARK_AS_ADVANCED(GLUT_glut_LIBRARY)
 FIND_PATH(GLUI_INCLUDE_PATH NAMES glui.h
 		PATHS
 		"C:/Program Files (x86)/CISMM/external/glui"
+		"C:/Program Files/CISMM/external/glui"
 		/usr/local/include
 )
 MARK_AS_ADVANCED(GLUI_INCLUDE_DIR)
@@ -134,6 +144,7 @@ find_library(GLUI_LIBRARY
 	${_libsuffixes}
 	PATHS
 	"C:/Program Files (x86)/CISMM/external/glui"
+	"C:/Program Files/CISMM/external/glui"
 	/usr/local
 )
 MARK_AS_ADVANCED(GLUI_glut_LIBRARY)
@@ -161,7 +172,7 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(NSRGBUILD DEFAULT_MSG
 )
 
 SET(GLUT_LIBRARIES ${GLUT_glut_LIBRARY}
-	CACHE STRING "Location of GLUT library")
+	CACHE STRING "GLUT libraries to link to")
 SET(GLUI_LIBRARIES ${GLUI_LIBRARY}
-	CACHE STRING "Location of GLUI library")
+	CACHE STRING "GLUI libraries to link to")
 
