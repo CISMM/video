@@ -1722,3 +1722,7 @@ double	radial_average_tracker_Z::check_fitness(const image_wrapper &image, unsig
   // or bright spot.
   return fitness;
 }
+
+unsigned Spot_Information::d_static_index = 0;	  //< Start the first instance of a Spot_Information index at zero.
+unsigned Spot_Information::get_static_index() { return d_static_index; };
+
