@@ -76,26 +76,6 @@ const int SUBTRACT_SINGLE = 4;
 const int SUBTRACT_NEIGHBORS = 5;
 
 //--------------------------------------------------------------------------
-// Some classes needed for use in the rest of the program.
-
-class Spot_Information {
-public:
-  Spot_Information(spot_tracker_XY *tracker) { d_tracker = tracker; d_index = d_static_index++; }
-
-  spot_tracker_XY *tracker(void) const { return d_tracker; }
-  unsigned index(void) const { return d_index; }
-
-  void set_tracker(spot_tracker_XY *tracker) { d_tracker = tracker; }
-
-protected:
-  spot_tracker_XY	*d_tracker;	    //< The tracker we're keeping information for
-  unsigned		d_index;	    //< The index for this instance
-  static unsigned	d_static_index;     //< The index to use for the next one (never to be re-used).
-};
-unsigned  Spot_Information::d_static_index = 0;	  //< Start the first instance of a Spot_Information index at zero.
-
-
-//--------------------------------------------------------------------------
 // Glut wants to take over the world when it starts, so we need to make
 // global access to the objects we will be using.
 
@@ -219,8 +199,8 @@ static	bool  save_log_frame(unsigned frame_number)
     // Add a line to the PSF file if we have one.
     if (g_psf_file) {
       if (!g_psf_file->append_line(*g_log_last_image,
-	    g_trackers.front()->tracker()->get_x(),
-	    g_trackers.front()->tracker()->get_y())) {
+	    g_trackers.front()->xytracker()->get_x(),
+	    g_trackers.front()->xytracker()->get_y())) {
 	return false;
       }
     }
@@ -236,9 +216,9 @@ static	bool  save_log_frame(unsigned frame_number)
 
     list<Spot_Information *>::iterator  loop;
     loop = g_trackers.begin();
-    spot_tracker_XY *first_tracker = (*loop)->tracker() ;
+    spot_tracker_XY *first_tracker = (*loop)->xytracker() ;
     loop++;
-    spot_tracker_XY *second_tracker = (*loop)->tracker();
+    spot_tracker_XY *second_tracker = (*loop)->xytracker();
 
     // Difference in position between first and second tracker.
     double dx = second_tracker->get_x() - first_tracker->get_x();
@@ -266,16 +246,16 @@ static	bool  save_log_frame(unsigned frame_number)
       // Specify the center of rotation and scaling as the current
       // position of the origin tracker.
       shifted = new affine_transformed_image(*g_log_last_image, 
-	  g_trackers.front()->tracker()->get_x() - g_log_offset_x,
-	  g_trackers.front()->tracker()->get_y() - g_log_offset_y,
+	  g_trackers.front()->xytracker()->get_x() - g_log_offset_x,
+	  g_trackers.front()->xytracker()->get_y() - g_log_offset_y,
 	  rotation,
 	  scale,
-	  g_trackers.front()->tracker()->get_x(),
-	  g_trackers.front()->tracker()->get_y());
+	  g_trackers.front()->xytracker()->get_x(),
+	  g_trackers.front()->xytracker()->get_y());
     } else {
       shifted = new translated_image(*g_log_last_image, 
-	  g_trackers.front()->tracker()->get_x() - g_log_offset_x,
-	  g_trackers.front()->tracker()->get_y() - g_log_offset_y);
+	  g_trackers.front()->xytracker()->get_x() - g_log_offset_x,
+	  g_trackers.front()->xytracker()->get_y() - g_log_offset_y);
     }
     if (shifted == NULL) {
       delete [] filename;
@@ -512,18 +492,18 @@ void myDisplayFunc(void)
     for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
       // Normalize center and radius so that they match the coordinates
       // (-1..1) in X and Y.
-      double  x = -1.0 + (*loop)->tracker()->get_x() * (2.0/g_image_to_display->get_num_columns());
-      double  y = -1.0 + ((*loop)->tracker()->get_y()) * (2.0/g_image_to_display->get_num_rows());
-      double  dx = (*loop)->tracker()->get_radius() * (2.0/g_image_to_display->get_num_columns());
-      double  dy = (*loop)->tracker()->get_radius() * (2.0/g_image_to_display->get_num_rows());
+      double  x = -1.0 + (*loop)->xytracker()->get_x() * (2.0/g_image_to_display->get_num_columns());
+      double  y = -1.0 + ((*loop)->xytracker()->get_y()) * (2.0/g_image_to_display->get_num_rows());
+      double  dx = (*loop)->xytracker()->get_radius() * (2.0/g_image_to_display->get_num_columns());
+      double  dy = (*loop)->xytracker()->get_radius() * (2.0/g_image_to_display->get_num_rows());
 
-      if ((*loop)->tracker() == g_active_tracker) {
+      if ((*loop)->xytracker() == g_active_tracker) {
 	glColor3f(1,0,0);
       } else {
 	glColor3f(0,0,1);
       }
       if (g_round_cursor) {
-	double stepsize = M_PI / (*loop)->tracker()->get_radius();
+	double stepsize = M_PI / (*loop)->xytracker()->get_radius();
 	double runaround;
 	glBegin(GL_LINE_STRIP);
 	  for (runaround = 0; runaround <= 2*M_PI; runaround += stepsize) {
@@ -870,16 +850,16 @@ void myIdleFunc(void)
       // has a local maximum at best fit and global maxima elsewhere.
       if ( g_last_image && (g_search_radius > 0) && (last_optimized_frame_number != g_frame_number) ) {
 
-	double x_base = (*loop)->tracker()->get_x();
-	double y_base = (*loop)->tracker()->get_y();
+	double x_base = (*loop)->xytracker()->get_x();
+	double y_base = (*loop)->xytracker()->get_y();
 
 	// Create an image spot tracker and initize it at the location where the current
 	// tracker is, but in the last image.  Grab enough of the image that we will be able
 	// to check over the g_search_radius for a match.
-	image_spot_tracker_interp max_find((*loop)->tracker()->get_radius(), (g_invert != 0), g_precision,
+	image_spot_tracker_interp max_find((*loop)->xytracker()->get_radius(), (g_invert != 0), g_precision,
 	  0.1, g_sampleSpacing);
 	max_find.set_location(x_base, y_base);
-	max_find.set_image(*g_last_image, g_colorIndex, x_base, y_base, (*loop)->tracker()->get_radius() + g_search_radius);
+	max_find.set_image(*g_last_image, g_colorIndex, x_base, y_base, (*loop)->xytracker()->get_radius() + g_search_radius);
 
 	// Loop over the pixels within g_search_radius of the initial location and find the
 	// location with the best match over all of these points.  Do this in the current image.
@@ -904,11 +884,11 @@ void myIdleFunc(void)
 
 	// Put the tracker at the location of the maximum, so that it will find the
 	// total maximum when it finds the local maximum.
-	(*loop)->tracker()->set_location(x_base + best_x_offset, y_base + best_y_offset);
+	(*loop)->xytracker()->set_location(x_base + best_x_offset, y_base + best_y_offset);
       }
 
       // Here's where the tracker is optimized to its new location
-      (*loop)->tracker()->optimize_xy(*g_this_image, g_colorIndex, x, y, (*loop)->tracker()->get_x(), (*loop)->tracker()->get_y() );
+      (*loop)->xytracker()->optimize_xy(*g_this_image, g_colorIndex, x, y, (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y() );
     }
 
     last_optimized_frame_number = g_frame_number;
@@ -1008,8 +988,8 @@ void  activate_and_drag_nearest_tracker_to(double x, double y)
   list<Spot_Information *>::iterator loop;
 
   for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-    dist2 = (x - (*loop)->tracker()->get_x())*(x - (*loop)->tracker()->get_x()) +
-      (y - (*loop)->tracker()->get_y())*(y - (*loop)->tracker()->get_y());
+    dist2 = (x - (*loop)->xytracker()->get_x())*(x - (*loop)->xytracker()->get_x()) +
+      (y - (*loop)->xytracker()->get_y())*(y - (*loop)->xytracker()->get_y());
     if (dist2 < minDist2) {
       minDist2 = dist2;
       minTracker = *loop;
@@ -1025,7 +1005,7 @@ void  activate_and_drag_nearest_tracker_to(double x, double y)
   if (minTracker == NULL) {
     fprintf(stderr, "No tracker to pick out of %d\n", g_trackers.size());
   } else {
-    g_active_tracker = minTracker->tracker();
+    g_active_tracker = minTracker->xytracker();
     g_active_tracker->set_location(x, y);
     g_X = g_active_tracker->get_x();
     g_Y = flip_y(g_active_tracker->get_y());
@@ -1172,7 +1152,7 @@ void  logfilename_changed(char *newvalue, void *)
     }
     if (g_psf_file) {
       g_psf_file->append_line(*g_log_last_image,
-	g_trackers.front()->tracker()->get_x(), g_trackers.front()->tracker()->get_y());
+	g_trackers.front()->xytracker()->get_x(), g_trackers.front()->xytracker()->get_y());
     }
   }
 
@@ -1203,9 +1183,9 @@ void  logfilename_changed(char *newvalue, void *)
 
   list<Spot_Information *>::iterator  loop;
   loop = g_trackers.begin();
-  spot_tracker_XY *first_tracker = (*loop)->tracker() ;
+  spot_tracker_XY *first_tracker = (*loop)->xytracker() ;
   loop++;
-  spot_tracker_XY *second_tracker = (*loop)->tracker();
+  spot_tracker_XY *second_tracker = (*loop)->xytracker();
 
   // Set the offsets to use when logging to the current position of
   // the zeroeth tracker.
@@ -1239,9 +1219,9 @@ void  make_appropriate_tracker_active(int newvalue, void *)
   // startup.
   if (g_active_tracker) {
     if (should_draw_second_tracker()) {
-      g_active_tracker = g_trackers.back()->tracker();
+      g_active_tracker = g_trackers.back()->xytracker();
     } else {
-      g_active_tracker = g_trackers.front()->tracker();
+      g_active_tracker = g_trackers.front()->xytracker();
     }
   }
 }
@@ -1261,20 +1241,20 @@ void  rebuild_trackers(int newvalue, void *)
   list<Spot_Information *>::iterator  loop;
 
   for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-    double x = (*loop)->tracker()->get_x();
-    double y = (*loop)->tracker()->get_y();
-    double r = (*loop)->tracker()->get_radius();
+    double x = (*loop)->xytracker()->get_x();
+    double y = (*loop)->xytracker()->get_y();
+    double r = (*loop)->xytracker()->get_radius();
 
-    if (g_active_tracker == (*loop)->tracker()) {
-      delete (*loop)->tracker();
-      (*loop)->set_tracker(create_appropriate_tracker());
-      g_active_tracker = (*loop)->tracker();
+    if (g_active_tracker == (*loop)->xytracker()) {
+      delete (*loop)->xytracker();
+      (*loop)->set_xytracker(create_appropriate_tracker());
+      g_active_tracker = (*loop)->xytracker();
     } else {
-      delete (*loop)->tracker();
-      (*loop)->set_tracker(create_appropriate_tracker());
+      delete (*loop)->xytracker();
+      (*loop)->set_xytracker(create_appropriate_tracker());
     }
-    (*loop)->tracker()->set_location(x,y);
-    (*loop)->tracker()->set_radius(r);
+    (*loop)->xytracker()->set_location(x,y);
+    (*loop)->xytracker()->set_radius(r);
   }
 }
 
@@ -1666,10 +1646,10 @@ int main(int argc, char *argv[])
   }
 
   // Create two trackers and place them near the center of the window.
-  g_trackers.push_back(new Spot_Information(g_active_tracker = create_appropriate_tracker()));
+  g_trackers.push_back(new Spot_Information(g_active_tracker = create_appropriate_tracker(), NULL));
   g_active_tracker->set_location(g_camera->get_num_columns()/2, g_camera->get_num_rows()/2);
   spot_tracker_XY *temp;
-  g_trackers.push_back(new Spot_Information(temp = create_appropriate_tracker()));
+  g_trackers.push_back(new Spot_Information(temp = create_appropriate_tracker(), NULL));
   temp->set_location(g_camera->get_num_columns()*3/4, g_camera->get_num_rows()*3/4);
 
   // Set the display functions for each window and idle function for GLUT (they
