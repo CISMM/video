@@ -4,7 +4,7 @@
 // We don't use ImageMagick at all if we're using the MinGW compiler set, because
 // we can't link against its X11 library.
 
-#if defined(__MINGW32__) || !defined(VIDEO_USE_IMAGEMAGICK)
+#if defined(__MINGW32__) || !defined(VST_USE_IMAGEMAGICK)
 #define VIDEO_NO_IMAGEMAGICK
 #endif
 
