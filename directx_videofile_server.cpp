@@ -212,8 +212,13 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
   VIDEOINFOHEADER *pVih;
   if (mt.formattype == FORMAT_VideoInfo) {
       pVih = reinterpret_cast<VIDEOINFOHEADER*>(mt.pbFormat);
+  } else if (mt.formattype == FORMAT_VideoInfo2) {
+      pVih = reinterpret_cast<VIDEOINFOHEADER*>(mt.pbFormat);
   } else {
     fprintf(stderr,"directx_videofile_server::open_and_find_parameters(): Can't get video header type\n");
+	fprintf(stderr,"  (Expected %x or %x, got %x)\n", FORMAT_VideoInfo, FORMAT_VideoInfo2, mt.formattype);
+	fprintf(stderr,"  (GetConnectedMediaType is not valid for DirectX headers later than version 7)\n");
+	fprintf(stderr,"  (We need to re-implement reading video in some other interface)\n");
     return false;
   }
 

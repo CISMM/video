@@ -10,14 +10,32 @@
 #include  <vrpn_Connection.h>
 #include  <vrpn_Imager.h>
 #include  <vrpn_Imager_Stream_Buffer.h>
-#include  "directx_camera_server.h"
+#include  "base_camera_server.h"
 
-#ifndef	DIRECTX_VIDEO_ONLY
-#include  "roper_server.h"
-#include  "diaginc_server.h"
-#include  "edt_server.h"
-#include  "cooke_server.h"
-#include  "point_grey_server.h"
+#ifdef	VST_USE_ROPER
+#include "roper_server.h"
+#endif
+#ifdef	VST_USE_COOKE
+#include "cooke_server.h"
+#endif
+#ifdef	VST_USE_DIRECTX
+#include "directx_camera_server.h"
+#include "directx_videofile_server.h"
+#endif
+#ifdef  VST_USE_DIAGINC
+#include "diaginc_server.h"
+#endif
+#ifdef  VST_USE_EDT
+#include "edt_server.h"
+#endif
+#ifdef  VST_USE_POINTGREY
+#include "point_grey_server.h"
+#endif
+#ifdef  VST_USE_SEM
+#include "SEM_camera_server.h"
+#endif
+#ifdef  VST_USE_VRPN_IMAGER
+#include "VRPN_Imager_camera_server.h"
 #endif
 
 const int MAJOR_VERSION = 3;
@@ -89,7 +107,10 @@ int g_strPORT = vrpn_DEFAULT_LISTEN_PORT_NO;
 /// Open the camera we want to use (the type is based on the name passed in)
 bool  init_camera_code(const char *type, int which = 1)
 {
-  if (!strcmp(type, "directx")) {
+  if (false) {
+	  // This is to make all of the combinations of #ifdef below work
+#ifdef VST_USE_DIRECTX
+  } else if (!strcmp(type, "directx")) {
     printf("Opening DirectX Camera %d\n", which);
     g_camera = new directx_camera_server(which, g_width, g_height);
     g_numchannels = 3; // Send RGB
@@ -109,7 +130,8 @@ bool  init_camera_code(const char *type, int which = 1)
       fprintf(stderr,"init_camera_code(): Can't open DirectX camera server\n");
       return false;
     }
-#ifndef DIRECTX_VIDEO_ONLY
+#endif
+#ifdef VST_USE_ROPER
   } else if (!strcmp(type, "roper")) {
     printf("Opening Roper Camera with binning at %d\n", g_bincount);
     g_camera = new roper_server(g_bincount);
@@ -119,6 +141,8 @@ bool  init_camera_code(const char *type, int which = 1)
       fprintf(stderr,"init_camera_code(): Can't open roper camera server\n");
       return false;
     }
+#endif
+#ifdef VST_USE_DIAGINC
   } else if (!strcmp(type, "diaginc")) {
     printf("Opening Diagnostics Inc Camera with binning at %d\n", g_bincount);
     g_camera = new diaginc_server(g_bincount);
@@ -128,6 +152,8 @@ bool  init_camera_code(const char *type, int which = 1)
       fprintf(stderr,"init_camera_code(): Can't open diaginc camera server\n");
       return false;
     }
+#endif
+#ifdef VST_USE_EDT
   } else if (!strcmp(type, "edt")) {
     printf("Opening ETD Camera (using %d buffers)\n", g_camera_buffers);
     g_camera = new edt_server(g_swap_edt, g_camera_buffers);
@@ -137,6 +163,8 @@ bool  init_camera_code(const char *type, int which = 1)
       fprintf(stderr,"init_camera_code(): Can't open EDT camera server\n");
       return false;
     }
+#endif
+#ifdef VST_USE_COOKE
   } else if (!strcmp(type, "cooke")) {
     printf("Opening Cooke Camera\n");
     g_camera = new cooke_server(g_bincount);
@@ -146,6 +174,8 @@ bool  init_camera_code(const char *type, int which = 1)
       fprintf(stderr,"init_camera_code(): Can't open Cooke camera server\n");
       return false;
     }
+#endif
+#ifdef VST_USE_POINTGREY
   } else if (!strcmp(type, "pgr")) {
 	  printf("Opening Point Grey Camera\n");
 	  g_camera = new point_grey_server(g_framerate, g_exposure, g_bincount, g_trigger, g_gain);

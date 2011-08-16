@@ -6,9 +6,6 @@
 #include <PCO_err.h>
 #include <SC2_defs.h>
 
-#pragma comment(lib,"spotCamVC.lib")
-#pragma comment(lib,"SC2_Cam.lib")
-
 // for text error messages
 #define PCO_ERRT_H_CREATE_OBJECT
 #include <PCO_errt.h>

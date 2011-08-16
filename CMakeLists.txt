@@ -1,9 +1,15 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 PROJECT(CISMM_VIDEO)
 
 #-----------------------------------------------------------------------------
-# XXX Things to make better.
-# 
+# Things you need before you can compile this on Windows:
+# 	Windows SDK (download from Microsoft, includes DirectShow)
+#    DirectX SDK (Download from Microsoft)
+# 	NSRG Buildtime 3.2 (download from CISMM server, includes Tcl, Glut, etc)
+#	Point Grey libraries: The strange thing is that you have to copy the
+#		32-bit version onto a 64-bit machine because it installs the 64-bit
+#		libraries, which you can't link when using a 32-bit link.  Copy them
+#		into C:\Program Files (x86)\Point Grey Research\FlyCapture2
 
 # Needed for Cmake 2.8.1 to avoid complaints
 if(COMMAND cmake_policy)
@@ -15,7 +21,8 @@ endif(COMMAND cmake_policy)
 if(WIN32) # MS-Windows, both 32 and 64 bits
   set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /FIXED:NO")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} wsock32.lib /FIXED:NO")
+  ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
 elseif(APPLE) # Apple
 #  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall")
 #  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
@@ -26,63 +33,181 @@ elseif(UNIX) # other than Apple UNIXes
 #  set(CMAKE_VERBOSE_MAKEFILE ON)
 endif()
 
-# Configuration options controlling what gets included in the build.
-if (WIN32)
-	OPTION(BUILD_DIRECTSHOW_VIDEO_SERVER "Enable to include Microsoft DirectShow code in build" ON)
-endif (WIN32)
-
 #-----------------------------------------------------------------------------
 # Local CMake Modules
 list(APPEND CMAKE_MODULE_PATH ${CISMM_VIDEO_SOURCE_DIR} ${CISMM_VIDEO_SOURCE_DIR}/cmake)
-
-#-----------------------------------------------------------------------------
-# Put this in /usr/local unless overridden.  The default on Windows is
-# in Program Files, but that breaks on Windows 7 because you have to be
-# admin to write there.
-
-set(CMAKE_INSTALL_PREFIX /usr/local/)
-
 
 #-----------------------------------------------------------------------------
 # Libraries we need to do our thing.
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${VIDEO_SOURCE_DIR})
 FIND_PACKAGE(quatlib REQUIRED)	# Sets QUATLIB_INCLUDE_DIR and QUATLIB_LIBRARIES
 FIND_PACKAGE(VRPN REQUIRED)
-FIND_PACKAGE(ImageMagick REQUIRED COMPONENTS MagickCore )	# Need to have ImageMagick
-FIND_PACKAGE(OpenGL REQUIRED)
 if (WIN32)
-	# XXX Bad evil hard-coded path for UNC.
-	link_directories( C:/NSRG/external/pc_win32/ImageMagick/lib )
-else(WIN32)
-	set (PTHREAD_LIBRARY pthread)
+	FIND_PACKAGE(OpenGL REQUIRED)
 endif (WIN32)
-set(ImageMagick_Needed_Libs CORE_RL_bzlib_ CORE_RL_coders_ CORE_RL_filters_
+
+# Try to find NSRG Buildtime (NSRGBUILD) to set all we need for ImageMagic,
+# TCL, and Glut.  If not, then find the individual packages.
+FIND_PACKAGE(NSRGBUILD)
+if (NSRGBUILD_FOUND)
+	set(ImageMagick_FOUND true CACHE BOOL "NSRG found, so ImageMagick found")
+
+	INCLUDE_DIRECTORIES(
+		${GLUI_INCLUDE_PATH}
+	)
+else (NSRGBUILD_FOUND)
+	FIND_PACKAGE(ImageMagick REQUIRED COMPONENTS MagickCore)	# Need to have ImageMagick
+  if (VIDEO_BUILD_APPLICATIONS)
+	FIND_PACKAGE(TCL REQUIRED)
+	FIND_PACKAGE(GLUT REQUIRED)
+  else (VIDEO_BUILD_APPLICATIONS)
+	FIND_PACKAGE(TCL)
+	FIND_PACKAGE(GLUT)
+  endif (VIDEO_BUILD_APPLICATIONS)
+endif (NSRGBUILD_FOUND)
+
+link_directories( ${ImageMagick_MagickCore_LIBRARY_DIR} )
+
+if (WIN32)
+	# To avoid warnings in case we're using Visual Studio
+	ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
+	ADD_DEFINITIONS( -D_CRT_NONSTDC_NO_DEPRECATE )
+	set(ImageMagick_Needed_Libs CORE_RL_bzlib_ CORE_RL_coders_ CORE_RL_filters_
 		CORE_RL_jbig_ CORE_RL_jp2_ CORE_RL_jpeg_ CORE_RL_lcms_ CORE_RL_libxml_
 		CORE_RL_Magick++_ CORE_RL_magick_ CORE_RL_png_ CORE_RL_tiff_
 		CORE_RL_ttf_ CORE_RL_wand_ CORE_RL_wmf_ CORE_RL_xlib_ CORE_RL_zlib_
 		X11 Xext
-)
-FIND_PACKAGE(TCL REQUIRED)
-FIND_PACKAGE(GLUT REQUIRED)
-SET(X11_INCLUDE_DIR ${TCL_INCLUDE_PATH}/../../X11/include)	# Normally in Tcl, but NSRG buildtime has it elsewhere...
-INCLUDE_DIRECTORIES(
-	${TCL_INCLUDE_PATH}
-	${TK_INCLUDE_PATH}
-	${X11_INCLUDE_DIR}
-	${GLUT_INCLUDE_DIR}
-)
+	)
+else(WIN32)
+	set (PTHREAD_LIBRARY pthread)
+	set (ImageMagick_Needed_Libs MagickCore MagickWand)
+endif (WIN32)
+
+
+if (ImageMagick_FOUND)
+	OPTION(VIDEO_USE_IMAGEMAGICK "Enable to include ImageMagick code in build" ON)
+else (ImageMagick_FOUND)
+	OPTION(VIDEO_USE_IMAGEMAGICK "Enable to include ImageMagick code in build" OFF)
+endif (ImageMagick_FOUND)
+
+# Override the defaults below.
+if (WIN32)
+  OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" ON)
+endif (WIN32)
+
+# Configuration options controlling what gets included in the build.
+# Look up each of the camera-driver libraries.  If they are found, then turn them
+# on by default.
+OPTION(VIDEO_BUILD_APPLICATIONS "Enable to build applications" ON)
+
+find_package(Cooke)
+if (Cooke_FOUND)
+	OPTION(VIDEO_USE_COOKE "Enable to include Cooke camera code in build" ON)
+else (Cooke_FOUND)
+	OPTION(VIDEO_USE_COOKE "Enable to include Cooke camera code in build" OFF)
+endif (Cooke_FOUND)
+
+find_package(DiagInc)
+if (DiagInc_FOUND)
+	OPTION(VIDEO_USE_DIAGINC "Enable to include DiagInc camera code in build" ON)
+else (DiagInc_FOUND)
+	OPTION(VIDEO_USE_DIAGINC "Enable to include DiagInc camera code in build" OFF)
+endif (DiagInc_FOUND)
+
+find_package(EDT)
+if (EDT_FOUND)
+	OPTION(VIDEO_USE_EDT "Enable to include EDT camera code in build" ON)
+else (EDT_FOUND)
+	OPTION(VIDEO_USE_EDT "Enable to include EDT camera code in build" OFF)
+endif (EDT_FOUND)
+
+find_package(Roper)
+if (ROPER_FOUND)
+	OPTION(VIDEO_USE_ROPER "Enable to include Roper camera code in build" ON)
+else (ROPER_FOUND)
+	OPTION(VIDEO_USE_ROPER "Enable to include Roper camera code in build" OFF)
+endif (ROPER_FOUND)
+
+find_package(PointGrey)
+if (POINTGREY_FOUND)
+	OPTION(VIDEO_USE_POINTGREY "Enable to include Point Grey camera code in build" ON)
+else (POINTGREY_FOUND)
+	OPTION(VIDEO_USE_POINTGREY "Enable to include Point Grey camera code in build" OFF)
+endif (POINTGREY_FOUND)
+
+OPTION(VIDEO_USE_SEM "Enable to include SEM (from nanoManipulator) camera code in build" OFF)
+OPTION(VIDEO_USE_VRPN_IMAGER "Enable to include VRPN_Imager camera code in build" ON)
+OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" OFF)
 
 #-----------------------------------------------------------------------------
-# Spot tracker library
-set(STL_SOURCES image_wrapper.cpp spot_math.cpp spot_tracker.cpp)
-set(STL_PUBLIC_HEADERS image_wrapper.h spot_math.h spot_tracker.h)
-ADD_LIBRARY (spot_tracker_library
-	${STL_SOURCES} ${STL_PUBLIC_HEADERS}
+# Set compile-time definitions for all projects based on what has been
+# selected.
+
+if (VIDEO_USE_IMAGEMAGICK)
+	ADD_DEFINITIONS(-DVST_USE_IMAGEMAGICK)
+endif (VIDEO_USE_IMAGEMAGICK)
+if (VIDEO_USE_ROPER)
+	ADD_DEFINITIONS(-DVST_USE_ROPER)
+endif (VIDEO_USE_ROPER)
+if (VIDEO_USE_COOKE)
+	ADD_DEFINITIONS(-DVST_USE_COOKE)
+endif (VIDEO_USE_COOKE)
+if (VIDEO_USE_EDT)
+	ADD_DEFINITIONS(-DVST_USE_EDT)
+endif (VIDEO_USE_EDT)
+if (VIDEO_USE_DIAGINC)
+	ADD_DEFINITIONS(-DVST_USE_DIAGINC)
+endif (VIDEO_USE_DIAGINC)
+if (VIDEO_USE_DIRECTSHOW)
+	ADD_DEFINITIONS(-DVST_USE_DIRECTX)
+endif (VIDEO_USE_DIRECTSHOW)
+if (VIDEO_USE_POINTGREY)
+	ADD_DEFINITIONS(-DVST_USE_POINTGREY)
+endif (VIDEO_USE_POINTGREY)
+
+###
+# On Windows 7, it does not work to install in the default location,
+# which is the Program Files directory, because you have to not only have
+# file permission to write there but also "run as administrator."  This
+# means that "make install" from a Visual Studio project fails.  To get
+# around that, we need to set CMAKE_INSTALL_PREFIX to something other
+# than the default.  However, it is a cache variable that has already been
+# set.  If we make a local variable, it uses this rather than the cache
+# variable and never tells the poor user what happened (the GUI location
+# looks standard but the files end up somewhere else).  If we make it a
+# non-forced cache variable, it already has a value so does not change.
+# If we make it a forced cache variable, it gets overwritten everytime
+# and the user cannot change it on the GUI.  So we have a workaround here.
+# We make a cache variable that records whether we have ever forced the
+# install prefix.  If not, we force it.  If so, we don't force it again.
+# This has the effect of setting it the first time cmake is run, showing
+# the change in the GUI, and also letting the user change the value in
+# the GUI if they don't like what we did.  If I knew how to do this only
+# happen on Windows 7, I'd make the if(WIN32) more specific.
+if (WIN32)
+        if (NOT ONCE_SET_CMAKE_INSTALL_PREFIX)
+                set(ONCE_SET_CMAKE_INSTALL_PREFIX true CACHE BOOL
+                        "Have we set the install prefix yet?" FORCE)
+                set(CMAKE_INSTALL_PREFIX /usr/local CACHE PATH
+                    "Install path prefix, prepended onto install directories"
+                    FORCE)
+        endif (NOT ONCE_SET_CMAKE_INSTALL_PREFIX)
+endif (WIN32)
+
+INCLUDE_DIRECTORIES(
+	${Cooke_INCLUDE_PATH}
+	${DiagInc_INCLUDE_PATH}
+	${EDT_INCLUDE_PATH}
+	${ROPER_INCLUDE_PATH}
+	${POINTGREY_INCLUDE_PATH}
+	${TCL_INCLUDE_PATH}
+	${TK_INCLUDE_PATH}
+	${TCL_X11_INCLUDE_PATH}
+	${GLUT_INCLUDE_DIR}
+	stocc_random_number_generator/
+	PanopticNerve/
+	${CISMM_VIDEO_SOURCE_DIR}
 )
-set_property(TARGET spot_tracker_library PROPERTY PUBLIC_HEADER ${STL_PUBLIC_HEADERS})
-install(TARGETS spot_tracker_library
-	ARCHIVE DESTINATION lib
-	PUBLIC_HEADER DESTINATION include)
 
 #-----------------------------------------------------------------------------
 # Camera-driver libraries
@@ -96,32 +221,87 @@ install(TARGETS base_camera_server_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
 
-set(FS_SOURCES file_stack_server.cpp file_list.cpp)
-set(FS_PUBLIC_HEADERS file_stack_server.h)
-ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
-ADD_LIBRARY (file_stack_library
-	${FS_SOURCES} ${FS_PUBLIC_HEADERS}
-)
-set_property(TARGET file_stack_library PROPERTY PUBLIC_HEADER ${FS_PUBLIC_HEADERS})
-install(TARGETS file_stack_library
-	ARCHIVE DESTINATION lib
-	PUBLIC_HEADER DESTINATION include)
+if (VIDEO_USE_IMAGEMAGICK)
+	set(FS_SOURCES file_stack_server.cpp file_list.cpp)
+	set(FS_PUBLIC_HEADERS file_stack_server.h)
+	ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
+	ADD_LIBRARY (file_stack_library
+		${FS_SOURCES} ${FS_PUBLIC_HEADERS}
+	)
+	set_property(TARGET file_stack_library PROPERTY PUBLIC_HEADER ${FS_PUBLIC_HEADERS})
+	install(TARGETS file_stack_library
+		ARCHIVE DESTINATION lib
+		PUBLIC_HEADER DESTINATION include)
+endif (VIDEO_USE_IMAGEMAGICK)
 
-set(FS_SOURCES Tcl_Linkvar.C)
-set(FS_PUBLIC_HEADERS Tcl_Linkvar.h)
-ADD_LIBRARY (Tcl_Linkvar
-	${FS_SOURCES} ${FS_PUBLIC_HEADERS}
-)
-set_property(TARGET Tcl_Linkvar PROPERTY PUBLIC_HEADER ${FS_PUBLIC_HEADERS})
-install(TARGETS Tcl_Linkvar
-	ARCHIVE DESTINATION lib
-	PUBLIC_HEADER DESTINATION include)
+if (VIDEO_USE_COOKE)
+	set(COOKE_SOURCES cooke_server.cpp)
+	set(COOKE_PUBLIC_HEADERS cooke_server.h)
+	ADD_LIBRARY (cooke_library
+		${COOKE_SOURCES} ${COOKE_PUBLIC_HEADERS}
+	)
+	set_property(TARGET cooke_library PROPERTY PUBLIC_HEADER ${COOKE_PUBLIC_HEADERS})
+	install(TARGETS cooke_library
+		ARCHIVE DESTINATION lib
+		PUBLIC_HEADER DESTINATION include)
+endif (VIDEO_USE_COOKE)
+
+if (VIDEO_USE_DIAGINC)
+	set(DIAGINC_SOURCES diaginc_server.cpp)
+	set(DIAGINC_PUBLIC_HEADERS diaginc_server.h)
+	ADD_LIBRARY (diaginc_library
+		${DIAGINC_SOURCES} ${DIAGINC_PUBLIC_HEADERS}
+	)
+	set_property(TARGET diaginc_library PROPERTY PUBLIC_HEADER ${DIAGINC_PUBLIC_HEADERS})
+	install(TARGETS diaginc_library
+		ARCHIVE DESTINATION lib
+		PUBLIC_HEADER DESTINATION include)
+endif (VIDEO_USE_DIAGINC)
+
+if (VIDEO_USE_EDT)
+	set(EDT_SOURCES EDT_server.cpp)
+	set(EDT_PUBLIC_HEADERS EDT_server.h)
+	ADD_LIBRARY (EDT_library
+		${EDT_SOURCES} ${EDT_PUBLIC_HEADERS}
+	)
+	set_property(TARGET EDT_library PROPERTY PUBLIC_HEADER ${EDT_PUBLIC_HEADERS})
+	install(TARGETS EDT_library
+		ARCHIVE DESTINATION lib
+		PUBLIC_HEADER DESTINATION include)
+endif (VIDEO_USE_EDT)
+
+if (VIDEO_USE_ROPER)
+	set(ROPER_SOURCES roper_server.cpp)
+	set(ROPER_PUBLIC_HEADERS roper_server.h)
+	ADD_LIBRARY (Roper_library
+		${ROPER_SOURCES} ${ROPER_PUBLIC_HEADERS}
+	)
+	set_property(TARGET Roper_library PROPERTY PUBLIC_HEADER ${ROPER_PUBLIC_HEADERS})
+	install(TARGETS Roper_library
+		ARCHIVE DESTINATION lib
+		PUBLIC_HEADER DESTINATION include)
+endif (VIDEO_USE_ROPER)
+
+if (VIDEO_USE_POINTGREY)
+	set(POINTGREY_SOURCES point_grey_server.cpp PGRCam.cpp)
+	set(POINTGREY_PUBLIC_HEADERS point_grey_server.h PGRCam.h)
+	ADD_LIBRARY (point_grey_library
+		${POINTGREY_SOURCES} ${POINTGREY_PUBLIC_HEADERS}
+	)
+	set_property(TARGET point_grey_library PROPERTY PUBLIC_HEADER ${POINTGREY_PUBLIC_HEADERS})
+	install(TARGETS point_grey_library
+		ARCHIVE DESTINATION lib
+		PUBLIC_HEADER DESTINATION include)
+endif (VIDEO_USE_POINTGREY)
+
+# XXX NIKON
 
 #-----------------------------------------------------------------------------
 # DirectShow base-class library (if configured)
-if (BUILD_DIRECTSHOW_VIDEO_SERVER)
+if (VIDEO_USE_DIRECTSHOW)
 	FIND_PACKAGE(DirectShow REQUIRED)	# Need to have DirectShow SDK
-	ADD_DEFINITIONS( -DCOINIT_DISABLE_OLE1DDE=0x4 )
+	# Add this if you can't compile without out.
+	# ADD_DEFINITIONS( -DCOINIT_DISABLE_OLE1DDE=0x4 )
 	ADD_LIBRARY (DirectShow_baseclasses
 		${DirectShow_BASECLASS_DIR}/amextra.cpp
 		${DirectShow_BASECLASS_DIR}/amfilter.cpp
@@ -165,20 +345,6 @@ if (BUILD_DIRECTSHOW_VIDEO_SERVER)
 		PUBLIC_HEADER DESTINATION include)
 	set (DirectShow_LIBS DirectShow_baseclasses directx_library)
 
-	ADD_DEFINITIONS( -DDIRECTX_VIDEO_ONLY )
-	SET(TARGET_NAME DIRECTX_VIDEO_ONLY)
-	ADD_EXECUTABLE( video_imager_server_directx_only video_imager_server.cpp )
-	TARGET_LINK_LIBRARIES(video_imager_server_directx_only
-		directx_library
-		base_camera_server_library
-		${VRPN_LIBRARIES} ${QUATLIB_LIBRARIES}
-		${DirectShow_LIBS}
-		${PTHREAD_LIBRARY}
-		${OPENGL_gl_LIBRARY}
-		${ImageMagick_Needed_Libs}
-	)
-	SET_TARGET_PROPERTIES(video_imager_server_directx_only PROPERTIES SOLUTION_FOLDER servers)
-
 	SET(TARGET_NAME test_directx_library)
 	ADD_EXECUTABLE(test_directx_library test_directx_library.cpp)
 	TARGET_LINK_LIBRARIES(test_directx_library
@@ -191,31 +357,106 @@ if (BUILD_DIRECTSHOW_VIDEO_SERVER)
 	)
 	SET_TARGET_PROPERTIES(test_directx_library PROPERTIES SOLUTION_FOLDER tests)
 
+  if (VIDEO_BUILD_APPLICATIONS)
 	SET(TARGET_NAME stereo_spin)
 	ADD_EXECUTABLE(stereo_spin stereo_spin.cpp)
 	TARGET_LINK_LIBRARIES(stereo_spin
 		directx_library
 		base_camera_server_library
-		file_stack_library
 		Tcl_Linkvar
 		${VRPN_LIBRARIES} ${QUATLIB_LIBRARIES}
 		${DirectShow_LIBS}
 		${PTHREAD_LIBRARY}
 		${OPENGL_gl_LIBRARY}
-		${ImageMagick_Needed_Libs}
 		${TCL_LIBRARY}
 		${TK_LIBRARY}
 		${GLUT_LIBRARIES}
 	)
+	if (VIDEO_USE_IMAGEMAGICK)
+		TARGET_LINK_LIBRARIES(stereo_spin
+			file_stack_library
+			${ImageMagick_Needed_Libs}
+		)
+	endif (VIDEO_USE_IMAGEMAGICK)
+	if (VIDEO_USE_COOKE)
+		TARGET_LINK_LIBRARIES(stereo_spin
+			cooke_library
+			${Cooke_LIBRARIES}
+		)
+	endif (VIDEO_USE_COOKE)
+	if (VIDEO_USE_DIAGINC)
+		TARGET_LINK_LIBRARIES(stereo_spin
+			diaginc_library
+			${DiagInc_LIBRARIES}
+		)
+	endif (VIDEO_USE_DIAGINC)
+	if (VIDEO_USE_EDT)
+		TARGET_LINK_LIBRARIES(stereo_spin
+			EDT_library
+			${EDT_LIBRARIES}
+		)
+	endif (VIDEO_USE_EDT)
+	if (VIDEO_USE_ROPER)
+		TARGET_LINK_LIBRARIES(stereo_spin
+			Roper_library
+			${ROPER_LIBRARIES}
+		)
+	endif (VIDEO_USE_ROPER)
+	if (VIDEO_USE_POINTGREY)
+		TARGET_LINK_LIBRARIES(stereo_spin
+			point_grey_library
+			${POINTGREY_LIBRARIES}
+		)
+	endif (VIDEO_USE_POINTGREY)
 	SET_TARGET_PROPERTIES(stereo_spin PROPERTIES SOLUTION_FOLDER servers)
 
 	INCLUDE_DIRECTORIES(
-		${DirectShow_BASECLASS_DIR} ${PLATFORM_SDK_INCLUDE_DIR}
-			${PLATFORM_SDK_ATL_INCLUDE_DIR}
-			${PLATFORM_SDK_ATL_INCLUDE_DIR} ${DIRECTX_SDK_INCLUDE_DIR}
+		${DirectShow_INCLUDE_DIRS}
 	)
+  endif (VIDEO_BUILD_APPLICATIONS)
 
-endif (BUILD_DIRECTSHOW_VIDEO_SERVER)
+endif (VIDEO_USE_DIRECTSHOW)
+
+#-----------------------------------------------------------------------------
+# Spot tracker library
+set(STL_SOURCES image_wrapper.cpp spot_math.cpp spot_tracker.cpp)
+set(STL_PUBLIC_HEADERS image_wrapper.h spot_math.h spot_tracker.h)
+ADD_LIBRARY (spot_tracker_library
+	${STL_SOURCES} ${STL_PUBLIC_HEADERS}
+)
+set_property(TARGET spot_tracker_library PROPERTY PUBLIC_HEADER ${STL_PUBLIC_HEADERS})
+install(TARGETS spot_tracker_library
+	ARCHIVE DESTINATION lib
+	PUBLIC_HEADER DESTINATION include)
+
+#-----------------------------------------------------------------------------
+# STOCC random-number library
+set(STC_SOURCES stocc_random_number_generator/mersenne.cpp
+			stocc_random_number_generator/stoc1.cpp
+			stocc_random_number_generator/userintf.cpp)
+set(STC_PUBLIC_HEADERS stocc_random_number_generator/stocc.h)
+ADD_LIBRARY (stocc_random_number_generator_library
+	${STC_SOURCES} ${STC_PUBLIC_HEADERS}
+)
+set_property(TARGET stocc_random_number_generator_library
+			PROPERTY PUBLIC_HEADER ${STC_PUBLIC_HEADERS})
+install(TARGETS stocc_random_number_generator_library
+	ARCHIVE DESTINATION lib
+	PUBLIC_HEADER DESTINATION include)
+
+#-----------------------------------------------------------------------------
+# Tcl-Linkvar library (not a library in the initial project file)
+if (VIDEO_BUILD_APPLICATIONS)
+set(LV_SOURCES Tcl_Linkvar.C)
+set(LV_PUBLIC_HEADERS Tcl_Linkvar.h)
+ADD_LIBRARY (Tcl_Linkvar
+	${LV_SOURCES} ${LV_PUBLIC_HEADERS}
+)
+set_property(TARGET Tcl_Linkvar PROPERTY PUBLIC_HEADER ${LV_PUBLIC_HEADERS})
+install(TARGETS Tcl_Linkvar
+	ARCHIVE DESTINATION lib
+	PUBLIC_HEADER DESTINATION include)
+endif (VIDEO_BUILD_APPLICATIONS)
 
 #-----------------------------------------------------------------------------
 # Include directories needed
@@ -226,26 +467,308 @@ INCLUDE_DIRECTORIES(
 )
 
 #-----------------------------------------------------------------------------
-# Applications that need more than one file to run.
+# Applications that need more than one file or nonstandard things.
+if (VIDEO_BUILD_APPLICATIONS)
+
+FIND_PACKAGE(OpenCV)
+if (OpenCV_FOUND)
+	INCLUDE_DIRECTORIES( ${OpenCV_INCLUDE_DIRS} )
+
+	SET(TARGET_NAME video_spot_tracker)
+	ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp thread.cpp)
+	if (VIDEO_USE_IMAGEMAGICK)
+		TARGET_LINK_LIBRARIES(video_spot_tracker
+			file_stack_library
+			${ImageMagick_Needed_Libs}
+		)
+	endif (VIDEO_USE_IMAGEMAGICK)
+	if (VIDEO_USE_DIRECTSHOW)
+		TARGET_LINK_LIBRARIES(video_spot_tracker
+			directx_library
+    		)
+	endif (VIDEO_USE_DIRECTSHOW)  
+	if (VIDEO_USE_COOKE)
+		TARGET_LINK_LIBRARIES(video_spot_tracker
+			cooke_library
+			${Cooke_LIBRARIES}
+		)
+	endif (VIDEO_USE_COOKE)
+	if (VIDEO_USE_DIAGINC)
+		TARGET_LINK_LIBRARIES(video_spot_tracker
+			diaginc_library
+			${DiagInc_LIBRARIES}
+		)
+	endif (VIDEO_USE_DIAGINC)
+	if (VIDEO_USE_EDT)
+		TARGET_LINK_LIBRARIES(video_spot_tracker
+			EDT_library
+			${EDT_LIBRARIES}
+		)
+	endif (VIDEO_USE_EDT)
+	if (VIDEO_USE_ROPER)
+		TARGET_LINK_LIBRARIES(video_spot_tracker
+			Roper_library
+			${ROPER_LIBRARIES}
+		)
+	endif (VIDEO_USE_ROPER)
+	if (VIDEO_USE_POINTGREY)
+		TARGET_LINK_LIBRARIES(video_spot_tracker
+			point_grey_library
+			${POINTGREY_LIBRARIES}
+		)
+	endif (VIDEO_USE_POINTGREY)
+	TARGET_LINK_LIBRARIES(video_spot_tracker
+		spot_tracker_library
+		base_camera_server_library
+		Tcl_Linkvar
+		${OpenCV_LIBRARIES}
+		${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
+		${OPENGL_gl_LIBRARY}
+		${TCL_LIBRARY}
+		${TK_LIBRARY}
+		${GLUT_LIBRARIES}
+	)
+	SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
+endif (OpenCV_FOUND)
+
+SET(TARGET_NAME swap_ppm_lines)
+ADD_EXECUTABLE(swap_ppm_lines swap_ppm_lines.cpp ppm.C)
+TARGET_LINK_LIBRARIES(swap_ppm_lines
+)
+SET_TARGET_PROPERTIES(swap_ppm_lines PROPERTIES SOLUTION_FOLDER apps)
+
+if (WIN32)
+SET(TARGET_NAME PanopticNerve)
+ADD_EXECUTABLE(PanopticNerve
+	PanopticNerve/PanopticNerve.cpp
+	PanopticNerve/AnalysisSpeedTest.cpp
+	PanopticNerve/cameraImage.cpp
+	PanopticNerve/ImageAnalyzer.cpp
+	PanopticNerve/NerveTest.cpp
+	PanopticNerve/USBMAC6000.cpp
+	PanopticNerve/SyncControl.cpp
+	PanopticNerve/sciString2send.cpp
+)
+  if (VIDEO_USE_IMAGEMAGICK)
+	TARGET_LINK_LIBRARIES(PanopticNerve
+		file_stack_library
+		${ImageMagick_Needed_Libs}
+    )
+  endif (VIDEO_USE_IMAGEMAGICK)
+  if (VIDEO_USE_DIRECTSHOW)
+    TARGET_LINK_LIBRARIES(PanopticNerve
+	directx_library
+    )
+  endif (VIDEO_USE_DIRECTSHOW)  
+  if (VIDEO_USE_COOKE)
+		TARGET_LINK_LIBRARIES(PanopticNerve
+			cooke_library
+			${Cooke_LIBRARIES}
+		)
+  endif (VIDEO_USE_COOKE)
+  if (VIDEO_USE_DIAGINC)
+		TARGET_LINK_LIBRARIES(PanopticNerve
+			diaginc_library
+			${DiagInc_LIBRARIES}
+		)
+  endif (VIDEO_USE_DIAGINC)
+  if (VIDEO_USE_EDT)
+		TARGET_LINK_LIBRARIES(PanopticNerve
+			EDT_library
+			${EDT_LIBRARIES}
+		)
+  endif (VIDEO_USE_EDT)
+  if (VIDEO_USE_ROPER)
+		TARGET_LINK_LIBRARIES(PanopticNerve
+			Roper_library
+			${ROPER_LIBRARIES}
+		)
+  endif (VIDEO_USE_ROPER)
+  if (VIDEO_USE_POINTGREY)
+		TARGET_LINK_LIBRARIES(PanopticNerve
+			point_grey_library
+			${POINTGREY_LIBRARIES}
+		)
+  endif (VIDEO_USE_POINTGREY)
+TARGET_LINK_LIBRARIES(PanopticNerve
+	base_camera_server_library
+	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
+	${GLUT_LIBRARIES}
+	${OPENGL_glu_LIBRARY}
+	${OPENGL_gl_LIBRARY}
+)
+SET_TARGET_PROPERTIES(PanopticNerve PROPERTIES SOLUTION_FOLDER apps)
+endif (WIN32)
+
+if (VIDEO_USE_EDT)
+	SET(TARGET_NAME GLUItake)
+	ADD_EXECUTABLE(GLUItake
+		glui_take.cpp
+	)
+	TARGET_LINK_LIBRARIES(GLUItake
+		EDT_library
+		${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
+		${EDT_LIBRARIES}
+		${GLUI_LIBRARIES}
+		${GLUT_LIBRARIES}
+		${OPENGL_gl_LIBRARY}
+	)
+	SET_TARGET_PROPERTIES(GLUItake PROPERTIES SOLUTION_FOLDER apps)
+endif (VIDEO_USE_EDT)
 
 #-----------------------------------------------------------------------------
 # A little utility helper macro to setup default linkages and filenames
 MACRO(CAPC_APPLICATION APPLICATION_NAME SOLUTION_NAME)
   SET(TARGET_NAME ${APPLICATION_NAME})
   ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.C)
-  TARGET_LINK_LIBRARIES(${APPLICATION_NAME} ${VRPN_LIBRARIES} ${QUATLIB_LIBRARIES} ${PTHREAD_LIBRARY})
-  SET_TARGET_PROPERTIES(${APPLICATION_NAME} PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
+  TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+	stocc_random_number_generator_library
+	spot_tracker_library
+	base_camera_server_library
+	Tcl_Linkvar
+  )
+  if (VIDEO_USE_IMAGEMAGICK)
+	TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+		file_stack_library
+		${ImageMagick_Needed_Libs}
+	)
+  endif (VIDEO_USE_IMAGEMAGICK)
+  if (VIDEO_USE_DIRECTSHOW)
+    TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+	directx_library
+    )
+  endif (VIDEO_USE_DIRECTSHOW)  
+  if (VIDEO_USE_COOKE)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			cooke_library
+			${Cooke_LIBRARIES}
+		)
+  endif (VIDEO_USE_COOKE)
+  if (VIDEO_USE_DIAGINC)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			diaginc_library
+			${DiagInc_LIBRARIES}
+		)
+  endif (VIDEO_USE_DIAGINC)
+  if (VIDEO_USE_EDT)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			EDT_library
+			${EDT_LIBRARIES}
+		)
+  endif (VIDEO_USE_EDT)
+  if (VIDEO_USE_ROPER)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			Roper_library
+			${ROPER_LIBRARIES}
+		)
+  endif (VIDEO_USE_ROPER)
+  if (VIDEO_USE_POINTGREY)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			point_grey_library
+			${POINTGREY_LIBRARIES}
+		)
+  endif (VIDEO_USE_POINTGREY)
+  TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+	${VRPN_SERVER_LIBRARIES}
+	${QUATLIB_LIBRARIES}
+	${TCL_LIBRARY}
+	${TK_LIBRARY}
+	${GLUT_LIBRARIES}
+	${OPENGL_gl_LIBRARY}
+	${PTHREAD_LIBRARY}
+  )
+  SET_TARGET_PROPERTIES(${APPLICATION_NAME}
+	PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
 ENDMACRO(CAPC_APPLICATION)
 
 MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
   SET(TARGET_NAME ${APPLICATION_NAME})
   ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp)
-  TARGET_LINK_LIBRARIES(${APPLICATION_NAME} ${VRPN_LIBRARIES} ${QUATLIB_LIBRARIES} ${PTHREAD_LIBRARY})
+  TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+	stocc_random_number_generator_library
+	spot_tracker_library
+	base_camera_server_library
+	Tcl_Linkvar
+  )
+  if (VIDEO_USE_IMAGEMAGICK)
+	TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+		file_stack_library
+		${ImageMagick_Needed_Libs}
+	)
+  endif (VIDEO_USE_IMAGEMAGICK)
+  if (VIDEO_USE_DIRECTSHOW)
+    TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+	directx_library
+    )
+  endif (VIDEO_USE_DIRECTSHOW)  
+  if (VIDEO_USE_COOKE)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			cooke_library
+			${Cooke_LIBRARIES}
+		)
+  endif (VIDEO_USE_COOKE)
+  if (VIDEO_USE_DIAGINC)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			diaginc_library
+			${DiagInc_LIBRARIES}
+		)
+  endif (VIDEO_USE_DIAGINC)
+  if (VIDEO_USE_EDT)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			EDT_library
+			${EDT_LIBRARIES}
+		)
+  endif (VIDEO_USE_EDT)
+  if (VIDEO_USE_ROPER)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			Roper_library
+			${ROPER_LIBRARIES}
+		)
+  endif (VIDEO_USE_ROPER)
+  if (VIDEO_USE_POINTGREY)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			point_grey_library
+			${POINTGREY_LIBRARIES}
+		)
+  endif (VIDEO_USE_POINTGREY)
+  TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+	${VRPN_SERVER_LIBRARIES}
+	${QUATLIB_LIBRARIES}
+	${TCL_LIBRARY}
+	${TK_LIBRARY}
+	${GLUT_LIBRARIES}
+	${OPENGL_gl_LIBRARY}
+	${PTHREAD_LIBRARY}
+  )
   SET_TARGET_PROPERTIES(${APPLICATION_NAME} PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
 ENDMACRO(CPP_APPLICATION)
 
 #-----------------------------------------------------------------------------
-# Declaration of the simple test applications that don't have extra files
+# Declaration of the simple applications that don't have extra files
 
-#CAPC_APPLICATION(client_and_server tests)
-#CPP_APPLICATION(testimager_server tests)
+CPP_APPLICATION(add_noise_to_image apps)
+CPP_APPLICATION(airy_maker apps)
+if (WIN32)
+	CPP_APPLICATION(argonot apps)
+endif (WIN32)
+CPP_APPLICATION(average_videos apps)
+CPP_APPLICATION(cismm_video_optimizer apps)
+CPP_APPLICATION(compare_tracking_files apps)
+if (VIDEO_USE_EDT)
+	CPP_APPLICATION(edt_video_take apps)
+	CAPC_APPLICATION(manual_capture apps)
+endif (VIDEO_USE_EDT)
+CPP_APPLICATION(make_moving_spot_video apps)
+CPP_APPLICATION(make_test_image apps)
+CPP_APPLICATION(video_imager_server apps)
+CPP_APPLICATION(Panoptes_Stage_Control apps)
+if (VIDEO_USE_ROPER)
+	CPP_APPLICATION(roper_example apps)
+	CPP_APPLICATION(roper_spot_tracker apps)
+endif (VIDEO_USE_ROPER)
+CPP_APPLICATION(test_spot_tracker tests)
+
+# XXX stocc_test_poisson
+# CPP_APPLICATION(stack_collector apps) XXX requires vrpn_Generic_Server_Object
+
+endif (VIDEO_BUILD_APPLICATIONS)

@@ -13,12 +13,12 @@
 
 #include <stdio.h>   // For NULL
 #include <math.h>    // For floor()
+#include  <string>
+#include  <vector>
 #include  <vrpn_Types.h>
 #include  <vrpn_Connection.h>
 #include  <vrpn_Imager.h>
 #include  <GL/gl.h>
-#include  <string>
-#include  <vector>
 
 //----------------------------------------------------------------------------
 // This class forms a basic wrapper for an image.  It treats an image as anything

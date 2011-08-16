@@ -113,7 +113,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="E:\projects\SyncControlAPI_new;..\video;..\vrpn;..\vrpn\server_src;..\vrpn\quat;..\quat"
+				AdditionalIncludeDirectories="..\video;..\vrpn;..\vrpn\server_src;..\vrpn\quat;..\quat"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				RuntimeLibrary="2"
 				ProgramDataBaseFileName="$(IntDir)\vc80.pdb"
@@ -194,11 +194,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\SyncControlAPI_new\sciString2send.cpp"
+				RelativePath=".\PanopticNerve\sciString2send.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\SyncControlAPI_new\SyncControl.cpp"
+				RelativePath=".\PanopticNerve\SyncControl.cpp"
 				>
 			</File>
 			<File
@@ -221,6 +221,14 @@
 			</File>
 			<File
 				RelativePath="..\video\PanopticNerve\PanopticNerve.h"
+				>
+			</File>
+			<File
+				RelativePath=".\PanopticNerve\sciString2send.h"
+				>
+			</File>
+			<File
+				RelativePath=".\PanopticNerve\SyncControl.h"
 				>
 			</File>
 			<File

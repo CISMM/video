@@ -56,7 +56,8 @@ bool point_grey_server::send_vrpn_image(vrpn_Imager_Server* svr, vrpn_Connection
 	//printf("(_num_columns, _num_rows) = (%i, %i)\n", _num_columns, _num_rows);
 	
 	svr->send_begin_frame(0, _num_columns-1, 0, _num_rows-1, 0, 0, &m_timestamp);
-	for(int y=0; y<_num_rows; y+=nRowsPerRegion) {
+	unsigned y;
+	for(y=0; y<_num_rows; y+=nRowsPerRegion) {
 		svr->send_region_using_base_pointer(svrchan,0,_num_columns-1,y,min(_num_rows,y+nRowsPerRegion)-1,
 			(vrpn_uint8*)m_cam->GetImagePointer(), 1, _num_columns, _num_rows, true, 0, 0, 0, &m_timestamp);
 		svr->mainloop();

@@ -13,13 +13,18 @@
 #ifdef	VST_USE_COOKE
 #include "cooke_server.h"
 #endif
+#ifdef	VST_USE_DIRECTX
 #include "directx_camera_server.h"
 #include "directx_videofile_server.h"
+#endif
 #ifdef  VST_USE_DIAGINC
 #include "diaginc_server.h"
 #endif
 #ifdef  VST_USE_EDT
 #include "edt_server.h"
+#endif
+#ifdef  VST_USE_POINTGREY
+#include "point_grey_server.h"
 #endif
 #ifdef  VST_USE_SEM
 #include "SEM_camera_server.h"
@@ -167,6 +172,12 @@ bool  get_camera(const char *name,
 #ifdef	VST_USE_EDT
   if (!strcmp(name, "edt")) {
     edt_server *r = new edt_server();
+    *camera = r;
+  } else
+#endif  
+#ifdef	VST_USE_POINTGREY
+  if (!strcmp(name, "point_grey")) {
+    point_grey_server *r = new point_grey_server();
     *camera = r;
   } else
 #endif  

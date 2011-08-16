@@ -44,7 +44,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="2"
-				AdditionalIncludeDirectories="C:\NSRG\external\pc_win32\GL\include;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\include&quot;;C:\NSRG\external\pc_win32\OpenCV\otherlibs\highgui;C:\NSRG\external\pc_win32\OpenCV\cxcore\include;C:\NSRG\external\pc_win32\OpenCV\cv\include;..\vrpn;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;C:\nsrg\external\pc_win32\ImageMagick\include;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Headers&quot;;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\include&quot;;..\quat;C:\DXSDK\include;C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses;..\nano\src\app\nano\lib\nmSEM;..\nano\src\lib\nmBase;..\nano\src\lib\nmMP;C:\NSRG\external\pc_win32\tcl\include;C:\NSRG\external\pc_win32\X11\include"
+				AdditionalIncludeDirectories="C:\NSRG\external\pc_win32\GL\include;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\include&quot;;C:\NSRG\external\pc_win32\OpenCV\otherlibs\highgui;C:\NSRG\external\pc_win32\OpenCV\cxcore\include;C:\NSRG\external\pc_win32\OpenCV\cv\include;..\vrpn;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;C:\nsrg\external\pc_win32\ImageMagick\include;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Headers&quot;;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\include&quot;;..\vrpn\quat;C:\DXSDK\include;C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses;..\nano\src\app\nano\lib\nmSEM;..\nano\src\lib\nmBase;..\nano\src\lib\nmMP;C:\NSRG\external\pc_win32\tcl\include;C:\NSRG\external\pc_win32\X11\include"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="2"
@@ -71,11 +71,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="pvcam32.lib SpotCamVC.lib glut32.lib opengl32.lib quat.lib tcl83.lib tk83.lib odbc32.lib odbccp32.lib"
+				AdditionalDependencies="pvcam32.lib SpotCamVC.lib glut32.lib opengl32.lib vrpn.lib quat.lib tcl83.lib tk83.lib odbc32.lib odbccp32.lib"
 				OutputFile=".\Release/cismm_video_optimizer.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\tcl\lib;C:\NSRG\external\pc_win32\GL\lib;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\OpenCV\lib;../vrpn/pc_win32/Release;../quat/pc_win32/Release;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;C:\nsrg\external\pc_win32\ImageMagick\lib;C:\NSRG\external\pc_win32\diaginc;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;C:\NSRG\external\pc_win32\EDT\pdv;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;"
+				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\tcl\lib;C:\NSRG\external\pc_win32\GL\lib;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\OpenCV\lib;../vrpn/pc_win32/Release;../vrpn/quat/pc_win32/Release;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;C:\nsrg\external\pc_win32\ImageMagick\lib;C:\NSRG\external\pc_win32\diaginc;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;C:\NSRG\external\pc_win32\EDT\pdv;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;"
 				SubSystem="1"
 				TargetMachine="1"
 			/>
@@ -137,7 +137,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="C:\NSRG\external\pc_win32\GL\include;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\include&quot;;C:\NSRG\external\pc_win32\OpenCV\otherlibs\highgui;C:\NSRG\external\pc_win32\OpenCV\cxcore\include;C:\NSRG\external\pc_win32\OpenCV\cv\include;..\vrpn;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;C:\nsrg\external\pc_win32\ImageMagick\include;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Headers&quot;;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\include&quot;;..\quat;C:\DXSDK\include;C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses;..\nano\src\app\nano\lib\nmSEM;..\nano\src\lib\nmBase;..\nano\src\lib\nmMP;C:\NSRG\external\pc_win32\tcl\include;C:\NSRG\external\pc_win32\X11\include"
+				AdditionalIncludeDirectories="C:\NSRG\external\pc_win32\GL\include;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\include&quot;;C:\NSRG\external\pc_win32\OpenCV\otherlibs\highgui;C:\NSRG\external\pc_win32\OpenCV\cxcore\include;C:\NSRG\external\pc_win32\OpenCV\cv\include;..\vrpn;&quot;$(SYSTEMDRIVE)\Program Files\Microsoft DirectX SDK (August 2006)\Include&quot;;C:\nsrg\external\pc_win32\ImageMagick\include;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Headers&quot;;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\include&quot;;..\vrpn\quat;C:\DXSDK\include;C:\DXSDK\samples\Multimedia\DirectShow\BaseClasses;..\nano\src\app\nano\lib\nmSEM;..\nano\src\lib\nmBase;..\nano\src\lib\nmMP;C:\NSRG\external\pc_win32\tcl\include;C:\NSRG\external\pc_win32\X11\include"
 				PreprocessorDefinitions="_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -169,7 +169,7 @@
 				OutputFile=".\Debug/cismm_video_optimizer.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\tcl\lib;C:\NSRG\external\pc_win32\GL\lib;c:\NSRG\external\pc_win32\OpenCV\lib;../vrpn/pc_win32/Debug;../quat/pc_win32/Debug;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;C:\nsrg\external\pc_win32\ImageMagick\lib;C:\NSRG\external\pc_win32\DiagInc;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;C:\NSRG\external\pc_win32\EDT\pdv;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;"
+				AdditionalLibraryDirectories="C:\NSRG\external\pc_win32\tcl\lib;C:\NSRG\external\pc_win32\GL\lib;c:\NSRG\external\pc_win32\OpenCV\lib;../vrpn/pc_win32/Debug;../vrpn/quat/pc_win32/Debug;&quot;$(SYSTEMDRIVE)\Program Files\GnuWin32\lib&quot;;C:\nsrg\external\pc_win32\ImageMagick\lib;C:\NSRG\external\pc_win32\DiagInc;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;C:\NSRG\external\pc_win32\EDT\pdv;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;"
 				IgnoreDefaultLibraryNames="msvcrt.lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/cismm_video_optimizer.pdb"

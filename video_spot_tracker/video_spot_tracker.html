@@ -193,9 +193,9 @@
 
 <h3>Checking for lost trackers and Auto-finding beads</h3>
 <h3></h3>
-<p><img src="lost_and_found.jpg" width="191" height="522" align="right">There 
+<p><img src="lost_and_found.jpg" width="191" height="654" align="right">There 
   is a <i>show_lost_and_found</i> button on the main control panel that brings 
-  up a secondard control panel shown to the right.</p>
+  up the control panel shown to the right.</p>
 <p><b>Lost:</b> Two tracking sensitivity sliders located on this control panel 
   set thresholds for detection of lost tracking. A threshold setting of zero disables 
   each feature, and is the default. The useful value for the <i>kernel_lost_tracking_sensitivity 
@@ -203,16 +203,17 @@
   provides a normalized &quot;how sensitive&quot; control that should be approximately 
   the same across types (the FIONA tracker uses the whole range 0-1, but the symmetric 
   kernel needs only a very small number). If the threshold is exceeded by one 
-  or more beads while tracking, the associated bead is marked as lost. The <i>intensity_lost_tracking_sensitivity</i> 
-  slider is independent of the kernel being used; it works based on how different 
-  the brightess at the center of the tracked bead is from the region surrounding 
-  the bead. In particular, it finds the mean and variance of pixel intensities 
-  at the edge of a box around the bead center that is 1.5 times as large as the 
-  bead diameter. It then compares the variance (squared difference from the mean) 
-  of the value at the center of the bead from the mean value of the border; if 
-  it is less than the variance times this sensitivity setting, then the bead is 
-  marked as lost. This parameter is particularly useful for fluorescence images 
-  with low backgrounds, but could also be used for dark beads on bright backgrounds.</p>
+  or more beads while tracking, the associated bead is marked as lost.</p>
+<p>The <i>intensity_lost_tracking_sensitivity</i> slider is independent of the 
+  kernel being used; it works based on how different the brightess at the center 
+  of the tracked bead is from the region surrounding the bead. In particular, 
+  it finds the mean and variance of pixel intensities at the edge of a box around 
+  the bead center that is 1.5 times as large as the bead diameter. It then compares 
+  the variance (squared difference from the mean) of the value at the center of 
+  the bead from the mean value of the border; if it is less than the variance 
+  times this sensitivity setting, then the bead is marked as lost. This parameter 
+  is particularly useful for fluorescence images with low backgrounds, but could 
+  also be used for dark beads on bright backgrounds.</p>
 <p><b>Strayed:</b> The <i>dead_zone_around_border</i> slider sets a boundary around 
   the edge of the clipping region (see <i>Faster display update</i> section below 
   for a description of clipping). If a bead gets within this many pixels of the 
@@ -243,16 +244,24 @@
     was made to enable tracking of blinking spots with the FIONA kernel.</li>
 </ul>
 <p></p>
-<p><b>Found:</b> The <i>maintain_this_many_beads</i> slider, if set to above zero, 
-  will attempt to automaticall place new trackers whenever there are fewer than 
-  the number requested. It places them in the locations on the screen that have 
-  the best matches for the present kernel settings, and it creates them with the 
-  present kernel settings. The trackers will not be placed within one radius of 
-  the edge of the screen or within two radii of existing trackers. The <i>candidate_spot_threshold</i> 
-  can be used to filter out spots that are not likely to be beads; the higher 
-  the setting, the more discriminating the test. The <i>lost_tracking_sensitivity</i> 
-  also controls where trackers will be initialized; they will not appear where 
-  they would be immediately lost.</p>
+<p><b>Found:</b> There are also two independent tracker-finding mechanisms, one 
+  for brightfield and one for fluorescence. Brightfield uses the <i>maintain_this_many_beads</i> 
+  slider, if set to above zero, will attempt to automatically place new trackers 
+  whenever there are fewer than the number requested. It places them in the locations 
+  on the screen that have the best matches for the present kernel settings, and 
+  it creates them with the present kernel settings. The trackers will not be placed 
+  within one radius of the edge of the screen or within two radii of existing 
+  trackers. The <i>candidate_spot_threshold</i> can be used to filter out spots 
+  that are not likely to be beads; the higher the setting, the more discriminating 
+  the test. The <i>lost_tracking_sensitivity</i> also controls where trackers 
+  will be initialized; they will not appear where they would be immediately lost.</p>
+<p>The <i>maintain_fluorescent_beads</i> slider, if set above zero, will attempt 
+  to automatically place new trackers based on the <i>fluorescent_spot_threshold</i> 
+  setting. The threshold is expressed as a fraction of the total intensity in 
+  the frame; the darkest pixel is mapped to 0 and the brightest to 1. Any region 
+  of the image that is above the threshold is considered to be a candidate for 
+  a bead. The <i>intensity_lost_tracking_sensitivity</i> also controls where trackers 
+  will be initialized; they will not appear where they would be immediately lost.</p>
 <h3>Faster display update</h3>
 
 <p><img src="small_area.jpg" width="162" height="175" align="right">Once you have created all of the trackers you want, you may check the <cite><strong>small_area</strong></cite> checkbox. This will cause the program to limit its update to a small area of pixels that surrounds the active trackers. This requires less processing and makes the update rate faster when the video is played. For the Roper and SPOT cameras, it also reduces the amount of data transmitted from the camera itself, again increasing the frame rate. This area will update itself as the trackers move, and it extends 4 radii past each tracker. This should enable the trackers to continue to track spots that are moving away from the updated video area.  A green box shows up in the video window to indicate the area being updated.</p>
@@ -390,6 +399,11 @@
   window is named <b><i>kymograph_center</i></b>, and it shows how the spindle 
   center moves within the cell. If there are not at least four tracked points, 
   nothing is shown in this window.</p>
+<h2>Performance measures</h2>
+<p>The speed and accuracy of the video spot tracker has been tested against a 
+  number of generated data sets, each of which has a known contrast and noise 
+  value. The results of these tests (and the images themselves) can be found at 
+  <a href="http://www.cs.unc.edu/%7Etaylorr/vst_tests">http://www.cs.unc.edu/~taylorr/vst_tests</a>.</p>
 
 <h2>Version Information</h2>
 
