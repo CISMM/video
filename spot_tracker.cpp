@@ -1648,7 +1648,7 @@ radial_average_tracker_Z::radial_average_tracker_Z(const char *in_filename, doub
 {
     // Read in the radially-averaged point-spread function from the file whose
     // name is given.
-#if defined(VIDEO_USE_IMAGEMAGICK)
+#if defined(VST_USE_IMAGEMAGICK)
     d_radial_image = new file_stack_server(in_filename);
     if (d_radial_image == NULL) {
       fprintf(stderr,"radial_average_tracker_Z::radial_average_tracker_Z(): Could not read radial image\n");
