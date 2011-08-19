@@ -208,6 +208,17 @@ protected:
 };
 
 //----------------------------------------------------------------------------
+// Image metric calculation functions.  These can be used as focus metrics on
+// images (for example).
+
+// Sum all the pixels for one color (defaults to the first) in an image.
+double image_wrapper_sum(const image_wrapper &img, unsigned rgb = 0);
+
+// Sum all the squared values of all pixels for one color
+// (defaults to the first) in an image.
+double image_wrapper_square_sum(const image_wrapper &img, unsigned rgb = 0);
+
+//----------------------------------------------------------------------------
 // Concrete version of above virtual base class that stores a single-color
 // image in double-precision floating-point values.  Also includes methods for
 // writing the pixel values.
