@@ -2,6 +2,7 @@
 #define	SPOT_TRACKER_H
 
 #include "image_wrapper.h"
+#include <list>
 
 //----------------------------------------------------------------------------
 // Virtual base class for spot trackers that track in X and Y.
@@ -671,6 +672,85 @@ protected:
   double		d_acceleration[2];  //< The acceleration of the particle
   bool                  d_lost;             //< Am I lost?
   static unsigned	d_static_index;     //< The index to use for the next one (never to be re-used).
+};
+
+//----------------------------------------------------------------------------------
+// Application-level object that manages a list of trackers and keeps track of autofinding,
+// deleting, and causing them to track across images.  This is a single-threaded
+// implementation, so it will not utilize multiple cores the way that the video
+// spot tracker application does.  It pulls together the code that deals with
+// fluorescent-spot finding and tracking.
+
+class Tracker_Collection_Manager {
+public:
+    Tracker_Collection_Manager(unsigned image_x, unsigned image_y,
+                     float default_radius = 15.0, float min_bead_separation = 30.0,
+                     float min_border_distance = 20.0)
+        : d_image_x(image_x)
+        , d_image_y(image_y)
+        , d_default_radius(default_radius)
+        , d_min_bead_separation(min_bead_separation)
+        , d_min_border_distance(min_border_distance)
+    {};
+
+    // Clean up (delete trackers in our vector, etc.)
+    ~Tracker_Collection_Manager();
+
+    // Delete all active trackers.
+    void delete_trackers(void);
+
+    // Autofind fluorescence beads within the image whose pointer is passed in.
+    // Avoids adding trackers that are too close to other existing trackers.
+    // Adds beads that are above the threshold (fraction of the way from the minimum
+    // to the maximum pixel value in the image) and whose peak is more than the
+    // specified number of standard deviations brighter than the mean of the surround.
+    // Returns true on success (even if no beads found) and false on error.
+    bool autofind_fluorescent_beads_in(const image_wrapper &s_image,
+                                           float thresh = 0.2,
+                                           float var_thresh = 1.5);
+
+    // Update the positions of the trackers we are managing based on a new image.
+    // Returns the number of beads in the track.
+    unsigned optimize_based_on(const image_wrapper &s_image);
+
+    // Auto-deletes trackers that have wandered off of fluorescent beads.
+    // Uses the specified variance threshold to determine if they are lost.
+    // Returns the number of remaining trackers after the lost ones have
+    // been deleted.
+    unsigned delete_lost_fluorescent_beads_in(const image_wrapper &s_image,
+                                              float var_thresh = 1.5);
+
+    // Auto-deletes trackers that have gotten too close to the image edge.
+    // Uses the specified distance threshold to determine if they are too close.
+    // Returns the number of remaining trackers after any have
+    // been deleted.
+    unsigned delete_edge_beads_in(const image_wrapper &s_image);
+
+    // Auto-deletes trackers that have gotten too close to another tracker.
+    // Uses the specified distance threshold to determine if they are too close.
+    // Returns the number of remaining trackers after any have
+    // been deleted.
+    unsigned delete_colliding_beads_in(const image_wrapper &s_image);
+
+    // Returns information about the trackers we're managing.
+    unsigned tracker_count(void) const { return d_trackers.size(); }
+    const Spot_Information  *tracker(unsigned which) const;
+
+protected:
+    unsigned                        d_image_x;              // Size of the image in X
+    unsigned                        d_image_y;              // Size of the image in Y
+    float                           d_default_radius;       // Radius for new trackers
+    float                           d_min_bead_separation;  // How close is too close to beads
+    float                           d_min_border_distance;  // How close is too close to edge?
+    std::list<Spot_Information *>   d_trackers; // Trackers we're managing
+
+    // Check to see if the specified tracker is lost given the specified image
+    // and standard-deviation threshold; the tracker is lost if its center is not
+    // at least the specified number of standard deviations above the mean of the
+    // pixels around its border.  Also returns true if the tracker is lost and
+    // false if it is not.
+    bool mark_tracker_if_lost(Spot_Information *tracker, const image_wrapper &image,
+                              float var_thresh = 1.5);
 };
 
 #endif

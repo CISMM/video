@@ -1726,3 +1726,446 @@ double	radial_average_tracker_Z::check_fitness(const image_wrapper &image, unsig
 unsigned Spot_Information::d_static_index = 0;	  //< Start the first instance of a Spot_Information index at zero.
 unsigned Spot_Information::get_static_index() { return d_static_index; };
 
+//----------------------------------------------------------------------------------
+// Tracker_Collection_Manager class implementation
+
+// This function allows for much simpler freeing up of std::lists of
+//  Spot_Information pointers.
+static bool deleteAll( Spot_Information * theElement ) {
+        if (theElement != NULL)
+                delete theElement; // we'll let our Spot_Information destructor do the work
+        return true;
+}
+
+// This function allows for removal of lost trackers from the list.
+static bool deleteLost( Spot_Information * theElement ) {
+    if (theElement->lost()) {
+        delete theElement; // we'll let our Spot_Information destructor do the work
+        return true;
+    } else {
+        return false;
+    }
+}
+
+Tracker_Collection_Manager::~Tracker_Collection_Manager()
+{
+    delete_trackers();
+}
+
+void Tracker_Collection_Manager::delete_trackers()
+{
+    // Delete all of the tracker objects we had created.
+    d_trackers.remove_if(deleteAll);
+}
+
+const Spot_Information *Tracker_Collection_Manager::tracker(unsigned which) const
+{
+    unsigned i;
+    std::list<Spot_Information *>::const_iterator loop;
+    loop = d_trackers.begin();
+    for (i = 0; i < which; i++) {
+        loop++;
+        if (loop == d_trackers.end()) {
+            return NULL;
+        }
+    }
+    if (loop == d_trackers.end()) {
+        return NULL;
+    } else {
+        return *loop;
+    }
+}
+
+//----------------------------------------------------------------------------
+// Class to deal with storing a list of locations on the image
+
+class Flood_Position {
+public:
+  Flood_Position(int x, int y) { d_x = x; d_y = y; };
+  int x(void) const { return d_x; };
+  int y(void) const { return d_y; };
+  void set_x(int x) { d_x = x; };
+  void set_y(int y) { d_y = y; };
+
+protected:
+  int   d_x;
+  int   d_y;
+};
+
+//--------------------------------------------------------------------------
+// Helper routine that fills all pixels that are connected to
+// the indicated pixel and which have a value of -1 with the new value that
+// is specified.  Recursion failed due to stack overflow when
+// the whole image was one region, so the new algorithm keeps a list of
+// "border positions" and repeatedly goes through that list until it is
+// empty.
+
+static void flood_connected_component(double_image *img, int x, int y, double value)
+{
+  int minx, maxx, miny, maxy;
+  img->read_range(minx, maxx, miny, maxy);
+
+  //------------------------------------------------------------
+  // Fill in the first pixel as requested, and add it to the
+  // boundary list.
+  std::list<Flood_Position>  boundary;
+  img->write_pixel_nocheck(x,y, value);
+  boundary.push_front(Flood_Position(x,y));
+
+  //------------------------------------------------------------
+  // Go looking for ways to expand the boundary so long as the
+  // boundary is not empty.  Once each boundary pixel has been
+  // completely handled, delete it from the boundary list.
+  while (!boundary.empty()) {
+    std::list<Flood_Position>::iterator  i;
+
+    // We add new boundary pixels to the beginning of the list so that
+    // we won't see them while traversing the list: each time through,
+    // we only consider the positions that were on the boundary when
+    // we started through that time.
+    i = boundary.begin();
+    while (i != boundary.end()) {
+
+      // Move to the location of the pixel and check around it.
+      x = i->x();
+      y = i->y();
+
+      // If any of the four neighbors are valid new boundary elements,
+      // mark them and insert them into the boundary list.
+      if ( x-1 >= minx ) {
+        if (img->read_pixel_nocheck(x-1,y) == -1) {
+          img->write_pixel_nocheck(x-1,y, value);
+          boundary.push_front(Flood_Position(x-1,y));
+        }
+      }
+      if ( x+1 <= maxx ) {
+        if (img->read_pixel_nocheck(x+1,y) == -1) {
+          img->write_pixel_nocheck(x+1,y, value);
+          boundary.push_front(Flood_Position(x+1,y));
+        }
+      }
+      if ( y-1 >= miny ) {
+        if (img->read_pixel_nocheck(x,y-1) == -1) {
+          img->write_pixel_nocheck(x,y-1, value);
+          boundary.push_front(Flood_Position(x,y-1));
+        }
+      }
+      if ( y+1 <= maxy ) {
+        if (img->read_pixel_nocheck(x,y+1) == -1) {
+          img->write_pixel_nocheck(x,y+1, value);
+          boundary.push_front(Flood_Position(x,y+1));
+        }
+      }
+
+      // Get rid of this entry, stepping to the next one before doing so.
+      std::list<Flood_Position>::iterator j = i;
+      ++i;
+      boundary.erase(j);
+    }
+  }
+}
+
+// Autofind fluorescence beads within the image whose pointer is passed in.
+// Avoids adding trackers that are too close to other existing trackers.
+// Adds beads that are above the threshold (fraction of the way from the minimum
+// to the maximum pixel value in the image) and whose peak is more than the
+// specified number of standard deviations brighter than the mean of the surround.
+// Returns true on success (even if no beads found) and false on error.
+bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapper &s_image,
+                                                         float thresh,
+                                                         float var_thresh)
+{
+    // Find out how large the image is.
+    int minx, maxx, miny, maxy;
+    s_image.read_range(minx, maxx, miny, maxy);
+
+    // first, find the max and min pixel value and set our threshold
+    // to be the specified fraction of the way up from the min to the
+    // max.
+    int x, y;
+    double maxi = 0, mini = 1e50;
+    double curi;
+    for (y = miny; y <= maxy; ++y) {
+      for (x = minx; x <= maxx; ++x) {
+        curi = s_image.read_pixel_nocheck(x, y);
+        if (curi > maxi) { maxi = curi; }
+        if (curi < mini) { mini = curi; }
+      }
+    }
+    double threshold = mini + (maxi-mini)*thresh;
+
+    // Make a threshold image that has 0 everywhere our original image was
+    // below threshold and -1 everywhere it was at or above threshold.  The
+    // -1 value means "no label yet selected".
+    double_image *threshold_image = new double_image(minx, maxx, miny, maxy);
+    if (threshold_image == NULL) {
+      fprintf(stderr,"Tracker_Collection_Manager::autofind_fluorescent_beads_in(): Out of memory\n");
+      return false;
+    }
+    for (y = miny; y <= maxy; ++y) {
+      for (x = minx; x <= maxx; ++x) {
+        if (s_image.read_pixel_nocheck(x,y) >= threshold) {
+          threshold_image->write_pixel_nocheck(x, y, -1.0);
+        } else {
+          threshold_image->write_pixel_nocheck(x, y, 0.0);
+        }
+      }
+    }
+
+    // Go through the threshold image and label each component with a number
+    // greater than zero (starting with 1).  This replaces the "-1" values from
+    // above along the way.  This leaves us with a set of labeled components
+    // embedded in the image.
+    int index = 0;
+    for (x =  minx; x <= maxx; x++) {
+      for (y = miny; y <= maxy; y++) {
+        if (threshold_image->read_pixel_nocheck(x,y) == -1) {
+          index++;
+          flood_connected_component(threshold_image, x,y, index);
+        }
+      }
+    }
+
+    //printf("Found %d components.\n", index);
+
+    // Compute the center of mass of each connected component.  If we do not have a
+    // tracker already too close to this center of mass, create a potential tracker there.
+
+    std::list<Spot_Information *>::iterator loop;
+    std::list<Spot_Information*> potentialTrackers;
+    double tooClose = d_min_bead_separation;
+
+    int comp;
+    for (comp = 1; comp <= index; comp++) {
+
+      // Compute the center of mass for this component.  All components exist
+      // and have at least one pixel in them.
+      double cx = 0, cy = 0;
+      unsigned count = 0;
+      for (x = minx; x <= maxx; x++) {
+        for (y = miny; y <= maxy; y++) {
+          if (threshold_image->read_pixel_nocheck(x,y) == comp) {
+            count++;
+            cx += x;
+            cy += y;
+          }
+        }
+      }
+      cx /= count;
+      cy /= count;
+
+      // check to make sure we don't already have a tracker too close to where
+      // we want to put the new one.
+      bool safe = true;
+      for (loop = d_trackers.begin(); loop != d_trackers.end(); loop++)  {
+        double curX, curY;
+        spot_tracker_XY *curTracker = (*loop)->xytracker();
+        curX = curTracker->get_x();
+        curY = curTracker->get_y();
+        if ( (cx >= curX - tooClose) && (cx <= curX + tooClose) &&
+             (cy >= curY - tooClose) && (cy <= curY + tooClose) ) {
+          safe = false;
+        }
+      }
+      // Check to make sure we aren't too close to the edge of the image.
+      double zone = d_min_border_distance;
+      if ( (cx < (minx) + zone) || (cx > (maxx) - zone) ||
+           (cy < (miny) + zone) || (cy > (maxy) - zone) ) {
+        safe = false;
+      }
+      if (safe) {
+        // last argument = true tells Spot_Information that this isn't an official, logged tracker.
+        // But we need to keep it on the list because we don't want to make another one that is too
+        // close to this location.
+        spot_tracker_XY *tracker = new symmetric_spot_tracker_interp(d_default_radius, false, 0.25, 0.1, 0.25);
+        tracker->set_location(cx, cy);
+        potentialTrackers.push_back(new Spot_Information(tracker,NULL, true));
+      }
+    }
+
+    // Check to see which candidate spots aren't immediately lost.  Add each one that is
+    // not lost to the list of actual trackers.  We keep track of how many are lost and not
+    // lost in case we later want to print debugging info.
+    int numlost = 0;
+    int numnotlost = 0;
+    //printf("  dbg Found %u potential trackers\n",potentialTrackers.size());
+    for (loop = potentialTrackers.begin(); loop != potentialTrackers.end(); loop++) {
+      // if our candidate tracker isn't lost, then we add it to our list of real trackers
+      mark_tracker_if_lost( (*loop), s_image, var_thresh );
+      if (!(*loop)->lost()) {
+        ++numnotlost;
+        spot_tracker_XY *tracker = new symmetric_spot_tracker_interp(d_default_radius, false, 0.25, 0.1, 0.25);
+        tracker->set_location((*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y());
+        d_trackers.push_back(new Spot_Information(tracker, NULL));
+      } else {
+          ++numlost;
+      }
+    }
+    //printf("  dbg Found %d actual trackers\n", numnotlost);
+
+    // clean up candidate spots memory using a helper function that deletes each
+    // element and then returns true so it will also be removed from the list.
+    potentialTrackers.remove_if( deleteAll );
+
+    // Clean up our temporary images in reverse order to make it easier for the
+    // memory allocator.
+    delete threshold_image;
+
+    return true;
+}
+
+// Update the positions of the trackers we are managing based on a new image.
+// Returns the number of beads in the track.
+unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_image)
+{
+    std::list<Spot_Information *>::iterator loop;
+    double x, y;
+    for (loop = d_trackers.begin(); loop != d_trackers.end(); loop++)  {
+        spot_tracker_XY *tracker = (*loop)->xytracker();
+        tracker->optimize_xy(s_image, 0, x, y, tracker->get_x(),tracker->get_y() );
+    }
+    return d_trackers.size();
+}
+
+// Check to see if the specified tracker is lost given the specified image
+// and standard-deviation threshold; the tracker is lost if its center is not
+// at least the specified number of standard deviations above the mean of the
+// pixels around its border.  Also returns true if the tracker is lost and
+// false if it is not.
+bool Tracker_Collection_Manager::mark_tracker_if_lost(Spot_Information *tracker,
+                                            const image_wrapper &image,
+                                            float var_thresh)
+{
+    if (tracker == NULL) {
+        return true;    // Tracker is lost -- it doesn't even exist!
+    }
+
+    // We do this by looking at
+    // the mean and variance of the pixels along a box with sides that are
+    // 1.5 times the diameter of the tracker (3x the radius) and seeing if the
+    // squared difference between the center pixel and mean is greater than the
+    // variance scaled by the sensitivity.  If it is, there is a well-defined
+    // bead and so we're not lost.  (This routine does not check the corner
+    // pixels of the square surrounding, to avoid double-weighting them based
+    // on our loop strategy.)
+    int halfwidth = static_cast<int>(1.5 * tracker->xytracker()->get_radius());
+    int x = static_cast<int>(tracker->xytracker()->get_x());
+    int y = static_cast<int>(tracker->xytracker()->get_y());
+    int pixels = 0;
+    double val = 0;
+    double mean = 0;
+    double variance = 0;
+    int offset;
+    for (offset = -halfwidth+1; offset < halfwidth; offset++) {
+      if (image.read_pixel(x-offset, y-halfwidth, val)) {
+        mean += val;
+        variance += val*val;
+        pixels++;
+      }
+      if (image.read_pixel(x-offset, y+halfwidth, val)) {
+        mean += val;
+        variance += val*val;
+        pixels++;
+      }
+      if (image.read_pixel(x-halfwidth, y+offset, val)) {
+        mean += val;
+        variance += val*val;
+        pixels++;
+      }
+      if (image.read_pixel(x+halfwidth, y+offset, val)) {
+        mean += val;
+        variance += val*val;
+        pixels++;
+      }
+    }
+
+    // Compute the variance of all the points using the shortcut
+    // formula: var = (sum of squares of measures) - (sum of measurements)^2 / n.
+    // Then compute the mean.
+    if (pixels) {
+      variance = variance - mean*mean/pixels;
+      mean /= pixels;
+    }
+
+    // Compare to see if we're lost.  Check <= rather than < because in
+    // regions where the pixels clamp to 0 or max there is no difference on
+    // either side of the equation and we should be lost.  Check for either
+    // being smaller than the mean value or being too close to the mean
+    // value.
+    image.read_pixel(x, y, val);
+    //printf("    dbg Loc (%d,%d) val %lf, mean %lf, var %lf\n", x,y, val, mean, variance);
+    if ( (val < mean) ||
+         ((val-mean)*(val-mean) <= variance * var_thresh) ) {
+      tracker->lost(true);
+    } else {
+      tracker->lost(false);
+    }
+
+    // Return true if lost, false if not.
+    return tracker->lost();
+}
+
+// Auto-deletes trackers that have wandered off of fluorescent beads.
+// Returns the number of remaining trackers after the lost ones have
+// been deleted.
+unsigned Tracker_Collection_Manager::delete_lost_fluorescent_beads_in(const image_wrapper &s_image,
+                                                            float var_thresh)
+{
+    std::list<Spot_Information *>::iterator loop;
+    for (loop = d_trackers.begin(); loop != d_trackers.end(); loop++)  {
+        mark_tracker_if_lost(*loop, s_image, var_thresh);
+    }
+    d_trackers.remove_if(deleteLost);
+    return d_trackers.size();
+}
+
+// Auto-deletes trackers that have gotten too close to the image edge.
+// Uses the specified distance threshold to determine if they are too close.
+// Returns the number of remaining trackers after any have
+// been deleted.
+unsigned Tracker_Collection_Manager::delete_edge_beads_in(const image_wrapper &s_image)
+{
+    std::list<Spot_Information *>::iterator loop;
+    for (loop = d_trackers.begin(); loop != d_trackers.end(); loop++)  {
+        Spot_Information *tracker = (*loop);
+        double x = tracker->xytracker()->get_x();
+        double y = tracker->xytracker()->get_y();
+        double zone = d_min_border_distance;
+
+        // Check against the border.
+        int minX, maxX, minY, maxY;
+        s_image.read_range(minX, maxX, minY, maxY);
+        if ( (x < (minX) + zone) || (x > (maxX) - zone) ||
+             (y < (minY) + zone) || (y > (maxY) - zone) ) {
+          tracker->lost(true);
+        }
+    }
+    d_trackers.remove_if(deleteLost);
+    return d_trackers.size();
+}
+
+// Auto-deletes trackers that have gotten too close to another tracker.
+// Uses the specified distance threshold to determine if they are too close.
+// Returns the number of remaining trackers after any have
+// been deleted.
+unsigned Tracker_Collection_Manager::delete_colliding_beads_in(const image_wrapper &s_image)
+{
+    std::list<Spot_Information *>::iterator loop;
+    for (loop = d_trackers.begin(); loop != d_trackers.end(); loop++) {
+      double x = (*loop)->xytracker()->get_x();
+      double y = (*loop)->xytracker()->get_y();
+
+      std::list<Spot_Information *>::iterator loop2;
+      double zone2 = d_min_bead_separation * d_min_bead_separation;
+      for (loop2 = d_trackers.begin(); loop2 != loop; loop2++) {
+        double x2 = (*loop2)->xytracker()->get_x();
+        double y2 = (*loop2)->xytracker()->get_y();
+        double dist2 = ( (x-x2)*(x-x2) + (y-y2)*(y-y2) );
+        if (dist2 < zone2) {
+          (*loop)->lost(true);
+        }
+      }
+    }
+    d_trackers.remove_if(deleteLost);
+    return d_trackers.size();
+}
