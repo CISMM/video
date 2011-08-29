@@ -135,6 +135,13 @@ else (POINTGREY_FOUND)
 	OPTION(VIDEO_USE_POINTGREY "Enable to include Point Grey camera code in build" OFF)
 endif (POINTGREY_FOUND)
 
+find_package(Qt4)
+if (QT4_FOUND)
+	OPTION(VIDEO_USE_QT4 "Enable to include Qt video code in build" ON)
+else (QT4_FOUND)
+	OPTION(VIDEO_USE_QT4 "Enable to include Qt video code in build" OFF)
+endif (QT4_FOUND)
+
 OPTION(VIDEO_USE_SEM "Enable to include SEM (from nanoManipulator) camera code in build" OFF)
 OPTION(VIDEO_USE_VRPN_IMAGER "Enable to include VRPN_Imager camera code in build" ON)
 OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" OFF)
@@ -164,6 +171,11 @@ endif (VIDEO_USE_DIRECTSHOW)
 if (VIDEO_USE_POINTGREY)
 	ADD_DEFINITIONS(-DVST_USE_POINTGREY)
 endif (VIDEO_USE_POINTGREY)
+if (VIDEO_USE_QT4)
+	ADD_DEFINITIONS(-DVST_USE_QT4)
+	INCLUDE(${QT_USE_FILE})
+	ADD_DEFINITIONS(${QT_DEFINITIONS})
+endif (VIDEO_USE_QT4)
 
 ###
 # On Windows 7, it does not work to install in the default location,
@@ -294,6 +306,18 @@ if (VIDEO_USE_POINTGREY)
 		PUBLIC_HEADER DESTINATION include)
 endif (VIDEO_USE_POINTGREY)
 
+if (VIDEO_USE_QT4)
+	set(QT4_SOURCES qt4_video_server.cpp)
+	set(QT4_PUBLIC_HEADERS qt4_video_server.h)
+	ADD_LIBRARY (qt4_video_library
+		${QT4_SOURCES} ${QT4_PUBLIC_HEADERS}
+	)
+	set_property(TARGET qt4_video_library PROPERTY PUBLIC_HEADER ${QT4_PUBLIC_HEADERS})
+	install(TARGETS qt4_video_library
+		ARCHIVE DESTINATION lib
+		PUBLIC_HEADER DESTINATION include)
+endif (VIDEO_USE_QT4)
+
 # XXX NIKON
 
 #-----------------------------------------------------------------------------
@@ -408,6 +432,12 @@ if (VIDEO_USE_DIRECTSHOW)
 			${POINTGREY_LIBRARIES}
 		)
 	endif (VIDEO_USE_POINTGREY)
+	if (VIDEO_USE_QT4)
+		TARGET_LINK_LIBRARIES(stereo_spin
+			qt4_video_library
+			${QT_LIBRARIES}
+		)
+	endif (VIDEO_USE_QT4)
 	SET_TARGET_PROPERTIES(stereo_spin PROPERTIES SOLUTION_FOLDER servers)
 
 	INCLUDE_DIRECTORIES(
@@ -517,6 +547,12 @@ if (OpenCV_FOUND)
 			${POINTGREY_LIBRARIES}
 		)
 	endif (VIDEO_USE_POINTGREY)
+	if (VIDEO_USE_QT4)
+		TARGET_LINK_LIBRARIES(video_spot_tracker
+			qt4_video_library
+			${QT_LIBRARIES}
+		)
+	endif (VIDEO_USE_QT4)
 	TARGET_LINK_LIBRARIES(video_spot_tracker
 		spot_tracker_library
 		base_camera_server_library
@@ -590,6 +626,12 @@ ADD_EXECUTABLE(PanopticNerve
 			${POINTGREY_LIBRARIES}
 		)
   endif (VIDEO_USE_POINTGREY)
+  if (VIDEO_USE_QT4)
+		TARGET_LINK_LIBRARIES(PanopticNerve
+			qt4_video_library
+			${QT_LIBRARIES}
+		)
+  endif (VIDEO_USE_QT4)
 TARGET_LINK_LIBRARIES(PanopticNerve
 	base_camera_server_library
 	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
@@ -668,6 +710,12 @@ MACRO(CAPC_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 			${POINTGREY_LIBRARIES}
 		)
   endif (VIDEO_USE_POINTGREY)
+  if (VIDEO_USE_QT4)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			qt4_video_library
+			${QT_LIBRARIES}
+		)
+  endif (VIDEO_USE_QT4)
   TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
 	${VRPN_SERVER_LIBRARIES}
 	${QUATLIB_LIBRARIES}
@@ -731,6 +779,12 @@ MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 			${POINTGREY_LIBRARIES}
 		)
   endif (VIDEO_USE_POINTGREY)
+  if (VIDEO_USE_QT4)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			qt4_video_library
+			${QT_LIBRARIES}
+		)
+  endif (VIDEO_USE_QT4)
   TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
 	${VRPN_SERVER_LIBRARIES}
 	${QUATLIB_LIBRARIES}

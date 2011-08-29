@@ -32,7 +32,12 @@
 #ifdef  VST_USE_VRPN_IMAGER
 #include "VRPN_Imager_camera_server.h"
 #endif
+#ifdef	VST_USE_IMAGEMAGICK
 #include "file_stack_server.h"
+#endif
+#ifdef	VST_USE_QT4
+#include "qt4_video_server.h"
+#endif
 
 class Controllable_Video {
 public:
@@ -109,6 +114,7 @@ public:
   void single_step(void) { raw_file_server::single_step(); }
 };
 
+#ifdef VST_USE_IMAGEMAGICK
 class FileStack_Controllable_Video : public Controllable_Video, public file_stack_server {
 public:
   FileStack_Controllable_Video(const char *filename) : file_stack_server(filename) {};
@@ -118,6 +124,19 @@ public:
   void rewind(void) { pause(); file_stack_server::rewind(); }
   void single_step(void) { file_stack_server::single_step(); }
 };
+#endif
+
+#ifdef	VST_USE_QT4
+class QT_Controllable_Video : public Controllable_Video , public qt4_video_server {
+public:
+  QT_Controllable_Video(const char *filename) : qt4_video_server(filename) {};
+  virtual ~QT_Controllable_Video() {};
+  void play(void) { qt4_video_server::play(); }
+  void pause(void) { qt4_video_server::pause(); }
+  void rewind(void) { pause(); qt4_video_server::rewind(); }
+  void single_step(void) { qt4_video_server::single_step(); }
+};
+#endif
 
 #ifdef	USE_METAMORPH
 class MetamorphStack_Controllable_Video : public Controllable_Video, public Metamorph_stack_server {
@@ -279,8 +298,10 @@ bool  get_camera(const char *name,
       delete [] vrpnname;
 
 #endif
+
     // If the extension is ".tif" or ".tiff" or ".bmp" or ".png" then we assume it is
     // a file or stack of files to be opened by ImageMagick.
+#ifdef VST_USE_IMAGEMAGICK
     } else if (   (strcmp(".tif", &name[strlen(name)-4]) == 0) ||
 		  (strcmp(".TIF", &name[strlen(name)-4]) == 0) ||
 		  (strcmp(".bmp", &name[strlen(name)-4]) == 0) ||
@@ -300,6 +321,7 @@ bool  get_camera(const char *name,
       *video = s;
       // We're going to put out 16-bit video no matter what the input is.
       *bit_depth = 16;
+#endif
 
     // If the extension is ".stk"  then we assume it is a Metamorph file
     // to be opened by the Metamorph reader.
@@ -315,6 +337,10 @@ bool  get_camera(const char *name,
     } else {
 #ifdef	VST_USE_DIRECTX
       Directx_Controllable_Video *f = new Directx_Controllable_Video(name);
+      *camera = f;
+      *video = f;
+#elif defined VST_USE_QT4
+      QT_Controllable_Video *f = new QT_Controllable_Video(name);
       *camera = f;
       *video = f;
 #else
