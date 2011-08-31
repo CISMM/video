@@ -707,7 +707,8 @@ public:
     // Returns true on success (even if no beads found) and false on error.
     bool autofind_fluorescent_beads_in(const image_wrapper &s_image,
                                            float thresh = 0.2,
-                                           float var_thresh = 1.5);
+                                           float var_thresh = 1.5,
+										   unsigned max_regions = 0);
 
     // Update the positions of the trackers we are managing based on a new image.
     // Returns the number of beads in the track.

@@ -1870,10 +1870,14 @@ static void flood_connected_component(double_image *img, int x, int y, double va
 // Adds beads that are above the threshold (fraction of the way from the minimum
 // to the maximum pixel value in the image) and whose peak is more than the
 // specified number of standard deviations brighter than the mean of the surround.
+// max_regions sets how many connected components will looked at, at most; a
+// value of 0 means all of them will be looked at.  Some images fill up all of
+// memory and crash for some threshold values; this setting prevents that.
 // Returns true on success (even if no beads found) and false on error.
 bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapper &s_image,
                                                          float thresh,
-                                                         float var_thresh)
+                                                         float var_thresh,
+														 unsigned max_regions)
 {
     // Find out how large the image is.
     int minx, maxx, miny, maxy;
@@ -1925,8 +1929,15 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
         }
       }
     }
-
     //printf("Found %d components.\n", index);
+
+	// If we have too many components, then only use some of them.
+	// This keep the program from filling up all of memory and crashing.
+	if ( (max_regions > 0) && (static_cast<unsigned>(index) > max_regions) ) {
+		fprintf(stderr, "Warning:Tracker_Collection_Manager::autofind_fluorescent_beads_in(): found %d components, using %d\n",
+			  index, max_regions);
+		  index = max_regions;
+	}
 
     // Compute the center of mass of each connected component.  If we do not have a
     // tracker already too close to this center of mass, create a potential tracker there.
