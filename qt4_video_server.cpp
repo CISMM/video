@@ -4,6 +4,19 @@ qt4_video_server::qt4_video_server(const char *filename) {
 	_status = false;
 	// XXX Initialize the Qt file here.
 
+	// Create the media object and attach it to the source.
+	// Wait until it has finished loading.
+	m_media = new Phonon::MediaObject();
+	if (m_media == NULL) {
+		return;
+	}
+	m_media->setCurrentSource(QString(filename));
+	while (m_media->state() == Phonon::LoadingState) { };
+	if (m_media->state() != Phonon::StoppedState) {
+		fprintf(stderr,"qt4_video_server::qt4_video_server(): Could not open file\n");
+		return;
+	}
+
 	_num_columns = 0;	// XXX
 	_num_rows = 0;		// XXX
 	_minX = _minY = 0;

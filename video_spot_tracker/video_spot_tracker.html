@@ -1,11 +1,11 @@
-<title>Video Spot Tracker v06.04</title>
+<title>Video Spot Tracker v06.05</title>
 
-<h1>Video Spot Tracker version 06.04</h1>
+<h1>Video Spot Tracker version 06.05</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots (particles) in a <a href="http://www.microsoft.com/directx">Microsoft 
-  DirectShow</a>-compatible video file, from a <a href="http://www.microsoft.com/directx">Microsoft 
-  DirectShow</a>-compatible camera, from a <a href="http://roperscientific.com">Roper 
+  DirectShow</a>-compatible video file (not version 06.05), from a <a href="http://www.microsoft.com/directx">Microsoft 
+  DirectShow</a>-compatible camera (not version 06.05), from a <a href="http://roperscientific.com">Roper 
   Scientific</a> camera, from a <a href="http://diaginc.com">DiagInc</a> SPOT 
   camera, from a camera attached to an <a href="http://www.edt.com/">EDT</a> video 
   capture board (we use a Pulnix camera this way at UNC), or from a set of TIFF, 
@@ -193,7 +193,7 @@
 
 <h3>Checking for lost trackers and Auto-finding beads</h3>
 <h3></h3>
-<p><img src="lost_and_found.jpg" width="191" height="654" align="right">There 
+<p><img src="lost_and_found.jpg" width="199" height="723" align="right">There 
   is a <i>show_lost_and_found</i> button on the main control panel that brings 
   up the control panel shown to the right.</p>
 <p><b>Lost:</b> Two tracking sensitivity sliders located on this control panel 
@@ -260,8 +260,13 @@
   setting. The threshold is expressed as a fraction of the total intensity in 
   the frame; the darkest pixel is mapped to 0 and the brightest to 1. Any region 
   of the image that is above the threshold is considered to be a candidate for 
-  a bead. The <i>intensity_lost_tracking_sensitivity</i> also controls where trackers 
-  will be initialized; they will not appear where they would be immediately lost.</p>
+  a bead. The <i>fluorescent_max_regions</i> controls how many different regions 
+  of the image will be checked to see if a tracker should go there -- for very 
+  noisy images, there can be a huge number of regions and this can cause the program 
+  to run very slowly or crash. Reducing this number will make the autofind faster, 
+  but may miss spots. The <i>intensity_lost_tracking_sensitivity</i> also controls 
+  where trackers will be initialized; they will not appear where they would be 
+  immediately lost.</p>
 <h3>Faster display update</h3>
 
 <p><img src="small_area.jpg" width="162" height="175" align="right">Once you have created all of the trackers you want, you may check the <cite><strong>small_area</strong></cite> checkbox. This will cause the program to limit its update to a small area of pixels that surrounds the active trackers. This requires less processing and makes the update rate faster when the video is played. For the Roper and SPOT cameras, it also reduces the amount of data transmitted from the camera itself, again increasing the frame rate. This area will update itself as the trackers move, and it extends 4 radii past each tracker. This should enable the trackers to continue to track spots that are moving away from the updated video area.  A green box shows up in the video window to indicate the area being updated.</p>
@@ -407,6 +412,19 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 6.05:</h3>
+<ul>
+  <li>Added a control to limit the number of connected components that will be 
+    checked during fluorescence autofind. This prevents the program from using 
+    up all of memory and crashing when trying to place additional trackers in 
+    a noisy image.</li>
+  <li>BUG: This version cannot open DirectShow video files or devices. Microsoft 
+    changed the interface and this version has not been modified to use the new 
+    one. Previous versions will also not be able to open DirectShow files on the 
+    latest version of DirectX (the one found on Windows 7, for example) due to 
+    this interface change.</li>
+</ul>
+<h3></h3>
 <h3>Version 6.04:</h3>
 <ul>
   <li>Added an intensity-based fluorescence auto-find routine, including a user 

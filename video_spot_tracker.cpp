@@ -79,7 +79,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "06.04";
+const char *Version_string = "06.05";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -258,6 +258,7 @@ Tclvar_float_with_scale g_borderDeadZone("dead_zone_around_border", ".lost_and_f
 Tclvar_float_with_scale g_trackerDeadZone("dead_zone_around_trackers", ".lost_and_found_controls.top", 0.0, 3.0, 0.0);
 Tclvar_float_with_scale g_findThisManyFluorescentBeads("maintain_fluorescent_beads", ".lost_and_found_controls.bottom", 0.0, 100.0, 0.0);
 Tclvar_float_with_scale g_fluorescentSpotThreshold("fluorescent_spot_threshold", ".lost_and_found_controls.bottom", 0.0, 1.0, 0.5);
+Tclvar_float_with_scale g_fluorescentMaxRegions("fluorescent_max_regions", ".lost_and_found_controls.bottom", 0.0, 1000.0, 1000.0);
 Tclvar_float_with_scale g_findThisManyBeads("maintain_this_many_beads", ".lost_and_found_controls.middle", 0.0, 100.0, 0.0);
 Tclvar_float_with_scale g_candidateSpotThreshold("candidate_spot_threshold", ".lost_and_found_controls.middle", 0.0, 5.0, 5.0);
 Tclvar_float_with_scale g_slidingWindowRadius("sliding_window_radius", ".lost_and_found_controls.middle", 5.0, 15.0, 10.0);
@@ -2630,8 +2631,17 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
       }
     }
   }
+  //printf("XXX Found %d components.\n", index);
 
-  ///printf("XXX Found %d components.\n", index);
+  // If we have too many components, then only use some of them.
+  // This keep the program from filling up all of memory and crashing.
+  // XXX This can still be very slow to run for certain threshold
+  // settings on certain files.
+  if (index > g_fluorescentMaxRegions) {
+	  fprintf(stderr, "Warning:find_more_fluorescent_trackers() found %d components, using %d\n",
+		  index, static_cast<int>(static_cast<double>(g_fluorescentMaxRegions)));
+	  index = static_cast<int>(static_cast<double>(g_fluorescentMaxRegions));
+  }
 
   // Compute the center of mass of each connected component.  If we do not have a
   // tracker already too close to this center of mass, create a potential tracker there.
@@ -3761,6 +3771,7 @@ void  handle_save_state_change(int newvalue, void *)
   fprintf(f, "set dead_zone_around_border %lg\n", (double)(g_borderDeadZone));
   fprintf(f, "set dead_zone_around_trackers %lg\n", (double)(g_trackerDeadZone));
   fprintf(f, "set maintain_fluorescent_beads %lg\n", (double)(g_findThisManyFluorescentBeads));
+  fprintf(f, "set fluorescent_max_regions %lg\n", (double)(g_fluorescentMaxRegions));
   fprintf(f, "set fluorescent_spot_threshold %lg\n", (double)(g_fluorescentSpotThreshold));
   fprintf(f, "set maintain_this_many_beads %lg\n", (double)(g_findThisManyBeads));
   fprintf(f, "set candidate_spot_threshold %lg\n", (double)(g_candidateSpotThreshold));
@@ -3997,6 +4008,7 @@ void Usage(const char *progname)
     fprintf(stderr, "           [-lost_behavior B] [-lost_tracking_sensitivity L]\n");
     fprintf(stderr, "           [-intensity_lost_sensitivity IL] [-dead_zone_around_border DB]\n");
     fprintf(stderr, "           [-maintain_fluorescent_beads M] [-fluorescent_spot_threshold FT]\n");
+    fprintf(stderr, "           [-fluorescent_max_regions FR]\n");
     fprintf(stderr, "           [-maintain_this_many_beads M] [-dead_zone_around_trackers DT]\n");
     fprintf(stderr, "           [-candidate_spot_threshold T] [-sliding_window_radius SR]\n");
     fprintf(stderr, "           [-radius R] [-tracker X Y R] [-tracker X Y R] ...\n");
@@ -4026,6 +4038,7 @@ void Usage(const char *progname)
     fprintf(stderr, "                 autofinding.  0 means the minimum intensity in the image, 1 means the max.\n");
     fprintf(stderr, "                 Setting this lower will not miss as many spots,\n");
     fprintf(stderr, "                 but will also find garbage (default 0.5)\n");
+    fprintf(stderr, "       -fluorescent_max_regions: Only check up to FR connected regions per frame\n");
     fprintf(stderr, "       -maintain_this_many_beads: Try to autofind up to M beads at every frame\n");
     fprintf(stderr, "                 if there are not that many already.\n");
     fprintf(stderr, "       -candidate_spot_threshold: Set the threshold for possible spots when\n");
@@ -4340,6 +4353,9 @@ int main(int argc, char *argv[])
     } else if (!strncmp(argv[i], "-maintain_fluorescent_beads", strlen("-maintain_fluorescent_beads"))) {
 	if (++i >= argc) { Usage(argv[0]); }
 	g_findThisManyFluorescentBeads = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-fluorescent_max_regions", strlen("-fluorescent_max_regions"))) {
+	if (++i >= argc) { Usage(argv[0]); }
+	g_fluorescentMaxRegions = atof(argv[i]);
     } else if (!strncmp(argv[i], "-fluorescent_spot_threshold", strlen("-fluorescent_spot_threshold"))) {
 	if (++i >= argc) { Usage(argv[0]); }
 	g_fluorescentSpotThreshold = atof(argv[i]);

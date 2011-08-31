@@ -2,6 +2,19 @@
 
 #include "base_camera_server.h"
 
+// XXXX Problem: the current version of Phonon does not allow access to
+// individual video frames.  Once it does, we can implement this class.
+// It currently only allows the display of frames, not grabbing them.
+// XXX Can I implement a Sink based on their source code that will do
+// this, or is that all down inside the platform-specific stuff?  It is
+// surely in the platform stuff -- that's why you can't know whether you
+// can play a stream because you don't know what CODECs are available.
+// XXX Hold on -- there is a snapshot() function in the video widget that
+// returns a QImage (but a comment in the code makes it seem like it may
+// not be implemented).  There was some sort of seek-to function somewhere
+// else.
+#include <Phonon/MediaObject>
+
 class qt4_video_server : public base_camera_server {
 public:
   qt4_video_server(const char *filename);
@@ -46,6 +59,7 @@ public:
 
 protected:
 	// XXX Include Qt stuff that we need here.
+	Phonon::MediaObject	*m_media;
   
   struct timeval m_timestamp;     // timestamp of our most recent image
 
