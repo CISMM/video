@@ -186,9 +186,9 @@ pack .lost_and_found_controls.behavior.hover -side left
 frame .lost_and_found_controls.top -relief raised -borderwidth 1
 pack .lost_and_found_controls.top -side top
 frame .lost_and_found_controls.middle -relief raised -borderwidth 1
-pack .lost_and_found_controls.middle
+pack .lost_and_found_controls.middle -side left
 frame .lost_and_found_controls.bottom -relief raised -borderwidth 1
-pack .lost_and_found_controls.bottom
+pack .lost_and_found_controls.bottom -side right
 wm withdraw .lost_and_found_controls
 set show_lost_and_found 0
 trace variable show_lost_and_found w update_lost_and_found_window_visibility
