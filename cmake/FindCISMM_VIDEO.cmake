@@ -9,6 +9,7 @@
 find_path(CISMM_VIDEO_INCLUDE_DIR NAMES base_camera_server.h
 		PATHS
 		"C:/Program Files/CISMM_VIDEO/include"
+		C:/usr/local/include
 		/usr/local/include
 		"../video"
 )
@@ -18,6 +19,7 @@ mark_as_advanced(CISMM_VIDEO_INCLUDE_DIR)
 find_library(BASE_CAMERA_LIBRARY NAMES base_camera_server_library.lib libbase_camera_server_library.a
 		PATHS
 		"C:/Program Files/CISMM_VIDEO/lib"
+		C:/usr/local/lib
 		/usr/local/lib
 		"../build_video"
 		"../build_video/release"
@@ -27,6 +29,7 @@ mark_as_advanced(FILE_STACK_LIBRARY)
 find_library(FILE_STACK_LIBRARY NAMES file_stack_library.lib libfile_stack_library.a
 		PATHS
 		"C:/Program Files/CISMM_VIDEO/lib"
+		C:/usr/local/lib
 		/usr/local/lib
 		"../build_video"
 		"../build_video/release"
@@ -36,6 +39,7 @@ mark_as_advanced(FILE_STACK_LIBRARY)
 find_library(SPOT_TRACKER_LIBRARY NAMES spot_tracker_library.lib libspot_track_library.a
 		PATHS
 		"C:/Program Files/CISMM_VIDEO/lib"
+		C:/usr/local/lib
 		/usr/local/lib
 		"../build_video"
 		"../build_video/release"

@@ -60,6 +60,7 @@ else()
 		PATHS
 		"${_progfiles}/VRPN"
 		"${_progfiles}/quatlib"
+		C:/usr/local
 		/usr/local)
 
 	# Look for the library.
@@ -74,6 +75,7 @@ else()
 		PATHS
 		"${_progfiles}/VRPN"
 		"${_progfiles}/quatlib"
+		C:/usr/local
 		/usr/local)
 endif()
 
