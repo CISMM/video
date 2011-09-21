@@ -602,7 +602,6 @@ if (WIN32)
 SET(TARGET_NAME PanopticNerve)
 ADD_EXECUTABLE(PanopticNerve
 	PanopticNerve/PanopticNerve.cpp
-	PanopticNerve/AnalysisSpeedTest.cpp
 	PanopticNerve/cameraImage.cpp
 	PanopticNerve/ImageAnalyzer.cpp
 	PanopticNerve/NerveTest.cpp
