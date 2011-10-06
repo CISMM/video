@@ -79,7 +79,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "06.06";
+const char *Version_string = "06.07";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -2570,7 +2570,7 @@ static void flood_connected_component(double_image *img, int x, int y, double va
 // within one tracker radius of an existing tracker or within one tracker radius of the
 // border.  Create new trackers at those locations.  Returns true if it was
 // able to find them, false if not (or error).  It may in fact locate more
-// trackers than requested.
+// trackers than requested.  It may also locate fewer.
 bool find_more_fluorescent_trackers(unsigned how_many_more)
 {
   // make sure we only try to auto-find once per new frame of video
@@ -2583,11 +2583,18 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
   //printf("XXX Looking for %d fluorescent beads.\n", how_many_more);
 
   // Find out how large the image is.
+  // Ignore pixels that are in the dead zone around the border when doing
+  // this (this lets that control double as a way to remove bad/zero
+  // pixels in the border of the image).
+
   int minx, maxx, miny, maxy;
   g_image->read_range(minx, maxx, miny, maxy);
+  minx += static_cast<int>(g_borderDeadZone);
+  miny += static_cast<int>(g_borderDeadZone);
+  maxx -= static_cast<int>(g_borderDeadZone);
+  maxy -= static_cast<int>(g_borderDeadZone);
 
-
-  // first, find the max and min pixel value and scale our threshold
+  // first, find the max and min pixel value and scale our threshold.
   int x, y;
   double maxi = 0, mini = 1e50;
   double curi;
