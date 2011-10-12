@@ -421,8 +421,12 @@ spot_tracker_XY  *create_appropriate_xytracker(double x, double y, double r)
     }
   }
 
-  tracker->set_location(x,y);
-  tracker->set_radius(r);
+  if (tracker != NULL) {
+    tracker->set_location(x,y);
+    tracker->set_radius(r);
+  } else {
+    fprintf(stderr,"create_appropriate_xytracker(): Out of memory\n");
+  }
   return tracker;
 }
 
@@ -2643,7 +2647,8 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
   // If we have too many components, then only use some of them.
   // This keep the program from filling up all of memory and crashing.
   // XXX This can still be very slow to run for certain threshold
-  // settings on certain files.
+  // settings on certain files.  It also crashes depending on how much
+  // memory is left (which depends on the image size opened).
   if (index > g_fluorescentMaxRegions) {
 	  fprintf(stderr, "Warning:find_more_fluorescent_trackers() found %d components, using %d\n",
 		  index, static_cast<int>(static_cast<double>(g_fluorescentMaxRegions)));
@@ -2689,8 +2694,19 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
       }
     }
     if (safe) {
+      spot_tracker_XY *xy = create_appropriate_xytracker(cx,cy,g_Radius);
+      if (xy == NULL) {
+        fprintf(stderr,"find_more_fluorescent_trackers(): Can't make XY tracker\n");
+        break;
+      }
+      spot_tracker_Z *z = create_appropriate_ztracker();
       // last argument = true tells Spot_Information that this isn't an official, logged tracker
-      potentialTrackers.push_back(new Spot_Information(create_appropriate_xytracker(cx,cy,g_Radius),create_appropriate_ztracker(), true));
+      Spot_Information *si = new Spot_Information(xy,z, true);
+      if (si == NULL) {
+        fprintf(stderr,"find_more_fluorescent_trackers(): Can't make Spot Information\n");
+        break;
+      }
+      potentialTrackers.push_back(si);
     }
   }
 
@@ -2704,7 +2720,19 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
     optimize_tracker((*loop));
     if (!(*loop)->lost()) {
       ++numnotlost;
-      g_trackers.push_back(new Spot_Information(create_appropriate_xytracker((*loop)->xytracker()->get_x(),(*loop)->xytracker()->get_y(),g_Radius),create_appropriate_ztracker()));
+      spot_tracker_XY *xy = create_appropriate_xytracker((*loop)->xytracker()->get_x(),(*loop)->xytracker()->get_y(),g_Radius);
+      if (xy == NULL) {
+        fprintf(stderr,"find_more_fluorescent_trackers(): Can't make XY tracker\n");
+        return false;
+      }
+      spot_tracker_Z *z = create_appropriate_ztracker();
+      // last argument = true tells Spot_Information that this isn't an official, logged tracker
+      Spot_Information *si = new Spot_Information(xy,z, true);
+      if (si == NULL) {
+        fprintf(stderr,"find_more_fluorescent_trackers(): Can't make Spot Information\n");
+        return false;
+      }
+      g_trackers.push_back(si);
       g_active_tracker = g_trackers.back();
       if (g_active_tracker->ztracker()) {
         g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
@@ -2712,6 +2740,8 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
         ++numlost;
     }
   }
+
+  //printf("XXX After finding\n");
 
   // clean up candidate spots memory
   potentialTrackers.remove_if( deleteAll );

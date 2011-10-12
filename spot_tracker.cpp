@@ -1877,8 +1877,9 @@ static void flood_connected_component(double_image *img, int x, int y, double va
 bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapper &s_image,
                                                          float thresh,
                                                          float var_thresh,
-														 unsigned max_regions)
+                                                         unsigned max_regions)
 {
+    //printf("Autofinding fluorescent beads.\n"); fflush(stdout);
     // Find out how large the image is.
     int minx, maxx, miny, maxy;
     s_image.read_range(minx, maxx, miny, maxy);
@@ -1921,6 +1922,7 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
     // above along the way.  This leaves us with a set of labeled components
     // embedded in the image.
     int index = 0;
+    //printf("Looking for components.\n"); fflush(stdout);
     for (x =  minx; x <= maxx; x++) {
       for (y = miny; y <= maxy; y++) {
         if (threshold_image->read_pixel_nocheck(x,y) == -1) {
@@ -1929,15 +1931,15 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
         }
       }
     }
-    //printf("Found %d components.\n", index);
+    //printf("Found %d components.\n", index); fflush(stdout);
 
-	// If we have too many components, then only use some of them.
-	// This keep the program from filling up all of memory and crashing.
-	if ( (max_regions > 0) && (static_cast<unsigned>(index) > max_regions) ) {
-		fprintf(stderr, "Warning:Tracker_Collection_Manager::autofind_fluorescent_beads_in(): found %d components, using %d\n",
-			  index, max_regions);
-		  index = max_regions;
-	}
+    // If we have too many components, then only use some of them.
+    // This keep the program from filling up all of memory and crashing.
+    if ( (max_regions > 0) && (static_cast<unsigned>(index) > max_regions) ) {
+        fprintf(stderr, "Warning:Tracker_Collection_Manager::autofind_fluorescent_beads_in(): found %d components, using %d\n",
+              index, max_regions);
+        index = max_regions;
+    }
 
     // Compute the center of mass of each connected component.  If we do not have a
     // tracker already too close to this center of mass, create a potential tracker there.
