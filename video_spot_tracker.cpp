@@ -2714,9 +2714,10 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
         g_trackers.push_back(si);
         g_active_tracker = g_trackers.back();
         if (g_active_tracker->ztracker()) {
-          g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
-        }    
-      }
+          g_active_tracker->ztracker()->set_depth_accuracy(0.25);
+        }
+      }    
+    }
   }
 
   //printf("XXX After finding\n");

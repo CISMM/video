@@ -1942,10 +1942,11 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
     }
 
     // Compute the center of mass of each connected component.  If we do not have a
-    // tracker already too close to this center of mass, create a potential tracker there.
+    // tracker already too close to this center of mass, create a tracker there
+    // and see if it is immediately lost.  If not, then we add it to the list of
+    // trackers.
 
     std::list<Spot_Information *>::iterator loop;
-    std::list<Spot_Information*> potentialTrackers;
     double tooClose = d_min_bead_separation;
 
     int comp;
@@ -1987,38 +1988,26 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
         safe = false;
       }
       if (safe) {
-        // last argument = true tells Spot_Information that this isn't an official, logged tracker.
-        // But we need to keep it on the list because we don't want to make another one that is too
-        // close to this location.
-        spot_tracker_XY *tracker = new symmetric_spot_tracker_interp(d_default_radius, false, 0.25, 0.1, 0.25);
-        tracker->set_location(cx, cy);
-        potentialTrackers.push_back(new Spot_Information(tracker,NULL, true));
+        spot_tracker_XY *xy = new symmetric_spot_tracker_interp(d_default_radius, false, 0.25, 0.1, 0.25);
+        xy->set_location(cx, cy);
+        if (xy == NULL) {
+          fprintf(stderr,"Tracker_Collection_Manager::autofind_fluorescent_beads_in(): Can't make XY tracker\n");
+          break;
+        }
+        Spot_Information *si = new Spot_Information(xy,NULL);
+        if (si == NULL) {
+          fprintf(stderr,"Tracker_Collection_Manager::autofind_fluorescent_beads_in(): Can't make Spot Information\n");
+          break;
+        }
+        mark_tracker_if_lost( si, s_image, var_thresh );
+        if (si->lost()) {
+          // Deleting the SpotInformation also deletes its trackers.
+          delete si;
+        } else {
+          d_trackers.push_back(si);
+        }
       }
     }
-
-    // Check to see which candidate spots aren't immediately lost.  Add each one that is
-    // not lost to the list of actual trackers.  We keep track of how many are lost and not
-    // lost in case we later want to print debugging info.
-    int numlost = 0;
-    int numnotlost = 0;
-    //printf("  dbg Found %u potential trackers\n",potentialTrackers.size());
-    for (loop = potentialTrackers.begin(); loop != potentialTrackers.end(); loop++) {
-      // if our candidate tracker isn't lost, then we add it to our list of real trackers
-      mark_tracker_if_lost( (*loop), s_image, var_thresh );
-      if (!(*loop)->lost()) {
-        ++numnotlost;
-        spot_tracker_XY *tracker = new symmetric_spot_tracker_interp(d_default_radius, false, 0.25, 0.1, 0.25);
-        tracker->set_location((*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y());
-        d_trackers.push_back(new Spot_Information(tracker, NULL));
-      } else {
-          ++numlost;
-      }
-    }
-    //printf("  dbg Found %d actual trackers\n", numnotlost);
-
-    // clean up candidate spots memory using a helper function that deletes each
-    // element and then returns true so it will also be removed from the list.
-    potentialTrackers.remove_if( deleteAll );
 
     // Clean up our temporary images in reverse order to make it easier for the
     // memory allocator.
