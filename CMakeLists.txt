@@ -223,6 +223,7 @@ INCLUDE_DIRECTORIES(
 	${GLUT_INCLUDE_DIR}
 	stocc_random_number_generator/
 	PanopticNerve/
+	PanopticNerve_LEWOS/
 	${CISMM_VIDEO_SOURCE_DIR}
         ${LEWOSSIM_INCLUDE_DIR}
         ${LEWOS_INCLUDE_DIR}
@@ -676,6 +677,85 @@ TARGET_LINK_LIBRARIES(PanopticNerve
 )
 SET_TARGET_PROPERTIES(PanopticNerve PROPERTIES SOLUTION_FOLDER apps)
 endif (WIN32)
+
+
+if (WIN32)
+SET(TARGET_NAME PanopticNerve_LEWOS)
+ADD_EXECUTABLE(PanopticNerve_LEWOS
+	PanopticNerve_LEWOS/PanopticNerve.cpp
+	PanopticNerve_LEWOS/cameraImage.cpp
+	PanopticNerve_LEWOS/ImageAnalyzer.cpp
+	PanopticNerve_LEWOS/NerveTest.cpp
+	PanopticNerve_LEWOS/USBMAC6000.cpp
+	PanopticNerve_LEWOS/SyncControl.cpp
+	PanopticNerve_LEWOS/sciString2send.cpp
+	PanopticNerve_LEWOS/LEWOS_Alfred_xmit.cpp
+	PanopticNerve_LEWOS/LEWOS_Alfred_api.cpp
+)
+  if (VIDEO_USE_IMAGEMAGICK)
+	TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
+		file_stack_library
+		${ImageMagick_Needed_Libs}
+    )
+  endif (VIDEO_USE_IMAGEMAGICK)
+  if (VIDEO_USE_DIRECTSHOW)
+    TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
+	directx_library
+    )
+  endif (VIDEO_USE_DIRECTSHOW)  
+  if (VIDEO_USE_COOKE)
+		TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
+			cooke_library
+			${Cooke_LIBRARIES}
+		)
+  endif (VIDEO_USE_COOKE)
+  if (VIDEO_USE_DIAGINC)
+		TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
+			diaginc_library
+			${DiagInc_LIBRARIES}
+		)
+  endif (VIDEO_USE_DIAGINC)
+  if (VIDEO_USE_EDT)
+		TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
+			EDT_library
+			${EDT_LIBRARIES}
+		)
+  endif (VIDEO_USE_EDT)
+  if (VIDEO_USE_ROPER)
+		TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
+			Roper_library
+			${ROPER_LIBRARIES}
+		)
+  endif (VIDEO_USE_ROPER)
+  if (VIDEO_USE_POINTGREY)
+		TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
+			point_grey_library
+			${POINTGREY_LIBRARIES}
+		)
+  endif (VIDEO_USE_POINTGREY)
+  if (VIDEO_USE_VRPN_IMAGER)
+		TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
+			vrpn_imager_library
+		)
+  endif (VIDEO_USE_VRPN_IMAGER)
+  if (VIDEO_USE_QT4)
+		TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
+			qt4_video_library
+			${QT_LIBRARIES}
+		)
+  endif (VIDEO_USE_QT4)
+TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
+	base_camera_server_library
+	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
+	${GLUT_LIBRARIES}
+	${OPENGL_glu_LIBRARY}
+	${OPENGL_gl_LIBRARY}
+	#${LEWOSSIM_LIBRARIES}
+	#${LEWOS_LIBRARIES}
+)
+SET_TARGET_PROPERTIES(PanopticNerve_LEWOS PROPERTIES SOLUTION_FOLDER apps)
+endif (WIN32)
+
 
 if (VIDEO_USE_EDT)
 	SET(TARGET_NAME GLUItake)
