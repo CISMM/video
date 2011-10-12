@@ -84,6 +84,7 @@ file_stack_server::~file_stack_server(void)
   // Free the space taken by the in-memory image copy (if allocated)
   if (d_buffer) {
     delete [] d_buffer;
+    d_buffer = NULL;
   }
 
 #if !defined(VIDEO_NO_IMAGEMAGICK)
@@ -91,7 +92,8 @@ file_stack_server::~file_stack_server(void)
   // If we have a multi-layer image open, then destroy it.
   Image *image = static_cast<Image *>(d_listOfImages);
   if (image != NULL) {
-    DestroyImage(image);
+    DestroyImageList(image);
+    d_listOfImages = NULL;
   }
 #endif
 }
@@ -112,10 +114,11 @@ void  file_stack_server::rewind()
 
   // If we have a multi-layer image open, then destroy it
   // and set our open-image pointer to NULL to indicate that
-  // we don't have one open.
+  // we don't have one open.  This will cause it to be
+  // opened the next time.
   Image *image = static_cast<Image *>(d_listOfImages);
   if (image != NULL) {
-    DestroyImage(image);
+    DestroyImageList(image);
     d_listOfImages = NULL;
   }
 #endif
@@ -164,14 +167,14 @@ bool  file_stack_server::read_image_from_file(const string filename)
   } else {
     image=ReadImage(image_info,&exception);
     if (image == (Image *) NULL) {
-        // print out something to let us know we are missing the 
-        // delegates.mgk or whatever if that is the problem instead of just
-        // saying the file can't be loaded later
-        fprintf(stderr, "nmb_ImgMagic: %s: %s\n",
-               exception.reason,exception.description);
-        //MagickError(exception.severity,exception.reason,exception.description);
-        // Get here if we can't decipher the file, let caller handle it. 
-        return false;
+      // print out something to let us know we are missing the 
+      // delegates.mgk or whatever if that is the problem instead of just
+      // saying the file can't be loaded later
+      fprintf(stderr, "file_stack_server::read_image_from_file(): ReadImage() failed: %s: %s\n",
+             exception.reason,exception.description);
+      //MagickError(exception.severity,exception.reason,exception.description);
+      // Get here if we can't decipher the file, let caller handle it. 
+      return false;
     }
   }
 
@@ -199,8 +202,8 @@ bool  file_stack_server::read_image_from_file(const string filename)
 
   // This is the method for reading pixels that compiles and works, 
   // as opposed to GetImagePixels or GetOnePixel, which wouldn't compile. 
-  vinfo = OpenCacheView(image);
-  pixels = GetCacheView(vinfo, 0,0,image->columns,image->rows);
+  vinfo = AcquireCacheView(image);
+  pixels = GetCacheViewPixels(vinfo, 0,0,image->columns,image->rows);
   if(!pixels) {
       fprintf(stderr, "file_stack_server::read_image_from_file: unable to get pixel cache.\n"); 
       return false;
@@ -219,7 +222,7 @@ bool  file_stack_server::read_image_from_file(const string filename)
     }
   }
 
-  CloseCacheView(vinfo);
+  DestroyCacheView(vinfo);
   DestroyImageInfo(image_info);
 
   // If we just looked at the last image in this file, destroy the image.
@@ -228,7 +231,7 @@ bool  file_stack_server::read_image_from_file(const string filename)
   // to the next image in the file.
   Image *next = GetNextImageInList(image);
   if (next == NULL) {
-    DestroyImage(image);
+    DestroyImageList(image);
     d_listOfImages = NULL;
   } else {
     d_listOfImages = next;
