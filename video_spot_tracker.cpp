@@ -2727,7 +2727,7 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
       }
       spot_tracker_Z *z = create_appropriate_ztracker();
       // last argument = true tells Spot_Information that this isn't an official, logged tracker
-      Spot_Information *si = new Spot_Information(xy,z, true);
+      Spot_Information *si = new Spot_Information(xy,z);
       if (si == NULL) {
         fprintf(stderr,"find_more_fluorescent_trackers(): Can't make Spot Information\n");
         return false;
