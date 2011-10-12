@@ -2656,10 +2656,11 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
   }
 
   // Compute the center of mass of each connected component.  If we do not have a
-  // tracker already too close to this center of mass, create a potential tracker there.
+  // tracker already too close to this center of mass, create a tracker there
+  // and see if it is immediately lost.  If not, then we add it to the list of
+  // trackers.
 
   list <Spot_Information *>::iterator loop;
-  list<Spot_Information*> potentialTrackers;
   double tooClose = g_trackerDeadZone;
 
   int comp;
@@ -2700,51 +2701,25 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
         break;
       }
       spot_tracker_Z *z = create_appropriate_ztracker();
-      // last argument = true tells Spot_Information that this isn't an official, logged tracker
-      Spot_Information *si = new Spot_Information(xy,z, true);
+      Spot_Information *si = new Spot_Information(xy,z);
       if (si == NULL) {
         fprintf(stderr,"find_more_fluorescent_trackers(): Can't make Spot Information\n");
         break;
       }
-      potentialTrackers.push_back(si);
-    }
-  }
-
-  // Check to see which candidate spots aren't immediately lost.  Add each one that is
-  // not onto the list of actual trackers.  We keep track of how many are lost and not
-  // lost in case we later want to print debugging info.
-  int numlost = 0;
-  int numnotlost = 0;
-  for (loop = potentialTrackers.begin(); loop != potentialTrackers.end(); loop++) {
-    // if our candidate tracker isn't lost, then we add it to our list of real trackers
-    optimize_tracker((*loop));
-    if (!(*loop)->lost()) {
-      ++numnotlost;
-      spot_tracker_XY *xy = create_appropriate_xytracker((*loop)->xytracker()->get_x(),(*loop)->xytracker()->get_y(),g_Radius);
-      if (xy == NULL) {
-        fprintf(stderr,"find_more_fluorescent_trackers(): Can't make XY tracker\n");
-        return false;
-      }
-      spot_tracker_Z *z = create_appropriate_ztracker();
-      // last argument = true tells Spot_Information that this isn't an official, logged tracker
-      Spot_Information *si = new Spot_Information(xy,z);
-      if (si == NULL) {
-        fprintf(stderr,"find_more_fluorescent_trackers(): Can't make Spot Information\n");
-        return false;
-      }
-      g_trackers.push_back(si);
-      g_active_tracker = g_trackers.back();
-      if (g_active_tracker->ztracker()) {
-        g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
+      optimize_tracker(si);
+      if (si->lost()) {
+        // Deleting the SpotInformation also deletes its trackers.
+        delete si;
       } else {
-        ++numlost;
-    }
+        g_trackers.push_back(si);
+        g_active_tracker = g_trackers.back();
+        if (g_active_tracker->ztracker()) {
+          g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
+        }    
+      }
   }
 
   //printf("XXX After finding\n");
-
-  // clean up candidate spots memory
-  potentialTrackers.remove_if( deleteAll );
 
   // Clean up our temporary images in reverse order to make it easier for the
   // memory allocator.
