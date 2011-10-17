@@ -79,7 +79,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "06.08";
+const char *Version_string = "06.09";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -475,16 +475,16 @@ static bool deleteAll( Spot_Information * theElement ) {
 static void  dirtyexit(void)
 {
   static bool did_already = false;
-  g_quit = 1;  // Lets all the threads know that it is time to exit.
-
   if (did_already) {
     return;
   } else {
     did_already = true;
   }
 
+  g_quit = 1;  // Lets all the threads know that it is time to exit.
+
   // Done with the camera and other objects.
-  printf("Exiting\n");
+  printf("Exiting...");
 
   // Make the log file name empty so that the logging thread
   // will notice and close its file.
@@ -506,6 +506,7 @@ static void  dirtyexit(void)
       fprintf(stderr,"Tclvar Mainloop failed\n");
     }
   }
+  printf("logging thread done...");
 
   // Get rid of any tracking threads and their associated data
   unsigned i;
@@ -516,9 +517,16 @@ static void  dirtyexit(void)
     delete g_tracking_threads[i];
   }
   g_tracking_threads.clear();
+  printf("tracking threads deleted...");
+
+  glutDestroyWindow(g_tracking_window);
+  glutDestroyWindow(g_beadseye_window);
+  glutDestroyWindow(g_landscape_window);
+  printf("OpenGL window deleted...");
 
   // Get rid of any trackers.
   g_trackers.remove_if( deleteAll );
+  printf("trackers removed...");
   if (g_camera) { delete g_camera; g_camera = NULL; }
   if (g_glut_image) { delete [] g_glut_image; g_glut_image = NULL; };
   if (g_beadseye_image) { delete [] g_beadseye_image; g_beadseye_image = NULL; };
@@ -528,6 +536,7 @@ static void  dirtyexit(void)
   if (g_rewind) { delete g_rewind; g_rewind = NULL; };
   if (g_step) { delete g_step; g_step = NULL; };
   if (g_csv_file) { fclose(g_csv_file); g_csv_file = NULL; g_csv_file = NULL; };
+  printf("objects deleted and files closed.\n");
 }
 
 static void  cleanup(void)
@@ -550,6 +559,7 @@ static void  cleanup(void)
   if (g_vrpn_analog) { delete g_vrpn_analog; g_vrpn_analog = NULL; };
   if (g_vrpn_imager) { delete g_vrpn_imager; g_vrpn_imager = NULL; };
   if (g_vrpn_connection) { g_vrpn_connection->removeReference(); g_vrpn_connection = NULL; };
+  printf("Deleted tracker, analog, imager, and connection\n");
 }
 
 static	double	timediff(struct timeval t1, struct timeval t2)
@@ -3326,6 +3336,10 @@ void myIdleFunc(void)
 //------------------------------------------------------------
   // Time to quit?
   if (g_quit) {
+    // Show the console window because if we don't, then on XP the code
+    // often crashes but if we do then it does not.  Wait a bit to make
+    // sure it shows up.
+
     // If we have been logging, then see if we have saved the
     // current frame's image.  If not, go ahead and do it now.
     if (g_vrpn_tracker && (g_log_frame_number_last_logged != g_frame_number)) {
@@ -3337,6 +3351,8 @@ void myIdleFunc(void)
     }
 
     cleanup();
+    printf("Exiting with code 0 (good, clean exit)\n");
+
     exit(0);
   }
   
