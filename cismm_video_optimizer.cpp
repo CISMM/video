@@ -345,8 +345,9 @@ static void  dirtyexit(void)
     g_psf_file = NULL;
   }
 
-  list<Spot_Information *>::iterator  loop;
+  glutDestroyWindow(g_tracking_window);
 
+  list<Spot_Information *>::iterator  loop;
   for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
     delete *loop;
   }

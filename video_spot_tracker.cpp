@@ -79,7 +79,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "06.07";
+const char *Version_string = "06.09";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -421,8 +421,12 @@ spot_tracker_XY  *create_appropriate_xytracker(double x, double y, double r)
     }
   }
 
-  tracker->set_location(x,y);
-  tracker->set_radius(r);
+  if (tracker != NULL) {
+    tracker->set_location(x,y);
+    tracker->set_radius(r);
+  } else {
+    fprintf(stderr,"create_appropriate_xytracker(): Out of memory\n");
+  }
   return tracker;
 }
 
@@ -471,16 +475,16 @@ static bool deleteAll( Spot_Information * theElement ) {
 static void  dirtyexit(void)
 {
   static bool did_already = false;
-  g_quit = 1;  // Lets all the threads know that it is time to exit.
-
   if (did_already) {
     return;
   } else {
     did_already = true;
   }
 
+  g_quit = 1;  // Lets all the threads know that it is time to exit.
+
   // Done with the camera and other objects.
-  printf("Exiting\n");
+  printf("Exiting...");
 
   // Make the log file name empty so that the logging thread
   // will notice and close its file.
@@ -502,6 +506,7 @@ static void  dirtyexit(void)
       fprintf(stderr,"Tclvar Mainloop failed\n");
     }
   }
+  printf("logging thread done...");
 
   // Get rid of any tracking threads and their associated data
   unsigned i;
@@ -512,9 +517,16 @@ static void  dirtyexit(void)
     delete g_tracking_threads[i];
   }
   g_tracking_threads.clear();
+  printf("tracking threads deleted...");
+
+  glutDestroyWindow(g_tracking_window);
+  glutDestroyWindow(g_beadseye_window);
+  glutDestroyWindow(g_landscape_window);
+  printf("OpenGL window deleted...");
 
   // Get rid of any trackers.
   g_trackers.remove_if( deleteAll );
+  printf("trackers removed...");
   if (g_camera) { delete g_camera; g_camera = NULL; }
   if (g_glut_image) { delete [] g_glut_image; g_glut_image = NULL; };
   if (g_beadseye_image) { delete [] g_beadseye_image; g_beadseye_image = NULL; };
@@ -524,6 +536,7 @@ static void  dirtyexit(void)
   if (g_rewind) { delete g_rewind; g_rewind = NULL; };
   if (g_step) { delete g_step; g_step = NULL; };
   if (g_csv_file) { fclose(g_csv_file); g_csv_file = NULL; g_csv_file = NULL; };
+  printf("objects deleted and files closed.\n");
 }
 
 static void  cleanup(void)
@@ -546,6 +559,7 @@ static void  cleanup(void)
   if (g_vrpn_analog) { delete g_vrpn_analog; g_vrpn_analog = NULL; };
   if (g_vrpn_imager) { delete g_vrpn_imager; g_vrpn_imager = NULL; };
   if (g_vrpn_connection) { g_vrpn_connection->removeReference(); g_vrpn_connection = NULL; };
+  printf("Deleted tracker, analog, imager, and connection\n");
 }
 
 static	double	timediff(struct timeval t1, struct timeval t2)
@@ -2643,7 +2657,8 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
   // If we have too many components, then only use some of them.
   // This keep the program from filling up all of memory and crashing.
   // XXX This can still be very slow to run for certain threshold
-  // settings on certain files.
+  // settings on certain files.  It also crashes depending on how much
+  // memory is left (which depends on the image size opened).
   if (index > g_fluorescentMaxRegions) {
 	  fprintf(stderr, "Warning:find_more_fluorescent_trackers() found %d components, using %d\n",
 		  index, static_cast<int>(static_cast<double>(g_fluorescentMaxRegions)));
@@ -2651,10 +2666,11 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
   }
 
   // Compute the center of mass of each connected component.  If we do not have a
-  // tracker already too close to this center of mass, create a potential tracker there.
+  // tracker already too close to this center of mass, create a tracker there
+  // and see if it is immediately lost.  If not, then we add it to the list of
+  // trackers.
 
   list <Spot_Information *>::iterator loop;
-  list<Spot_Information*> potentialTrackers;
   double tooClose = g_trackerDeadZone;
 
   int comp;
@@ -2689,32 +2705,32 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
       }
     }
     if (safe) {
-      // last argument = true tells Spot_Information that this isn't an official, logged tracker
-      potentialTrackers.push_back(new Spot_Information(create_appropriate_xytracker(cx,cy,g_Radius),create_appropriate_ztracker(), true));
-    }
-  }
-
-  // Check to see which candidate spots aren't immediately lost.  Add each one that is
-  // not onto the list of actual trackers.  We keep track of how many are lost and not
-  // lost in case we later want to print debugging info.
-  int numlost = 0;
-  int numnotlost = 0;
-  for (loop = potentialTrackers.begin(); loop != potentialTrackers.end(); loop++) {
-    // if our candidate tracker isn't lost, then we add it to our list of real trackers
-    optimize_tracker((*loop));
-    if (!(*loop)->lost()) {
-      ++numnotlost;
-      g_trackers.push_back(new Spot_Information(create_appropriate_xytracker((*loop)->xytracker()->get_x(),(*loop)->xytracker()->get_y(),g_Radius),create_appropriate_ztracker()));
-      g_active_tracker = g_trackers.back();
-      if (g_active_tracker->ztracker()) {
-        g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
+      spot_tracker_XY *xy = create_appropriate_xytracker(cx,cy,g_Radius);
+      if (xy == NULL) {
+        fprintf(stderr,"find_more_fluorescent_trackers(): Can't make XY tracker\n");
+        break;
+      }
+      spot_tracker_Z *z = create_appropriate_ztracker();
+      Spot_Information *si = new Spot_Information(xy,z);
+      if (si == NULL) {
+        fprintf(stderr,"find_more_fluorescent_trackers(): Can't make Spot Information\n");
+        break;
+      }
+      optimize_tracker(si);
+      if (si->lost()) {
+        // Deleting the SpotInformation also deletes its trackers.
+        delete si;
       } else {
-        ++numlost;
+        g_trackers.push_back(si);
+        g_active_tracker = g_trackers.back();
+        if (g_active_tracker->ztracker()) {
+          g_active_tracker->ztracker()->set_depth_accuracy(0.25);
+        }
+      }    
     }
   }
 
-  // clean up candidate spots memory
-  potentialTrackers.remove_if( deleteAll );
+  //printf("XXX After finding\n");
 
   // Clean up our temporary images in reverse order to make it easier for the
   // memory allocator.
@@ -3320,6 +3336,10 @@ void myIdleFunc(void)
 //------------------------------------------------------------
   // Time to quit?
   if (g_quit) {
+    // Show the console window because if we don't, then on XP the code
+    // often crashes but if we do then it does not.  Wait a bit to make
+    // sure it shows up.
+
     // If we have been logging, then see if we have saved the
     // current frame's image.  If not, go ahead and do it now.
     if (g_vrpn_tracker && (g_log_frame_number_last_logged != g_frame_number)) {
@@ -3331,6 +3351,8 @@ void myIdleFunc(void)
     }
 
     cleanup();
+    printf("Exiting with code 0 (good, clean exit)\n");
+
     exit(0);
   }
   
