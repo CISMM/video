@@ -603,7 +603,6 @@ TARGET_LINK_LIBRARIES(swap_ppm_lines
 )
 SET_TARGET_PROPERTIES(swap_ppm_lines PROPERTIES SOLUTION_FOLDER apps)
 
-if (WIN32)
 SET(TARGET_NAME PanopticNerve)
 ADD_EXECUTABLE(PanopticNerve
 	PanopticNerve/PanopticNerve.cpp
@@ -676,7 +675,6 @@ TARGET_LINK_LIBRARIES(PanopticNerve
         ${LEWOS_LIBRARIES}
 )
 SET_TARGET_PROPERTIES(PanopticNerve PROPERTIES SOLUTION_FOLDER apps)
-endif (WIN32)
 
 
 if (WIN32)
