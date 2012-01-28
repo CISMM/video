@@ -44,9 +44,7 @@ FIND_PACKAGE(quatlib REQUIRED)	# Sets QUATLIB_INCLUDE_DIR and QUATLIB_LIBRARIES
 FIND_PACKAGE(VRPN REQUIRED)
 FIND_PACKAGE(LEWOS REQUIRED)
 FIND_PACKAGE(LEWOSSIM REQUIRED)
-if (WIN32)
-	FIND_PACKAGE(OpenGL REQUIRED)
-endif (WIN32)
+FIND_PACKAGE(OpenGL REQUIRED)
 
 # Try to find NSRG Buildtime (NSRGBUILD) to set all we need for ImageMagic,
 # TCL, and Glut.  If not, then find the individual packages.
@@ -689,12 +687,6 @@ ADD_EXECUTABLE(PanopticNerve_LEWOS
 	PanopticNerve_LEWOS/LEWOS_Alfred_xmit.cpp
 	PanopticNerve_LEWOS/LEWOS_Alfred_api.cpp
 )
-  if (VIDEO_USE_IMAGEMAGICK)
-	TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
-		file_stack_library
-		${ImageMagick_Needed_Libs}
-    )
-  endif (VIDEO_USE_IMAGEMAGICK)
   if (VIDEO_USE_DIRECTSHOW)
     TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	directx_library
@@ -741,15 +733,25 @@ ADD_EXECUTABLE(PanopticNerve_LEWOS
 			${QT_LIBRARIES}
 		)
   endif (VIDEO_USE_QT4)
+  if (UNIX)
+	TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
+		${LEWOS_LIBRARIES}
+	)
+  endif (UNIX)
 TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	base_camera_server_library
 	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
-	${GLUT_LIBRARIES}
 	${OPENGL_glu_LIBRARY}
 	${OPENGL_gl_LIBRARY}
 	#${LEWOSSIM_LIBRARIES}
 	#${LEWOS_LIBRARIES}
 )
+  if (VIDEO_USE_IMAGEMAGICK)
+	TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
+		file_stack_library
+		${ImageMagick_Needed_Libs}
+    )
+  endif (VIDEO_USE_IMAGEMAGICK)
 SET_TARGET_PROPERTIES(PanopticNerve_LEWOS PROPERTIES SOLUTION_FOLDER apps)
 
 
