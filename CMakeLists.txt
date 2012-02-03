@@ -44,9 +44,7 @@ FIND_PACKAGE(quatlib REQUIRED)	# Sets QUATLIB_INCLUDE_DIR and QUATLIB_LIBRARIES
 FIND_PACKAGE(VRPN REQUIRED)
 FIND_PACKAGE(LEWOS REQUIRED)
 FIND_PACKAGE(LEWOSSIM REQUIRED)
-if (WIN32)
-	FIND_PACKAGE(OpenGL REQUIRED)
-endif (WIN32)
+FIND_PACKAGE(OpenGL REQUIRED)
 
 # Try to find NSRG Buildtime (NSRGBUILD) to set all we need for ImageMagic,
 # TCL, and Glut.  If not, then find the individual packages.
@@ -603,7 +601,6 @@ TARGET_LINK_LIBRARIES(swap_ppm_lines
 )
 SET_TARGET_PROPERTIES(swap_ppm_lines PROPERTIES SOLUTION_FOLDER apps)
 
-if (WIN32)
 SET(TARGET_NAME PanopticNerve)
 ADD_EXECUTABLE(PanopticNerve
 	PanopticNerve/PanopticNerve.cpp
@@ -676,10 +673,8 @@ TARGET_LINK_LIBRARIES(PanopticNerve
         ${LEWOS_LIBRARIES}
 )
 SET_TARGET_PROPERTIES(PanopticNerve PROPERTIES SOLUTION_FOLDER apps)
-endif (WIN32)
 
 
-if (WIN32)
 SET(TARGET_NAME PanopticNerve_LEWOS)
 ADD_EXECUTABLE(PanopticNerve_LEWOS
 	PanopticNerve_LEWOS/PanopticNerve.cpp
@@ -692,12 +687,6 @@ ADD_EXECUTABLE(PanopticNerve_LEWOS
 	PanopticNerve_LEWOS/LEWOS_Alfred_xmit.cpp
 	PanopticNerve_LEWOS/LEWOS_Alfred_api.cpp
 )
-  if (VIDEO_USE_IMAGEMAGICK)
-	TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
-		file_stack_library
-		${ImageMagick_Needed_Libs}
-    )
-  endif (VIDEO_USE_IMAGEMAGICK)
   if (VIDEO_USE_DIRECTSHOW)
     TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	directx_library
@@ -744,17 +733,26 @@ ADD_EXECUTABLE(PanopticNerve_LEWOS
 			${QT_LIBRARIES}
 		)
   endif (VIDEO_USE_QT4)
+  if (UNIX)
+	TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
+		${LEWOS_LIBRARIES}
+	)
+  endif (UNIX)
 TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	base_camera_server_library
 	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
-	${GLUT_LIBRARIES}
 	${OPENGL_glu_LIBRARY}
 	${OPENGL_gl_LIBRARY}
 	#${LEWOSSIM_LIBRARIES}
 	#${LEWOS_LIBRARIES}
 )
+  if (VIDEO_USE_IMAGEMAGICK)
+	TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
+		file_stack_library
+		${ImageMagick_Needed_Libs}
+    )
+  endif (VIDEO_USE_IMAGEMAGICK)
 SET_TARGET_PROPERTIES(PanopticNerve_LEWOS PROPERTIES SOLUTION_FOLDER apps)
-endif (WIN32)
 
 
 if (VIDEO_USE_EDT)
