@@ -75,7 +75,7 @@
 				OutputFile=".\Release/video_imager_server.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;C:\Program Files\Point Grey Research\FlyCapture2\lib&quot;;../vrpn/pc_win32/Release;C:\nsrg\external\pc_win32\ImageMagick\lib;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\tcl\lib;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;c:\NSRG\external\pc_win32\PointGrey\lib"
+				AdditionalLibraryDirectories="&quot;C:\Program Files\Microsoft DirectX SDK (August 2006)\Lib\x86&quot;;&quot;C:\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib&quot;;&quot;C:\Program Files\Point Grey Research\FlyCapture2\lib&quot;;../vrpn/pc_win32/Release;C:\nsrg\external\pc_win32\ImageMagick\lib;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\tcl\lib;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;c:\NSRG\external\pc_win32\PointGrey\lib"
 				SubSystem="1"
 				TargetMachine="1"
 			/>
@@ -169,7 +169,7 @@
 				OutputFile=".\Debug/video_imager_server.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;C:\Program Files\Point Grey Research\FlyCapture2\lib&quot;;../vrpn/pc_win32/Debug;C:\nsrg\external\pc_win32\ImageMagick\lib;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\tcl\lib;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;c:\NSRG\external\pc_win32\PointGrey\lib"
+				AdditionalLibraryDirectories="&quot;C:\Program Files\Microsoft DirectX SDK (August 2006)\Lib\x86&quot;;&quot;C:\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Lib&quot;;&quot;C:\Program Files\Point Grey Research\FlyCapture2\lib&quot;;../vrpn/pc_win32/Debug;C:\nsrg\external\pc_win32\ImageMagick\lib;&quot;C:\NSRG\external\pc_win32\Roper-Photometrics\PVCam\SDK\Libs&quot;;C:\NSRG\external\pc_win32\DiagInc;C:\NSRG\external\pc_win32\tcl\lib;&quot;C:\NSRG\external\pc_win32\Cooke-PCO\pco.camera.sdk\lib&quot;;c:\NSRG\external\pc_win32\PointGrey\lib"
 				IgnoreDefaultLibraryNames="msvcrt.lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/video_imager_server.pdb"
