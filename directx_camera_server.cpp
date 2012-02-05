@@ -107,12 +107,12 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
     _started_graph = true;
   }
 
-  //XXX Should the app set the timeout period?
+  //XXX Should the app be allowed to set the timeout period?
+  const int TIMEOUT_MSECS = 500;
 
   // Wait until there is a sample ready in the callback handler.  If there is,
   // copy it into our buffer and then tell it we are done processing the sample.
   // If it takes too long, time out.
-  const int TIMEOUT_MSECS = 500;
   BYTE	*imageLocation;
   if (!_pCallback->imageReady) {
     for (int i = 0; i < TIMEOUT_MSECS; i++) {
@@ -558,6 +558,25 @@ directx_camera_server::directx_camera_server(int which, unsigned width, unsigned
   // No image in memory yet.
   _minX = _maxX = _minY = _maxY = 0;
 
+  //-------------------------------------------------------------------
+  // Read frames until we get a good one or until we get ten bad ones
+  // in a row (ten timeouts).  We do this here because the read_one_frame()
+  // function is timing out several times after the device is initially
+  // opened on one particular laptop (Sager, Windows 7 64-bit).
+  bool got_good_frame = false;
+  unsigned i;
+  for (i = 0; i < 10; i++) {
+    if (read_one_frame(0, _num_columns-1, 0, _num_rows-1, 1)) {
+      got_good_frame = true;
+      break;
+    }
+  }
+  if (!got_good_frame) {
+    fprintf(stderr,"directx_camera_server::directx_camera_server(): Could not read frame from camera\n");
+    _status = false;
+    return;
+  }
+
 #ifdef	HACK_TO_REOPEN
   close_device();
 #endif
@@ -598,7 +617,10 @@ directx_camera_server::~directx_camera_server(void)
 bool  directx_camera_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned minY, unsigned maxY,
 					 double exposure_millisecs)
 {
-  if (!_status) { return false; };
+  if (!_status) { 
+    fprintf(stderr, "directx_camera_server::read_image_to_memory(): broken\n");
+    return false;
+  };
 
   //---------------------------------------------------------------------
   // In case we fail, clear these
@@ -628,6 +650,7 @@ bool  directx_camera_server::read_image_to_memory(unsigned minX, unsigned maxX, 
   //---------------------------------------------------------------------
   // Set up and read one frame, if we can.
   if (!read_one_frame(_minX, _maxX, _minY, _maxY, (int)exposure_millisecs)) {
+    fprintf(stderr, "directx_camera_server::read_image_to_memory(): read_one_frame() failed\n");
     return false;
   }
 
