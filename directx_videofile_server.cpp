@@ -40,7 +40,12 @@ static HRESULT ConnectTwoFilters(IGraphBuilder *pGraph, IBaseFilter *pFirst, IBa
     {
         pOut->Release();
         return E_FAIL;
-     }
+    }
+    // We use Connect() here because it will fill in any needed filters
+    // to connect the two pins, for example adding decompression filters
+    // as needed to read from compressed files.
+    // XXX Unfortunately, this hangs on Windows 7 64-bit on Russ' laptop
+    // when opening a video file.
     hr = pGraph->Connect(pOut, pIn);
     pIn->Release();
     pOut->Release();
