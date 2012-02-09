@@ -107,12 +107,12 @@ bool  directx_camera_server::read_one_frame(unsigned minX, unsigned maxX,
     _started_graph = true;
   }
 
-  //XXX Should the app set the timeout period?
+  //XXX Should the app be allowed to set the timeout period?
+  const int TIMEOUT_MSECS = 500;
 
   // Wait until there is a sample ready in the callback handler.  If there is,
   // copy it into our buffer and then tell it we are done processing the sample.
   // If it takes too long, time out.
-  const int TIMEOUT_MSECS = 500;
   BYTE	*imageLocation;
   if (!_pCallback->imageReady) {
     for (int i = 0; i < TIMEOUT_MSECS; i++) {
@@ -598,7 +598,10 @@ directx_camera_server::~directx_camera_server(void)
 bool  directx_camera_server::read_image_to_memory(unsigned minX, unsigned maxX, unsigned minY, unsigned maxY,
 					 double exposure_millisecs)
 {
-  if (!_status) { return false; };
+  if (!_status) { 
+    fprintf(stderr, "directx_camera_server::read_image_to_memory(): broken\n");
+    return false;
+  };
 
   //---------------------------------------------------------------------
   // In case we fail, clear these
@@ -628,6 +631,7 @@ bool  directx_camera_server::read_image_to_memory(unsigned minX, unsigned maxX, 
   //---------------------------------------------------------------------
   // Set up and read one frame, if we can.
   if (!read_one_frame(_minX, _maxX, _minY, _maxY, (int)exposure_millisecs)) {
+    fprintf(stderr, "directx_camera_server::read_image_to_memory(): read_one_frame() failed\n");
     return false;
   }
 

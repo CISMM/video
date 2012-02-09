@@ -40,7 +40,12 @@ static HRESULT ConnectTwoFilters(IGraphBuilder *pGraph, IBaseFilter *pFirst, IBa
     {
         pOut->Release();
         return E_FAIL;
-     }
+    }
+    // We use Connect() here because it will fill in any needed filters
+    // to connect the two pins, for example adding decompression filters
+    // as needed to read from compressed files.
+    // XXX Unfortunately, this hangs on Windows 7 64-bit on Russ' laptop
+    // when opening a video file.
     hr = pGraph->Connect(pOut, pIn);
     pIn->Release();
     pOut->Release();
@@ -96,9 +101,15 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
 
   // Initialize COM.  This must have a matching uninitialize in
   // the destructor.
+#ifdef DEBUG
+  fprintf(stderr, "directx_videofile_server::open_and_find_parameters(): Before CoInitialize\n");
+#endif
   CoInitialize(NULL);
 
   // Create the filter graph manager
+#ifdef DEBUG
+  fprintf(stderr, "directx_videofile_server::open_and_find_parameters(): Before manager CoCreateInstance\n");
+#endif
   CoCreateInstance(CLSID_FilterGraph, NULL, CLSCTX_INPROC_SERVER, 
 		      IID_IGraphBuilder, (void **)&_pGraph);
   if (_pGraph == NULL) {
@@ -109,6 +120,9 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
   _pGraph->QueryInterface(IID_IMediaEvent, (void **)&_pEvent);
 
   // Create the Capture Graph Builder.
+#ifdef DEBUG
+  fprintf(stderr, "directx_videofile_server::open_and_find_parameters(): Before builder CoCreateInstance\n");
+#endif
   if (CoCreateInstance(CLSID_CaptureGraphBuilder2, NULL, CLSCTX_INPROC, 
     IID_ICaptureGraphBuilder2, (void **)&_pBuilder) != S_OK) {
     _pBuilder = NULL;
@@ -132,6 +146,9 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
   // the video stream as they go by.
 
   // Create the Sample Grabber.
+#ifdef DEBUG
+  fprintf(stderr, "directx_videofile_server::open_and_find_parameters(): Before grabber CoCreateInstance\n");
+#endif
   CoCreateInstance(CLSID_SampleGrabber, NULL, CLSCTX_INPROC_SERVER,
       IID_IBaseFilter, reinterpret_cast<void**>(&_pSampleGrabberFilter));
   _pSampleGrabberFilter->QueryInterface(IID_ISampleGrabber,
@@ -152,11 +169,17 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
   // on the output pin of the sample grabber
 
   IBaseFilter *pNull = NULL;
+#ifdef DEBUG
+  fprintf(stderr, "directx_videofile_server::open_and_find_parameters(): Before NULL render CoCreateInstance\n");
+#endif
   CoCreateInstance(CLSID_NullRenderer, NULL, CLSCTX_INPROC_SERVER,
       IID_IBaseFilter, reinterpret_cast<void**>(&pNull));
 
   //-------------------------------------------------------------------
   // Build the filter graph.  First add the filters and then connect them.
+#ifdef DEBUG
+  fprintf(stderr, "directx_videofile_server::open_and_find_parameters(): Building filter graph...");
+#endif
 
   // pSrc is a the file-reading filter.
   IBaseFilter *pSrc;
@@ -167,25 +190,43 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
     fprintf(stderr,"directx_videofile_server::open_and_find_parameters(): Can't create reader for %s\n", filename);
     return false;
   }
+#ifdef DEBUG
+  fprintf(stderr, "(source)...");
+#endif
 
   // Add the sample grabber filter
   if (FAILED(_pGraph->AddFilter(_pSampleGrabberFilter, L"SampleGrabber"))) {
     fprintf(stderr,"directx_videofile_server::open_and_find_parameters(): Can't create grabber filter\n");
     return false;
   }
+#ifdef DEBUG
+  fprintf(stderr, "(grabber)...");
+#endif
 
   // Add the null renderer filter
   if (FAILED(_pGraph->AddFilter(pNull, L"NullRenderer"))) {
     fprintf(stderr,"directx_videofile_server::open_and_find_parameters(): Can't create Null Renderer\n");
     return false;
   }
+#ifdef DEBUG
+  fprintf(stderr, "(renderer)...");
+#endif
 
   // Connect the output of the video reader to the sample grabber input
   ConnectTwoFilters(_pGraph, pSrc, _pSampleGrabberFilter);
+#ifdef DEBUG
+  fprintf(stderr, "(connected reader)...");
+#endif
 
   // Connect the output of the sample grabber to the NULL renderer input
+#ifdef DEBUG
+  fprintf(stderr, "(connected grabber)...");
+#endif
   ConnectTwoFilters(_pGraph, _pSampleGrabberFilter, pNull);
-  
+#ifdef DEBUG
+  fprintf(stderr, "\n");
+#endif
+
   //-------------------------------------------------------------------
   // We don't need a reference clock for playout because we're going
   // to limit playback rate by controlling how fast we pass frames through
@@ -199,6 +240,9 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
   // Find the control that lets you seek in the media (rewind uses this
   // to restart at the beginning of the file).
 
+#ifdef DEBUG
+  fprintf(stderr, "directx_videofile_server::open_and_find_parameters(): Locating seek controls\n");
+#endif
   if (FAILED(_pGraph->QueryInterface(IID_IMediaSeeking, (void **)&_pMediaSeeking))) {
     fprintf(stderr,"directx_videofile_server::open_and_find_parameters(): Can't create media seeker\n");
     pSrc->Release();
@@ -208,6 +252,9 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
 
   //-------------------------------------------------------------------
   // Find _num_rows and _num_columns, which is the maximum size.
+#ifdef DEBUG
+  fprintf(stderr, "directx_videofile_server::open_and_find_parameters(): Determining image size\n");
+#endif
   _pGrabber->GetConnectedMediaType(&mt);
   VIDEOINFOHEADER *pVih;
   if (mt.formattype == FORMAT_VideoInfo) {
@@ -236,6 +283,9 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
 
   // Make sure that the image is not compressed and that we have 8 bits
   // per pixel.
+#ifdef DEBUG
+  fprintf(stderr, "directx_videofile_server::open_and_find_parameters(): Checking compression\n");
+#endif
   if (pVih->bmiHeader.biCompression != BI_RGB) {
     fprintf(stderr,"directx_videofile_server::open_and_find_parameters(): Compression not RGB\n");
     switch (pVih->bmiHeader.biCompression) {
@@ -273,6 +323,9 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
 
   //-------------------------------------------------------------------
   // Release resources that won't be used later and return
+#ifdef DEBUG
+  fprintf(stderr, "directx_videofile_server::open_and_find_parameters(): Releasing resources\n");
+#endif
   pSrc->Release();
   pNull->Release();
   return true;

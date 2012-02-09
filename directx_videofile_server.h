@@ -10,7 +10,6 @@
 #include <dshow.h>
 #include <qedit.h>
 
-
 /// Reads from a video file, acts like a camera video source.
 //  Derives from camera class so it can re-use many methods.
 

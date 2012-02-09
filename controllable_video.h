@@ -205,9 +205,44 @@ bool  get_camera(const char *name,
     // Passing width and height as zero leaves it open to whatever the camera has
     directx_camera_server *d = new directx_camera_server(1,0,0);	// Use camera #1 (first one found)
     *camera = d;
+
+    //-------------------------------------------------------------------
+    // Read frames until we get a good one or until we get ten bad ones
+    // in a row (ten timeouts).  We do this here because the read_one_frame()
+    // function is timing out several times after the device is initially
+    // opened on one particular laptop (Sager, Windows 7 64-bit).
+    bool got_good_frame = false;
+    unsigned i;
+    for (i = 0; i < 10; i++) {
+      if (d->read_image_to_memory()) {
+        got_good_frame = true;
+        break;
+      }
+    }
+    if (!got_good_frame) {
+      fprintf(stderr,"get_camera(): Could not read frame from directx camera\n");
+    }
+
   } else if (!strcmp(name, "directx640x480")) {
     directx_camera_server *d = new directx_camera_server(1,640,480);	// Use camera #1 (first one found)
     *camera = d;
+
+    //-------------------------------------------------------------------
+    // Read frames until we get a good one or until we get ten bad ones
+    // in a row (ten timeouts).  We do this here because the read_one_frame()
+    // function is timing out several times after the device is initially
+    // opened on one particular laptop (Sager, Windows 7 64-bit).
+    bool got_good_frame = false;
+    unsigned i;
+    for (i = 0; i < 10; i++) {
+      if (d->read_image_to_memory()) {
+        got_good_frame = true;
+        break;
+      }
+    }
+    if (!got_good_frame) {
+      fprintf(stderr,"get_camera(): Could not read frame from directx camera\n");
+    }
 
   // If this is a VRPN URL for an SEM device, then open the file and set up
   // to read from that device.
