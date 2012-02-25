@@ -55,10 +55,13 @@
 //NMmp source files (Copied from nanoManipulator project).
 #include "thread.h"
 
+// Switched from OpenCV-based blurring to custom blurring
+#ifdef  VIDEO_USE_OPENCV
 // OpenCV includes
 #include <cv.h>
 #include <cxcore.h>
 #include <highgui.h>
+#endif
 
 #include <list>
 #include <vector>
@@ -2243,6 +2246,7 @@ bool find_more_trackers(unsigned how_many_more)
         int x, y;
 
         // We'll do a simple gaussian filter on our image before looking for beads.
+#ifdef  VIDEO_USE_OPENCV
         // For this we'll use OpenCV.
 
 	CvSize imgSize;
@@ -2281,6 +2285,7 @@ bool find_more_trackers(unsigned how_many_more)
 	cvWaitKey();
 	cvDestroyWindow("Image:");
 	//*/
+#endif
 
 	// first, we calculate horizontal and vertical SMDs on the global image
 	double SMD = 0;
@@ -2295,8 +2300,13 @@ bool find_more_trackers(unsigned how_many_more)
 		// calcualte one SMD
 		for (y = miny + 1; y <= maxy; ++y)
 		{
+#ifdef  VIDEO_USE_OPENCV
 			Ia = ((uchar*)(img->imageData + img->widthStep*y))[x];
 			Ib = ((uchar*)(img->imageData + img->widthStep*(y-1)))[x];
+#else
+                        Ia = g_blurred_image->read_pixel_nocheck(x, y);
+                        Ib = g_blurred_image->read_pixel_nocheck(x, y-1);
+#endif
 			SMD += fabs(Ia - Ib);
 		}
 		// normalize by dividing by the number of pairwise computations
@@ -2333,8 +2343,13 @@ bool find_more_trackers(unsigned how_many_more)
 		// calcualte one SMD
 		for (x = minx + 1; x <= maxx; ++x)
 		{
+#ifdef  VIDEO_USE_OPENCV
 			Ia = ((uchar*)(img->imageData + img->widthStep*y))[x];
 			Ib = ((uchar*)(img->imageData + img->widthStep*y))[x-1];
+#else
+                        Ia = g_blurred_image->read_pixel_nocheck(x, y);
+                        Ib = g_blurred_image->read_pixel_nocheck(x-1, y);
+#endif
 			SMD += fabs(Ia - Ib);
 		}
 		// normalize by dividing by the number of pairwise computations
@@ -2476,6 +2491,7 @@ bool find_more_trackers(unsigned how_many_more)
 	}
 	//printf("%i potential new trackers added!\n", newTrackers);
 
+#ifdef  VIDEO_USE_OPENCV
 /*
 	// let's take a look at the distribution of our local SMDs
 	std::sort(candidateSpotsSMD.begin(), candidateSpotsSMD.end());
@@ -2518,6 +2534,7 @@ bool find_more_trackers(unsigned how_many_more)
 
 	cvReleaseImage( &plot );
 */
+#endif
 
 	int numlost = 0;
 	int numnotlost = 0;
@@ -2547,10 +2564,12 @@ bool find_more_trackers(unsigned how_many_more)
 	delete [] horiSMDs;
 	delete [] vertSMDs;
 
+#ifdef  VIDEO_USE_OPENCV
 	// clean up our image filtering memory in reverse order to make it
         // easier for the memory manager
 	cvReleaseImage( &img );
 	cvReleaseImage( &src );
+#endif
 
   return true;
 }
