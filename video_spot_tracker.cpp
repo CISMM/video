@@ -120,6 +120,7 @@ image_metric	    *g_mean_image = NULL;	  //< Accumulates mean of images, if we'r
 image_wrapper	    *g_calculated_image = NULL;	  //< Image calculated from the camera image and other parameters
 unsigned            g_background_count = 0;       //< Number of frames we've already averaged over
 copy_of_image	    *g_last_image = NULL;	  //< Copy of the last image we had, if any
+image_wrapper       *g_blurred_image = NULL;      //< Blurred image used for autofind/delete, if any
 
 Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
 Tclvar_int_with_button	g_frame_number("frame_number",NULL,-1);  //< Keeps track of video frame number
@@ -252,6 +253,7 @@ Tclvar_float_with_scale	g_colorIndex("red_green_blue", NULL, 0, 2, 0);
 Tclvar_float_with_scale	g_brighten("brighten", "", 0, 8, 0);
 Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_trackers);
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
+Tclvar_float_with_scale g_blurLostAndFound("blur_lost_and_found", ".lost_and_found_controls.top", 0.0, 5.0, 0.0);
 Tclvar_float_with_scale g_lossSensitivity("kernel_lost_tracking_sensitivity", ".lost_and_found_controls.top", 0.0, 1.0, 0.0);
 Tclvar_float_with_scale g_intensityLossSensitivity("intensity_lost_tracking_sensitivity", ".lost_and_found_controls.top", 0.0, 10.0, 0.0);
 Tclvar_float_with_scale g_borderDeadZone("dead_zone_around_border", ".lost_and_found_controls.top", 0.0, 30.0, 0.0);
@@ -406,7 +408,7 @@ spot_tracker_XY  *create_appropriate_xytracker(double x, double y, double r)
         background = g_FIONA_background;
         volume = 100;
       }
-      //fprintf(stderr,"XXX FIONA kernel at %lg,%lg radius %lg: background = %lg, volume = %lg\n", x, y, r, background, volume);
+      //fprintf(stderr,"dbg: FIONA kernel at %lg,%lg radius %lg: background = %lg, volume = %lg\n", x, y, r, background, volume);
       tracker = new FIONA_spot_tracker(r, (g_invert != 0), g_precision, 0.1, g_sampleSpacing, background, volume);
     } else if (g_kernel_type == KERNEL_SYMMETRIC) {
       g_interpolate = 1;
@@ -894,18 +896,27 @@ void myDisplayFunc(void)
     int total_shift = shift_due_to_camera - g_brighten;
     if (total_shift < 0) { total_shift = 0; }
 
+    // Figure out which image to display.  If we're in debug mode and have a
+    // blurred image, then we draw it.  Otherwise, we draw the g_image.
+    image_wrapper *drawn_image = g_image;
+    int blurred_dim = 0;
+    if (g_blurred_image && g_show_debug) {
+      drawn_image = g_blurred_image;
+      blurred_dim = -1 * g_camera_bit_depth;  // Scale to range 0..1 for floating-point
+    }
+
     if (g_opengl_video) {
       // If we can't write using OpenGL, turn off the feature for next frame.
-      if (!g_image->write_to_opengl_quad(pow(2.0,static_cast<double>(g_brighten)))) {
+      if (!drawn_image->write_to_opengl_quad(pow(2.0,static_cast<double>(g_brighten + blurred_dim)))) {
         g_opengl_video = false;
       }
     } else {
       int shift = total_shift;
       for (r = *g_minY; r <= *g_maxY; r++) {
         unsigned lowc = *g_minX, hic = *g_maxX; //< Speeds things up.
-        unsigned char *pixel_base = &g_glut_image[ 4*(lowc + g_image->get_num_columns() * r) ]; //< Speeds things up
+        unsigned char *pixel_base = &g_glut_image[ 4*(lowc + drawn_image->get_num_columns() * r) ]; //< Speeds things up
         for (c = lowc; c <= hic; c++) {
-	  if (!g_image->read_pixel(c, r, uns_pix, g_colorIndex)) {
+	  if (!drawn_image->read_pixel(c, r, uns_pix, g_colorIndex)) {
 	    fprintf(stderr, "Cannot read pixel from region\n");
 	    cleanup();
       	    exit(-1);
@@ -928,10 +939,10 @@ void myDisplayFunc(void)
 #ifdef DEBUG
 	  // If we're debugging, fill the border pixels with green
 	  if ( (r == *g_minY) || (r == *g_maxY) || (c == *g_minX) || (c == *g_maxX) ) {
-	    g_glut_image[0 + 4 * (c + g_image->get_num_columns() * r)] = 0;
-	    g_glut_image[1 + 4 * (c + g_image->get_num_columns() * r)] = 255;
-	    g_glut_image[2 + 4 * (c + g_image->get_num_columns() * r)] = 0;
-	    g_glut_image[3 + 4 * (c + g_image->get_num_columns() * r)] = 255;
+	    g_glut_image[0 + 4 * (c + drawn_image->get_num_columns() * r)] = 0;
+	    g_glut_image[1 + 4 * (c + drawn_image->get_num_columns() * r)] = 255;
+	    g_glut_image[2 + 4 * (c + drawn_image->get_num_columns() * r)] = 0;
+	    g_glut_image[3 + 4 * (c + drawn_image->get_num_columns() * r)] = 255;
 	  }
 #endif
         }
@@ -942,7 +953,7 @@ void myDisplayFunc(void)
       // corner, which is at (-1,-1)).
       glRasterPos2f(-1, -1);
 #ifdef DEBUG
-      printf("Drawing %dx%d pixels\n", g_image->get_num_columns(), g_image->get_num_rows());
+      printf("Drawing %dx%d pixels\n", drawn_image->get_num_columns(), drawn_image->get_num_rows());
 #endif
       // At one point, I changed this to GL_LUMINANCE and then we had to do
       // only 1/4 of the pixel moving in the loop above and we have only 1/4
@@ -958,7 +969,7 @@ void myDisplayFunc(void)
       // RGB rendering window and deal with the alignment issues and then make
       // it a LUMINANCE DrawPixels... probably won't make anything faster but
       // it may make it more confusing.
-      glDrawPixels(g_image->get_num_columns(),g_image->get_num_rows(),
+      glDrawPixels(drawn_image->get_num_columns(),drawn_image->get_num_rows(),
         GL_RGBA, GL_UNSIGNED_BYTE, g_glut_image);
     } // End of "not g_opengl_video for texture"
   }
@@ -1220,6 +1231,53 @@ void myDisplayFunc(void)
 	}
 	glEnd();
 
+  }
+
+  // For debug info, lets show the pixels that are above the threshold if
+  // we're intensity-based threshold autofind.
+  if (g_show_debug && (g_findThisManyFluorescentBeads > 0)) {
+    // Figure out which image to search for above-threshold spots.
+    image_wrapper *img = g_image;
+    if (g_blurred_image) {
+      img = g_blurred_image;
+    }
+
+    // first, find the max and min pixel value and scale our threshold.
+    int minx, maxx, miny, maxy;
+    img->read_range(minx, maxx, miny, maxy);
+    minx += static_cast<int>(g_borderDeadZone);
+    miny += static_cast<int>(g_borderDeadZone);
+    maxx -= static_cast<int>(g_borderDeadZone);
+    maxy -= static_cast<int>(g_borderDeadZone);
+
+    int x, y;
+    double maxi = 0, mini = 1e50;
+    double curi;
+    for (y = miny; y <= maxy; ++y) {
+      for (x = minx; x <= maxx; ++x) {
+        curi = img->read_pixel_nocheck(x, y);
+        if (curi > maxi) { maxi = curi; }
+        if (curi < mini) { mini = curi; }
+      }
+    }
+    double threshold = mini + (maxi-mini)*g_fluorescentSpotThreshold;
+
+    // Write a red dot on top of each pixel that is above threshold.
+    glColor3f(1,0,0);
+    glBegin(GL_POINTS);
+    double xoffset = -1.0;
+    double xscale = 2.0/img->get_num_columns();
+    double yoffset = -1;
+    double yscale = 2.0/img->get_num_rows();
+    for (y = miny; y <= maxy; ++y) {
+      for (x = minx; x <= maxx; ++x) {
+        curi = img->read_pixel_nocheck(x, y);
+        if (curi >= threshold) {
+          glVertex2f( xoffset + x * xscale, yoffset + y * yscale);
+        }
+      }
+    }
+    glEnd();
   }
 
   // Swap buffers so we can see it.
@@ -1767,6 +1825,14 @@ static void optimize_tracker(Spot_Information *tracker)
     tracker->set_acceleration(new_acc);
   }
 
+  // Determine which image we should be looking at for seeing if a tracker
+  // is lost.  If we have a blurred image, we look at that one.  Otherwise,
+  // we look at the global image.
+  image_wrapper *l_image = g_image;
+  if (g_blurred_image) {
+    l_image = g_blurred_image;
+  }
+
   // If we have a non-zero kernel-based threshold for determining if we are lost,
   // check and see if we are.  This is done by finding the value of
   // the fitness function at the actual tracker location and comparing
@@ -1802,7 +1868,7 @@ static void optimize_tracker(Spot_Information *tracker)
      for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
        x = start_x + r * cos(theta);
        y = start_y + r * sin(theta);
-       if (g_image->read_pixel_bilerp(x, y, value, g_colorIndex)) {
+       if (l_image->read_pixel_bilerp(x, y, value, g_colorIndex)) {
          mean += value;
          count++;
        }
@@ -1817,7 +1883,7 @@ static void optimize_tracker(Spot_Information *tracker)
      for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
        x = start_x + r * cos(theta);
        y = start_y + r * sin(theta);
-       if (g_image->read_pixel_bilerp(x, y, value, g_colorIndex)) {
+       if (l_image->read_pixel_bilerp(x, y, value, g_colorIndex)) {
          std_dev += (mean - value) * (mean - value);
          count++;
        }
@@ -1830,7 +1896,7 @@ static void optimize_tracker(Spot_Information *tracker)
      // Check to see if we're lost based on how far we are above/below the
      // mean.
      double threshold = g_lossSensitivity * (2 * std_dev);
-     if (g_image->read_pixel_bilerp(start_x, start_y, value, g_colorIndex)) {
+     if (l_image->read_pixel_bilerp(start_x, start_y, value, g_colorIndex)) {
        double diff = value - mean;
        if (g_invert) { diff *= -1; }
        if (diff < threshold) {
@@ -1855,7 +1921,7 @@ static void optimize_tracker(Spot_Information *tracker)
         x = r * cos(theta);
         y = r * sin(theta);
 	tracker->xytracker()->set_location(x + start_x, y + start_y);
-	this_val = tracker->xytracker()->check_fitness(*g_image, g_colorIndex);
+	this_val = tracker->xytracker()->check_fitness(*l_image, g_colorIndex);
 	if (this_val > max_val) { max_val = this_val; }
       }
       if (max_val < min_val) { min_val = max_val; }
@@ -1867,8 +1933,8 @@ static void optimize_tracker(Spot_Information *tracker)
     // on the type of kernel we are using.  It also depends on the setting of
     // the "lost sensitivity" parameter, which varies from 0 (not sensitive at
     // all) to 1 (most sensitive).
-    double starting_value = tracker->xytracker()->check_fitness(*g_image, g_colorIndex);
-    //printf("XXX Center = %lg, min of maxes = %lg, scale = %lg\n", starting_value, min_val, min_val/starting_value);
+    double starting_value = tracker->xytracker()->check_fitness(*l_image, g_colorIndex);
+    //printf("dbg: Center = %lg, min of maxes = %lg, scale = %lg\n", starting_value, min_val, min_val/starting_value);
     if (g_kernel_type == KERNEL_SYMMETRIC) {
       // The symmetric kernel reports values that are strictly non-positive for
       // its fitness function.  Some observation of values reveals that the key factor
@@ -1925,22 +1991,22 @@ static void optimize_tracker(Spot_Information *tracker)
      double variance = 0;
      int offset;
      for (offset = -halfwidth+1; offset < halfwidth; offset++) {
-       if (g_image->read_pixel(x-offset, y-halfwidth, val, g_colorIndex)) {
+       if (l_image->read_pixel(x-offset, y-halfwidth, val, g_colorIndex)) {
          mean += val;
          variance += val*val;
          pixels++;
        }
-       if (g_image->read_pixel(x-offset, y+halfwidth, val, g_colorIndex)) {
+       if (l_image->read_pixel(x-offset, y+halfwidth, val, g_colorIndex)) {
          mean += val;
          variance += val*val;
          pixels++;
        }
-       if (g_image->read_pixel(x-halfwidth, y+offset, val, g_colorIndex)) {
+       if (l_image->read_pixel(x-halfwidth, y+offset, val, g_colorIndex)) {
          mean += val;
          variance += val*val;
          pixels++;
        }
-       if (g_image->read_pixel(x+halfwidth, y+offset, val, g_colorIndex)) {
+       if (l_image->read_pixel(x+halfwidth, y+offset, val, g_colorIndex)) {
          mean += val;
          variance += val*val;
          pixels++;
@@ -1958,7 +2024,7 @@ static void optimize_tracker(Spot_Information *tracker)
      // Compare to see if we're lost.  Check <= rather than < because in
      // regions where the pixels clamp to 0 or max there is no difference on
      // either side of the equation and we should be lost.
-     g_image->read_pixel(x, y, val, g_colorIndex);
+     l_image->read_pixel(x, y, val, g_colorIndex);
      if ((val - mean)*(val-mean) <= variance * g_intensityLossSensitivity) {
        tracker->lost(true);
      }
@@ -2585,7 +2651,7 @@ static void flood_connected_component(double_image *img, int x, int y, double va
 // border.  Create new trackers at those locations.  Returns true if it was
 // able to find them, false if not (or error).  It may in fact locate more
 // trackers than requested.  It may also locate fewer.
-bool find_more_fluorescent_trackers(unsigned how_many_more)
+bool find_more_fluorescent_trackers(const image_wrapper *img, unsigned how_many_more)
 {
   // make sure we only try to auto-find once per new frame of video
   if (!g_gotNewFluorescentFrame) {
@@ -2594,7 +2660,7 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
     g_gotNewFluorescentFrame = false;
   }
 
-  //printf("XXX Looking for %d fluorescent beads.\n", how_many_more);
+  //printf("dbg: Looking for %d fluorescent beads.\n", how_many_more);
 
   // Find out how large the image is.
   // Ignore pixels that are in the dead zone around the border when doing
@@ -2602,7 +2668,7 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
   // pixels in the border of the image).
 
   int minx, maxx, miny, maxy;
-  g_image->read_range(minx, maxx, miny, maxy);
+  img->read_range(minx, maxx, miny, maxy);
   minx += static_cast<int>(g_borderDeadZone);
   miny += static_cast<int>(g_borderDeadZone);
   maxx -= static_cast<int>(g_borderDeadZone);
@@ -2614,7 +2680,7 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
   double curi;
   for (y = miny; y <= maxy; ++y) {
     for (x = minx; x <= maxx; ++x) {
-      curi = g_image->read_pixel_nocheck(x, y);
+      curi = img->read_pixel_nocheck(x, y);
       if (curi > maxi) { maxi = curi; }
       if (curi < mini) { mini = curi; }
     }
@@ -2631,7 +2697,7 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
   }
   for (y = miny; y <= maxy; ++y) {
     for (x = minx; x <= maxx; ++x) {
-      if (g_image->read_pixel_nocheck(x,y) >= threshold) {
+      if (img->read_pixel_nocheck(x,y) >= threshold) {
         threshold_image->write_pixel_nocheck(x, y, -1.0);
       } else {
         threshold_image->write_pixel_nocheck(x, y, 0.0);
@@ -2652,7 +2718,7 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
       }
     }
   }
-  //printf("XXX Found %d components.\n", index);
+  //printf("dbg: Found %d components.\n", index);
 
   // If we have too many components, then only use some of them.
   // This keep the program from filling up all of memory and crashing.
@@ -2730,7 +2796,7 @@ bool find_more_fluorescent_trackers(unsigned how_many_more)
     }
   }
 
-  //printf("XXX After finding\n");
+  //printf("dbg: After finding\n");
 
   // Clean up our temporary images in reverse order to make it easier for the
   // memory allocator.
@@ -2930,7 +2996,7 @@ void myIdleFunc(void)
   //XXX It also causes crashing when used with the Cooke camera driver!
   //XXX It will also remove the ability to do OpenGL-accelerated rendering.
 /*XXX
-  printf("XXX copying image\n");
+  printf("dbg: copying image\n");
   static copy_of_image double_image(*g_camera);
   double_image = *g_camera;
   g_image = &double_image;
@@ -2987,6 +3053,22 @@ void myIdleFunc(void)
     }
   }
 
+  // If we have gotten a new video frame and we're making a blurred image
+  // for the lost-and-found images, then make a new one here.  Then set the
+  // lost-and-found (LAF) image to point to it.
+  if (g_blurred_image) {
+    delete g_blurred_image;
+    g_blurred_image = NULL;
+  }
+  if ( (g_gotNewFrame || g_gotNewFluorescentFrame) && (g_blurLostAndFound > 0) ) {
+    unsigned aperture = 1 + static_cast<unsigned>(2*g_blurLostAndFound);
+    g_blurred_image = new gaussian_blurred_image(*g_image, aperture, g_blurLostAndFound);
+  }
+  image_wrapper *laf_image = g_image;
+  if (g_blurred_image) {
+    laf_image = g_blurred_image;
+  }
+
   // Update the VRPN tracker position for each tracker and report it
   // using the same time value for each.  Don't do the update if we
   // don't currently have a valid video frame.  Sensors are indexed
@@ -3024,13 +3106,13 @@ void myIdleFunc(void)
     find_more_trackers(g_findThisManyBeads - g_trackers.size());
   }
   if (g_findThisManyFluorescentBeads > g_trackers.size()) {
-    find_more_fluorescent_trackers(g_findThisManyFluorescentBeads - g_trackers.size());
+    find_more_fluorescent_trackers(laf_image, g_findThisManyFluorescentBeads - g_trackers.size());
   }
 
   // Nobody is known to be lost yet...
   g_tracker_is_lost = false;
 
-  // Optimize all trackers and see if they are lost, if we have trackers.
+  // Optimize all trackers, if we have trackers.
   if (g_opt && g_active_tracker) {
 
     int kymocount = 0;
@@ -3336,9 +3418,6 @@ void myIdleFunc(void)
 //------------------------------------------------------------
   // Time to quit?
   if (g_quit) {
-    // Show the console window because if we don't, then on XP the code
-    // often crashes but if we do then it does not.  Wait a bit to make
-    // sure it shows up.
 
     // If we have been logging, then see if we have saved the
     // current frame's image.  If not, go ahead and do it now.

@@ -275,6 +275,66 @@ protected:
 };
 
 //----------------------------------------------------------------------------
+// Concrete version of above virtual base class that stores a single-color
+// image in single-precision floating-point values.  Also includes methods for
+// writing the pixel values.
+
+class float_image: public image_wrapper {
+public:
+  float_image(int minx = 0, int maxx = 255, int miny = 0, int maxy = 255);
+  ~float_image();
+
+  // Tell what the range is for the image.
+  virtual void	read_range(int &minx, int &maxx, int &miny, int &maxy) const;
+
+  // Read a pixel from the image into a double; return true if the pixel
+  // was in the image, false if it was not.
+  virtual bool	read_pixel(int x, int y, double &result, unsigned ignored = 0) const;
+  virtual double read_pixel_nocheck(int x, int y, unsigned ignored = 0) const;
+
+  /// Return the number of colors that the image has
+  virtual unsigned  get_num_colors() const { return 1; }
+
+  // Write a pixel into the image; return true if the pixel was in the image,
+  // false if it was not.
+  inline bool	write_pixel(int x, int y, double value)
+  {
+    int index;
+    if (find_index(x,y, index)) {
+      _image[index] = static_cast<float>(value);
+      return true;
+    }
+    // Didn't find it, return false.
+    return false;
+  };
+  inline void  write_pixel_nocheck(int x, int y, double value)
+  {
+    int index;
+    if (find_index(x,y, index)) {
+      _image[index] = static_cast<float>(value);
+    }
+  };
+
+  // Write the texture, using a virtual method call appropriate to the particular
+  // camera type.
+  virtual bool write_to_opengl_texture(GLuint tex_id);
+
+protected:
+  int	  _minx, _maxx, _miny, _maxy;
+  float  *_image;
+
+  // Index the specified pixel, returning false if out of range
+  inline  bool	find_index(int x, int y, int &index) const {
+      if (_image == NULL) { return false; }
+      if ( (x < _minx) || (x > _maxx) || (y < _miny) || (y > _maxy) ) {
+	return false;
+      }
+      index = (x-_minx) + (y-_miny)*(_maxx-_minx+1);
+      return true;
+    }
+};
+
+//----------------------------------------------------------------------------
 // Concrete version of above virtual base class that creates itself by copying
 // from an existing image.
 
@@ -545,7 +605,8 @@ protected:
 
 //----------------------------------------------------------------------------
 // Concrete version of above virtual base class that creates itself by averaging
-// two images.  New = (first + second) / 2;
+// two images.  New = (first + second) / 2.  You could also use the mean_image
+// class, below, and give it two images to compute the same metric.
 
 class averaged_image: public image_wrapper {
 public:
@@ -584,6 +645,7 @@ protected:
 // Image statistic calculator base class, derived from above.  Provides the
 // interface needed for operators that take in a bunch of images and produce
 // an image that is some average or other metric on the set of images.
+// The specific metric classes are found below, derived from this class.
 
 class image_metric: public image_wrapper {
 public:

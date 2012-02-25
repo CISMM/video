@@ -4,7 +4,7 @@
 #include  "base_camera_server.h"
 #include  "spot_math.h"
 
-// The code section below pertains speficivally to the Panoptes motion control simulations.
+// The code section below pertains spefically to the Panoptes motion control simulations.
 /* ---------------------------------------------------------------------------------------------- */
 class bead_motion { // describes the motion of an individual bead
 public:
@@ -190,6 +190,25 @@ public:
          int oversample = 1);
 protected:
   int	 _oversample;
+};
+
+//----------------------------------------------------------------------------
+// Concrete version of virtual base class that creates itself by convolving
+// the input image with a Gaussian kernel whose parameters are specified in
+// the constructor.
+
+class gaussian_blurred_image: public float_image {
+public:
+  // The aperture should be large enough that it contains a large fraction
+  // of the energy from the Gaussian; it is specified in pixels and is the
+  // half distance (how far gone from the origin in each direction).  The
+  // standard deviation is also in pixels.  At the borders, the weighting is
+  // adjusted so that there is no average intentity increase or descrease.
+  gaussian_blurred_image(const image_wrapper &input,
+    const unsigned aperture,  // Aperture of the convolution kernel
+    const float std);         // Standard deviation of the kernel
+
+protected:
 };
 
 #endif

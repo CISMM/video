@@ -580,3 +580,48 @@ rod_image::rod_image(int minx, int maxx, int miny, int maxy,
     }
   }  
 }
+
+
+  // XXX This could be made much faster if needed.
+gaussian_blurred_image::gaussian_blurred_image(const image_wrapper &input
+    , const unsigned aperture
+    , const float std)
+    : float_image(0, input.get_num_rows()-1,
+                   0, input.get_num_columns()-1)
+{
+  // Construct a temporary Gaussian image with a size that is twice
+  // the aperture plus one to store the Gaussian with which we will
+  // convolve the input image.  Fill it with the subset of a unit
+  // Gaussian whose standard deviation is the one passed in.
+  unsigned kernel_size = 2 * aperture + 1;
+  Integrated_Gaussian_image kernel(0, kernel_size - 1, 0, kernel_size - 1,
+    0, 0, aperture, aperture, std, 1, 4);
+
+  // Convolve the image with the Gaussian kernel.  At each pixel, we
+  // sum up the amount of the kernel that is on the inside of time image
+  // and rescale by this so that we get equal energy at all locations,
+  // even near the edges.
+  unsigned x,y;
+  unsigned center = aperture; // Index of the center pixel in the kernel
+  double value;
+  for (x = 0; x < get_num_rows(); x++) {
+    for (y = 0; y < get_num_columns(); y++) {
+      int i, j;
+      int aperture_int = aperture;
+      double sum = 0;
+      double weight = 0;
+      for (i = -aperture_int; i <= aperture_int; i++) {
+        for (j = -aperture_int; j <= aperture_int; j++) {
+          if (input.read_pixel(x+i, y+j, value)) {
+            double kval = kernel.read_pixel_nocheck(center+i,center+j);
+            weight += kval;
+            sum += kval * value;
+          }
+        }
+      }
+      write_pixel(x, y, sum/weight);
+    }
+  }
+}
+
+
