@@ -685,77 +685,73 @@ endif (VIDEO_USE_IMAGEMAGICK)
 # Applications that need more than one file or nonstandard things.
 if (VIDEO_BUILD_APPLICATIONS)
 
-FIND_PACKAGE(OpenCV)
-if (OpenCV_FOUND)
-	INCLUDE_DIRECTORIES( ${OpenCV_INCLUDE_DIRS} )
 
-	SET(TARGET_NAME video_spot_tracker)
-	ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp thread.cpp)
-	if (VIDEO_USE_IMAGEMAGICK)
-		TARGET_LINK_LIBRARIES(video_spot_tracker
-			file_stack_library
-			${ImageMagick_Needed_Libs}
-		)
-	endif (VIDEO_USE_IMAGEMAGICK)
-	if (VIDEO_USE_DIRECTSHOW)
-		TARGET_LINK_LIBRARIES(video_spot_tracker
-			directx_library
-    		)
-	endif (VIDEO_USE_DIRECTSHOW)  
-	if (VIDEO_USE_COOKE)
-		TARGET_LINK_LIBRARIES(video_spot_tracker
-			cooke_library
-			${Cooke_LIBRARIES}
-		)
-	endif (VIDEO_USE_COOKE)
-	if (VIDEO_USE_DIAGINC)
-		TARGET_LINK_LIBRARIES(video_spot_tracker
-			diaginc_library
-			${DiagInc_LIBRARIES}
-		)
-	endif (VIDEO_USE_DIAGINC)
-	if (VIDEO_USE_EDT)
-		TARGET_LINK_LIBRARIES(video_spot_tracker
-			EDT_library
-			${EDT_LIBRARIES}
-		)
-	endif (VIDEO_USE_EDT)
-	if (VIDEO_USE_ROPER)
-		TARGET_LINK_LIBRARIES(video_spot_tracker
-			Roper_library
-			${ROPER_LIBRARIES}
-		)
-	endif (VIDEO_USE_ROPER)
-	if (VIDEO_USE_POINTGREY)
-		TARGET_LINK_LIBRARIES(video_spot_tracker
-			point_grey_library
-			${POINTGREY_LIBRARIES}
-		)
-	endif (VIDEO_USE_POINTGREY)
-	if (VIDEO_USE_VRPN_IMAGER)
-		TARGET_LINK_LIBRARIES(video_spot_tracker
-			vrpn_imager_library
-		)
-	endif (VIDEO_USE_VRPN_IMAGER)
-	if (VIDEO_USE_QT4)
-		TARGET_LINK_LIBRARIES(video_spot_tracker
-			qt4_video_library
-			${QT_LIBRARIES}
-		)
-	endif (VIDEO_USE_QT4)
+SET(TARGET_NAME video_spot_tracker)
+ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp thread.cpp)
+if (VIDEO_USE_IMAGEMAGICK)
 	TARGET_LINK_LIBRARIES(video_spot_tracker
-		spot_tracker_library
-		base_camera_server_library
-		Tcl_Linkvar
-		${OpenCV_LIBRARIES}
-		${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
-		${OPENGL_gl_LIBRARY}
-		${TCL_LIBRARY}
-		${TK_LIBRARY}
-		${GLUT_LIBRARIES}
+		file_stack_library
+		${ImageMagick_Needed_Libs}
 	)
-	SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
-endif (OpenCV_FOUND)
+endif (VIDEO_USE_IMAGEMAGICK)
+if (VIDEO_USE_DIRECTSHOW)
+	TARGET_LINK_LIBRARIES(video_spot_tracker
+		directx_library
+	)
+endif (VIDEO_USE_DIRECTSHOW)  
+if (VIDEO_USE_COOKE)
+	TARGET_LINK_LIBRARIES(video_spot_tracker
+		cooke_library
+		${Cooke_LIBRARIES}
+	)
+endif (VIDEO_USE_COOKE)
+if (VIDEO_USE_DIAGINC)
+	TARGET_LINK_LIBRARIES(video_spot_tracker
+		diaginc_library
+		${DiagInc_LIBRARIES}
+	)
+endif (VIDEO_USE_DIAGINC)
+if (VIDEO_USE_EDT)
+	TARGET_LINK_LIBRARIES(video_spot_tracker
+		EDT_library
+		${EDT_LIBRARIES}
+	)
+endif (VIDEO_USE_EDT)
+if (VIDEO_USE_ROPER)
+	TARGET_LINK_LIBRARIES(video_spot_tracker
+		Roper_library
+		${ROPER_LIBRARIES}
+	)
+endif (VIDEO_USE_ROPER)
+if (VIDEO_USE_POINTGREY)
+	TARGET_LINK_LIBRARIES(video_spot_tracker
+		point_grey_library
+		${POINTGREY_LIBRARIES}
+	)
+endif (VIDEO_USE_POINTGREY)
+if (VIDEO_USE_VRPN_IMAGER)
+	TARGET_LINK_LIBRARIES(video_spot_tracker
+		vrpn_imager_library
+	)
+endif (VIDEO_USE_VRPN_IMAGER)
+if (VIDEO_USE_QT4)
+	TARGET_LINK_LIBRARIES(video_spot_tracker
+		qt4_video_library
+		${QT_LIBRARIES}
+	)
+endif (VIDEO_USE_QT4)
+TARGET_LINK_LIBRARIES(video_spot_tracker
+	spot_tracker_library
+	base_camera_server_library
+	Tcl_Linkvar
+	${OpenCV_LIBRARIES}
+	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
+	${OPENGL_gl_LIBRARY}
+	${TCL_LIBRARY}
+	${TK_LIBRARY}
+	${GLUT_LIBRARIES}
+)
+SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
 
 SET(TARGET_NAME swap_ppm_lines)
 ADD_EXECUTABLE(swap_ppm_lines swap_ppm_lines.cpp ppm.C)
