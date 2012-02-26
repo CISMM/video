@@ -2964,14 +2964,24 @@ void myIdleFunc(void)
 
   // If we have gotten a new video frame and we're making a blurred image
   // for the lost-and-found images, then make a new one here.  Then set the
-  // lost-and-found (LAF) image to point to it.
-  if (g_blurred_image) {
+  // lost-and-found (LAF) image to point to it.  If we change the setting
+  // for blurring, also redo blur.
+  static double last_blur_setting = 0;
+  bool time_to_blur = g_video_valid;
+  if (last_blur_setting != g_blurLostAndFound) {
+    time_to_blur = true;
+    last_blur_setting = g_blurLostAndFound;
+  }
+  if (g_blurred_image && time_to_blur) {
     delete g_blurred_image;
     g_blurred_image = NULL;
   }
-  if ( (g_gotNewFrame || g_gotNewFluorescentFrame) && (g_blurLostAndFound > 0) ) {
+  if ( time_to_blur && (g_blurLostAndFound > 0) ) {
     unsigned aperture = 1 + static_cast<unsigned>(2*g_blurLostAndFound);
     g_blurred_image = new gaussian_blurred_image(*g_image, aperture, g_blurLostAndFound);
+    if (g_blurred_image == NULL) {
+      fprintf(stderr, "Could not create blurred image!\n");
+    }
   }
   image_wrapper *laf_image = g_image;
   if (g_blurred_image) {
