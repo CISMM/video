@@ -687,6 +687,11 @@ if (VIDEO_BUILD_APPLICATIONS)
 
 
 SET(TARGET_NAME video_spot_tracker)
+#Enable later versions of Tcl/Tk to compile with const/non-const changes
+if(UNIX)
+set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fpermissive")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
+endif(UNIX)
 ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp thread.cpp)
 if (VIDEO_USE_IMAGEMAGICK)
 	TARGET_LINK_LIBRARIES(video_spot_tracker
@@ -744,7 +749,6 @@ TARGET_LINK_LIBRARIES(video_spot_tracker
 	spot_tracker_library
 	base_camera_server_library
 	Tcl_Linkvar
-	${OpenCV_LIBRARIES}
 	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
 	${OPENGL_gl_LIBRARY}
 	${TCL_LIBRARY}
