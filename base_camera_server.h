@@ -253,10 +253,7 @@ public:
   };
   inline void  write_pixel_nocheck(int x, int y, double value)
   {
-    int index;
-    if (find_index(x,y, index)) {
-      _image[index] = value;
-    }
+    _image[(x-_minx) + (y-_miny)*(_maxx-_minx+1)] = value;
   };
 
 protected:
@@ -309,10 +306,7 @@ public:
   };
   inline void  write_pixel_nocheck(int x, int y, double value)
   {
-    int index;
-    if (find_index(x,y, index)) {
-      _image[index] = static_cast<float>(value);
-    }
+    _image[(x-_minx) + (y-_miny)*(_maxx-_minx+1)] = static_cast<float>(value);
   };
 
   // Write the texture, using a virtual method call appropriate to the particular
