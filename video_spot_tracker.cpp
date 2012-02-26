@@ -32,11 +32,7 @@
 #include <string.h>
 #include <tcl.h>
 #include <tk.h>
-#ifdef _WIN32
 #include "Tcl_Linkvar.h"
-#else
-#include "Tcl_Linkvar85.h"
-#endif
 #include "spot_tracker.h"
 #ifdef	_WIN32
 #include <windows.h>
@@ -218,13 +214,8 @@ bool g_gotNewFluorescentFrame = false;  // Used by autofind.
 
 //--------------------------------------------------------------------------
 // Tcl controls and displays
-#ifdef	_WIN32
 void  logfilename_changed(char *newvalue, void *);
 void  device_filename_changed(char *newvalue, void *);
-#else
-void  logfilename_changed(const char *newvalue, void *);
-void  device_filename_changed(const char *newvalue, void *);
-#endif
 void  rebuild_trackers(int newvalue, void *);
 void  rebuild_trackers(float newvalue, void *);
 void  reset_background_image(int newvalue, void *);
@@ -3548,11 +3539,7 @@ void motionCallbackForGLUT(int raw_x, int raw_y)
 // Also do the same for a comma-separated values file, replacing the
 // .vrpn extension with .csv
 
-#ifdef _WIN32
 void  logfilename_changed(char *newvalue, void *)
-#else
-void  logfilename_changed(const char *newvalue, void *)
-#endif
 {
   // If we have been logging, then see if we have saved the
   // current frame's image.  If not, go ahead and do it now.
@@ -3623,11 +3610,7 @@ void  logfilename_changed(const char *newvalue, void *)
 // If the device filename becomes non-empty, then set the global
 // device name to match what it is set to.
 
-#ifdef _WIN32
 void  device_filename_changed(char *newvalue, void *)
-#else
-void  device_filename_changed(const char *newvalue, void *)
-#endif
 {
   // Set the global name, if we have a non-empty name.
   if (strlen(newvalue) > 0) {
