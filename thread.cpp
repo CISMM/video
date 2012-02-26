@@ -299,7 +299,13 @@ int Semaphore::p() {
   }
 #else
   // Posix by default
-  if (sem_wait(&semaphore) != 0) {
+  // Handle the case where there is an interrupt in the middle of our
+  // wait by retrying.
+  int ret;
+  do {
+	ret = sem_wait(&semaphore);
+  } while ( (ret != 0) && (ret != EINTR) );
+  if (ret != 0) {
     perror("Semaphore::p: ");
     return -1;
   }
