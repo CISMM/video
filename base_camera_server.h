@@ -234,10 +234,13 @@ public:
   // Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.
   virtual bool	read_pixel(int x, int y, double &result, unsigned ignored = 0) const;
-  virtual double read_pixel_nocheck(int x, int y, unsigned ignored = 0) const;
+  inline double read_pixel_nocheck(int x, int y, unsigned ignored = 0) const
+  {
+    return _image[(x-_minx) + (y-_miny)*(_maxx-_minx+1)];
+  };
 
   /// Return the number of colors that the image has
-  virtual unsigned  get_num_colors() const { return 1; }
+  inline unsigned  get_num_colors() const { return 1; }
 
   // Write a pixel into the image; return true if the pixel was in the image,
   // false if it was not.
@@ -287,10 +290,13 @@ public:
   // Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.
   virtual bool	read_pixel(int x, int y, double &result, unsigned ignored = 0) const;
-  virtual double read_pixel_nocheck(int x, int y, unsigned ignored = 0) const;
+  inline double read_pixel_nocheck(int x, int y, unsigned ignored = 0) const
+  {
+    return _image[(x-_minx) + (y-_miny)*(_maxx-_minx+1)];
+  }
 
   /// Return the number of colors that the image has
-  virtual unsigned  get_num_colors() const { return 1; }
+  inline unsigned  get_num_colors() const { return 1; }
 
   // Write a pixel into the image; return true if the pixel was in the image,
   // false if it was not.

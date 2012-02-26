@@ -262,11 +262,6 @@ bool double_image::read_pixel(int x, int y, double &result, unsigned /* RGB igno
   return false;
 }
 
-double double_image::read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) const
-{
-  return _image[(x-_minx) + (y-_miny)*(_maxx-_minx+1)];
-}
-
 float_image::float_image(int minx, int maxx, int miny, int maxy) :
   _minx(minx), _maxx(maxx), _miny(miny), _maxy(maxy),
   _image(NULL)
@@ -311,11 +306,6 @@ bool float_image::read_pixel(int x, int y, double &result, unsigned /* RGB ignor
   }
   // Didn't find it, return false.
   return false;
-}
-
-double float_image::read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) const
-{
-  return _image[(x-_minx) + (y-_miny)*(_maxx-_minx+1)];
 }
 
 // Write the texture, using a virtual method call appropriate to the particular
