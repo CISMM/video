@@ -530,7 +530,7 @@ bool Thread::running() {
   return ulProcID!=0;
 }
 
-unsigned long Thread::pid() {
+pthread_t Thread::pid() {
   return ulProcID;
 }
 

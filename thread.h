@@ -202,7 +202,7 @@ public:
   // check if running
   // get proc id
   bool running();
-  unsigned long pid();
+  pthread_t pid();
 
   // run-time user function to test it threads are available
   // (same value as #ifdef THREADS_AVAILABLE)
@@ -231,7 +231,7 @@ protected:
   static void *threadFuncShellPosix(void *pvThread);
 
   // the process id
-  unsigned long ulProcID;
+  pthread_t ulProcID;
 
   // arch specific details
 };
