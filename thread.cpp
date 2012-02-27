@@ -148,6 +148,7 @@ void Semaphore::init() {
   if (numMax < 1) {
     numMax = 1;
   }
+  semaphore = new sem_t;
   if (sem_init(semaphore, 0, numMax) != 0) {
       cerr << "Semaphore::Semaphore: error initializing semaphore." << "\n";
       return;
@@ -189,6 +190,7 @@ Semaphore::~Semaphore() {
   if (sem_destroy(semaphore) != 0) {
       cerr << "Semaphore::~Semaphore: error destroying semaphore." << "\n";
   }
+  delete semaphore;
 #endif
 }
 
