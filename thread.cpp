@@ -54,6 +54,9 @@
 #include "thread.h"
 #include <stdio.h>
 #include <string.h>
+#ifdef __APPLE__
+#include <sys/sysctl.h>
+#endif
 
 // The following are copied from myUtil.h to remove the dependencies from this file.
 #include <iostream>
@@ -602,6 +605,30 @@ unsigned Thread::number_of_processors() {
   }
   return count;
 
+#elif __APPLE__
+	int numCPU;
+	int mib[4];
+	size_t len = sizeof(numCPU); 
+
+	/* set the mib for hw.ncpu */
+	mib[0] = CTL_HW;
+	mib[1] = HW_AVAILCPU;  // alternatively, try HW_NCPU;
+
+	/* get the number of CPUs from the system */
+	sysctl(mib, 2, &numCPU, &len, NULL, 0);
+
+	if( numCPU < 1 ) 
+	{
+	     mib[1] = HW_NCPU;
+	     sysctl( mib, 2, &numCPU, &len, NULL, 0 );
+
+	     if( numCPU < 1 )
+	     {
+		  numCPU = 1;
+	     }
+	}
+
+	return numCPU;
 #else
   cerr << "Thread::number_of_processors: Not yet implemented on this architecture." << "\n";
   return 1;
