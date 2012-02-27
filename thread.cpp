@@ -126,13 +126,29 @@ void Semaphore::init() {
     LocalFree( lpMsgBuf );
     return;
   }
+#elif __APPLE__
+  // We need to use sem_open on the mac because sem_init is not implemented
+    int numMax = cResources;
+    if (numMax < 1) {
+      numMax = 1;
+    }
+    char *tempname = new char[100];
+    sprintf(tempname, "/tmp/vrpn_sem.XXXXXXX");
+    semaphore = sem_open(mktemp(tempname), O_CREAT, 0600, numMax);
+    if (semaphore == SEM_FAILED) {
+        perror("Semaphore::Semaphore: error opening semaphore");
+        delete [] tempname;
+        return;
+    }
+    delete [] tempname;
+
 #else
   // Posix threads are the default.
   int numMax = cResources;
   if (numMax < 1) {
     numMax = 1;
   }
-  if (sem_init(&semaphore, 0, numMax) != 0) {
+  if (sem_init(semaphore, 0, numMax) != 0) {
       cerr << "Semaphore::Semaphore: error initializing semaphore." << "\n";
       return;
   }
@@ -163,9 +179,14 @@ Semaphore::~Semaphore() {
     // Free the buffer.
     LocalFree( lpMsgBuf );
   }
+#elif __APPLE__
+  if (sem_close(semaphore) != 0) {
+      perror("Semaphore::~Semaphore: error destroying semaphore.");
+      return;
+  }
 #else
   // Posix threads are the default.
-  if (sem_destroy(&semaphore) != 0) {
+  if (sem_destroy(semaphore) != 0) {
       cerr << "Semaphore::~Semaphore: error destroying semaphore." << "\n";
   }
 #endif
@@ -233,19 +254,15 @@ int Semaphore::reset( int cNumResources ) {
 
 int Semaphore::reset( int cNumResources) {
   // Posix by default.
-  // Destroy the old semaphore and then create a new one
-  if (sem_destroy(&semaphore) != 0) {
-      cerr << "Semaphore::reset: error destroying semaphore." << "\n";
+
+  cResources = cNumResources;
+  // Destroy the old semaphore and then create a new one with the correct
+  // value.
+  if (sem_close(semaphore) != 0) {
+      perror("Semaphore::reset: error destroying semaphore.");
       return -1;
   }
-  int numMax = cNumResources;
-  if (numMax < 1) {
-    numMax = 1;
-  }
-  if (sem_init(&semaphore, 0, numMax) != 0) {
-      cerr << "Semaphore::reset: error initializing semaphore." << "\n";
-      return -1;
-  }  
+  init();
   return 0;
 }
 
@@ -306,7 +323,7 @@ int Semaphore::p() {
   // wait by retrying.
   int ret;
   do {
-	ret = sem_wait(&semaphore);
+	ret = sem_wait(semaphore);
   } while ( (ret != 0) && (ret != EINTR) );
   if (ret != 0) {
     perror("Semaphore::p: ");
@@ -350,7 +367,7 @@ int Semaphore::v() {
   }
 #else
   // Posix by default
-  if (sem_post(&semaphore) != 0) {
+  if (sem_post(semaphore) != 0) {
     perror("Semaphore::p: ");
     return -1;
   }
@@ -413,7 +430,7 @@ int Semaphore::condP() {
   }
 #else
   // Posix by default
-  iRetVal = sem_trywait(&semaphore);
+  iRetVal = sem_trywait(semaphore);
   if (iRetVal == 0) {  iRetVal = 1;
   } else if (errno == EAGAIN) { iRetVal = 0;
   } else {

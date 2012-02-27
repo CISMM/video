@@ -168,7 +168,7 @@ protected:
 #elif defined(_WIN32)
   HANDLE hSemaphore;
 #else
-  sem_t	semaphore;
+  sem_t	*semaphore;
 #endif
 };
 
