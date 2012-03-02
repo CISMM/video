@@ -25,11 +25,7 @@
 #include <string.h>
 #include <tcl.h>
 #include <tk.h>
-#ifdef _WIN32
 #include "Tcl_Linkvar.h"
-#else
-#include "Tcl_Linkvar85.h"
-#endif
 #include "directx_camera_server.h"
 #include "directx_videofile_server.h"
 #include "file_stack_server.h"

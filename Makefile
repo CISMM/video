@@ -161,7 +161,7 @@ STOCC_LIB_OBJECTS = $(patsubst %,%,$(STOCC_LIB_FILES:.cpp=.o))
 SPOT_TRACKER_LIB_FILES = spot_math.cpp spot_tracker.cpp image_wrapper.cpp base_camera_server.cpp file_stack_server.cpp file_list.cpp VRPN_Imager_camera_server.cpp raw_file_server.cpp
 SPOT_TRACKER_LIB_OBJECTS = $(patsubst %,$(OBJ_DIR)/%,$(SPOT_TRACKER_LIB_FILES:.cpp=.o))
 
-TCL_LINKVAR_LIB_FILES = Tcl_Linkvar85.C
+TCL_LINKVAR_LIB_FILES = Tcl_Linkvar.C
 TCL_LINKVAR_LIB_OBJECTS = $(patsubst %,$(OBJ_DIR)/%,$(TCL_LINKVAR_LIB_FILES:.C=.o))
 
 EDT_LIB_FILES = edt_server.cpp
@@ -185,8 +185,8 @@ average_videos:	$(OBJ_DIR)/average_videos
 .PHONY:	libedt.a
 libedt.a:	$(OBJ_DIR)/libedt.a
 
-.PHONY:	libtcllinkvar85.a
-libtcllinkvar85.a:	$(OBJ_DIR)/libtcllinkvar85.a
+.PHONY:	libtcllinkvar.a
+libtcllinkvar.a:	$(OBJ_DIR)/libtcllinkvar.a
 
 .PHONY:	test_spot_tracker
 test_spot_tracker:	$(OBJ_DIR)/test_spot_tracker
@@ -198,9 +198,9 @@ $(OBJ_DIR)/libspottracker.a : $(MAKEFILE) $(SPOT_TRACKER_LIB_OBJECTS)
 	$(AR) $(OBJ_DIR)/libspottracker.a $(SPOT_TRACKER_LIB_OBJECTS)
 	-$(RANLIB) $(OBJ_DIR)/libspottracker.a
 
-$(OBJ_DIR)/libtcllinkvar85.a : $(MAKEFILE) $(TCL_LINKVAR_LIB_OBJECTS)
-	$(AR) $(OBJ_DIR)/libtcllinkvar85.a $(TCL_LINKVAR_LIB_OBJECTS)
-	-$(RANLIB) $(OBJ_DIR)/libtcllinkvar85.a
+$(OBJ_DIR)/libtcllinkvar.a : $(MAKEFILE) $(TCL_LINKVAR_LIB_OBJECTS)
+	$(AR) $(OBJ_DIR)/libtcllinkvar.a $(TCL_LINKVAR_LIB_OBJECTS)
+	-$(RANLIB) $(OBJ_DIR)/libtcllinkvar.a
 
 $(OBJ_DIR)/libedt.a : $(MAKEFILE) $(EDT_LIB_OBJECTS)
 	$(AR) $(OBJ_DIR)/libedt.a $(EDT_LIB_OBJECTS)
@@ -217,10 +217,10 @@ $(OBJ_DIR)/test_spot_tracker: $(OBJ_DIR)/test_spot_tracker.o $(OBJ_DIR)/libspott
 		-lspottracker $(MAGICLIBS) $(GL) $(VRPNLIBS) $(OPENCVLIBS) $(SYSLIBS) -lm
 
 $(OBJ_DIR)/video_spot_tracker: $(OBJ_DIR)/video_spot_tracker.o $(OBJ_DIR)/libspottracker.a\
-				$(OBJ_DIR)/libtcllinkvar85.a libedt.a
+				$(OBJ_DIR)/libtcllinkvar.a libedt.a
 	$(CC) $(LFLAGS) -o $(OBJ_DIR)/video_spot_tracker \
 		$(OBJ_DIR)/video_spot_tracker.o \
-		-lnmMP -lspottracker -ledt -ltcllinkvar85 $(TCLLIBS) \
+		-lnmMP -lspottracker -ledt -ltcllinkvar $(TCLLIBS) \
 		$(MAGICLIBS) -lglut $(GL) $(VRPNLIBS) $(OPENCVLIBS) $(SYSLIBS) -lm
 
 $(OBJ_DIR)/add_noise_to_image: $(OBJ_DIR)/add_noise_to_image.o $(OBJ_DIR)/libstocc.a

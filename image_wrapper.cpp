@@ -580,3 +580,145 @@ rod_image::rod_image(int minx, int maxx, int miny, int maxy,
     }
   }  
 }
+
+
+// XXX This could be made much faster if needed.
+gaussian_blurred_image::gaussian_blurred_image(const image_wrapper &input
+    , const unsigned aperture
+    , const float std)
+    : float_image(0, input.get_num_rows()-1,
+                   0, input.get_num_columns()-1)
+{
+  //printf("dbg: Aperture = %u\n", aperture);
+
+  // There is a simpler and a (slightly) faster version of this code.  The
+  // simpler is easier to follow and see what it does, but it does
+  // a ton of comparisons for pixel boundaries, which slows it
+  // way down.
+//#define VIDEO_SIMPLE_GAUSSIAN_BLUR
+#ifdef VIDEO_SIMPLE_GAUSSIAN_BLUR
+  // Construct a temporary Gaussian image with a size that is twice
+  // the aperture plus one to store the Gaussian with which we will
+  // convolve the input image.  Fill it with the subset of a unit
+  // Gaussian whose standard deviation is the one passed in.
+  unsigned kernel_size = 2 * aperture + 1;
+  Integrated_Gaussian_image kernel(0, kernel_size - 1, 0, kernel_size - 1,
+    0, 0, aperture, aperture, std, 1, 4);
+
+  // Convolve the image with the Gaussian kernel.  At each pixel, we
+  // sum up the amount of the kernel that is on the inside of time image
+  // and rescale by this so that we get equal energy at all locations,
+  // even near the edges.
+  unsigned x,y;
+  unsigned center = aperture; // Index of the center pixel in the kernel
+  double value;
+  for (x = 0; x < get_num_rows(); x++) {
+    for (y = 0; y < get_num_columns(); y++) {
+      int i, j;
+      int aperture_int = aperture;
+      double sum = 0;
+      double weight = 0;
+      for (i = -aperture_int; i <= aperture_int; i++) {
+        for (j = -aperture_int; j <= aperture_int; j++) {
+          if (input.read_pixel(x+i, y+j, value)) {
+            double kval = kernel.read_pixel_nocheck(center+i,center+j);
+            weight += kval;
+            sum += kval * value;
+          }
+        }
+      }
+      write_pixel(x, y, sum/weight);
+    }
+  }
+#else
+  // Faster version of convolution that avoids checking for boundary
+  // conditions on the images.  We first create a Gaussian kernel image
+  // and copy it into a buffer that is fast for reading.  We then copy
+  // the input image into a buffer that has a border around it so we can
+  // run past during convolution.  Inside the original image, we place
+  // the values; outside, zero.  We then make a second weighting image
+  // that has weights of 1 inside the image an 0 in the border.  That way,
+  // we can run the same algorithm at every pixel and not have to check
+  // whether we're going outside the image.  We write the results directly
+  // into our floating-point image values.
+
+  // Construct a temporary Gaussian image with a size that is twice
+  // the aperture plus one to store the Gaussian with which we will
+  // convolve the input image.  Fill it with the subset of a unit
+  // Gaussian whose standard deviation is the one passed in.
+  unsigned kernel_size = 2 * aperture + 1;
+  Integrated_Gaussian_image kernel(0, kernel_size - 1, 0, kernel_size - 1,
+    0, 0, aperture, aperture, std, 1, 4);
+
+  // Construct a temporary floating-point image to store the padded
+  // version of the input image.  Fill the boundaries with zeroes and
+  // then fill the image with values.
+  float_image copy(0, input.get_num_rows() + 2*aperture -1,
+                   0, input.get_num_columns() + 2*aperture -1);
+  unsigned x,y;
+  for (x = 0; x < aperture; x++) {
+    for (y = 0; y < input.get_num_columns() + 2 * aperture; y++) {
+      copy.write_pixel_nocheck(x, y, 0);
+      copy.write_pixel_nocheck(input.get_num_rows() + 2*aperture - 1 - x, y, 0);
+    }
+  }
+  for (x = 0; x < input.get_num_rows() + 2 * aperture; x++) {
+    for (y = 0; y < aperture; y++) {
+      copy.write_pixel_nocheck(x, y, 0);
+      copy.write_pixel_nocheck(x, input.get_num_columns() + 2*aperture - 1 - y, 0);
+    }
+  }
+  for (x = 0; x < input.get_num_rows(); x++) {
+    for (y = 0; y < input.get_num_columns(); y++) {
+      copy.write_pixel_nocheck(x+aperture, y+aperture,
+        input.read_pixel_nocheck(x,y));
+    }
+  }
+
+  // Construct a temporary floating-point mask image to store the weights
+  // which are 1 within the copied image and 0 around the border.
+  float_image mask(0, input.get_num_rows() + 2*aperture -1,
+                   0, input.get_num_columns() + 2*aperture -1);
+  for (x = 0; x < aperture; x++) {
+    for (y = 0; y < input.get_num_columns() + 2 * aperture; y++) {
+      mask.write_pixel_nocheck(x, y, 0);
+      mask.write_pixel_nocheck(input.get_num_rows() + 2*aperture - 1 - x, y, 0);
+    }
+  }
+  for (x = 0; x < input.get_num_rows() + 2 * aperture; x++) {
+    for (y = 0; y < aperture; y++) {
+      mask.write_pixel_nocheck(x, y, 0);
+      mask.write_pixel_nocheck(x, input.get_num_columns() + 2*aperture - 1 - y, 0);
+    }
+  }
+  for (x = 0; x < input.get_num_rows(); x++) {
+    for (y = 0; y < input.get_num_columns(); y++) {
+      mask.write_pixel_nocheck(x+aperture, y+aperture, 1);
+    }
+  }
+
+  // Convolve the image with the Gaussian kernel.  At each pixel, we
+  // sum up the amount of the kernel that is on the inside of time image
+  // and rescale by this so that we get equal energy at all locations,
+  // even near the edges.
+  unsigned center = aperture; // Index of the center pixel in the kernel
+  for (x = 0; x < get_num_rows(); x++) {
+    for (y = 0; y < get_num_columns(); y++) {
+      int i, j;
+      int aperture_int = aperture;
+      double sum = 0;
+      double weight = 0;
+      for (i = -aperture_int; i <= aperture_int; i++) {
+        for (j = -aperture_int; j <= aperture_int; j++) {
+          double kval = kernel.read_pixel_nocheck(center+i,center+j);
+          weight += kval * mask.read_pixel_nocheck(x+aperture+i, y+aperture+j);
+          sum += kval * copy.read_pixel_nocheck(x+aperture+i, y+aperture+j);
+        }
+      }
+      write_pixel(x, y, sum/weight);
+    }
+  }
+#endif
+}
+
+

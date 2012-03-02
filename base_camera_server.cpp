@@ -12,6 +12,13 @@
 #include <stdio.h>
 #include "base_camera_server.h"
 
+#ifndef	M_PI
+#ifndef M_PI_DEFINED
+const double M_PI = 2*asin(1.0);
+#define M_PI_DEFINED
+#endif
+#endif
+
 #if !defined(VIDEO_NO_IMAGEMAGICK)
   #define QuantumLeap
   #if !defined(_VISUALC_)
@@ -23,10 +30,6 @@
   // Then you also need to link with wsock32.lib.
   #define _LIB
   #include <magick/api.h>
-#endif
-
-#ifndef	M_PI
-const double M_PI = 2*asin(1.0);
 #endif
 
 // Apply the specified gain to the value, clamp to zero and the maximum
@@ -259,16 +262,66 @@ bool double_image::read_pixel(int x, int y, double &result, unsigned /* RGB igno
   return false;
 }
 
-double double_image::read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) const
+float_image::float_image(int minx, int maxx, int miny, int maxy) :
+  _minx(minx), _maxx(maxx), _miny(miny), _maxy(maxy),
+  _image(NULL)
+{
+  // Make sure the parameters are meaningful
+  if ( (_minx >= _maxx) || (_miny >= _maxy) ) {
+    fprintf(stderr,"float_image::float_image(): Bad min/max coordinates (%d,%d; %d,%d)\n",
+      _minx, _miny, _maxx, _maxy);
+    _minx = _maxy = _minx = _maxx = 0;
+    return;
+  }
+
+  // Try to allocate a large enough array to hold all of the values.
+  if ( (_image = new float[(_maxx-_minx+1) * (_maxy-_miny+1)]) == NULL) {
+    fprintf(stderr,"float_image::float_image(): Out of memory\n");
+    _minx = _maxy = _minx = _maxx = 0;
+    return;
+  }
+}
+
+float_image::~float_image()
+{
+  if (_image != NULL) {
+    delete [] _image;
+    _image = NULL;
+  }
+}
+
+void float_image::read_range(int &minx, int &maxx, int &miny, int &maxy) const
+{
+  minx = _minx; maxx = _maxx; miny = _miny; maxy = _maxy;
+};
+
+// Read a pixel from the image into a double; return true if the pixel
+// was in the image, false if it was not.
+bool float_image::read_pixel(int x, int y, double &result, unsigned /* RGB ignored */) const
 {
   int index;
   if (find_index(x,y, index)) {
-    return _image[index];
+    result = _image[index];
+    return true;
   }
-
-  // Didn't find the index, return zero.
-  return 0.0;
+  // Didn't find it, return false.
+  return false;
 }
+
+// Write the texture, using a virtual method call appropriate to the particular
+// camera type.
+bool float_image::write_to_opengl_texture(GLuint tex_id)
+{
+  const GLint   NUM_COMPONENTS = 1;
+  const GLenum  FORMAT = GL_LUMINANCE;
+  const GLenum  TYPE = GL_FLOAT;
+  const void*   BASE_BUFFER = _image;
+  const void*   SUBSET_BUFFER = &_image[NUM_COMPONENTS * ( _minx + get_num_columns()*_miny )];
+  return write_to_opengl_texture_generic(tex_id, NUM_COMPONENTS, FORMAT, TYPE,
+    BASE_BUFFER, SUBSET_BUFFER, _minx, _miny, _maxx, _maxy);
+}
+
+
 
 copy_of_image::copy_of_image(const image_wrapper &copyfrom) :
   _minx(-1), _maxx(-1), _miny(-1), _maxy(-1),
@@ -619,7 +672,6 @@ double	mean_image::read_pixel_nocheck(int x, int y, unsigned rgb) const
   }
   return _image[index(x, y, rgb)] / d_num_images;
 }
-
 
 
 PSF_File::~PSF_File()

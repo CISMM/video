@@ -54,6 +54,9 @@
 #include "thread.h"
 #include <stdio.h>
 #include <string.h>
+#ifdef __APPLE__
+#include <sys/sysctl.h>
+#endif
 
 // The following are copied from myUtil.h to remove the dependencies from this file.
 #include <iostream>
@@ -123,13 +126,30 @@ void Semaphore::init() {
     LocalFree( lpMsgBuf );
     return;
   }
+#elif __APPLE__
+  // We need to use sem_open on the mac because sem_init is not implemented
+    int numMax = cResources;
+    if (numMax < 1) {
+      numMax = 1;
+    }
+    char *tempname = new char[100];
+    sprintf(tempname, "/tmp/vrpn_sem.XXXXXXX");
+    semaphore = sem_open(mktemp(tempname), O_CREAT, 0600, numMax);
+    if (semaphore == SEM_FAILED) {
+        perror("Semaphore::Semaphore: error opening semaphore");
+        delete [] tempname;
+        return;
+    }
+    delete [] tempname;
+
 #else
   // Posix threads are the default.
   int numMax = cResources;
   if (numMax < 1) {
     numMax = 1;
   }
-  if (sem_init(&semaphore, 0, numMax) != 0) {
+  semaphore = new sem_t;
+  if (sem_init(semaphore, 0, numMax) != 0) {
       cerr << "Semaphore::Semaphore: error initializing semaphore." << "\n";
       return;
   }
@@ -160,11 +180,17 @@ Semaphore::~Semaphore() {
     // Free the buffer.
     LocalFree( lpMsgBuf );
   }
+#elif __APPLE__
+  if (sem_close(semaphore) != 0) {
+      perror("Semaphore::~Semaphore: error destroying semaphore.");
+      return;
+  }
 #else
   // Posix threads are the default.
-  if (sem_destroy(&semaphore) != 0) {
+  if (sem_destroy(semaphore) != 0) {
       cerr << "Semaphore::~Semaphore: error destroying semaphore." << "\n";
   }
+  delete semaphore;
 #endif
 }
 
@@ -230,19 +256,15 @@ int Semaphore::reset( int cNumResources ) {
 
 int Semaphore::reset( int cNumResources) {
   // Posix by default.
-  // Destroy the old semaphore and then create a new one
-  if (sem_destroy(&semaphore) != 0) {
-      cerr << "Semaphore::reset: error destroying semaphore." << "\n";
+
+  cResources = cNumResources;
+  // Destroy the old semaphore and then create a new one with the correct
+  // value.
+  if (sem_close(semaphore) != 0) {
+      perror("Semaphore::reset: error destroying semaphore.");
       return -1;
   }
-  int numMax = cNumResources;
-  if (numMax < 1) {
-    numMax = 1;
-  }
-  if (sem_init(&semaphore, 0, numMax) != 0) {
-      cerr << "Semaphore::reset: error initializing semaphore." << "\n";
-      return -1;
-  }  
+  init();
   return 0;
 }
 
@@ -299,7 +321,13 @@ int Semaphore::p() {
   }
 #else
   // Posix by default
-  if (sem_wait(&semaphore) != 0) {
+  // Handle the case where there is an interrupt in the middle of our
+  // wait by retrying.
+  int ret;
+  do {
+	ret = sem_wait(semaphore);
+  } while ( (ret != 0) && (ret != EINTR) );
+  if (ret != 0) {
     perror("Semaphore::p: ");
     return -1;
   }
@@ -341,7 +369,7 @@ int Semaphore::v() {
   }
 #else
   // Posix by default
-  if (sem_post(&semaphore) != 0) {
+  if (sem_post(semaphore) != 0) {
     perror("Semaphore::p: ");
     return -1;
   }
@@ -404,7 +432,7 @@ int Semaphore::condP() {
   }
 #else
   // Posix by default
-  iRetVal = sem_trywait(&semaphore);
+  iRetVal = sem_trywait(semaphore);
   if (iRetVal == 0) {  iRetVal = 1;
   } else if (errno == EAGAIN) { iRetVal = 0;
   } else {
@@ -524,7 +552,7 @@ bool Thread::running() {
   return ulProcID!=0;
 }
 
-unsigned long Thread::pid() {
+pthread_t Thread::pid() {
   return ulProcID;
 }
 
@@ -596,6 +624,30 @@ unsigned Thread::number_of_processors() {
   }
   return count;
 
+#elif __APPLE__
+	int numCPU;
+	int mib[4];
+	size_t len = sizeof(numCPU); 
+
+	/* set the mib for hw.ncpu */
+	mib[0] = CTL_HW;
+	mib[1] = HW_AVAILCPU;  // alternatively, try HW_NCPU;
+
+	/* get the number of CPUs from the system */
+	sysctl(mib, 2, &numCPU, &len, NULL, 0);
+
+	if( numCPU < 1 ) 
+	{
+	     mib[1] = HW_NCPU;
+	     sysctl( mib, 2, &numCPU, &len, NULL, 0 );
+
+	     if( numCPU < 1 )
+	     {
+		  numCPU = 1;
+	     }
+	}
+
+	return numCPU;
 #else
   cerr << "Thread::number_of_processors: Not yet implemented on this architecture." << "\n";
   return 1;
