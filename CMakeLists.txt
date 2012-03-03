@@ -24,10 +24,16 @@ if(WIN32) # MS-Windows, both 32 and 64 bits
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} wsock32.lib /FIXED:NO")
   ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
 elseif(APPLE) # Apple
+#Enable later versions of Tcl/Tk to compile with const/non-const changes
+  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fpermissive")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
 #  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall")
 #  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 #  set(CMAKE_VERBOSE_MAKEFILE ON)
 elseif(UNIX) # other than Apple UNIXes
+#Enable later versions of Tcl/Tk to compile with const/non-const changes
+  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fpermissive")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
 #  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall")
 #  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 #  set(CMAKE_VERBOSE_MAKEFILE ON)
@@ -687,11 +693,6 @@ if (VIDEO_BUILD_APPLICATIONS)
 
 
 SET(TARGET_NAME video_spot_tracker)
-#Enable later versions of Tcl/Tk to compile with const/non-const changes
-if(UNIX)
-set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fpermissive")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
-endif(UNIX)
 ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp thread.cpp)
 if (VIDEO_USE_IMAGEMAGICK)
 	TARGET_LINK_LIBRARIES(video_spot_tracker
