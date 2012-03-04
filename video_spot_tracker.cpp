@@ -2665,8 +2665,9 @@ bool find_more_fluorescent_trackers(const image_wrapper *img, unsigned how_many_
       spot_tracker_XY *curTracker = (*loop)->xytracker();
       curX = curTracker->get_x();
       curY = curTracker->get_y();
-      if (cx >= curX - tooClose && cx <= curX + tooClose &&
-          cy >= curY - tooClose && cy <= curY + tooClose ) {
+      if ( (cx >= curX - tooClose) && (cx <= curX + tooClose) &&
+          (cy >= curY - tooClose) && (cy <= curY + tooClose) ) {
+	//printf("dbg: Tracker too close to existing one\n");
         safe = false;
       }
     }
@@ -2705,6 +2706,150 @@ bool find_more_fluorescent_trackers(const image_wrapper *img, unsigned how_many_
   return true;
 }
 
+void optimize_all_trackers(void)
+{
+  list<Spot_Information *>::iterator  loop;
+
+  // Optimize all trackers, if we have trackers.
+  if (g_opt && g_active_tracker) {
+
+    int kymocount = 0;
+    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+
+      // If we're single-threaded, then call the tracker optimization loop
+      // directly.  If we're multi-threaded, then wait for a ready tracking
+      // thread and use it to do the tracking.
+      if (g_tracking_threads.size() == 0) {
+        optimize_tracker(*loop);
+      } else {
+        // Wait until at least one tracker has entered the ready state
+        // and indicated this using the active tracking semaphore.
+        g_ready_tracker_semaphore->p();
+
+        // Find a ready tracker (there may be more than one, just pick the
+        // first).
+        unsigned i;
+        for (i = 0; i < g_tracking_threads.size(); i++) {
+          if (g_tracking_threads[i]->d_thread_user_data->d_ready) {
+            break;
+          }
+        }
+        if (i >= g_tracking_threads.size()) {
+          fprintf(stderr,"The active tracking semaphore indicated a free tracker but none found in list\n");
+          exit(-1);
+        }
+
+        // Fill in the tracker pointer in the user data and then use the run
+        // semaphore to cause the tracking thread to run.  Tell ourselves that
+        // the tracker is busy, so we don't try to re-use it until it is done.
+        g_tracking_threads[i]->d_thread_user_data->d_tracker = *loop;
+        g_tracking_threads[i]->d_thread_user_data->d_ready = false;
+        g_tracking_threads[i]->d_thread_user_data->d_run_semaphore->v();
+      }
+
+      // If we are running a kymograph, then we don't optimize any trackers
+      // past the first two because they are only there as markers in the
+      // image for cell boundaries.
+      if (g_kymograph) {
+	if (++kymocount == 2) {
+	  break;
+	}
+      }
+    }
+
+    // If we're using multiple tracking threads, then we need to wait until all
+    // threads have finished tracking before going on, to avoid getting ahead of
+    // ourselves while one or more of them are finishing.  To avoid busy-waiting,
+    // we do this by grabbing as many extra entries in the active-tracking semaphore
+    // as there are threads and then freeing them up once we have them all.
+    // If we're not using threads, then there are no entries in the g_tracking_threads vector.
+    unsigned i;
+    for (i = 0; i < g_tracking_threads.size(); i++) {
+      g_ready_tracker_semaphore->p();
+    }
+    for (i = 0; i < g_tracking_threads.size(); i++) {
+      g_ready_tracker_semaphore->v();
+    }
+
+    // Now that we are back in a single thread, run through the list of trackers
+    // and see if any of them are lost.  If so, what happens depends on whether
+    // the auto-deletion of lost trackers is enabled.  If so, then delete each
+    // lost tracker.  If not, then point at one of the lost trackers and
+    // set the global lost-tracker flag;
+
+    // We do additional lost-tracker checking here, marking trackers that are too near
+    // other trackers.  We do this here to avoid race conditions that would happen in
+    // the threads as each tracker moved itself.  IMPORTANT: We delete the larger-
+    // numbered tracker if we find two that overlap, to make the longest possible
+    // tracks from earlier trackers.
+    if (g_trackerDeadZone > 0) {   
+      for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+        double x = (*loop)->xytracker()->get_x();
+        double y = (*loop)->xytracker()->get_y();
+
+        list<Spot_Information *>::iterator loop2;
+        double zone2 = g_trackerDeadZone * g_trackerDeadZone;
+        for (loop2 = g_trackers.begin(); loop2 != loop; loop2++) {
+          double x2 = (*loop2)->xytracker()->get_x();
+          double y2 = (*loop2)->xytracker()->get_y();
+          double dist2 = ( (x-x2)*(x-x2) + (y-y2)*(y-y2) );
+          if (dist2 < zone2) {
+            (*loop)->lost(true);
+          }
+        }
+      }
+    }
+
+    // If this tracker is lost, and we have the "autodelete lost tracker" feature
+    // turned on, then delete this tracker and say that we are no longer lost.
+    loop = g_trackers.begin();
+    while (loop != g_trackers.end()) {
+      if ((*loop)->lost()) {
+        // Set me to be the active tracker.
+        g_active_tracker = *loop;
+        if (g_lostBehavior == LOST_DELETE) {
+          // Delete this tracker from the list (it was made active above)
+          delete_active_xytracker();
+
+          // Set the loop back to the beginning of the list of trackers
+          // so we don't miss a lost one by incrementing the loop counter.
+          loop = g_trackers.begin();
+
+        } else {
+          // Make me the active tracker (above) and set the global "lost tracker"
+          // flag.
+          // Then go to the next tracker in the list.
+          g_tracker_is_lost = true;
+          loop++;
+        }
+      } else {
+        // Not lost, go to the next tracker in the list.
+        loop++;
+      }
+    }
+
+    // Pause and say that we are lost unless we're in "Hover when lost" mode
+    if (g_tracker_is_lost && (g_lostBehavior != LOST_HOVER)) {
+      // If we have a playable video and the video is not paused, then say we're lost and pause it.
+      if (g_play != NULL) {
+        if (*g_play) {
+          fprintf(stderr, "Lost in frame %d\n", (int)(float)(g_frame_number));
+          if (g_video) { g_video->pause(); }
+          *g_play = 0;
+#ifdef	_WIN32
+	  if (!PlaySound("lost.wav", NULL, SND_FILENAME | SND_ASYNC)) {
+	    fprintf(stderr,"Cannot play sound %s\n", "lost.wav");
+	  }
+#endif
+        }
+      }
+
+      // XXX Do not attempt to pause live video, but do tell that we're lost -- only tell once.
+    }
+
+    g_last_optimized_frame_number = g_frame_number;
+  }
+}
 
 void myIdleFunc(void)
 {
@@ -3005,159 +3150,34 @@ void myIdleFunc(void)
     }
   }
 
-  // If we are trying to maintain a minimum number of beads, and we don't have enough,
-  // then call the auto-find routine to add more.  We do this before the code that
-  // checks for lost beads because it may be the case that the new "beads" we find
-  // are not high-enough quality to even survive one frame; we don't want to log
-  // them if they are not real.  Also do this before optimization step, so that we
-  // can leave the trackers not completely optimized when creating them (just
-  // finding the closest pixel value).
-  if (g_findThisManyBeads > g_trackers.size()) {
-    find_more_trackers(g_findThisManyBeads - g_trackers.size());
-  }
-  if (g_findThisManyFluorescentBeads > g_trackers.size()) {
-    find_more_fluorescent_trackers(laf_image, g_findThisManyFluorescentBeads - g_trackers.size());
-  }
-
   // Nobody is known to be lost yet...
   g_tracker_is_lost = false;
 
-  // Optimize all trackers, if we have trackers.
-  if (g_opt && g_active_tracker) {
+  // Optimize all of the trackers, including marking any that are lost.
+  optimize_all_trackers();
 
-    int kymocount = 0;
-    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-
-      // If we're single-threaded, then call the tracker optimization loop
-      // directly.  If we're multi-threaded, then wait for a ready tracking
-      // thread and use it to do the tracking.
-      if (g_tracking_threads.size() == 0) {
-        optimize_tracker(*loop);
-      } else {
-        // Wait until at least one tracker has entered the ready state
-        // and indicated this using the active tracking semaphore.
-        g_ready_tracker_semaphore->p();
-
-        // Find a ready tracker (there may be more than one, just pick the
-        // first).
-        unsigned i;
-        for (i = 0; i < g_tracking_threads.size(); i++) {
-          if (g_tracking_threads[i]->d_thread_user_data->d_ready) {
-            break;
-          }
-        }
-        if (i >= g_tracking_threads.size()) {
-          fprintf(stderr,"The active tracking semaphore indicated a free tracker but none found in list\n");
-          exit(-1);
-        }
-
-        // Fill in the tracker pointer in the user data and then use the run
-        // semaphore to cause the tracking thread to run.  Tell ourselves that
-        // the tracker is busy, so we don't try to re-use it until it is done.
-        g_tracking_threads[i]->d_thread_user_data->d_tracker = *loop;
-        g_tracking_threads[i]->d_thread_user_data->d_ready = false;
-        g_tracking_threads[i]->d_thread_user_data->d_run_semaphore->v();
-      }
-
-      // If we are running a kymograph, then we don't optimize any trackers
-      // past the first two because they are only there as markers in the
-      // image for cell boundaries.
-      if (g_kymograph) {
-	if (++kymocount == 2) {
-	  break;
-	}
-      }
+  // If we are trying to maintain a minimum number of beads, and we don't have enough,
+  // then call the auto-find routine to add more.  We do this after the code that
+  // checks for lost beads because we may need to find more.  We do it after we've
+  // optimized the beads so that the code that checks for putting a bead where
+  // there is already one will have the new bead positions to test against.
+  // Keep track of whether we found any more beads.  If so, we need to re-run
+  // optimization so that all the new beads find their final place.
+  bool found_more_beads = false;
+  if (g_findThisManyBeads > g_trackers.size()) {
+    if (find_more_trackers(g_findThisManyBeads - g_trackers.size())) {
+	found_more_beads = true;
     }
-
-    // If we're using multiple tracking threads, then we need to wait until all
-    // threads have finished tracking before going on, to avoid getting ahead of
-    // ourselves while one or more of them are finishing.  To avoid busy-waiting,
-    // we do this by grabbing as many extra entries in the active-tracking semaphore
-    // as there are threads and then freeing them up once we have them all.
-    // If we're not using threads, then there are no entries in the g_tracking_threads vector.
-    unsigned i;
-    for (i = 0; i < g_tracking_threads.size(); i++) {
-      g_ready_tracker_semaphore->p();
+  }
+  if (g_findThisManyFluorescentBeads > g_trackers.size()) {
+    if (find_more_fluorescent_trackers(laf_image, g_findThisManyFluorescentBeads - g_trackers.size())) {
+	found_more_beads = true;
     }
-    for (i = 0; i < g_tracking_threads.size(); i++) {
-      g_ready_tracker_semaphore->v();
-    }
+  }
 
-    // Now that we are back in a single thread, run through the list of trackers
-    // and see if any of them are lost.  If so, what happens depends on whether
-    // the auto-deletion of lost trackers is enabled.  If so, then delete each
-    // lost tracker.  If not, then point at one of the lost trackers and
-    // set the global lost-tracker flag;
-
-    // We do additional lost-tracker checking here, marking trackers that are too near
-    // other trackers.  We do this here to avoid race conditions that would happen in
-    // the threads as each tracker moved itself.
-    if (g_trackerDeadZone > 0) {   
-      for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-        double x = (*loop)->xytracker()->get_x();
-        double y = (*loop)->xytracker()->get_y();
-
-        list<Spot_Information *>::iterator loop2;
-        double zone2 = g_trackerDeadZone * g_trackerDeadZone;
-        for (loop2 = g_trackers.begin(); loop2 != loop; loop2++) {
-          double x2 = (*loop2)->xytracker()->get_x();
-          double y2 = (*loop2)->xytracker()->get_y();
-          double dist2 = ( (x-x2)*(x-x2) + (y-y2)*(y-y2) );
-          if (dist2 < zone2) {
-            (*loop)->lost(true);
-          }
-        }
-      }
-    }
-
-    // If this tracker is lost, and we have the "autodelete lost tracker" feature
-    // turned on, then delete this tracker and say that we are no longer lost.
-    loop = g_trackers.begin();
-    while (loop != g_trackers.end()) {
-      if ((*loop)->lost()) {
-        // Set me to be the active tracker.
-        g_active_tracker = *loop;
-        if (g_lostBehavior == LOST_DELETE) {
-          // Delete this tracker from the list (it was made active above)
-          delete_active_xytracker();
-
-          // Set the loop back to the beginning of the list of trackers
-          // so we don't miss a lost one by incrementing the loop counter.
-          loop = g_trackers.begin();
-
-        } else {
-          // Make me the active tracker (above) and set the global "lost tracker"
-          // flag.
-          // Then go to the next tracker in the list.
-          g_tracker_is_lost = true;
-          loop++;
-        }
-      } else {
-        // Not lost, go to the next tracker in the list.
-        loop++;
-      }
-    }
-
-    // Pause and say that we are lost unless we're in "Hover when lost" mode
-    if (g_tracker_is_lost && (g_lostBehavior != LOST_HOVER)) {
-      // If we have a playable video and the video is not paused, then say we're lost and pause it.
-      if (g_play != NULL) {
-        if (*g_play) {
-          fprintf(stderr, "Lost in frame %d\n", (int)(float)(g_frame_number));
-          if (g_video) { g_video->pause(); }
-          *g_play = 0;
-#ifdef	_WIN32
-	  if (!PlaySound("lost.wav", NULL, SND_FILENAME | SND_ASYNC)) {
-	    fprintf(stderr,"Cannot play sound %s\n", "lost.wav");
-	  }
-#endif
-        }
-      }
-
-      // XXX Do not attempt to pause live video, but do tell that we're lost -- only tell once.
-    }
-
-    g_last_optimized_frame_number = g_frame_number;
+  // If we found any new beads, then we need to optimize them.
+  if (found_more_beads) {
+    optimize_all_trackers();
   }
 
   // Update the kymograph if it is active and if we have a new video frame.
