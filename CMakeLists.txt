@@ -24,10 +24,14 @@ if(WIN32) # MS-Windows, both 32 and 64 bits
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} wsock32.lib /FIXED:NO")
   ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
 elseif(APPLE) # Apple
+#Enable later versions of Tcl/Tk to compile with const/non-const changes
+  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fpermissive")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
 #  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall")
 #  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 #  set(CMAKE_VERBOSE_MAKEFILE ON)
 elseif(UNIX) # other than Apple UNIXes
+#Enable later versions of Tcl/Tk to compile with const/non-const changes
   set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fpermissive")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
 #  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall")
@@ -746,7 +750,6 @@ TARGET_LINK_LIBRARIES(video_spot_tracker
 	spot_tracker_library
 	base_camera_server_library
 	Tcl_Linkvar
-	${OpenCV_LIBRARIES}
 	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
 	${OPENGL_gl_LIBRARY}
 	${TCL_LIBRARY}
@@ -945,6 +948,7 @@ endif (VIDEO_USE_EDT)
 CPP_APPLICATION(make_moving_spot_video apps)
 CPP_APPLICATION(make_test_image apps)
 CPP_APPLICATION(video_imager_server apps)
+CPP_APPLICATION(csv_to_xml apps)
 CPP_APPLICATION(Panoptes_Stage_Control apps)
 if (VIDEO_USE_ROPER)
 	CPP_APPLICATION(roper_example apps)
