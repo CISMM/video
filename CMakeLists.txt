@@ -28,6 +28,8 @@ elseif(APPLE) # Apple
 #  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 #  set(CMAKE_VERBOSE_MAKEFILE ON)
 elseif(UNIX) # other than Apple UNIXes
+  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fpermissive")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
 #  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall")
 #  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 #  set(CMAKE_VERBOSE_MAKEFILE ON)
