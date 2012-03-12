@@ -711,7 +711,7 @@ public:
 										   unsigned max_regions = 0);
 
     // Update the positions of the trackers we are managing based on a new image.
-    // Returns the number of beads in the track.
+    // Returns the number of beads in the vector of trackers we're managing.
     unsigned optimize_based_on(const image_wrapper &s_image);
 
     // Auto-deletes trackers that have wandered off of fluorescent beads.

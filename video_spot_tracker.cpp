@@ -1693,7 +1693,6 @@ bool  delete_active_xytracker(void)
 
 
 // Optimize to find the best fit starting from last position for a tracker.
-// Invert the Y values on the way in and out.
 // Don't let it adjust the radius here (otherwise it gets too jumpy).
 static void optimize_tracker(Spot_Information *tracker)
 {
