@@ -240,7 +240,6 @@ if (VIDEO_BUILD_APPLICATIONS)
 	${GLUT_INCLUDE_DIR}
 endif (VIDEO_BUILD_APPLICATIONS)
 	stocc_random_number_generator/
-	PanopticNerve/
 	PanopticNerve_LEWOS/
 	${CISMM_VIDEO_SOURCE_DIR}
         ${LEWOSSIM_INCLUDE_DIR}
@@ -415,10 +414,13 @@ if (VIDEO_USE_DIRECTSHOW)
 		${DirectShow_LIBS}
 		${PTHREAD_LIBRARY}
 		${OPENGL_gl_LIBRARY}
-		if (VIDEO_USE_IMAGEMAGICK)
-			${ImageMagick_Needed_Libs}
-		endif (VIDEO_USE_IMAGEMAGICK)
 	)
+	if (VIDEO_USE_IMAGEMAGICK)
+		TARGET_LINK_LIBRARIES(test_directx_library
+			file_stack_library
+			${ImageMagick_Needed_Libs}
+		)
+	endif (VIDEO_USE_IMAGEMAGICK)
 	SET_TARGET_PROPERTIES(test_directx_library PROPERTIES SOLUTION_FOLDER tests)
 
   if (VIDEO_BUILD_APPLICATIONS)
@@ -518,79 +520,6 @@ set_property(TARGET stocc_random_number_generator_library
 install(TARGETS stocc_random_number_generator_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
-
-SET(TARGET_NAME PanopticNerve)
-ADD_EXECUTABLE(PanopticNerve
-	PanopticNerve/PanopticNerve.cpp
-	PanopticNerve/cameraImage.cpp
-	PanopticNerve/ImageAnalyzer.cpp
-	PanopticNerve/NerveTest.cpp
-	PanopticNerve/USBMAC6000.cpp
-	PanopticNerve/SyncControl.cpp
-	PanopticNerve/sciString2send.cpp
-)
-  if (VIDEO_USE_IMAGEMAGICK)
-	TARGET_LINK_LIBRARIES(PanopticNerve
-		file_stack_library
-		${ImageMagick_Needed_Libs}
-    )
-  endif (VIDEO_USE_IMAGEMAGICK)
-  if (VIDEO_USE_DIRECTSHOW)
-    TARGET_LINK_LIBRARIES(PanopticNerve
-	directx_library
-    )
-  endif (VIDEO_USE_DIRECTSHOW)  
-  if (VIDEO_USE_COOKE)
-		TARGET_LINK_LIBRARIES(PanopticNerve
-			cooke_library
-			${Cooke_LIBRARIES}
-		)
-  endif (VIDEO_USE_COOKE)
-  if (VIDEO_USE_DIAGINC)
-		TARGET_LINK_LIBRARIES(PanopticNerve
-			diaginc_library
-			${DiagInc_LIBRARIES}
-		)
-  endif (VIDEO_USE_DIAGINC)
-  if (VIDEO_USE_EDT)
-		TARGET_LINK_LIBRARIES(PanopticNerve
-			EDT_library
-			${EDT_LIBRARIES}
-		)
-  endif (VIDEO_USE_EDT)
-  if (VIDEO_USE_ROPER)
-		TARGET_LINK_LIBRARIES(PanopticNerve
-			Roper_library
-			${ROPER_LIBRARIES}
-		)
-  endif (VIDEO_USE_ROPER)
-  if (VIDEO_USE_POINTGREY)
-		TARGET_LINK_LIBRARIES(PanopticNerve
-			point_grey_library
-			${POINTGREY_LIBRARIES}
-		)
-  endif (VIDEO_USE_POINTGREY)
-  if (VIDEO_USE_VRPN_IMAGER)
-		TARGET_LINK_LIBRARIES(PanopticNerve
-			vrpn_imager_library
-		)
-  endif (VIDEO_USE_VRPN_IMAGER)
-  if (VIDEO_USE_QT4)
-		TARGET_LINK_LIBRARIES(PanopticNerve
-			qt4_video_library
-			${QT_LIBRARIES}
-		)
-  endif (VIDEO_USE_QT4)
-TARGET_LINK_LIBRARIES(PanopticNerve
-	base_camera_server_library
-	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
-	${GLUT_LIBRARIES}
-	${OPENGL_glu_LIBRARY}
-	${OPENGL_gl_LIBRARY}
-        ${LEWOSSIM_LIBRARIES}
-        ${LEWOS_LIBRARIES}
-)
-SET_TARGET_PROPERTIES(PanopticNerve PROPERTIES SOLUTION_FOLDER apps)
 
 
 SET(TARGET_NAME PanopticNerve_LEWOS)
