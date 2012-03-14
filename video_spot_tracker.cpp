@@ -2208,15 +2208,8 @@ void fill_around_tracker_with_value(double_image &im, spot_tracker_XY *t, double
 // tracker radius of an existing tracker or within one tracker radius of the
 // border.  Create new trackers at those locations.  Returns true if it was
 // able to find them, false if not (or error).
-bool find_more_trackers(unsigned how_many_more)
+bool find_more_trackers(const image_wrapper *img, unsigned how_many_more)
 {
-	// make sure we only try to auto-find once per new frame of video
-        if (!g_gotNewFrame) {
-		return true;
-        } else {
-		g_gotNewFrame = false;
-        }
-
 	// empty out our candidate vectors...
 	vertCandidates.clear();
 	horiCandidates.clear();
@@ -2226,8 +2219,6 @@ bool find_more_trackers(unsigned how_many_more)
         g_image->read_range(minx, maxx, miny, maxy);
 
         int x, y;
-
-        // We'll do a simple gaussian filter on our image before looking for beads.
 
         // first, we calculate horizontal and vertical SMDs on the global image
 	double SMD = 0;
@@ -2242,8 +2233,8 @@ bool find_more_trackers(unsigned how_many_more)
 		// calcualte one SMD
 		for (y = miny + 1; y <= maxy; ++y)
 		{
-                        Ia = g_blurred_image->read_pixel_nocheck(x, y);
-                        Ib = g_blurred_image->read_pixel_nocheck(x, y-1);
+                        Ia = img->read_pixel_nocheck(x, y);
+                        Ib = img->read_pixel_nocheck(x, y-1);
 			SMD += fabs(Ia - Ib);
 		}
 		// normalize by dividing by the number of pairwise computations
@@ -2280,8 +2271,8 @@ bool find_more_trackers(unsigned how_many_more)
 		// calcualte one SMD
 		for (x = minx + 1; x <= maxx; ++x)
 		{
-                        Ia = g_blurred_image->read_pixel_nocheck(x, y);
-                        Ib = g_blurred_image->read_pixel_nocheck(x-1, y);
+                        Ia = img->read_pixel_nocheck(x, y);
+                        Ib = img->read_pixel_nocheck(x-1, y);
 			SMD += fabs(Ia - Ib);
 		}
 		// normalize by dividing by the number of pairwise computations
@@ -3164,8 +3155,12 @@ void myIdleFunc(void)
   // optimization so that all the new beads find their final place.
   bool found_more_beads = false;
   if (g_findThisManyBeads > g_trackers.size()) {
-    if (find_more_trackers(g_findThisManyBeads - g_trackers.size())) {
-	found_more_beads = true;
+    // make sure we only try to auto-find once per new frame of video
+    if (g_gotNewFrame) {
+        if (find_more_trackers(laf_image, g_findThisManyBeads - g_trackers.size())) {
+	    found_more_beads = true;
+        }
+        g_gotNewFrame = false;
     }
   }
   if (g_findThisManyFluorescentBeads > g_trackers.size()) {

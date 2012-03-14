@@ -2,6 +2,7 @@
 #define	SPOT_TRACKER_H
 
 #include "image_wrapper.h"
+#include "thread.h"  // For Semaphore.
 #include <list>
 
 //----------------------------------------------------------------------------
@@ -622,7 +623,7 @@ protected:
 // unique index to each tracker that is ever created during one run of the program
 // to ensure that no two traces that might be from different beads are recorded as
 // having the same bead index.  It uses a global static variable to hold the number
-// of spots, so multiple instances will not re-use the same numbers.  This is not
+// of spots, so multiple instances will not re-use the same numbers.  This is
 // thread-safe for adding new spots in multiple threads.
 
 class Spot_Information {
@@ -631,9 +632,11 @@ public:
     d_tracker_XY = xytracker;
     d_tracker_Z = ztracker;
     if (!unofficial) {
-                d_index = d_static_index++;
+        d_index_sem.p();        
+        d_index = d_static_index++;
+        d_index_sem.v();
     } else {
-                d_index = -1;
+        d_index = -1;
     }
     d_velocity[0] = d_acceleration[0] = d_velocity[1] = d_acceleration[1] = 0;
     d_lost = false;
@@ -671,15 +674,15 @@ protected:
   double		d_velocity[2];	    //< The velocity of the particle
   double		d_acceleration[2];  //< The acceleration of the particle
   bool                  d_lost;             //< Am I lost?
+  static Semaphore      d_index_sem;        //< Semaphore for the following index.
   static unsigned	d_static_index;     //< The index to use for the next one (never to be re-used).
 };
 
 //----------------------------------------------------------------------------------
 // Application-level object that manages a list of trackers and keeps track of autofinding,
-// deleting, and causing them to track across images.  This is a single-threaded
-// implementation, so it will not utilize multiple cores the way that the video
-// spot tracker application does.  It pulls together the code that deals with
-// fluorescent-spot finding and tracking.
+// deleting, and causing them to track across images.  This is an OpenMP-threaded
+// implementation, so it will utilize multiple cores.  It pulls together the code
+// that deals with fluorescent-spot finding and tracking.
 
 class Tracker_Collection_Manager {
 public:
@@ -699,6 +702,9 @@ public:
     // Delete all active trackers.
     void delete_trackers(void);
 
+    // Removes a specific tracker
+    bool delete_tracker(unsigned which);
+
     // Autofind fluorescence beads within the image whose pointer is passed in.
     // Avoids adding trackers that are too close to other existing trackers.
     // Adds beads that are above the threshold (fraction of the way from the minimum
@@ -708,7 +714,15 @@ public:
     bool autofind_fluorescent_beads_in(const image_wrapper &s_image,
                                            float thresh = 0.2,
                                            float var_thresh = 1.5,
-										   unsigned max_regions = 0);
+					   unsigned max_regions = 0);
+
+    // Find the specified number of additional trackers, which should be placed
+    // at the highest-response locations in the image that is not within one
+    // tracker radius of an existing tracker or within one tracker radius of the
+    // border.  Create new trackers at those locations.  Returns true if it was
+    // able to find them, false if not (or error).
+    bool find_more_brightfield_beads_in(const image_wrapper &s_image,
+                                        unsigned how_many_more);
 
     // Update the positions of the trackers we are managing based on a new image.
     // Returns the number of beads in the vector of trackers we're managing.

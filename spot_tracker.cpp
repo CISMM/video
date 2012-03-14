@@ -1723,8 +1723,14 @@ double	radial_average_tracker_Z::check_fitness(const image_wrapper &image, unsig
   return fitness;
 }
 
+Semaphore Spot_Information::d_index_sem;
 unsigned Spot_Information::d_static_index = 0;	  //< Start the first instance of a Spot_Information index at zero.
-unsigned Spot_Information::get_static_index() { return d_static_index; };
+unsigned Spot_Information::get_static_index() {
+  d_index_sem.p();
+  unsigned val = d_static_index;
+  d_index_sem.v();
+  return val;
+};
 
 //----------------------------------------------------------------------------------
 // Tracker_Collection_Manager class implementation
@@ -1756,6 +1762,34 @@ void Tracker_Collection_Manager::delete_trackers()
 {
     // Delete all of the tracker objects we had created.
     d_trackers.remove_if(deleteAll);
+}
+
+bool Tracker_Collection_Manager::delete_tracker(unsigned which)
+{
+  // Make sure we have such a tracker.
+  if (which >= tracker_count()) {
+    return false;
+  }
+
+  // Locate the tracker and then delete it.
+  unsigned i;
+  std::list<Spot_Information *>::const_iterator loop;
+  loop = d_trackers.begin();
+  for (i = 0; i < which; i++) {
+      loop++;
+      if (loop == d_trackers.end()) {
+          return false;
+      }
+  }
+  if (loop == d_trackers.end()) {
+      return false;
+  } else {
+      // Delete the xytracker pointed to by our list pointer.
+      delete *loop;
+      // Remove this element from the list.
+      d_trackers.erase(loop);
+      return true;
+  }
 }
 
 // XXX Replace the list with a vector to make this faster?
