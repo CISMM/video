@@ -735,7 +735,7 @@ public:
 
     // Returns information about the trackers we're managing.
     unsigned tracker_count(void) const { return d_trackers.size(); }
-    const Spot_Information  *tracker(unsigned which) const;
+    Spot_Information  *tracker(unsigned which) const;
 
 protected:
     unsigned                        d_image_x;              // Size of the image in X

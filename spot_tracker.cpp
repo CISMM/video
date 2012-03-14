@@ -1758,7 +1758,8 @@ void Tracker_Collection_Manager::delete_trackers()
     d_trackers.remove_if(deleteAll);
 }
 
-const Spot_Information *Tracker_Collection_Manager::tracker(unsigned which) const
+// XXX Replace the list with a vector to make this faster?
+Spot_Information *Tracker_Collection_Manager::tracker(unsigned which) const
 {
     unsigned i;
     std::list<Spot_Information *>::const_iterator loop;
@@ -1907,6 +1908,7 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
       fprintf(stderr,"Tracker_Collection_Manager::autofind_fluorescent_beads_in(): Out of memory\n");
       return false;
     }
+    #pragma omp parallel for private(x)
     for (y = miny; y <= maxy; ++y) {
       for (x = minx; x <= maxx; ++x) {
         if (s_image.read_pixel_nocheck(x,y) >= threshold) {
@@ -2020,11 +2022,12 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
 // Returns the number of beads in the track.
 unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_image)
 {
-    std::list<Spot_Information *>::iterator loop;
-    double x, y;
-    for (loop = d_trackers.begin(); loop != d_trackers.end(); loop++)  {
-        spot_tracker_XY *tracker = (*loop)->xytracker();
-        tracker->optimize_xy(s_image, 0, x, y, tracker->get_x(),tracker->get_y() );
+    int i;
+    #pragma omp parallel for
+    for (i = 0; i < (int)(d_trackers.size()); i++) {
+        double x, y;
+        spot_tracker_XY *tkr = tracker(i)->xytracker();
+        tkr->optimize_xy(s_image, 0, x, y, tkr->get_x(),tkr->get_y() );
     }
     return d_trackers.size();
 }
@@ -2113,9 +2116,10 @@ bool Tracker_Collection_Manager::mark_tracker_if_lost(Spot_Information *tracker,
 unsigned Tracker_Collection_Manager::delete_lost_fluorescent_beads_in(const image_wrapper &s_image,
                                                             float var_thresh)
 {
-    std::list<Spot_Information *>::iterator loop;
-    for (loop = d_trackers.begin(); loop != d_trackers.end(); loop++)  {
-        mark_tracker_if_lost(*loop, s_image, var_thresh);
+    int i;
+    #pragma omp parallel for
+    for (i = 0; i < (int)(d_trackers.size()); i++) {
+        mark_tracker_if_lost(tracker(i), s_image, var_thresh);
     }
     d_trackers.remove_if(deleteLost);
     return d_trackers.size();
@@ -2127,11 +2131,12 @@ unsigned Tracker_Collection_Manager::delete_lost_fluorescent_beads_in(const imag
 // been deleted.
 unsigned Tracker_Collection_Manager::delete_edge_beads_in(const image_wrapper &s_image)
 {
-    std::list<Spot_Information *>::iterator loop;
-    for (loop = d_trackers.begin(); loop != d_trackers.end(); loop++)  {
-        Spot_Information *tracker = (*loop);
-        double x = tracker->xytracker()->get_x();
-        double y = tracker->xytracker()->get_y();
+    int i;
+    #pragma omp parallel for
+    for (i = 0; i < (int)(d_trackers.size()); i++) {
+        Spot_Information *tkr = tracker(i);
+        double x = tkr->xytracker()->get_x();
+        double y = tkr->xytracker()->get_y();
         double zone = d_min_border_distance;
 
         // Check against the border.
@@ -2139,7 +2144,7 @@ unsigned Tracker_Collection_Manager::delete_edge_beads_in(const image_wrapper &s
         s_image.read_range(minX, maxX, minY, maxY);
         if ( (x < (minX) + zone) || (x > (maxX) - zone) ||
              (y < (minY) + zone) || (y > (maxY) - zone) ) {
-          tracker->lost(true);
+          tkr->lost(true);
         }
     }
     d_trackers.remove_if(deleteLost);
@@ -2152,19 +2157,20 @@ unsigned Tracker_Collection_Manager::delete_edge_beads_in(const image_wrapper &s
 // been deleted.
 unsigned Tracker_Collection_Manager::delete_colliding_beads_in(const image_wrapper &s_image)
 {
-    std::list<Spot_Information *>::iterator loop;
-    for (loop = d_trackers.begin(); loop != d_trackers.end(); loop++) {
-      double x = (*loop)->xytracker()->get_x();
-      double y = (*loop)->xytracker()->get_y();
+    int i;
+    #pragma omp parallel for
+    for (i = 0; i < (int)(d_trackers.size()); i++) {
+      double x = tracker(i)->xytracker()->get_x();
+      double y = tracker(i)->xytracker()->get_y();
 
-      std::list<Spot_Information *>::iterator loop2;
       double zone2 = d_min_bead_separation * d_min_bead_separation;
-      for (loop2 = d_trackers.begin(); loop2 != loop; loop2++) {
-        double x2 = (*loop2)->xytracker()->get_x();
-        double y2 = (*loop2)->xytracker()->get_y();
+      int j;
+      for (j = 0; j < i; j++) {
+        double x2 = tracker(j)->xytracker()->get_x();
+        double y2 = tracker(j)->xytracker()->get_y();
         double dist2 = ( (x-x2)*(x-x2) + (y-y2)*(y-y2) );
         if (dist2 < zone2) {
-          (*loop)->lost(true);
+          tracker(i)->lost(true);
         }
       }
     }

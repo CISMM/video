@@ -656,9 +656,10 @@ gaussian_blurred_image::gaussian_blurred_image(const image_wrapper &input
   float_image copy(0, input.get_num_rows() + 2*aperture -1,
                    0, input.get_num_columns() + 2*aperture -1);
   int x;  // Needs to be int for OpenMP
-  #pragma omp parallel for
+  // We parallelize the inner loop here because aperture will be small.
   for (x = 0; x < (int)(aperture); x++) {
     int y;  // Needs to be int for OpenMP
+    #pragma omp parallel for
     for (y = 0; y < (int)(input.get_num_columns() + 2 * aperture); y++) {
       copy.write_pixel_nocheck(x, y, 0);
       copy.write_pixel_nocheck(input.get_num_rows() + 2*aperture - 1 - x, y, 0);
