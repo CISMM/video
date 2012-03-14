@@ -1552,7 +1552,7 @@ rod3_spot_tracker_interp::rod3_spot_tracker_interp(const symmetric_spot_tracker_
     d_beginning(NULL),
     d_end(NULL)
 {
-  // Create three subordinate trackers of type cone_spot_tracker_interp
+  // Create three subordinate trackers of type symmetric_spot_tracker_interp
   if ( NULL == (d_center = new symmetric_spot_tracker_interp(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)) ) {
     fprintf(stderr,"rod3_spot_tracker_interp::rod3_spot_tracker_interp(): Cannot create center subortinate tracker\n");
     return;
@@ -1900,6 +1900,283 @@ static void flood_connected_component(double_image *img, int x, int y, double va
   }
 }
 
+// Helper function for find_more_brightfield_beads_in.
+// Computes a local SMD measure (cross) at the location (x,y) with
+//  the specified radius.
+double Tracker_Collection_Manager::localSMD(const image_wrapper &img,
+                                            int x, int y, int radius,
+                                            unsigned color_index)
+{
+	double Ia, Ib;
+	double xSMD = 0;
+	int n = 0;
+	for (int lx = x - radius; lx < x + radius; ++lx)
+	{
+		img.read_pixel(lx, y, Ia, color_index);
+		img.read_pixel(lx + 1, y, Ib, color_index);
+		xSMD += fabs(Ia - Ib);
+		++n;
+	}
+	xSMD = xSMD / (double)n;
+
+	double ySMD = 0;
+	n = 0;
+	for (int ly = y - radius; ly < y + radius; ++ly)
+	{
+		img.read_pixel(x, ly, Ia, color_index);
+		img.read_pixel(x, ly + 1, Ib, color_index);
+		ySMD += fabs(Ia - Ib);
+		++n;
+	}
+	ySMD = ySMD / (double)n;
+
+	return (xSMD + ySMD);
+}
+
+
+// Find the specified number of additional trackers, which should be placed
+// at the highest-response locations in the image that is not within one
+// tracker radius of an existing tracker or within one tracker radius of the
+// border.  Create new trackers at those locations.  Returns true if it was
+// able to find them, false if not (or error).
+// Also returns a vector of candidate vertical and horizontal lines to provide
+// debugging information back to the application.
+bool Tracker_Collection_Manager::find_more_brightfield_beads_in(
+                                    const image_wrapper &s_image,
+                                    int windowRadius,
+                                    double candidate_spot_threshold,
+                                    unsigned how_many_more,
+                                    std::vector<int> &vertCandidates,
+                                    std::vector<int> &horiCandidates)
+{
+	// empty out our candidate vectors...
+	vertCandidates.clear();
+	horiCandidates.clear();
+
+        int i, radius;
+        int minx, maxx, miny, maxy;
+        s_image.read_range(minx, maxx, miny, maxy);
+
+        int x, y;
+
+        // first, we calculate horizontal and vertical SMDs on the global image
+	double SMD = 0;
+	double Ia, Ib;
+
+	double sum = 0, max = -1, min = -1;
+
+	// vertical SMDs
+	double* vertSMDs = new double[maxx - minx + 1];
+	for (x = minx; x <= maxx; ++x) {
+		SMD = 0;
+		// calcualte one SMD
+		for (y = miny + 1; y <= maxy; ++y)
+		{
+                        Ia = s_image.read_pixel_nocheck(x, y);
+                        Ib = s_image.read_pixel_nocheck(x, y-1);
+			SMD += fabs(Ia - Ib);
+		}
+		// normalize by dividing by the number of pairwise computations
+		SMD = SMD / (float)(maxy - miny);
+		vertSMDs[x] = SMD;
+
+		if (max == -1)
+			max = SMD;
+		if (min == -1)
+			min = SMD;
+		
+		if (SMD > max)
+			max = SMD;
+		if (SMD < min)
+			min = SMD;		
+
+		sum += SMD;
+	}
+
+	double vertAvg = sum / ((float)maxx - minx + 1);
+	//printf("min = %f, max = %f, vertAvg = %f\n", min, max, vertAvg);
+	double vertThresh = 0;
+	//printf("using a vertThresh = %f\n", vertThresh);
+
+	sum = 0;
+	max = -1;
+	min = -1;
+
+	// horizontal SMDs
+	double* horiSMDs = new double[maxy - miny + 1];
+	for (y = miny; y <= maxy; ++y)
+	{
+		SMD = 0;
+		// calcualte one SMD
+		for (x = minx + 1; x <= maxx; ++x)
+		{
+                        Ia = s_image.read_pixel_nocheck(x, y);
+                        Ib = s_image.read_pixel_nocheck(x-1, y);
+			SMD += fabs(Ia - Ib);
+		}
+		// normalize by dividing by the number of pairwise computations
+		SMD = SMD / (float)(maxx - minx);
+		horiSMDs[y] = SMD;
+
+		if (max == -1)
+			max = SMD;
+		if (min == -1)
+			min = SMD;
+		
+		if (SMD > max)
+			max = SMD;
+		if (SMD < min)
+			min = SMD;		
+
+		sum += SMD;
+	}
+
+	double horiAvg = sum / ((float)maxx - minx + 1);
+	//printf("min = %f, max = %f, horiAvg = %f\n", min, max, horiAvg);
+	double horiThresh = 0;
+	//printf("using a horiThresh = %f\n", horiThresh);
+
+	// now we need to pick out the local maxes in our SMDs as candidate bead positions
+
+	double curMax = 0;
+
+	// pick out local maxes on our vertical SMDs
+	for (x = minx + windowRadius; x <= maxx - windowRadius; ++x) {
+		curMax = 0;
+		// check for the max SMD value within our window size that's > thresh
+		for (i = x - windowRadius; i < x + windowRadius; ++i) {
+			if (vertSMDs[i] > curMax && vertSMDs[i] > vertThresh) {
+				curMax = vertSMDs[i];
+			}
+		}
+		// if we were the max SMD value in our window, then we're a candidate!
+		if (curMax == vertSMDs[x] && curMax != 0) {
+			vertCandidates.push_back(x);
+			x = x + (windowRadius - 1);
+		}
+	}
+
+	// pick out local maxes on our horizontal SMDs
+	for (y = miny + windowRadius; y <= maxy - windowRadius; ++y) {
+		curMax = 0;
+		// check for the max SMD value within our window size that's > thresh
+		for (i = y - windowRadius; i < y + windowRadius; ++i) {
+			if (horiSMDs[i] > curMax && horiSMDs[i] > horiThresh) {
+				curMax = horiSMDs[i];
+			}
+		}
+		// if we were the max SMD value in our window, then we're a candidate!
+		if (curMax == horiSMDs[y] && curMax != 0) {
+			horiCandidates.push_back(y);
+			y = y + (windowRadius - 1);
+		}
+	}
+
+	// Calculate all candidate spot locations (intersections of horizontal and
+	//  vertical candidate scan lines).
+        std::vector<double> candidateSpotsX;
+        std::vector<double> candidateSpotsY;
+        std::vector<double> candidateSpotsSMD;
+
+	double tooClose = 5;
+	double curX, curY;
+	bool safe = false;
+        std::list <Spot_Information *>::iterator loop;
+	int cx, cy;
+	spot_tracker_XY* curTracker;
+	for (y = 0; y < static_cast<int>(horiCandidates.size()); ++y) {
+		cy = horiCandidates[y];
+		for (x = 0; x < static_cast<int>(vertCandidates.size()); ++x) {
+			cx = vertCandidates[x];
+			safe = true;
+
+			// check to make sure we don't already have a tracker too close
+			for (loop = d_trackers.begin(); loop != d_trackers.end(); loop++)  {
+				curTracker = (*loop)->xytracker();
+				curX = curTracker->get_x();
+				curY = curTracker->get_y();
+				if (cx >= curX - tooClose && cx <= curX + tooClose &&
+					cy >= curY - tooClose && cy <= curY + tooClose ) {
+				  safe = false;
+				}
+			}
+			if (safe) {
+				candidateSpotsX.push_back(cx);
+				candidateSpotsY.push_back(cy);
+			}
+		}
+	}
+
+	// now do local SMDs at candidate spots to determine if they're actually spots.
+	double maxSMD = 0;
+	double minSMD = 1e50;
+	double avgSMD = 0;
+	SMD = 0;
+	radius = static_cast<int>(d_default_radius);
+	for (i = 0; i < static_cast<int>(candidateSpotsX.size()); ++i) {
+		x = static_cast<int>(candidateSpotsX[i]);
+		y = static_cast<int>(candidateSpotsY[i]);
+		SMD = localSMD(s_image, x, y, radius, d_color_index);
+		avgSMD += SMD;
+                if (SMD > maxSMD) {
+			maxSMD = SMD;
+                }
+                if (SMD < minSMD) {
+			minSMD = SMD;
+                }
+		candidateSpotsSMD.push_back(SMD);
+	}
+	avgSMD /= candidateSpotsX.size();
+
+	double SMDthresh = avgSMD * candidate_spot_threshold;
+
+        std::list<Spot_Information*> potentialTrackers;
+
+	int newTrackers = 0;
+	for (i = 0; i < static_cast<int>(candidateSpotsSMD.size()); ++i) {
+		if (candidateSpotsSMD[i] > SMDthresh) {
+			// add a new potential tracker!
+			++newTrackers;
+
+			// last argument = true tells Spot_Information that this isn't an official, logged tracker
+			potentialTrackers.push_back(new Spot_Information(default_xy_tracker_creator(candidateSpotsX[i],candidateSpotsY[i],d_default_radius),default_z_tracker_creator(), true));
+
+		}
+	}
+
+	int numlost = 0;
+	int numnotlost = 0;
+
+	// check to see which candidate spots aren't immediately lost
+	for (loop = potentialTrackers.begin(); loop != potentialTrackers.end(); loop++) {
+		// if our candidate tracker isn't lost, then we add it to our list of real trackers
+                double x,y;
+                (*loop)->xytracker()->optimize_xy(s_image, d_color_index, x, y,
+                    (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y());
+                // XXX This should also check for lost in non-fluorescence...
+                mark_tracker_if_lost(*loop, s_image, d_default_fluorescence_lost_threshold);
+		if (!(*loop)->lost()) {
+			++numnotlost;
+                        d_trackers.push_back(new Spot_Information(default_xy_tracker_creator((*loop)->xytracker()->get_x(),(*loop)->xytracker()->get_y(),d_default_radius),default_z_tracker_creator()));
+                } else {
+			++numlost;
+                }
+	}
+
+	//printf("%i candidates were lost after optimizing\n", numlost);
+	//printf("%i candidates were not lost.\n", numnotlost);
+	
+	// clean up candidate spots memory
+	potentialTrackers.remove_if( deleteAll );
+
+	// clear up our SMD memory in reverse order from allocation to make it
+        // easier for the memory manager
+	delete [] horiSMDs;
+	delete [] vertSMDs;
+
+        return true;
+}
+
 // Autofind fluorescence beads within the image whose pointer is passed in.
 // Avoids adding trackers that are too close to other existing trackers.
 // Adds beads that are above the threshold (fraction of the way from the minimum
@@ -2024,17 +2301,18 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
         safe = false;
       }
       if (safe) {
-        spot_tracker_XY *xy = new symmetric_spot_tracker_interp(d_default_radius, false, 0.25, 0.1, 0.25);
-        xy->set_location(cx, cy);
+        spot_tracker_XY *xy = default_xy_tracker_creator(cx, cy, d_default_radius);
         if (xy == NULL) {
           fprintf(stderr,"Tracker_Collection_Manager::autofind_fluorescent_beads_in(): Can't make XY tracker\n");
           break;
         }
-        Spot_Information *si = new Spot_Information(xy,NULL);
+        spot_tracker_Z *z = default_z_tracker_creator();
+        Spot_Information *si = new Spot_Information(xy,z);
         if (si == NULL) {
           fprintf(stderr,"Tracker_Collection_Manager::autofind_fluorescent_beads_in(): Can't make Spot Information\n");
           break;
         }
+        // XXX This should also check for lost in non-fluorescence...
         mark_tracker_if_lost( si, s_image, var_thresh );
         if (si->lost()) {
           // Deleting the SpotInformation also deletes its trackers.
@@ -2054,14 +2332,15 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
 
 // Update the positions of the trackers we are managing based on a new image.
 // Returns the number of beads in the track.
-unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_image)
+unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_image,
+                                                       unsigned color_index)
 {
     int i;
     #pragma omp parallel for
     for (i = 0; i < (int)(d_trackers.size()); i++) {
         double x, y;
         spot_tracker_XY *tkr = tracker(i)->xytracker();
-        tkr->optimize_xy(s_image, 0, x, y, tkr->get_x(),tkr->get_y() );
+        tkr->optimize_xy(s_image, color_index, x, y, tkr->get_x(),tkr->get_y() );
     }
     return d_trackers.size();
 }
@@ -2210,4 +2489,22 @@ unsigned Tracker_Collection_Manager::delete_colliding_beads_in(const image_wrapp
     }
     d_trackers.remove_if(deleteLost);
     return d_trackers.size();
+}
+
+// Static
+spot_tracker_XY *Tracker_Collection_Manager::default_xy_tracker_creator(
+  double x, double y, double r)
+{
+  spot_tracker_XY *tracker = new symmetric_spot_tracker_interp(r, false, 0.25, 0.1, 0.25);
+  if (tracker != NULL) {
+    tracker->set_location(x,y);
+    tracker->set_radius(r);
+  }
+  return tracker;
+}
+
+// Static
+spot_tracker_Z *Tracker_Collection_Manager::default_z_tracker_creator()
+{
+    return NULL;
 }

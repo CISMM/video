@@ -2156,15 +2156,18 @@ void tracking_thread_function(void *pvThreadData)
 // Helper function for find_more_trackers.
 // Computes a local SMD measure (cross) at the location (x,y) with
 //  the specified radius.
-double localSMD(int x, int y, int radius)
+// XXX This now looks in the (blurred) image passed into the
+// find_more_trackers() function rather than in the global image.
+// This will reduce the localSMD value...
+double localSMD(const image_wrapper &img, int x, int y, int radius)
 {
 	double Ia, Ib;
 	double xSMD = 0;
 	int n = 0;
 	for (int lx = x - radius; lx < x + radius; ++lx)
 	{
-		g_image->read_pixel(lx, y, Ia, g_colorIndex);
-		g_image->read_pixel(lx + 1, y, Ib, g_colorIndex);
+		img.read_pixel(lx, y, Ia, g_colorIndex);
+		img.read_pixel(lx + 1, y, Ib, g_colorIndex);
 		xSMD += fabs(Ia - Ib);
 		++n;
 	}
@@ -2174,8 +2177,8 @@ double localSMD(int x, int y, int radius)
 	n = 0;
 	for (int ly = y - radius; ly < y + radius; ++ly)
 	{
-		g_image->read_pixel(x, ly, Ia, g_colorIndex);
-		g_image->read_pixel(x, ly + 1, Ib, g_colorIndex);
+		img.read_pixel(x, ly, Ia, g_colorIndex);
+		img.read_pixel(x, ly + 1, Ib, g_colorIndex);
 		ySMD += fabs(Ia - Ib);
 		++n;
 	}
@@ -2208,6 +2211,7 @@ void fill_around_tracker_with_value(double_image &im, spot_tracker_XY *t, double
 // tracker radius of an existing tracker or within one tracker radius of the
 // border.  Create new trackers at those locations.  Returns true if it was
 // able to find them, false if not (or error).
+// XXX When replacing this, pull out the code that 
 bool find_more_trackers(const image_wrapper *img, unsigned how_many_more)
 {
 	// empty out our candidate vectors...
@@ -2216,7 +2220,7 @@ bool find_more_trackers(const image_wrapper *img, unsigned how_many_more)
 
         int i, radius;
         int minx, maxx, miny, maxy;
-        g_image->read_range(minx, maxx, miny, maxy);
+        img->read_range(minx, maxx, miny, maxy);
 
         int x, y;
 
@@ -2384,7 +2388,7 @@ bool find_more_trackers(const image_wrapper *img, unsigned how_many_more)
 	for (i = 0; i < static_cast<int>(candidateSpotsX.size()); ++i) {
 		x = candidateSpotsX[i];
 		y = candidateSpotsY[i];
-		SMD = localSMD(x, y, radius);
+		SMD = localSMD(*img, x, y, radius);
 		avgSMD += SMD;
                 if (SMD > maxSMD) {
 			maxSMD = SMD;
