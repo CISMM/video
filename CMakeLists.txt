@@ -934,7 +934,7 @@ MACRO(CPP_NOGUI_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 	${PTHREAD_LIBRARY}
   )
   SET_TARGET_PROPERTIES(${APPLICATION_NAME} PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
-ENDMACRO(CPP_APPLICATION)
+ENDMACRO(CPP_NOGUI_APPLICATION)
 
 #-----------------------------------------------------------------------------
 # Declaration of the simple applications that don't have extra files
