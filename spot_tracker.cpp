@@ -1773,7 +1773,7 @@ bool Tracker_Collection_Manager::delete_tracker(unsigned which)
 
   // Locate the tracker and then delete it.
   unsigned i;
-  std::list<Spot_Information *>::const_iterator loop;
+  std::list<Spot_Information *>::iterator loop;
   loop = d_trackers.begin();
   for (i = 0; i < which; i++) {
       loop++;

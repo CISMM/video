@@ -868,6 +868,74 @@ MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
   SET_TARGET_PROPERTIES(${APPLICATION_NAME} PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
 ENDMACRO(CPP_APPLICATION)
 
+MACRO(CPP_NOGUI_APPLICATION APPLICATION_NAME SOLUTION_NAME)
+  SET(TARGET_NAME ${APPLICATION_NAME})
+  ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp)
+  TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+	stocc_random_number_generator_library
+	spot_tracker_library
+	base_camera_server_library
+  )
+  if (VIDEO_USE_IMAGEMAGICK)
+	TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+		file_stack_library
+		${ImageMagick_Needed_Libs}
+	)
+  endif (VIDEO_USE_IMAGEMAGICK)
+  if (VIDEO_USE_DIRECTSHOW)
+    TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+	directx_library
+    )
+  endif (VIDEO_USE_DIRECTSHOW)  
+  if (VIDEO_USE_COOKE)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			cooke_library
+			${Cooke_LIBRARIES}
+		)
+  endif (VIDEO_USE_COOKE)
+  if (VIDEO_USE_DIAGINC)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			diaginc_library
+			${DiagInc_LIBRARIES}
+		)
+  endif (VIDEO_USE_DIAGINC)
+  if (VIDEO_USE_EDT)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			EDT_library
+			${EDT_LIBRARIES}
+		)
+  endif (VIDEO_USE_EDT)
+  if (VIDEO_USE_ROPER)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			Roper_library
+			${ROPER_LIBRARIES}
+		)
+  endif (VIDEO_USE_ROPER)
+  if (VIDEO_USE_POINTGREY)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			point_grey_library
+			${POINTGREY_LIBRARIES}
+		)
+  endif (VIDEO_USE_POINTGREY)
+  if (VIDEO_USE_VRPN_IMAGER)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			vrpn_imager_library
+		)
+  endif (VIDEO_USE_VRPN_IMAGER)
+  if (VIDEO_USE_QT4)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			qt4_video_library
+			${QT_LIBRARIES}
+		)
+  endif (VIDEO_USE_QT4)
+  TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+	${VRPN_SERVER_LIBRARIES}
+	${QUATLIB_LIBRARIES}
+	${PTHREAD_LIBRARY}
+  )
+  SET_TARGET_PROPERTIES(${APPLICATION_NAME} PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
+ENDMACRO(CPP_APPLICATION)
+
 #-----------------------------------------------------------------------------
 # Declaration of the simple applications that don't have extra files
 
@@ -885,7 +953,7 @@ if (VIDEO_USE_EDT)
 endif (VIDEO_USE_EDT)
 CPP_APPLICATION(make_moving_spot_video apps)
 CPP_APPLICATION(make_test_image apps)
-CPP_APPLICATION(video_imager_server apps)
+CPP_NOGUI_APPLICATION(video_imager_server apps)
 CPP_APPLICATION(csv_to_xml apps)
 CPP_APPLICATION(xml_tracking_compare apps)
 CPP_APPLICATION(Panoptes_Stage_Control apps)
