@@ -369,13 +369,13 @@ int main(int argc, char *argv[])
 			if (++i > argc) { Usage(argv[0]); }
 			g_width = atoi(argv[i]);
 			if ( (g_width < 1) || (g_width > 1600) ) {
-				fprintf(stderr,"Invalid width (1-1600 allowed, %f entered)\n", g_width);
+				fprintf(stderr,"Invalid width (1-1600 allowed, %d entered)\n", g_width);
 				exit(-1);
 			}
 			if (++i > argc) { Usage(argv[0]); }
 			g_height = atoi(argv[i]);
 			if ( (g_height < 1) || (g_height > 1200) ) {
-				fprintf(stderr,"Invalid height (1-1200 allowed, %f entered)\n", g_height);
+				fprintf(stderr,"Invalid height (1-1200 allowed, %d entered)\n", g_height);
 				exit(-1);
 			}
 		} else if (!strncmp(argv[i], "-listen_port", strlen("-listen_port"))) {
@@ -392,7 +392,7 @@ int main(int argc, char *argv[])
 			if (++i > argc) { Usage(argv[0]); }
 			g_framerate = atof(argv[i]);
 			if ( (g_framerate < 1) || (g_framerate > 1000) ) {
-				fprintf(stderr,"Invalid framerate (1-1000 allowed, %d entered)\n", g_framerate);
+				fprintf(stderr,"Invalid framerate (1-1000 allowed, %lf entered)\n", g_framerate);
 				exit(-1);
 			}
 		} else if (!strncmp(argv[i], "-gain", strlen("-gain"))) {
