@@ -2211,7 +2211,7 @@ void fill_around_tracker_with_value(double_image &im, spot_tracker_XY *t, double
 // tracker radius of an existing tracker or within one tracker radius of the
 // border.  Create new trackers at those locations.  Returns true if it was
 // able to find them, false if not (or error).
-// XXX When replacing this, pull out the code that 
+
 bool find_more_trackers(const image_wrapper *img, unsigned how_many_more)
 {
 	// empty out our candidate vectors...
@@ -3653,6 +3653,7 @@ void  reset_background_image(int newvalue, void *)
 // If the value of the interpolate box changes, then create a new spot
 // tracker of the appropriate type in the same location and with the
 // same radius as the one that was used before.
+// XXX Re-point the active tracker at tis corresponding new tracker.
 
 void  rebuild_trackers(int newvalue, void *)
 {

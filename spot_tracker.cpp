@@ -1792,6 +1792,41 @@ bool Tracker_Collection_Manager::delete_tracker(unsigned which)
   }
 }
 
+void Tracker_Collection_Manager::add_tracker(double x, double y, double radius)
+{
+    d_trackers.push_back(
+      new Spot_Information(default_xy_tracker_creator(x,y,radius),
+                           default_z_tracker_creator()));
+}
+
+// Delete all trackers and replace with the correct types.
+// Make sure to put them back where they came from.
+// Re-point the active tracker at its corresponding new
+// tracker.  This is done by the app when it changes the kind
+// of tracker it wants, after replacing the XY and Z tracker
+// creation functions.
+void Tracker_Collection_Manager::rebuild_trackers(void)
+{
+  std::list<Spot_Information *>::iterator  loop;
+
+  for (loop = d_trackers.begin(); loop != d_trackers.end(); loop++) {
+    double x = (*loop)->xytracker()->get_x();
+    double y = (*loop)->xytracker()->get_y();
+    double r = (*loop)->xytracker()->get_radius();
+
+    // Be sure to delete only the trackers and not the indices when
+    // rebuilding the trackers.
+    {
+      delete (*loop)->xytracker();
+      if ( (*loop)->ztracker() ) { delete (*loop)->ztracker(); }
+      (*loop)->set_xytracker(d_xy_tracker_creator(x,y,r));
+      (*loop)->set_ztracker(d_z_tracker_creator());
+    }
+    // XXX Make depth accuracy settable
+    if ((*loop)->ztracker()) { (*loop)->ztracker()->set_depth_accuracy(0.25); }
+  }
+}
+
 // XXX Replace the list with a vector to make this faster?
 Spot_Information *Tracker_Collection_Manager::tracker(unsigned which) const
 {
@@ -2331,16 +2366,26 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
 }
 
 // Update the positions of the trackers we are managing based on a new image.
+// For kymograph applications, we only want to optimize the first two trackers,
+// so we have the ability to tell how many to optimize; by default, they
+// are all optimized (negative value).
 // Returns the number of beads in the track.
 unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_image,
+                                                       int max_tracker_to_optimize,
                                                        unsigned color_index)
 {
     int i;
     #pragma omp parallel for
     for (i = 0; i < (int)(d_trackers.size()); i++) {
+      if ( (max_tracker_to_optimize < 0) || (i <= max_tracker_to_optimize) ) {
         double x, y;
         spot_tracker_XY *tkr = tracker(i)->xytracker();
+        double last_position[2];
+        last_position[0] = tkr->get_x();
+        last_position[1] = tkr->get_y();
+        tracker(i)->set_last_position(last_position);
         tkr->optimize_xy(s_image, color_index, x, y, tkr->get_x(),tkr->get_y() );
+      }
     }
     return d_trackers.size();
 }
@@ -2433,6 +2478,172 @@ unsigned Tracker_Collection_Manager::delete_lost_fluorescent_beads_in(const imag
     #pragma omp parallel for
     for (i = 0; i < (int)(d_trackers.size()); i++) {
         mark_tracker_if_lost(tracker(i), s_image, var_thresh);
+    }
+    d_trackers.remove_if(deleteLost);
+    return d_trackers.size();
+}
+
+// Check for lost beads.  This is done by finding the value of
+// the fitness function at the actual tracker location and comparing
+// it to the maximum values located on concentric rings around the
+// tracker.  We look for the minimum of these maximum values (the
+// deepest moat around the peak in the center) and determine if we're
+// lost based on the type of kernel we are using.
+// Some ideas for determining goodness of tracking for a bead...
+//   (It looks like different metrics are needed for symmetric and cone and disk.)
+// For symmetric:
+//    Value compared to initial value when tracking that bead: When in a flat area, it can be better.
+//    Minimum over area vs. center value: get low-valued lobes in certain directions, but other directions bad.
+//    Maximum of all minima as you travel in different directions from center: dunno.
+//    Maximum at radius from center: How do you know what radius to select?
+//      Max at radius of the minimum value from center?
+//      Minimum of the maxima over a number of radii? -- Yep, we're trying this one.
+// FIONA kernel operates differently; it looks to see if the value at the
+//    center is more than the specified fraction of twice the standard deviation away
+//    from the mean of the surrounding values.  For an inverted tracker, this
+//    must be below; for a non-inverted tracker it is above.    XXX_delete_lost_brightfield_beads_in();
+// Returns true if the tracker is lost and false if it is not.
+bool Tracker_Collection_Manager::mark_tracker_if_lost_in_brightfield(Spot_Information *tracker,
+                                            const image_wrapper &image,
+                                            float var_thresh,
+                                            KERNEL_TYPE kernel_type)
+{
+    if (tracker == NULL) {
+        return true;    // Tracker is lost -- it doesn't even exist!
+    }
+
+    tracker->lost(false); // Not lost yet...
+     if (kernel_type == KT_FIONA) {
+       // Compute the mean of the values two radii out from the
+       // center of the tracker.
+       double mean = 0.0, value;
+       double theta;
+       unsigned count = 0;
+       double r = 2 * tracker->xytracker()->get_radius();
+       double start_x = tracker->xytracker()->get_x();
+       double start_y = tracker->xytracker()->get_y();
+       double x, y;
+       for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
+         x = start_x + r * cos(theta);
+         y = start_y + r * sin(theta);
+         if (image.read_pixel_bilerp(x, y, value, d_color_index)) {
+           mean += value;
+           count++;
+         }
+       }
+       if (count != 0) {
+         mean /= count;
+       }
+
+       // Compute the standard deviation of the values
+       double std_dev = 0.0;
+       count = 0;
+       for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
+         x = start_x + r * cos(theta);
+         y = start_y + r * sin(theta);
+         if (image.read_pixel_bilerp(x, y, value, d_color_index)) {
+           std_dev += (mean - value) * (mean - value);
+           count++;
+         }
+       }
+       if (count > 0) {
+         std_dev /= (count-1);
+       }
+       std_dev = sqrt(std_dev);
+
+       // Check to see if we're lost based on how far we are above/below the
+       // mean.
+       double threshold = var_thresh * (2 * std_dev);
+       if (image.read_pixel_bilerp(start_x, start_y, value, d_color_index)) {
+         double diff = value - mean;
+         if (d_invert) { diff *= -1; }
+         if (diff < threshold) {
+           tracker->lost(true);
+         } else {
+           tracker->lost(false);
+         }
+       }
+
+     } else {
+      double min_val = 1e100; //< Min over all circles
+      double start_x = tracker->xytracker()->get_x();
+      double start_y = tracker->xytracker()->get_y();
+      double this_val;
+      double r, theta;
+      double x, y;
+      // Only look every two-pixel radius from three out to the radius of the tracker.
+      for (r = 3; r <= tracker->xytracker()->get_radius(); r += 2) {
+        double max_val = -1e100;  //< Max over this particular circle
+        // Look at every pixel around the circle.
+        for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
+          x = r * cos(theta);
+          y = r * sin(theta);
+	  tracker->xytracker()->set_location(x + start_x, y + start_y);
+	  this_val = tracker->xytracker()->check_fitness(image, d_color_index);
+	  if (this_val > max_val) { max_val = this_val; }
+        }
+        if (max_val < min_val) { min_val = max_val; }
+      }
+      //Put the tracker back where it started.
+      tracker->xytracker()->set_location(start_x, start_y);
+
+      // See if we are lost.  The way we tell if we are lost or not depends
+      // on the type of kernel we are using.  It also depends on the setting of
+      // the "lost sensitivity" parameter, which varies from 0 (not sensitive at
+      // all) to 1 (most sensitive).
+      double starting_value = tracker->xytracker()->check_fitness(image, d_color_index);
+      //printf("dbg: Center = %lg, min of maxes = %lg, scale = %lg\n", starting_value, min_val, min_val/starting_value);
+      if (kernel_type == KT_SYMMETRIC) {
+        // The symmetric kernel reports values that are strictly non-positive for
+        // its fitness function.  Some observation of values reveals that the key factor
+        // seems to be how many more times negative the "moat" is than the central peak.
+        // Based on a few observations of different bead tracks, it looks like a factor
+        // of 2 is almost always too small, and a factor of 4-10 is almost always fine.
+        // So, we'll set the "scale factor" to be between 1 (when sensitivity is just
+        // above zero) and 10 (when the scale factor is just at one).  If a tracker gets
+        // lost, set it to be the active tracker so the user can tell which one is
+        // causing trouble.
+        double scale_factor = 1 + 9*var_thresh;
+        if (starting_value * scale_factor < min_val) {
+          tracker->lost(true);
+        } else {
+          tracker->lost(false);
+        }
+      } else if (kernel_type == KT_CONE) {
+        // Differences (not factors) of 0-5 seem more appropriate for a quick test of the cone kernel.
+        double difference = 5*var_thresh;
+        if (starting_value - min_val < difference) {
+          tracker->lost(true);
+        } else {
+          tracker->lost(false);
+        }
+      } else {  // Must be a disk kernel
+        // Differences (not factors) of 0-5 seem more appropriate for a quick test of the disk kernel.
+        double difference = 5*var_thresh;
+        if (starting_value - min_val < difference) {
+          tracker->lost(true);
+        } else {
+          tracker->lost(false);
+        }
+      }
+     }
+
+    // Return true if lost, false if not.
+    return tracker->lost();
+}
+
+// Auto-deletes trackers that have wandered off of brightfield beads.
+// Returns the number of remaining trackers after the lost ones have
+// been deleted.
+unsigned Tracker_Collection_Manager::delete_lost_brightfield_beads_in(const image_wrapper &s_image,
+                                                            float var_thresh,
+                                                            KERNEL_TYPE kernel_type)
+{
+    int i;
+    #pragma omp parallel for
+    for (i = 0; i < (int)(d_trackers.size()); i++) {
+        mark_tracker_if_lost_in_brightfield(tracker(i), s_image, var_thresh,
+          kernel_type);
     }
     d_trackers.remove_if(deleteLost);
     return d_trackers.size();
