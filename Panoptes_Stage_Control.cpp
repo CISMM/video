@@ -557,7 +557,7 @@ int main(int argc, char *argv[])
     // Update all bead positions for the current frame.
     for (std::vector<bead>::size_type b = 0; b < beads.size(); b++) {
       if (frame == 0){ // if this is the very first frame, just output the original info
-        fprintf(g_csv_file, "%d,%lg,%lg,0,%lg,%lg,", b, beads[b].x, beads[b].y, beads[b].r, beads[b].intensity);
+        fprintf(g_csv_file, "%d,%lg,%lg,0,%lg,%lg,", static_cast<int>(b), beads[b].x, beads[b].y, beads[b].r, beads[b].intensity);
         continue;
       }
       
@@ -586,7 +586,7 @@ int main(int argc, char *argv[])
       
       // The x and y positions are recorded relative to the lower left hand corner
       // of the image (the entire well), which denotes position (x = 0, y = 0).
-      fprintf(g_csv_file, "%d,%lg,%lg,0,%lg,%lg,", b, beads[b].x, beads[b].y, beads[b].r, beads[b].intensity);
+      fprintf(g_csv_file, "%d,%lg,%lg,0,%lg,%lg,", static_cast<int>(b), beads[b].x, beads[b].y, beads[b].r, beads[b].intensity);
     }
     // Start a new row for the next frame in the CSV file.
     fprintf(g_csv_file, "\n");
