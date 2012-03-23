@@ -258,7 +258,7 @@ position get_minp_position(position fov, int width, int height, std::vector<bead
 position keep_speed_under(position current_fov, position new_fov)
 { 
   // limit x axis motion
-  if(abs(current_fov.x - new_fov.x) > MAX_SPEED) {
+  if(fabs(current_fov.x - new_fov.x) > MAX_SPEED) {
     if(current_fov.x < new_fov.x) // moving right
       new_fov.x = current_fov.x + MAX_SPEED;
     else // moving left
@@ -266,7 +266,7 @@ position keep_speed_under(position current_fov, position new_fov)
   }
   
   // limit y axis motion
-  if(abs(current_fov.y - new_fov.y) > MAX_SPEED) {
+  if(fabs(current_fov.y - new_fov.y) > MAX_SPEED) {
     if(current_fov.y < new_fov.y) // moving up
       new_fov.y = current_fov.y + MAX_SPEED;
     else // moving down
