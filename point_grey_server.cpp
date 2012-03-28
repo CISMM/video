@@ -1,5 +1,9 @@
 #include "point_grey_server.h"
 
+#ifndef min
+#define min(a,b) ((a)<(b))?(a):(b)
+#endif
+
 point_grey_server::point_grey_server(double framerate, double msExposure, int binning, bool trigger, float gain) {
 	_status = false;
 	m_cam = new PGRCam(framerate, msExposure, binning, trigger, gain); // initialize the camera inside this constructor call
