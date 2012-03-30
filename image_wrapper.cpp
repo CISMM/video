@@ -655,21 +655,28 @@ gaussian_blurred_image::gaussian_blurred_image(const image_wrapper &input
   // then fill the image with values.
   float_image copy(0, input.get_num_rows() + 2*aperture -1,
                    0, input.get_num_columns() + 2*aperture -1);
-  unsigned x,y;
-  for (x = 0; x < aperture; x++) {
-    for (y = 0; y < input.get_num_columns() + 2 * aperture; y++) {
+  int x;  // Needs to be int for OpenMP
+  // We parallelize the inner loop here because aperture will be small.
+  for (x = 0; x < (int)(aperture); x++) {
+    int y;  // Needs to be int for OpenMP
+    #pragma omp parallel for
+    for (y = 0; y < (int)(input.get_num_columns() + 2 * aperture); y++) {
       copy.write_pixel_nocheck(x, y, 0);
       copy.write_pixel_nocheck(input.get_num_rows() + 2*aperture - 1 - x, y, 0);
     }
   }
-  for (x = 0; x < input.get_num_rows() + 2 * aperture; x++) {
-    for (y = 0; y < aperture; y++) {
+  #pragma omp parallel for
+  for (x = 0; x < (int)(input.get_num_rows() + 2 * aperture); x++) {
+    int y;  // Needs to be int for OpenMP
+    for (y = 0; y < (int)(aperture); y++) {
       copy.write_pixel_nocheck(x, y, 0);
       copy.write_pixel_nocheck(x, input.get_num_columns() + 2*aperture - 1 - y, 0);
     }
   }
-  for (x = 0; x < input.get_num_rows(); x++) {
-    for (y = 0; y < input.get_num_columns(); y++) {
+  #pragma omp parallel for
+  for (x = 0; x < (int)(input.get_num_rows()); x++) {
+    int y;  // Needs to be int for OpenMP
+    for (y = 0; y < (int)(input.get_num_columns()); y++) {
       copy.write_pixel_nocheck(x+aperture, y+aperture,
         input.read_pixel_nocheck(x,y));
     }
@@ -679,20 +686,26 @@ gaussian_blurred_image::gaussian_blurred_image(const image_wrapper &input
   // which are 1 within the copied image and 0 around the border.
   float_image mask(0, input.get_num_rows() + 2*aperture -1,
                    0, input.get_num_columns() + 2*aperture -1);
-  for (x = 0; x < aperture; x++) {
-    for (y = 0; y < input.get_num_columns() + 2 * aperture; y++) {
+  #pragma omp parallel for
+  for (x = 0; x < (int)(aperture); x++) {
+    int y;  // Needs to be int for OpenMP
+    for (y = 0; y < (int)(input.get_num_columns() + 2 * aperture); y++) {
       mask.write_pixel_nocheck(x, y, 0);
       mask.write_pixel_nocheck(input.get_num_rows() + 2*aperture - 1 - x, y, 0);
     }
   }
-  for (x = 0; x < input.get_num_rows() + 2 * aperture; x++) {
-    for (y = 0; y < aperture; y++) {
+  #pragma omp parallel for
+  for (x = 0; x < (int)(input.get_num_rows() + 2 * aperture); x++) {
+    int y;  // Needs to be int for OpenMP
+    for (y = 0; y < (int)(aperture); y++) {
       mask.write_pixel_nocheck(x, y, 0);
       mask.write_pixel_nocheck(x, input.get_num_columns() + 2*aperture - 1 - y, 0);
     }
   }
-  for (x = 0; x < input.get_num_rows(); x++) {
-    for (y = 0; y < input.get_num_columns(); y++) {
+  #pragma omp parallel for
+  for (x = 0; x < (int)(input.get_num_rows()); x++) {
+    int y;  // Needs to be int for OpenMP
+    for (y = 0; y < (int)(input.get_num_columns()); y++) {
       mask.write_pixel_nocheck(x+aperture, y+aperture, 1);
     }
   }
@@ -702,10 +715,12 @@ gaussian_blurred_image::gaussian_blurred_image(const image_wrapper &input
   // and rescale by this so that we get equal energy at all locations,
   // even near the edges.
   unsigned center = aperture; // Index of the center pixel in the kernel
-  for (x = 0; x < get_num_rows(); x++) {
-    for (y = 0; y < get_num_columns(); y++) {
+  int aperture_int = aperture;
+  #pragma omp parallel for
+  for (x = 0; x < (int)(get_num_rows()); x++) {
+    int y;  // Needs to be int for OpenMP
+    for (y = 0; y < (int)(get_num_columns()); y++) {
       int i, j;
-      int aperture_int = aperture;
       double sum = 0;
       double weight = 0;
       for (i = -aperture_int; i <= aperture_int; i++) {

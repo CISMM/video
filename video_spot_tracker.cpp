@@ -1693,7 +1693,6 @@ bool  delete_active_xytracker(void)
 
 
 // Optimize to find the best fit starting from last position for a tracker.
-// Invert the Y values on the way in and out.
 // Don't let it adjust the radius here (otherwise it gets too jumpy).
 static void optimize_tracker(Spot_Information *tracker)
 {
@@ -2157,15 +2156,18 @@ void tracking_thread_function(void *pvThreadData)
 // Helper function for find_more_trackers.
 // Computes a local SMD measure (cross) at the location (x,y) with
 //  the specified radius.
-double localSMD(int x, int y, int radius)
+// XXX This now looks in the (blurred) image passed into the
+// find_more_trackers() function rather than in the global image.
+// This will reduce the localSMD value...
+double localSMD(const image_wrapper &img, int x, int y, int radius)
 {
 	double Ia, Ib;
 	double xSMD = 0;
 	int n = 0;
 	for (int lx = x - radius; lx < x + radius; ++lx)
 	{
-		g_image->read_pixel(lx, y, Ia, g_colorIndex);
-		g_image->read_pixel(lx + 1, y, Ib, g_colorIndex);
+		img.read_pixel(lx, y, Ia, g_colorIndex);
+		img.read_pixel(lx + 1, y, Ib, g_colorIndex);
 		xSMD += fabs(Ia - Ib);
 		++n;
 	}
@@ -2175,8 +2177,8 @@ double localSMD(int x, int y, int radius)
 	n = 0;
 	for (int ly = y - radius; ly < y + radius; ++ly)
 	{
-		g_image->read_pixel(x, ly, Ia, g_colorIndex);
-		g_image->read_pixel(x, ly + 1, Ib, g_colorIndex);
+		img.read_pixel(x, ly, Ia, g_colorIndex);
+		img.read_pixel(x, ly + 1, Ib, g_colorIndex);
 		ySMD += fabs(Ia - Ib);
 		++n;
 	}
@@ -2209,26 +2211,18 @@ void fill_around_tracker_with_value(double_image &im, spot_tracker_XY *t, double
 // tracker radius of an existing tracker or within one tracker radius of the
 // border.  Create new trackers at those locations.  Returns true if it was
 // able to find them, false if not (or error).
-bool find_more_trackers(unsigned how_many_more)
-{
-	// make sure we only try to auto-find once per new frame of video
-        if (!g_gotNewFrame) {
-		return true;
-        } else {
-		g_gotNewFrame = false;
-        }
 
+bool find_more_trackers(const image_wrapper *img, unsigned how_many_more)
+{
 	// empty out our candidate vectors...
 	vertCandidates.clear();
 	horiCandidates.clear();
 
         int i, radius;
         int minx, maxx, miny, maxy;
-        g_image->read_range(minx, maxx, miny, maxy);
+        img->read_range(minx, maxx, miny, maxy);
 
         int x, y;
-
-        // We'll do a simple gaussian filter on our image before looking for beads.
 
         // first, we calculate horizontal and vertical SMDs on the global image
 	double SMD = 0;
@@ -2243,8 +2237,8 @@ bool find_more_trackers(unsigned how_many_more)
 		// calcualte one SMD
 		for (y = miny + 1; y <= maxy; ++y)
 		{
-                        Ia = g_blurred_image->read_pixel_nocheck(x, y);
-                        Ib = g_blurred_image->read_pixel_nocheck(x, y-1);
+                        Ia = img->read_pixel_nocheck(x, y);
+                        Ib = img->read_pixel_nocheck(x, y-1);
 			SMD += fabs(Ia - Ib);
 		}
 		// normalize by dividing by the number of pairwise computations
@@ -2281,8 +2275,8 @@ bool find_more_trackers(unsigned how_many_more)
 		// calcualte one SMD
 		for (x = minx + 1; x <= maxx; ++x)
 		{
-                        Ia = g_blurred_image->read_pixel_nocheck(x, y);
-                        Ib = g_blurred_image->read_pixel_nocheck(x-1, y);
+                        Ia = img->read_pixel_nocheck(x, y);
+                        Ib = img->read_pixel_nocheck(x-1, y);
 			SMD += fabs(Ia - Ib);
 		}
 		// normalize by dividing by the number of pairwise computations
@@ -2394,7 +2388,7 @@ bool find_more_trackers(unsigned how_many_more)
 	for (i = 0; i < static_cast<int>(candidateSpotsX.size()); ++i) {
 		x = candidateSpotsX[i];
 		y = candidateSpotsY[i];
-		SMD = localSMD(x, y, radius);
+		SMD = localSMD(*img, x, y, radius);
 		avgSMD += SMD;
                 if (SMD > maxSMD) {
 			maxSMD = SMD;
@@ -3165,8 +3159,12 @@ void myIdleFunc(void)
   // optimization so that all the new beads find their final place.
   bool found_more_beads = false;
   if (g_findThisManyBeads > g_trackers.size()) {
-    if (find_more_trackers(g_findThisManyBeads - g_trackers.size())) {
-	found_more_beads = true;
+    // make sure we only try to auto-find once per new frame of video
+    if (g_gotNewFrame) {
+        if (find_more_trackers(laf_image, g_findThisManyBeads - g_trackers.size())) {
+	    found_more_beads = true;
+        }
+        g_gotNewFrame = false;
     }
   }
   if (g_findThisManyFluorescentBeads > g_trackers.size()) {
@@ -3655,6 +3653,7 @@ void  reset_background_image(int newvalue, void *)
 // If the value of the interpolate box changes, then create a new spot
 // tracker of the appropriate type in the same location and with the
 // same radius as the one that was used before.
+// XXX Re-point the active tracker at tis corresponding new tracker.
 
 void  rebuild_trackers(int newvalue, void *)
 {

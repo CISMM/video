@@ -83,6 +83,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
+typedef unsigned long pthread_t;
 #endif
 
 #if defined(sgi) || (defined(_WIN32) && !defined(__CYGWIN__)) || defined(linux)

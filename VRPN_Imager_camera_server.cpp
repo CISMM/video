@@ -107,7 +107,7 @@ bool  VRPN_Imager_camera_server::read_one_frame(unsigned short minX, unsigned sh
 {
   // Make sure the frame we've been asked to get is within the bounds of
   // what we are going to get, then go get a full-screen image.
-  if ( (minX < 0) || (minY < 0) || (maxX > _num_columns-1) || (maxY > _num_rows-1) ) {
+  if ( (maxX > _num_columns-1) || (maxY > _num_rows-1) ) {
     fprintf(stderr, "VRPN_Imager_camera_server::read_one_frame(): Invalid frame size\n");
     return false;
   }

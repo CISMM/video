@@ -208,7 +208,7 @@
 
 void EndOfProgram(void);               // system-specific exit code
 
-void FatalError(char * ErrorText);     // system-specific error reporting
+void FatalError(const char * ErrorText);     // system-specific error reporting
 
 /***********************************************************************
          Other simple functions
