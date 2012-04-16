@@ -19,10 +19,14 @@ endif(COMMAND cmake_policy)
 #-----------------------------------------------------------------------------
 # Compiler flags we got from Hans
 if(WIN32) # MS-Windows, both 32 and 64 bits
-  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} wsock32.lib /FIXED:NO")
-  ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
+  if (MINGW)
+    set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} -lws2_32")
+  else()
+    set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} wsock32.lib /FIXED:NO")
+    ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
+  endif()
 elseif(APPLE) # Apple
 #Enable later versions of Tcl/Tk to compile with const/non-const changes
   set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fpermissive")

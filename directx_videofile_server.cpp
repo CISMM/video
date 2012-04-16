@@ -46,6 +46,9 @@ static HRESULT ConnectTwoFilters(IGraphBuilder *pGraph, IBaseFilter *pFirst, IBa
     // as needed to read from compressed files.
     // XXX Unfortunately, this hangs on Windows 7 64-bit on Russ' laptop
     // when opening a video file.
+#ifdef DEBUG
+  fprintf(stderr, "  (ConnectTwoFilters)...");
+#endif
     hr = pGraph->Connect(pOut, pIn);
     pIn->Release();
     pOut->Release();
@@ -213,6 +216,7 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
 #endif
 
   // Connect the output of the video reader to the sample grabber input
+  // XXX The call below hangs on Windows 7 on Russ Taylor's laptop.
   ConnectTwoFilters(_pGraph, pSrc, _pSampleGrabberFilter);
 #ifdef DEBUG
   fprintf(stderr, "(connected reader)...");
