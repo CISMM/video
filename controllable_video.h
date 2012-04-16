@@ -393,6 +393,10 @@ bool  get_camera(const char *name,
       QT_Controllable_Video *f = new QT_Controllable_Video(name);
       *camera = f;
       *video = f;
+#elif defined VST_USE_FFMPEG
+      FFMPEG_Controllable_Video *f = new FFMPEG_Controllable_Video(name);
+      *camera = f;
+      *video = f;
 #else
 	fprintf(stderr,"Unknown camera or file type\n");
 	return false;
