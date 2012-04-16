@@ -302,6 +302,11 @@ int		        g_log_frame_number_last_logged = -1;
   #define _fseeki64 fseek
   #define _ftelli64 ftell
 #endif
+#ifdef	__MINGW32__
+  #define __int64 long
+  #define _fseeki64 fseek
+  #define _ftelli64 ftell
+#endif
 static __int64 determine_file_length(const char *filename)
 {
 #ifdef	_WIN32
@@ -1682,9 +1687,11 @@ bool  delete_active_xytracker(void)
 
     // Play the "deleted tracker" sound.
 #ifdef	_WIN32
+#ifndef __MINGW32__
     if (!PlaySound("deleted_tracker.wav", NULL, SND_FILENAME | SND_ASYNC)) {
       fprintf(stderr,"Cannot play sound %s\n", "deleted_tracker.wav");
     }
+#endif
 #endif
 
     return true;
@@ -2831,9 +2838,11 @@ void optimize_all_trackers(void)
           if (g_video) { g_video->pause(); }
           *g_play = 0;
 #ifdef	_WIN32
+#ifndef __MINGW32__
 	  if (!PlaySound("lost.wav", NULL, SND_FILENAME | SND_ASYNC)) {
 	    fprintf(stderr,"Cannot play sound %s\n", "lost.wav");
 	  }
+#endif
 #endif
         }
       }
@@ -3008,9 +3017,11 @@ void myIdleFunc(void)
 	    g_quit = 1;
 	  } else {
 #ifdef	_WIN32
+#ifndef __MINGW32__
 	    if (!PlaySound("end_of_video.wav", NULL, SND_FILENAME | SND_ASYNC)) {
 	      fprintf(stderr,"Cannot play sound %s\n", "end_of_video.wav");
 	    }
+#endif
 #endif
 	  }
 	  *g_play = 0;

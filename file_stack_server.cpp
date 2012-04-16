@@ -4,10 +4,6 @@
 // We don't use ImageMagick at all if we're using the MinGW compiler set, because
 // we can't link against its X11 library.
 
-#if defined(__MINGW32__)
-#define VIDEO_NO_IMAGEMAGICK
-#endif
-
 #include "file_stack_server.h"
 #include "file_list.h"
 

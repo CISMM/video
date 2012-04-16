@@ -580,8 +580,8 @@ bool roper_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrc
     const int stride = 1;
     const int offset = 0;
     svr->send_begin_frame(0, cols-1, 0, rows-1);
-    for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
-      svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1, reinterpret_cast<vrpn_uint16 *>(_memory) + offset, stride, num_x * stride);
+    for(y=0;y<num_y;y=std::min(num_y,y+nRowsPerRegion)) {
+      svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,std::min(num_y,y+nRowsPerRegion)-1, reinterpret_cast<vrpn_uint16 *>(_memory) + offset, stride, num_x * stride);
       svr->mainloop();
     }
     svr->send_end_frame(0, cols-1, 0, rows-1);
@@ -786,8 +786,8 @@ bool  spe_file_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* 
     int nRowsPerRegion=vrpn_IMAGER_MAX_REGIONu16/num_x;
     unsigned y;
     svr->send_begin_frame(0, num_x-1, 0, num_y-1);
-    for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
-      svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1,
+    for(y=0;y<num_y;y=std::min(num_y,y+nRowsPerRegion)) {
+      svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,std::min(num_y,y+nRowsPerRegion)-1,
 	(vrpn_uint8 *)d_buffer, 1, get_num_columns());
       svr->mainloop();
     }

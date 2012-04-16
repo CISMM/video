@@ -3,6 +3,9 @@
 #include "cooke_server.h"
 #include <vrpn_BaseClass.h>
 
+#ifdef __MINGW32__
+#define sprintf_s(buffer, buffer_size, stringbuffer, args...) sprintf(buffer, stringbuffer, ## args)
+#endif
 #include <PCO_err.h>
 #include <SC2_defs.h>
 
@@ -784,8 +787,8 @@ bool cooke_server::send_vrpn_image(vrpn_Imager_Server* svr,vrpn_Connection* svrc
     const int stride = 2;
     const int offset = 1;
     svr->send_begin_frame(0, cols-1, 0, rows-1);
-    for(y=0;y<num_y;y=__min(num_y,y+nRowsPerRegion)) {
-      svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,__min(num_y,y+nRowsPerRegion)-1,
+    for(y=0;y<num_y;y=std::min(num_y,y+nRowsPerRegion)) {
+      svr->send_region_using_base_pointer(svrchan,0,num_x-1,y,std::min(num_y,y+nRowsPerRegion)-1,
 	(vrpn_uint8 *)d_myImageBuffer + offset, stride, num_x * stride);
       svr->mainloop();
     }

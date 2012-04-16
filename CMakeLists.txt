@@ -19,10 +19,14 @@ endif(COMMAND cmake_policy)
 #-----------------------------------------------------------------------------
 # Compiler flags we got from Hans
 if(WIN32) # MS-Windows, both 32 and 64 bits
-  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} wsock32.lib /FIXED:NO")
-  ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
+  if (MINGW)
+    set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} -lws2_32")
+  else()
+    set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} wsock32.lib /FIXED:NO")
+    ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
+  endif()
 elseif(APPLE) # Apple
 #Enable later versions of Tcl/Tk to compile with const/non-const changes
   set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fpermissive")
@@ -157,6 +161,13 @@ else (QT4_FOUND)
 	OPTION(VIDEO_USE_QT4 "Enable to include Qt video code in build" OFF)
 endif (QT4_FOUND)
 
+find_package(FFMPEG)
+if (FFMPEG_FOUND)
+	OPTION(VIDEO_USE_FFMPEG "Enable to include FFMPEG video code in build" ON)
+else (FFMPEG_FOUND)
+	OPTION(VIDEO_USE_FFMPEG "Enable to include FFMPEG video code in build" OFF)
+endif (FFMPEG_FOUND)
+
 OPTION(VIDEO_USE_SEM "Enable to include SEM (from nanoManipulator) camera code in build" OFF)
 OPTION(VIDEO_USE_VRPN_IMAGER "Enable to include VRPN_Imager camera code in build" ON)
 OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" OFF)
@@ -197,6 +208,9 @@ if (VIDEO_USE_QT4)
 	INCLUDE(${QT_USE_FILE})
 	ADD_DEFINITIONS(${QT_DEFINITIONS})
 endif (VIDEO_USE_QT4)
+if (VIDEO_USE_FFMPEG)
+	ADD_DEFINITIONS(-DVST_USE_FFMPEG)
+endif (VIDEO_USE_FFMPEG)
 
 ###
 # On Windows 7, it does not work to install in the default location,
@@ -355,6 +369,18 @@ if (VIDEO_USE_QT4)
 		PUBLIC_HEADER DESTINATION include)
 endif (VIDEO_USE_QT4)
 
+if (VIDEO_USE_FFMPEG)
+	set(FFMPEG_SOURCES ffmpeg_video_server.cpp)
+	set(FFMPEG_PUBLIC_HEADERS ffmpeg_video_server.h)
+	ADD_LIBRARY (ffmpeg_video_library
+		${FFMPEG_SOURCES} ${FFMPEG_PUBLIC_HEADERS}
+	)
+	set_property(TARGET ffmpeg_video_library PROPERTY PUBLIC_HEADER ${FFMPEG_PUBLIC_HEADERS})
+	install(TARGETS ffmpeg_video_library
+		ARCHIVE DESTINATION lib
+		PUBLIC_HEADER DESTINATION include)
+endif (VIDEO_USE_FFMPEG)
+
 # XXX NIKON
 
 #-----------------------------------------------------------------------------
@@ -485,6 +511,12 @@ if (VIDEO_USE_DIRECTSHOW)
 			${QT_LIBRARIES}
 		)
 	endif (VIDEO_USE_QT4)
+	if (VIDEO_USE_FFMPEG)
+		TARGET_LINK_LIBRARIES(stereo_spin
+			ffmpeg_video_library
+			${FFMPEG_LIBRARIES}
+		)
+	endif (VIDEO_USE_FFMPEG)
 	SET_TARGET_PROPERTIES(stereo_spin PROPERTIES SOLUTION_FOLDER servers)
 
 	INCLUDE_DIRECTORIES(
@@ -580,6 +612,12 @@ ADD_EXECUTABLE(PanopticNerve_LEWOS
 			${QT_LIBRARIES}
 		)
   endif (VIDEO_USE_QT4)
+  if (VIDEO_USE_FFMPEG)
+		TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
+			ffmpeg_video_library
+			${FFMPEG_LIBRARIES}
+		)
+  endif (VIDEO_USE_FFMPEG)
   if (UNIX)
 	TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 		${LEWOS_LIBRARIES}
@@ -684,6 +722,12 @@ if (VIDEO_USE_QT4)
 		${QT_LIBRARIES}
 	)
 endif (VIDEO_USE_QT4)
+if (VIDEO_USE_FFMPEG)
+	TARGET_LINK_LIBRARIES(video_spot_tracker
+		ffmpeg_video_library
+		${FFMPEG_LIBRARIES}
+	)
+endif (VIDEO_USE_FFMPEG)
 TARGET_LINK_LIBRARIES(video_spot_tracker
 	spot_tracker_library
 	base_camera_server_library
@@ -782,6 +826,12 @@ MACRO(CAPC_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 			${QT_LIBRARIES}
 		)
   endif (VIDEO_USE_QT4)
+  if (VIDEO_USE_FFMPEG)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			ffmpeg_video_library
+			${FFMPEG_LIBRARIES}
+		)
+  endif (VIDEO_USE_FFMPEG)
   TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
 	${VRPN_SERVER_LIBRARIES}
 	${QUATLIB_LIBRARIES}
@@ -856,6 +906,12 @@ MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 			${QT_LIBRARIES}
 		)
   endif (VIDEO_USE_QT4)
+  if (VIDEO_USE_FFMPEG)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			ffmpeg_video_library
+			${FFMPEG_LIBRARIES}
+		)
+  endif (VIDEO_USE_FFMPEG)
   TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
 	${VRPN_SERVER_LIBRARIES}
 	${QUATLIB_LIBRARIES}
@@ -923,6 +979,12 @@ MACRO(CPP_NOGUI_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 			${QT_LIBRARIES}
 		)
   endif (VIDEO_USE_QT4)
+  if (VIDEO_USE_FFMPEG)
+		TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
+			ffmpeg_video_library
+			${FFMPEG_LIBRARIES}
+		)
+  endif (VIDEO_USE_FFMPEG)
   TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
 	${VRPN_SERVER_LIBRARIES}
 	${QUATLIB_LIBRARIES}
