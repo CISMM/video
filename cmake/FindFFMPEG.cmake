@@ -1,23 +1,23 @@
-# - Find the FFPMEG libraries and headers.
+# - Find the FFMPEG libraries and headers.
 #
-#  FFPMEG_INCLUDE_PATH - where to find needed include file
-#  FFPMEG_LIBRARIES    - Libraries to load
-#  FFPMEG_FOUND        - True if the required things are found.
+#  FFMPEG_INCLUDE_PATH - where to find needed include file
+#  FFMPEG_LIBRARIES    - Libraries to load
+#  FFMPEG_FOUND        - True if the required things are found.
 
 # Look for the header files (picking any one from the directories we need).
-FIND_PATH(FFPMEG_INCLUDE_PATH NAMES libavcodec/avcodec.h
+FIND_PATH(FFMPEG_INCLUDE_PATH NAMES libavcodec/avcodec.h
 		PATHS
 		"C:/usr/local/include"
 		/usr/local/include
 )
-MARK_AS_ADVANCED(FFPMEG_INCLUDE_PATH)
+MARK_AS_ADVANCED(FFMPEG_INCLUDE_PATH)
 
 set (_libsuffixes lib)
 
 # Look for the library files (picking any one from the directories we need).
-find_library(FFPMEG_LIBRARY
+find_library(FFMPEG_LIBRARY
 	NAMES
-	avcodec
+	avcodec avdevice avfilter avformat avutil postproc swresample swscale
 	PATH_SUFFIXES
 	${_libsuffixes}
 	PATHS
@@ -25,19 +25,19 @@ find_library(FFPMEG_LIBRARY
 	/usr/local
 )
 
-# handle the QUIETLY and REQUIRED arguments and set FFPMEG_FOUND to TRUE if 
+# handle the QUIETLY and REQUIRED arguments and set FFMPEG_FOUND to TRUE if 
 # all listed variables are TRUE.  The package name seems to need to be all-caps for this
 # to work.
 INCLUDE(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(FFMPEG DEFAULT_MSG
-	FFPMEG_INCLUDE_PATH
-	FFPMEG_LIBRARY
+	FFMPEG_INCLUDE_PATH
+	FFMPEG_LIBRARY
 )
 
 IF(FFMPEG_FOUND)
-  SET(FFPMEG_LIBRARIES
-	avcodec avdevice avfilter avformat avutil postproc swresample swscale
-	CACHE STRING "Libraries needed to link to for FFPMEG"
+  SET(FFMPEG_LIBRARIES
+	${FFMPEG_LIBRARY}
+	CACHE STRING "Libraries needed to link to for FFMPEG"
   )
   SET(FFMPEG_FOUND ON)
 ELSE(FFMPEG_FOUND)

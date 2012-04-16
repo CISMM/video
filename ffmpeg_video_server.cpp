@@ -1,8 +1,29 @@
 #include "ffmpeg_video_server.h"
 
-ffmpeg_video_server::ffmpeg_video_server(const char *filename) {
+ffmpeg_video_server::ffmpeg_video_server(const char *filename)
+  : m_pFormatCtx(NULL)
+{
 	_status = false;
-	// XXX Initialize the ffmpeg here.
+	// XXX Initialize ffmpeg here.
+
+	// Initialize libavcodec and have it load all codecs.
+	avcodec_register_all();
+
+	// Allocate the context to use
+	m_pFormatCtx = avformat_alloc_context();
+	if (m_pFormatCtx == NULL) {
+		fprintf(stderr,"ffmpeg_video_server::ffmpeg_video_server(): Cannot allocate context\n");
+		return;
+	}
+
+	// Open the video file.
+	AVInputFormat *iformat;
+        if (avformat_open_input(&m_pFormatCtx, filename, iformat, NULL)!=0) {
+		fprintf(stderr,"ffmpeg_video_server::ffmpeg_video_server(): Cannot open file %s\n", filename);
+		return;
+	}
+
+	printf("XXX finish implementing FFMPEG!\n");
 
 	_num_columns = 0;	// XXX
 	_num_rows = 0;		// XXX
@@ -15,7 +36,13 @@ ffmpeg_video_server::ffmpeg_video_server(const char *filename) {
 }
 
 ffmpeg_video_server::~ffmpeg_video_server() {
-	// XXX Tear down the Qt file here.
+	// XXX Tear down everything
+
+	// Delete the format context.
+	if (m_pFormatCtx) {
+                avformat_free_context(m_pFormatCtx);
+		m_pFormatCtx = NULL;
+	}
 }
 
 bool ffmpeg_video_server::write_to_opengl_texture(GLuint tex_id) {

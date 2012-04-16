@@ -2,7 +2,10 @@
 
 #include "base_camera_server.h"
 
-// XXX Include the appropriate headers.
+// Include the appropriate headers.
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libavutil/mathematics.h>
 
 class ffmpeg_video_server : public base_camera_server {
 public:
@@ -47,7 +50,8 @@ public:
   virtual void single_step();
 
 protected:
-	// XXX Create the appropriate structures
+  // AV format context needed for the file.
+  struct AVFormatContext *m_pFormatCtx;
   
   struct timeval m_timestamp;     // timestamp of our most recent image
 
