@@ -5,21 +5,25 @@
 #  POINTGREY_FOUND        - True if the required things are found.
 
 # Look for the header files (picking any one from the directories we need).
-FIND_PATH(POINTGREY_INCLUDE_PATH NAMES FlyCapture2.h
+FIND_PATH(POINTGREY_INCLUDE_PATH
+		NAMES
+		FlyCapture2.h
 		PATHS
 		"C:/Program Files (x86)/Point Grey Research/FlyCapture2/include"
 		"C:/Program Files/Point Grey Research/FlyCapture2/include"
 		"C:/Program Files (x86)/CISMM/external/PointGrey/include"
 		/usr/local/include
+		/usr/include/flycapture
 )
 MARK_AS_ADVANCED(POINTGREY_INCLUDE_PATH)
 
-set (_libsuffixes lib lib64 Libs)
+set (_libsuffixes lib lib64 Libs so)
 
 # Look for the library files (picking any one from the directories we need).
 find_library(POINTGREY_FlyCap_LIBRARY
 	NAMES
 	FlyCapture2
+	flycapture
 	PATH_SUFFIXES
 	${_libsuffixes}
 	PATHS
@@ -27,10 +31,12 @@ find_library(POINTGREY_FlyCap_LIBRARY
 	"C:/Program Files/Point Grey Research/FlyCapture2"
 	"C:/Program Files (x86)/CISMM/external/PointGrey"
 	/usr/local
+	/usr/lib
 )
 find_library(POINTGREY_GUI_LIBRARY
 	NAMES
 	FlyCapture2GUI
+	flycapturegui
 	PATH_SUFFIXES
 	${_libsuffixes}
 	PATHS
@@ -38,6 +44,7 @@ find_library(POINTGREY_GUI_LIBRARY
 	"C:/Program Files/Point Grey Research/FlyCapture2"
 	"C:/Program Files (x86)/CISMM/external/PointGrey"
 	/usr/local
+	/usr/lib
 )
 
 # handle the QUIETLY and REQUIRED arguments and set POINTGREY_FOUND to TRUE if 
