@@ -38,6 +38,9 @@
 #ifdef	VST_USE_QT4
 #include "qt4_video_server.h"
 #endif
+#ifdef	VST_USE_FFMPEG
+#include "ffmpeg_video_server.h"
+#endif
 
 class Controllable_Video {
 public:
@@ -135,6 +138,18 @@ public:
   void pause(void) { qt4_video_server::pause(); }
   void rewind(void) { pause(); qt4_video_server::rewind(); }
   void single_step(void) { qt4_video_server::single_step(); }
+};
+#endif
+
+#ifdef	VST_USE_FFMPEG
+class FFMPEG_Controllable_Video : public Controllable_Video , public ffmpeg_video_server {
+public:
+  FFMPEG_Controllable_Video(const char *filename) : ffmpeg_video_server(filename) {};
+  virtual ~FFMPEG_Controllable_Video() {};
+  void play(void) { ffmpeg_video_server::play(); }
+  void pause(void) { ffmpeg_video_server::pause(); }
+  void rewind(void) { pause(); ffmpeg_video_server::rewind(); }
+  void single_step(void) { ffmpeg_video_server::single_step(); }
 };
 #endif
 
