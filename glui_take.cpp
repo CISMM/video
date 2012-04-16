@@ -177,7 +177,7 @@ void myGlutDisplay( void )
 
 /**************************************** main() ********************/
 
-void main(int argc, char* argv[])
+int main(int argc, char* argv[])
 {
   // initial settings for device and file names (just to be safe).
     devname[0] = '\0';
