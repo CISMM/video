@@ -7,22 +7,85 @@
 # Look for the header files (picking any one from the directories we need).
 FIND_PATH(FFMPEG_INCLUDE_PATH NAMES libavcodec/avcodec.h
 		PATHS
-		"C:/usr/local/include"
 		/usr/local/include
+		"C:/usr/local/include"
 )
 MARK_AS_ADVANCED(FFMPEG_INCLUDE_PATH)
 
 set (_libsuffixes lib)
 
 # Look for the library files (picking any one from the directories we need).
-find_library(FFMPEG_LIBRARY
+find_library(FFMPEG_AVCODEC_LIBRARY
 	NAMES
-	avcodec avdevice avfilter avformat avutil postproc swresample swscale
+	avcodec
 	PATH_SUFFIXES
 	${_libsuffixes}
 	PATHS
-	"C:/usr/local"
 	/usr/local
+	"C:/usr/local"
+)
+find_library(FFMPEG_AVDEVICE_LIBRARY
+	NAMES
+	avdevice
+	PATH_SUFFIXES
+	${_libsuffixes}
+	PATHS
+	/usr/local
+	"C:/usr/local"
+)
+find_library(FFMPEG_AVFILTER_LIBRARY
+	NAMES
+	avfilter
+	PATH_SUFFIXES
+	${_libsuffixes}
+	PATHS
+	/usr/local
+	"C:/usr/local"
+)
+find_library(FFMPEG_AVFORMAT_LIBRARY
+	NAMES
+	avformat
+	PATH_SUFFIXES
+	${_libsuffixes}
+	PATHS
+	/usr/local
+	"C:/usr/local"
+)
+find_library(FFMPEG_AVUTIL_LIBRARY
+	NAMES
+	avutil
+	PATH_SUFFIXES
+	${_libsuffixes}
+	PATHS
+	/usr/local
+	"C:/usr/local"
+)
+find_library(FFMPEG_POSTPROC_LIBRARY
+	NAMES
+	postproc
+	PATH_SUFFIXES
+	${_libsuffixes}
+	PATHS
+	/usr/local
+	"C:/usr/local"
+)
+find_library(FFMPEG_SWRESAMPLE_LIBRARY
+	NAMES
+	swresample
+	PATH_SUFFIXES
+	${_libsuffixes}
+	PATHS
+	/usr/local
+	"C:/usr/local"
+)
+find_library(FFMPEG_SWSCALE_LIBRARY
+	NAMES
+	swscale
+	PATH_SUFFIXES
+	${_libsuffixes}
+	PATHS
+	/usr/local
+	"C:/usr/local"
 )
 
 # handle the QUIETLY and REQUIRED arguments and set FFMPEG_FOUND to TRUE if 
@@ -31,12 +94,19 @@ find_library(FFMPEG_LIBRARY
 INCLUDE(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(FFMPEG DEFAULT_MSG
 	FFMPEG_INCLUDE_PATH
-	FFMPEG_LIBRARY
+	FFMPEG_AVCODEC_LIBRARY
 )
 
 IF(FFMPEG_FOUND)
   SET(FFMPEG_LIBRARIES
-	${FFMPEG_LIBRARY}
+	${FFMPEG_AVCODEC_LIBRARY}
+	${FFMPEG_AVDEVICE_LIBRARY}
+	${FFMPEG_AVFILTER_LIBRARY}
+	${FFMPEG_AVFORMAT_LIBRARY}
+	${FFMPEG_AVUTIL_LIBRARY}
+	${FFMPEG_POSTPROC_LIBRARY}
+	${FFMPEG_SWRESAMPLE_LIBRARY}
+	${FFMPEG_SWSCALE_LIBRARY}
 	CACHE STRING "Libraries needed to link to for FFMPEG"
   )
   SET(FFMPEG_FOUND ON)

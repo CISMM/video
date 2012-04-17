@@ -3,9 +3,13 @@
 #include "base_camera_server.h"
 
 // Include the appropriate headers.
+extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavdevice/avdevice.h>
+#include <libavfilter/avfilter.h>
 #include <libavutil/mathematics.h>
+}
 
 class ffmpeg_video_server : public base_camera_server {
 public:
@@ -52,7 +56,9 @@ public:
 protected:
   // AV format context needed for the file.
   struct AVFormatContext *m_pFormatCtx;
-  
+
+  enum {PAUSE, PLAY, SINGLE}  d_mode;		  //< What we're doing right now
+
   struct timeval m_timestamp;     // timestamp of our most recent image
 
 };
