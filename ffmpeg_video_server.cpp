@@ -178,7 +178,6 @@ bool ffmpeg_video_server::read_image_to_memory(unsigned int minX, unsigned int m
             avcodec_decode_video2(m_pCodecCtx, m_pFrame, &frameFinished,
                 &packet);
 
-            //XXXX Fix from here down, and ensure that while() is what we want above
             // Did we get a full video frame?
             if(frameFinished) {
                 static struct SwsContext *img_convert_ctx;

@@ -385,16 +385,17 @@ bool  get_camera(const char *name,
     // how to open.
 #endif
     } else {
-#ifdef	VST_USE_DIRECTX
+// Check FFMPEG first, because it works on all architectures.
+#ifdef VST_USE_FFMPEG
+      FFMPEG_Controllable_Video *f = new FFMPEG_Controllable_Video(name);
+      *camera = f;
+      *video = f;
+#elif defined VST_USE_DIRECTX
       Directx_Controllable_Video *f = new Directx_Controllable_Video(name);
       *camera = f;
       *video = f;
 #elif defined VST_USE_QT4
       QT_Controllable_Video *f = new QT_Controllable_Video(name);
-      *camera = f;
-      *video = f;
-#elif defined VST_USE_FFMPEG
-      FFMPEG_Controllable_Video *f = new FFMPEG_Controllable_Video(name);
       *camera = f;
       *video = f;
 #else
