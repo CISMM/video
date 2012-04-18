@@ -171,7 +171,7 @@ bool ffmpeg_video_server::read_image_to_memory(unsigned int minX, unsigned int m
     AVPacket        packet;
     int             frameFinished = 0;
     av_init_packet(&packet);
-    while(av_read_frame(m_pFormatCtx, &packet)>=0) {
+    while(!frameFinished && (av_read_frame(m_pFormatCtx, &packet)>=0)) {
         // Is this a packet from the video stream?
         if(packet.stream_index==m_videoStream) {
             // Decode video frame
@@ -183,26 +183,24 @@ bool ffmpeg_video_server::read_image_to_memory(unsigned int minX, unsigned int m
             if(frameFinished) {
                 static struct SwsContext *img_convert_ctx;
 
-                // Convert the image into YUV format that SDL uses
+                // Convert the image into RGB format that we need
+                // XXX Consider initializing this conversion format in the
+                // constructor to reduce work here.
                 if(img_convert_ctx == NULL) {
-                        int w = pCodecCtx->width;
-                        int h = pCodecCtx->height;
+                    int w = m_pCodecCtx->width;
+                    int h = m_pCodecCtx->height;
 
-                        img_convert_ctx = sws_getContext(w, h,
-                                                        pCodecCtx->pix_fmt,
-                                                        w, h, PIX_FMT_RGB24, SWS_BICUBIC,
-                                                        NULL, NULL, NULL);
-                        if(img_convert_ctx == NULL) {
-                                fprintf(stderr, "Cannot initialize the conversion context!\n");
-                                exit(1);
-                        }
+                    img_convert_ctx = sws_getContext(w, h,
+                                                    m_pCodecCtx->pix_fmt,
+                                                    w, h, PIX_FMT_RGB24, SWS_BICUBIC,
+                                                    NULL, NULL, NULL);
+                    if(img_convert_ctx == NULL) {
+                        fprintf(stderr, "ffmpeg_video_server::read_image_to_memory(): Cannot initialize the conversion context!\n");
+                        return false;
+                    }
                 }
-                int ret = sws_scale(img_convert_ctx, pFrame->data, pFrame->linesize, 0,
-                                  pCodecCtx->height, pFrameRGB->data, pFrameRGB->linesize);
-
-                // Save the frame to disk
-                if(i++<=5)
-                    SaveFrame(pFrameRGB, pCodecCtx->width, pCodecCtx->height, i);
+                int ret = sws_scale(img_convert_ctx, m_pFrame->data, m_pFrame->linesize, 0,
+                                  m_pCodecCtx->height, m_pFrameRGB->data, m_pFrameRGB->linesize);
             }
         }
 
@@ -211,12 +209,15 @@ bool ffmpeg_video_server::read_image_to_memory(unsigned int minX, unsigned int m
     }
 
     // If we've gone past the end of the video, then set the mode to pause
-    // and return false to say that we have no frame.
+    // and return false to say that we have no frame.  If we get here without
+    // a finished frame, then we must be at the end.
     if (!frameFinished) {
         d_mode = PAUSE;
         return false;
     }
 
+    // The image is now loaded and properly formatted in the m_pFrame, ready
+    // to be copied from m_pFrame->data.
     return true;
 }
 
