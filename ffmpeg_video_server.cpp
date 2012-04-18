@@ -145,12 +145,12 @@ bool ffmpeg_video_server::write_to_opengl_texture(GLuint tex_id) {
 }
 
 bool ffmpeg_video_server::get_pixel_from_memory(unsigned int X, unsigned int Y, vrpn_uint8 &val, int RGB) const {
-	val = *( m_pFrame->data[0] + RGB + 3*(X + m_pFrame->linesize[0]*Y) );
+	val = *( m_pFrameRGB->data[0] + RGB + 3*(X + _num_columns*Y) );
 	return true;
 }
 
 bool ffmpeg_video_server::get_pixel_from_memory(unsigned int X, unsigned int Y, vrpn_uint16 &val, int RGB) const {
-	val = *( m_pFrame->data[0] + RGB + 3*(X + m_pFrame->linesize[0]*Y) );
+	val = *( m_pFrameRGB->data[0] + RGB + 3*(X + _num_columns*Y) );
 	return true;
 }
 
