@@ -98,6 +98,19 @@ ffmpeg_video_server::ffmpeg_video_server(const char *filename)
     avpicture_fill((AVPicture *)m_pFrameRGB, m_buffer, PIX_FMT_RGB24,
         m_pCodecCtx->width, m_pCodecCtx->height);
 
+    // Construct a conversion context to use to get the format we want.
+    int w = m_pCodecCtx->width;
+    int h = m_pCodecCtx->height;
+    img_convert_ctx = sws_getContext(w, h,
+                                    m_pCodecCtx->pix_fmt,
+                                    w, h, PIX_FMT_RGB24, SWS_BICUBIC,
+                                    NULL, NULL, NULL);
+    if(img_convert_ctx == NULL) {
+        fprintf(stderr, "ffmpeg_video_server::ffmpeg_video_server(): Cannot initialize the conversion context!\n");
+        return;
+    }
+    //printf("dbg: Converter initialized\n");
+
     _num_columns = m_pCodecCtx->width;
     _num_rows = m_pCodecCtx->height;
     _minX = _minY = 0;
@@ -182,25 +195,6 @@ bool ffmpeg_video_server::read_image_to_memory(unsigned int minX, unsigned int m
             // Did we get a full video frame?
             if(frameFinished) {
                 //printf("dbg: Frame finished\n");
-                struct SwsContext *img_convert_ctx = NULL;
-
-                // Convert the image into RGB format that we need
-                // XXX Consider initializing this conversion format in the
-                // constructor to reduce work here.
-                if(img_convert_ctx == NULL) {
-                    int w = m_pCodecCtx->width;
-                    int h = m_pCodecCtx->height;
-
-                    img_convert_ctx = sws_getContext(w, h,
-                                                    m_pCodecCtx->pix_fmt,
-                                                    w, h, PIX_FMT_RGB24, SWS_BICUBIC,
-                                                    NULL, NULL, NULL);
-                    if(img_convert_ctx == NULL) {
-                        fprintf(stderr, "ffmpeg_video_server::read_image_to_memory(): Cannot initialize the conversion context!\n");
-                        return false;
-                    }
-                    //printf("dbg: Converter initialized\n");
-                }
                 int ret = sws_scale(img_convert_ctx, m_pFrame->data, m_pFrame->linesize, 0,
                                   m_pCodecCtx->height, m_pFrameRGB->data, m_pFrameRGB->linesize);
                 //printf("dbg: Scaling done\n");
