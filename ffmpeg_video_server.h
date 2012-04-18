@@ -16,7 +16,6 @@ class ffmpeg_video_server : public base_camera_server {
 public:
   ffmpeg_video_server(const char *filename);
   virtual ~ffmpeg_video_server(void);
-  virtual void close_device(void);
 
   /// Return the number of colors that the device has
   virtual unsigned  get_num_colors() const { return 3; };

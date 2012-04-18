@@ -10,7 +10,7 @@ ffmpeg_video_server::ffmpeg_video_server(const char *filename)
     _status = false;
 
     // Initialize libavcodec and have it load all codecs.
-    printf("dbg: Registering ffmped stuff\n");
+    printf("dbg: Registering ffmpeg stuff\n");
     avcodec_register_all();
     avdevice_register_all();
     avfilter_register_all();
@@ -40,7 +40,7 @@ ffmpeg_video_server::ffmpeg_video_server(const char *filename)
     }
 
     // Find the first video stream
-    int i;
+    unsigned i;
     m_videoStream=-1;
     for(i=0; i<m_pFormatCtx->nb_streams; i++) {
         if(m_pFormatCtx->streams[i]->codec->codec_type==AVMEDIA_TYPE_VIDEO) {
@@ -91,9 +91,8 @@ ffmpeg_video_server::ffmpeg_video_server(const char *filename)
 
     // Determine required buffer size and allocate buffer
     size_t numBytes;
-    numBytes=avpicture_get_size(PIX_FMT_RGB24, m_pCodecCtx->width,
-        m_pCodecCtx->height);
-    m_buffer=new uint8_t(numBytes);
+    numBytes=avpicture_get_size(PIX_FMT_RGB24, m_pCodecCtx->width, m_pCodecCtx->height);
+    m_buffer=new uint8_t[numBytes];
 
     // Assign appropriate parts of buffer to image planes in pFrameRGB
     avpicture_fill((AVPicture *)m_pFrameRGB, m_buffer, PIX_FMT_RGB24,
@@ -135,22 +134,29 @@ ffmpeg_video_server::~ffmpeg_video_server()
 }
 
 bool ffmpeg_video_server::write_to_opengl_texture(GLuint tex_id) {
-	// XXX *** stub
-	return true;
+  const GLint   NUM_COMPONENTS = 3;
+  const GLenum  FORMAT = GL_RGB;
+  const GLenum  TYPE = GL_UNSIGNED_BYTE;
+  const unsigned char*   BASE_BUFFER = m_pFrameRGB->data[0];
+  const void*   SUBSET_BUFFER = &BASE_BUFFER[NUM_COMPONENTS * ( _minX + get_num_columns()*_minY )];
+  printf("dbg: Writing OpenGL texture\n");
+  return write_to_opengl_texture_generic(tex_id, NUM_COMPONENTS, FORMAT, TYPE,
+    BASE_BUFFER, SUBSET_BUFFER, _minX, _minY, _maxX, _maxY);
 }
 
 bool ffmpeg_video_server::get_pixel_from_memory(unsigned int X, unsigned int Y, vrpn_uint8 &val, int RGB) const {
-	val = (vrpn_uint8)0; // XXX
+	val = *( m_pFrame->data[0] + RGB + 3*(X + m_pFrame->linesize[0]*Y) );
 	return true;
 }
 
 bool ffmpeg_video_server::get_pixel_from_memory(unsigned int X, unsigned int Y, vrpn_uint16 &val, int RGB) const {
-	val = (vrpn_uint16)0; // XXX
+	val = *( m_pFrame->data[0] + RGB + 3*(X + m_pFrame->linesize[0]*Y) );
 	return true;
 }
 
 bool ffmpeg_video_server::read_image_to_memory(unsigned int minX, unsigned int maxX, unsigned int minY, unsigned int maxY, double exposure_time_millisecs)
 {
+    printf("dbg: Reading image to memory\n");
     vrpn_gettimeofday(&m_timestamp, NULL);
 
     // If we're paused, then return without an image and try not to eat the whole CPU
@@ -172,15 +178,17 @@ bool ffmpeg_video_server::read_image_to_memory(unsigned int minX, unsigned int m
     int             frameFinished = 0;
     av_init_packet(&packet);
     while(!frameFinished && (av_read_frame(m_pFormatCtx, &packet)>=0)) {
+        printf("dbg: Got a packet\n");
         // Is this a packet from the video stream?
         if(packet.stream_index==m_videoStream) {
             // Decode video frame
-            avcodec_decode_video2(m_pCodecCtx, m_pFrame, &frameFinished,
-                &packet);
+            avcodec_decode_video2(m_pCodecCtx, m_pFrame, &frameFinished, &packet);
+            printf("dbg: Decoded\n");
 
             // Did we get a full video frame?
             if(frameFinished) {
-                static struct SwsContext *img_convert_ctx;
+                printf("dbg: Frame finished\n");
+                struct SwsContext *img_convert_ctx = NULL;
 
                 // Convert the image into RGB format that we need
                 // XXX Consider initializing this conversion format in the
@@ -197,14 +205,17 @@ bool ffmpeg_video_server::read_image_to_memory(unsigned int minX, unsigned int m
                         fprintf(stderr, "ffmpeg_video_server::read_image_to_memory(): Cannot initialize the conversion context!\n");
                         return false;
                     }
+                    printf("dbg: Converter initialized\n");
                 }
                 int ret = sws_scale(img_convert_ctx, m_pFrame->data, m_pFrame->linesize, 0,
                                   m_pCodecCtx->height, m_pFrameRGB->data, m_pFrameRGB->linesize);
+                printf("dbg: Scaling done\n");
             }
         }
 
         // Free the packet that was allocated by av_read_frame
         av_free_packet(&packet);
+        printf("dbg: Freed a packet\n");
     }
 
     // If we've gone past the end of the video, then set the mode to pause
@@ -217,6 +228,7 @@ bool ffmpeg_video_server::read_image_to_memory(unsigned int minX, unsigned int m
 
     // The image is now loaded and properly formatted in the m_pFrame, ready
     // to be copied from m_pFrame->data.
+    printf("dbg: Got a frame!\n");
     return true;
 }
 
@@ -273,7 +285,3 @@ void  ffmpeg_video_server::rewind(void)
     d_mode = SINGLE;
 }
 
-void  ffmpeg_video_server::close_device(void)
-{
-	// XXX
-}
