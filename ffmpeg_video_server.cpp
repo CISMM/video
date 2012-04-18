@@ -289,7 +289,10 @@ void  ffmpeg_video_server::single_step(void)
 /** Rewind the videofile to the beginning and take one step. */
 void  ffmpeg_video_server::rewind(void)
 {
-    // XXX
+    // Seek to the beginning of the video stream.
+    if (av_seek_frame(m_pFormatCtx, m_videoStream, 0, AVSEEK_FLAG_BYTE) < 0) {
+      fprintf(stderr,"ffmpeg_video_server::rewind(): Error seeking to beginning\n");
+    }
 
     // Read one frame when we start
     d_mode = SINGLE;
