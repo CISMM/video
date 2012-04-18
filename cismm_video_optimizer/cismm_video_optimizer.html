@@ -1,8 +1,17 @@
 <title>CISMM Video Optimizer v02.00</title>
 
-<h1>CISMM Video Optimizer v02.00</h1>
+<h1>CISMM Video Optimizer v02.01</h1>
 
-<p>The <dfn>CISMM Video Optimizer</dfn> program is used to optimize video frames from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible video file, from a <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible camera, from a <a href="http://roperscientific.com">Roper Scientific</a> camera, from a <a href="http://diaginc.com">DiagInc</a> SPOT camera, or from a set of TIFF or BMP files (it can read other, compressed file formats but these are not included in the default set because these file formats distort images in ways that affect tracking accuracy). The program currently runs only on Windows, but it uses the portable openGL library for rendering, the portable Tcl/Tk for user interface control, and the portable ImageMagick package for reading images.</p>
+<p>The <dfn>CISMM Video Optimizer</dfn> program is used to optimize video frames 
+  from a <a href="http://ffmpeg.org/">FFMPEG</a>-compatible video file, from a 
+  <a href="http://www.microsoft.com/directx">Microsoft DirectShow</a>-compatible 
+  camera, from a <a href="http://roperscientific.com">Roper Scientific</a> camera, 
+  from a <a href="http://diaginc.com">DiagInc</a> SPOT camera, or from a set of 
+  TIFF or BMP files (it can read other, compressed file formats but these are 
+  not included in the default set because these file formats distort images in 
+  ways that affect tracking accuracy). The program currently runs only on Windows, 
+  but it uses the portable openGL library for rendering, the portable Tcl/Tk for 
+  user interface control, and the portable ImageMagick package for reading images.</p>
 
 <p>The program can:</p>
 <ol>
@@ -219,6 +228,12 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 02.01</h3>
+<ul>
+  <li>Compatible with Windows 7 and other modern versions of Windows. The directShow 
+    API structures changed. This version uses FFMPEG to read videos.</li>
+</ul>
+<h3></h3>
 <h3>Version 02.00</h3>
 <ul>
   <li>Can now properly read the Video Spot Tracker pass-through compressed video 
