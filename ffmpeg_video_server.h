@@ -9,6 +9,7 @@ extern "C" {
 #include <libavdevice/avdevice.h>
 #include <libavfilter/avfilter.h>
 #include <libavutil/mathematics.h>
+#include <libswscale/swscale.h>
 }
 
 class ffmpeg_video_server : public base_camera_server {
@@ -56,6 +57,11 @@ public:
 protected:
   // AV format context needed for the file.
   struct AVFormatContext *m_pFormatCtx;
+  AVCodecContext  *m_pCodecCtx;
+  int             m_videoStream;
+  AVFrame         *m_pFrame;
+  AVFrame         *m_pFrameRGB;
+  uint8_t         *m_buffer;
 
   enum {PAUSE, PLAY, SINGLE}  d_mode;		  //< What we're doing right now
 
