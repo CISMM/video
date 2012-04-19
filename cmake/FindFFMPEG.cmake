@@ -60,15 +60,6 @@ find_library(FFMPEG_AVUTIL_LIBRARY
 	/usr/local
 	"C:/usr/local"
 )
-find_library(FFMPEG_POSTPROC_LIBRARY
-	NAMES
-	postproc
-	PATH_SUFFIXES
-	${_libsuffixes}
-	PATHS
-	/usr/local
-	"C:/usr/local"
-)
 find_library(FFMPEG_SWRESAMPLE_LIBRARY
 	NAMES
 	swresample
@@ -104,7 +95,6 @@ IF(FFMPEG_FOUND)
 	${FFMPEG_AVFILTER_LIBRARY}
 	${FFMPEG_AVFORMAT_LIBRARY}
 	${FFMPEG_AVUTIL_LIBRARY}
-	${FFMPEG_POSTPROC_LIBRARY}
 	${FFMPEG_SWRESAMPLE_LIBRARY}
 	${FFMPEG_SWSCALE_LIBRARY}
 	CACHE STRING "Libraries needed to link to for FFMPEG"
