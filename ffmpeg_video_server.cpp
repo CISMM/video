@@ -11,18 +11,7 @@ ffmpeg_video_server::ffmpeg_video_server(const char *filename)
 
     // Initialize libavcodec and have it load all codecs.
     //printf("dbg: Registering ffmpeg stuff\n");
-    avcodec_register_all();
-    avdevice_register_all();
-    avfilter_register_all();
     av_register_all();
-
-    // Allocate the context to use
-    //printf("dbg: Allocating context\n");
-    m_pFormatCtx = avformat_alloc_context();
-    if (m_pFormatCtx == NULL) {
-            fprintf(stderr,"ffmpeg_video_server::ffmpeg_video_server(): Cannot allocate context\n");
-            return;
-    }
 
     // Open the video file.
     //printf("dbg: Opening file\n");
@@ -101,11 +90,11 @@ ffmpeg_video_server::ffmpeg_video_server(const char *filename)
     // Construct a conversion context to use to get the format we want.
     int w = m_pCodecCtx->width;
     int h = m_pCodecCtx->height;
-    img_convert_ctx = sws_getContext(w, h,
+    m_img_convert_ctx = sws_getContext(w, h,
                                     m_pCodecCtx->pix_fmt,
                                     w, h, PIX_FMT_RGB24, SWS_BICUBIC,
                                     NULL, NULL, NULL);
-    if(img_convert_ctx == NULL) {
+    if(m_img_convert_ctx == NULL) {
         fprintf(stderr, "ffmpeg_video_server::ffmpeg_video_server(): Cannot initialize the conversion context!\n");
         return;
     }
@@ -195,8 +184,12 @@ bool ffmpeg_video_server::read_image_to_memory(unsigned int minX, unsigned int m
             // Did we get a full video frame?
             if(frameFinished) {
                 //printf("dbg: Frame finished\n");
-                int ret = sws_scale(img_convert_ctx, m_pFrame->data, m_pFrame->linesize, 0,
+                int ret = sws_scale(m_img_convert_ctx, m_pFrame->data, m_pFrame->linesize, 0,
                                   m_pCodecCtx->height, m_pFrameRGB->data, m_pFrameRGB->linesize);
+                if (ret) {
+                  fprintf(stderr,"ffmpeg_video_server::read_image_to_memory(): Could not scale frame (%d)\n", ret);
+                  return false;
+                }
                 //printf("dbg: Scaling done\n");
             }
         }

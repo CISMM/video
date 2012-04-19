@@ -61,7 +61,7 @@ protected:
   AVFrame         *m_pFrame;
   AVFrame         *m_pFrameRGB;
   uint8_t         *m_buffer;
-  struct SwsContext *img_convert_ctx;
+  struct SwsContext *m_img_convert_ctx;
 
   enum {PAUSE, PLAY, SINGLE}  d_mode;		  //< What we're doing right now
 
