@@ -31,6 +31,9 @@ elseif(APPLE) # Apple
 #Enable later versions of Tcl/Tk to compile with const/non-const changes
   set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fpermissive")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
+  INCLUDE_DIRECTORIES(
+	${/usr/X11/include}
+  )
 #  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall")
 #  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 #  set(CMAKE_VERBOSE_MAKEFILE ON)
@@ -164,6 +167,10 @@ endif (QT4_FOUND)
 find_package(FFMPEG)
 if (FFMPEG_FOUND)
 	OPTION(VIDEO_USE_FFMPEG "Enable to include FFMPEG video code in build" ON)
+	if (APPLE)
+	    link_libraries(z bz2)
+	    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -framework CoreFoundation -framework VideoDecodeAcceleration -framework QuartzCore")
+	endif (APPLE)
 else (FFMPEG_FOUND)
 	OPTION(VIDEO_USE_FFMPEG "Enable to include FFMPEG video code in build" OFF)
 endif (FFMPEG_FOUND)
