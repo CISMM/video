@@ -1,5 +1,10 @@
 #include "ffmpeg_video_server.h"
 
+#ifndef max
+#define max(a,b) (((a) (b)) ? (a) : (b))
+#define min(a,b) (((a) < (b)) ? (a) : (b))
+#endif
+
 // This code is written based on the example code from
 // avcodec_sample.0.5.0.c and based on ffplay.c
 
@@ -230,20 +235,20 @@ bool ffmpeg_video_server::send_vrpn_image(vrpn_Imager_Server* svr, vrpn_Connecti
     int nRowsPerRegion=vrpn_IMAGER_MAX_REGIONu8/_num_columns;
     svr->send_begin_frame(0, _num_columns-1, 0, _num_rows-1);
     for(y=0; y<_num_rows; y+=nRowsPerRegion) {
-      svr->send_region_using_base_pointer(svrchan,0,_num_columns-1,y,__min(_num_rows,y+nRowsPerRegion)-1,
+      svr->send_region_using_base_pointer(svrchan,0,_num_columns-1,y,min(_num_rows,y+nRowsPerRegion)-1,
 	m_pFrameRGB->data[0]+2 /* Send the red channel */, 3, 3*_num_columns, _num_rows, true);
       svr->mainloop();
     }
     if (num_chans >= 2) {
       for(y=0; y<_num_rows; y+=nRowsPerRegion) {
-        svr->send_region_using_base_pointer(svrchan+1,0,_num_columns-1,y,__min(_num_rows,y+nRowsPerRegion)-1,
+        svr->send_region_using_base_pointer(svrchan+1,0,_num_columns-1,y,min(_num_rows,y+nRowsPerRegion)-1,
 	  m_pFrameRGB->data[0]+1 /* Send the green channel */, 3, 3*_num_columns, _num_rows, true);
         svr->mainloop();
       }
     }
     if (num_chans >= 3) {
       for(y=0; y<_num_rows; y+=nRowsPerRegion) {
-        svr->send_region_using_base_pointer(svrchan+2,0,_num_columns-1,y,__min(_num_rows,y+nRowsPerRegion)-1,
+        svr->send_region_using_base_pointer(svrchan+2,0,_num_columns-1,y,min(_num_rows,y+nRowsPerRegion)-1,
 	  m_pFrameRGB->data[0]+0 /* Send the blue channel */, 3, 3*_num_columns, _num_rows, true);
         svr->mainloop();
       }
