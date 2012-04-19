@@ -1,7 +1,10 @@
 #include "ffmpeg_video_server.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #ifndef max
-#define max(a,b) (((a) (b)) ? (a) : (b))
+#define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #endif
 
@@ -51,15 +54,14 @@ ffmpeg_video_server::ffmpeg_video_server(const char *filename)
     m_pCodecCtx=m_pFormatCtx->streams[m_videoStream]->codec;
 
     // Find the decoder for the video stream
-    AVCodec         *pCodec;
-    pCodec=avcodec_find_decoder(m_pCodecCtx->codec_id);
-    if (pCodec==NULL) {
+    m_pCodec=avcodec_find_decoder(m_pCodecCtx->codec_id);
+    if (m_pCodec==NULL) {
         fprintf(stderr,"ffmpeg_video_server::ffmpeg_video_server(): Cannot find CODEC\n");
         return;
     }
 
     // Open codec
-    if (avcodec_open(m_pCodecCtx, pCodec)<0) {
+    if (avcodec_open(m_pCodecCtx, m_pCodec)<0) {
         fprintf(stderr,"ffmpeg_video_server::ffmpeg_video_server(): Cannot open CODEC\n");
         return;
     }
@@ -91,6 +93,9 @@ ffmpeg_video_server::ffmpeg_video_server(const char *filename)
     // Assign appropriate parts of buffer to image planes in pFrameRGB
     avpicture_fill((AVPicture *)m_pFrameRGB, m_buffer, PIX_FMT_RGB24,
         m_pCodecCtx->width, m_pCodecCtx->height);
+
+    // Initialize our packet
+    av_init_packet(&m_packet);
 
     // Construct a conversion context to use to get the format we want.
     int w = m_pCodecCtx->width;
@@ -175,15 +180,13 @@ bool ffmpeg_video_server::read_image_to_memory(unsigned int minX, unsigned int m
     // Read and decode a frame from the video file.  If there are no
     // complete video frames in the file, then frameFinished will be
     // 0 at the end of the while loop.
-    AVPacket        packet;
     int             frameFinished = 0;
-    av_init_packet(&packet);
-    while(!frameFinished && (av_read_frame(m_pFormatCtx, &packet)>=0)) {
+    while(!frameFinished && (av_read_frame(m_pFormatCtx, &m_packet)>=0)) {
         //printf("dbg: Got a packet\n");
         // Is this a packet from the video stream?
-        if(packet.stream_index==m_videoStream) {
+        if(m_packet.stream_index==m_videoStream) {
             // Decode video frame
-            avcodec_decode_video2(m_pCodecCtx, m_pFrame, &frameFinished, &packet);
+            avcodec_decode_video2(m_pCodecCtx, m_pFrame, &frameFinished, &m_packet);
             //printf("dbg: Decoded\n");
 
             // Did we get a full video frame?
@@ -200,7 +203,7 @@ bool ffmpeg_video_server::read_image_to_memory(unsigned int minX, unsigned int m
         }
 
         // Free the packet that was allocated by av_read_frame
-        av_free_packet(&packet);
+        av_free_packet(&m_packet);
         //printf("dbg: Freed a packet\n");
     }
 

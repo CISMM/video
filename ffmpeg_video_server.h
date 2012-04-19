@@ -6,9 +6,6 @@
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
-#include <libavdevice/avdevice.h>
-#include <libavfilter/avfilter.h>
-#include <libavutil/mathematics.h>
 #include <libswscale/swscale.h>
 }
 
@@ -57,9 +54,11 @@ protected:
   // AV format context needed for the file.
   struct AVFormatContext *m_pFormatCtx;
   AVCodecContext  *m_pCodecCtx;
+  AVCodec         *m_pCodec;
   int             m_videoStream;
   AVFrame         *m_pFrame;
   AVFrame         *m_pFrameRGB;
+  AVPacket        m_packet;
   uint8_t         *m_buffer;
   struct SwsContext *m_img_convert_ctx;
 
