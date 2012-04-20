@@ -51,6 +51,7 @@ public:
   virtual void single_step();
 
 protected:
+  char            *m_filename;    // Name of the video file to use.
   // AV format context needed for the file.
   struct AVFormatContext *m_pFormatCtx;
   AVCodecContext  *m_pCodecCtx;
@@ -64,7 +65,12 @@ protected:
 
   enum {PAUSE, PLAY, SINGLE}  d_mode;		  //< What we're doing right now
 
-  struct timeval m_timestamp;     // timestamp of our most recent image
+  // Routines to close and re-open the file.  These are here because
+  // the av_seek_frame() function fails on some videos so we can't use
+  // it to reliably rewind.
+  bool open_video_file(void);
+  bool close_video_file(void);
 
+  struct timeval m_timestamp;     // timestamp of our most recent image
 };
 
