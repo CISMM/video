@@ -60,7 +60,7 @@ bool ffmpeg_video_server::open_video_file(void)
     // Open the video file.
     AVInputFormat *iformat = NULL;
     AVDictionary *format_opts = NULL;
-    printf("dbg: opening file\n");
+    //printf("dbg: opening file\n");
     m_pFormatCtx = NULL;
     if (avformat_open_input(&m_pFormatCtx, m_filename, iformat, &format_opts)!=0) {
             fprintf(stderr,"ffmpeg_video_server::open_video_file(): Cannot open file %s\n", m_filename);
@@ -68,14 +68,14 @@ bool ffmpeg_video_server::open_video_file(void)
     }
 
     // Retrieve stream information
-    printf("dbg: getting stream info\n");
+    //printf("dbg: getting stream info\n");
     if(av_find_stream_info(m_pFormatCtx)<0) {
         fprintf(stderr,"ffmpeg_video_server::open_video_file(): Cannot find stream information\n");
         return false;
     }
 
     // Find the first video stream
-    printf("dbg: locating stream\n");
+    //printf("dbg: locating stream\n");
     unsigned i;
     m_videoStream=-1;
     for(i=0; i<m_pFormatCtx->nb_streams; i++) {
@@ -90,11 +90,11 @@ bool ffmpeg_video_server::open_video_file(void)
     }
 
     // Get a pointer to the codec context for the video stream
-    printf("dbg: getting codec\n");
+    //printf("dbg: getting codec\n");
     m_pCodecCtx=m_pFormatCtx->streams[m_videoStream]->codec;
 
     // Find the decoder for the video stream
-    printf("dbg: getting decoder\n");
+    //printf("dbg: getting decoder\n");
     m_pCodec=avcodec_find_decoder(m_pCodecCtx->codec_id);
     if (m_pCodec==NULL) {
         fprintf(stderr,"ffmpeg_video_server::open_video_file(): Cannot find CODEC\n");
@@ -102,7 +102,7 @@ bool ffmpeg_video_server::open_video_file(void)
     }
 
     // Open codec
-    printf("dbg: opening codec\n");
+    //printf("dbg: opening codec\n");
     if (avcodec_open(m_pCodecCtx, m_pCodec)<0) {
         fprintf(stderr,"ffmpeg_video_server::open_video_file(): Cannot open CODEC\n");
         return false;
@@ -114,7 +114,7 @@ bool ffmpeg_video_server::open_video_file(void)
     }
 
     // Allocate video frame
-    printf("dbg: allocating video frame\n");
+    //printf("dbg: allocating video frame\n");
     m_pFrame=avcodec_alloc_frame();
     if (m_pFrame==NULL) {
         fprintf(stderr,"ffmpeg_video_server::open_video_file(): Out of memory allocating video frame\n");
