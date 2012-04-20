@@ -28,7 +28,7 @@ pack .colorpick.b -side left
 # Put the places for the controls to let the user pick a kernel.
 
 toplevel .kernel
-wm geometry .kernel +170+10
+wm geometry .kernel +185+10
 frame .kernel.bottom
 pack .kernel.bottom -side bottom -fill x
 
@@ -285,7 +285,7 @@ proc ask_user_for_raw_file_params { } {
 	set raw_frameheadersize 0
 
 	toplevel .raw
-	wm geometry .raw +170+170
+	wm geometry .raw +185+170
 	frame .raw.bottom
 	pack .raw.bottom -side bottom -fill x
 

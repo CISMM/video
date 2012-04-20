@@ -70,7 +70,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "06.10";
+const char *Version_string = "06.11";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -4714,7 +4714,7 @@ int main(int argc, char *argv[])
   if (g_use_gui) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-    glutInitWindowPosition(175 + g_window_offset_x, 210 + g_window_offset_y);
+    glutInitWindowPosition(190 + g_window_offset_x, 210 + g_window_offset_y);
     glutInitWindowSize(g_camera->get_num_columns(), g_camera->get_num_rows());
   #ifdef DEBUG
     printf("initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());
@@ -4743,7 +4743,7 @@ int main(int argc, char *argv[])
   // Create the window that will be used for the "Bead's-eye view"
   if (g_use_gui) {
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-    glutInitWindowPosition(375 + g_window_offset_x, 140 + g_window_offset_y);
+    glutInitWindowPosition(395 + g_window_offset_x, 140 + g_window_offset_y);
     glutInitWindowSize(g_beadseye_size, g_beadseye_size);
     g_beadseye_window = glutCreateWindow("Tracked");
   }
@@ -4766,7 +4766,7 @@ int main(int argc, char *argv[])
   // Create the window that will be used for the "Landscape view"
   if (g_use_gui) {
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-    glutInitWindowPosition(375 + 10 + g_beadseye_size + g_window_offset_x, 140 + g_window_offset_y);
+    glutInitWindowPosition(395 + 10 + g_beadseye_size + g_window_offset_x, 140 + g_window_offset_y);
     glutInitWindowSize(g_landscape_size + g_landscape_strip_width, g_landscape_size);
     g_landscape_window = glutCreateWindow("Landscape");
   }
@@ -4800,7 +4800,7 @@ int main(int argc, char *argv[])
   // Create the window that will be used for the kymograph
   if (g_use_gui) {
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-    glutInitWindowPosition(190 + g_camera->get_num_columns() + g_window_offset_x, 140 + g_window_offset_y);
+    glutInitWindowPosition(200 + g_camera->get_num_columns() + g_window_offset_x, 140 + g_window_offset_y);
     initializekymograph();
   }
 
@@ -4822,7 +4822,7 @@ int main(int argc, char *argv[])
   if (g_use_gui) {
     glutInitWindowSize(g_kymograph_width, g_kymograph_height);
     g_kymograph_window = glutCreateWindow("kymograph");
-    glutInitWindowPosition(190 + g_camera->get_num_columns() + g_window_offset_x, 440 + g_window_offset_y);
+    glutInitWindowPosition(200 + g_camera->get_num_columns() + g_window_offset_x, 440 + g_window_offset_y);
     g_kymograph_center_window = glutCreateWindow("kymograph_center");
   }
 

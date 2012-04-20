@@ -54,7 +54,7 @@ static void dirtyexit();
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "02.01";
+const char *Version_string = "02.02";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -1622,7 +1622,7 @@ int main(int argc, char *argv[])
   // opened in VRPN.  Also set mouse callbacks.
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(190, 230);
+  glutInitWindowPosition(200, 230);
   glutInitWindowSize(g_camera->get_num_columns(), g_camera->get_num_rows());
 #ifdef DEBUG
   printf("initializing window to %dx%d\n", g_camera->get_num_columns(), g_camera->get_num_rows());

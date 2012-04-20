@@ -26,7 +26,7 @@ pack .colorpick.b -side left
 # Put the places for the controls to let the user pick a kernel.
 
 toplevel .kernel
-wm geometry .kernel +185+10
+wm geometry .kernel +195+10
 frame .kernel.options
 checkbutton .kernel.options.invert -text dark_spot -variable dark_spot
 pack .kernel.options.invert -anchor w
@@ -82,7 +82,7 @@ proc update_kernel_window_visibility {nm el op} {
 # This window should only be visible when clipping is turned on.
 
 toplevel .clipping
-wm geometry .clipping +800+10
+wm geometry .clipping +810+10
 wm withdraw .clipping
 set show_clipping 0
 trace variable show_clipping w update_clipping_window_visibility
@@ -101,7 +101,7 @@ proc update_clipping_window_visibility {nm el op} {
 # This window should only be visible when gain_control is turned on.
 
 toplevel .gain
-wm geometry .gain +185+10
+wm geometry .gain +195+10
 wm withdraw .gain
 set show_gain_control 0
 frame .gain.low
@@ -127,7 +127,7 @@ proc update_gain_window_visibility {nm el op} {
 # This window should only be visible when imagemix_control is turned on.
 
 toplevel .imagemix
-wm geometry .imagemix +600+10
+wm geometry .imagemix +610+10
 wm withdraw .imagemix
 frame .imagemix.display
 pack .imagemix.display -side left
@@ -179,7 +179,7 @@ proc update_imagemix_window_visibility {nm el op} {
 set logging 0
 set logfilename ""
 toplevel .log
-wm geometry .log +185+130
+wm geometry .log +195+130
 trace variable logging w logging_changed
 checkbutton .log.button -text "Logging to file sequence named " -variable logging -anchor w
 pack .log.button -side left -fill x
