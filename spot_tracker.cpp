@@ -1762,6 +1762,9 @@ void Tracker_Collection_Manager::delete_trackers()
 {
     // Delete all of the tracker objects we had created.
     d_trackers.remove_if(deleteAll);
+
+    // No active tracker.
+    d_active_tracker = -1;
 }
 
 bool Tracker_Collection_Manager::delete_tracker(unsigned which)
@@ -1790,6 +1793,22 @@ bool Tracker_Collection_Manager::delete_tracker(unsigned which)
       d_trackers.erase(loop);
       return true;
   }
+
+  // If this was the active tracker, set the active tracker
+  // to be the first tracker.
+  if (which == d_active_tracker) {
+    if (d_trackers.size() == 0) {
+      d_active_tracker = -1;
+    } else {
+      d_active_tracker = 0;
+    }
+  }
+}
+
+bool Tracker_Collection_Manager::delete_active_tracker(void)
+{
+  if (d_active_tracker < 0) { return false; }
+  return delete_tracker( d_active_tracker );
 }
 
 void Tracker_Collection_Manager::add_tracker(double x, double y, double radius)
@@ -1797,6 +1816,7 @@ void Tracker_Collection_Manager::add_tracker(double x, double y, double radius)
     d_trackers.push_back(
       new Spot_Information(default_xy_tracker_creator(x,y,radius),
                            default_z_tracker_creator()));
+    d_active_tracker = d_trackers.size()-1;
 }
 
 // Delete all trackers and replace with the correct types.
@@ -1843,6 +1863,20 @@ Spot_Information *Tracker_Collection_Manager::tracker(unsigned which) const
     } else {
         return *loop;
     }
+}
+
+// Returns a pointer to the active tracker, or NULL if there is not one.
+Spot_Information *Tracker_Collection_Manager::active_tracker(void) const
+{
+  if (d_active_tracker < 0) { return NULL; }
+  return tracker(static_cast<unsigned int>(d_active_tracker));
+}
+
+bool Tracker_Collection_Manager::set_active_tracker_index(unsigned which)
+{
+  if (which >= d_trackers.size()) { return false; }
+  d_active_tracker = which;
+  return true;
 }
 
 //----------------------------------------------------------------------------
@@ -2478,7 +2512,25 @@ unsigned Tracker_Collection_Manager::delete_lost_fluorescent_beads_in(const imag
     for (i = 0; i < (int)(d_trackers.size()); i++) {
         mark_tracker_if_lost_in_fluorescence(tracker(i), s_image, var_thresh);
     }
+
+    // See if the active tracker is lost.
+    bool active_lost = false;
+    if (d_active_tracker >= 0) {
+      active_lost = tracker(d_active_tracker)->lost();
+    }
+
+    // Remove all lost fluorescence beads.
     d_trackers.remove_if(deleteLost);
+
+    // If the active tracker was lost, set the active tracker to the first one.
+    if (active_lost) {
+      if (d_trackers.size() == 0) {
+        d_active_tracker = -1;
+      } else {
+        d_active_tracker = 0;
+      }
+    }
+
     return d_trackers.size();
 }
 
@@ -2645,7 +2697,24 @@ unsigned Tracker_Collection_Manager::delete_lost_brightfield_beads_in(const imag
         mark_tracker_if_lost_in_brightfield(tracker(i), s_image, var_thresh,
           kernel_type);
     }
+    // See if the active tracker is lost.
+    bool active_lost = false;
+    if (d_active_tracker >= 0) {
+      active_lost = tracker(d_active_tracker)->lost();
+    }
+
+    // Remove all lost beads.
     d_trackers.remove_if(deleteLost);
+
+    // If the active tracker was lost, set the active tracker to the first one.
+    if (active_lost) {
+      if (d_trackers.size() == 0) {
+        d_active_tracker = -1;
+      } else {
+        d_active_tracker = 0;
+      }
+    }
+
     return d_trackers.size();
 }
 
@@ -2671,7 +2740,24 @@ unsigned Tracker_Collection_Manager::delete_edge_beads_in(const image_wrapper &s
           tkr->lost(true);
         }
     }
+    // See if the active tracker is lost.
+    bool active_lost = false;
+    if (d_active_tracker >= 0) {
+      active_lost = tracker(d_active_tracker)->lost();
+    }
+
+    // Remove all lost beads.
     d_trackers.remove_if(deleteLost);
+ 
+    // If the active tracker was lost, set the active tracker to the first one.
+    if (active_lost) {
+      if (d_trackers.size() == 0) {
+        d_active_tracker = -1;
+      } else {
+        d_active_tracker = 0;
+      }
+    }
+
     return d_trackers.size();
 }
 
@@ -2698,7 +2784,24 @@ unsigned Tracker_Collection_Manager::delete_colliding_beads_in(const image_wrapp
         }
       }
     }
+    // See if the active tracker is lost.
+    bool active_lost = false;
+    if (d_active_tracker >= 0) {
+      active_lost = tracker(d_active_tracker)->lost();
+    }
+
+    // Remove all lost beads.
     d_trackers.remove_if(deleteLost);
+ 
+    // If the active tracker was lost, set the active tracker to the first one.
+    if (active_lost) {
+      if (d_trackers.size() == 0) {
+        d_active_tracker = -1;
+      } else {
+        d_active_tracker = 0;
+      }
+    }
+
     return d_trackers.size();
 }
 

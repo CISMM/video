@@ -727,6 +727,7 @@ public:
         , d_default_fluorescence_lost_threshold(default_fluorescence_lost_threshold)
         , d_color_index(color_index)
         , d_invert(invert)
+        , d_active_tracker(-1)
         , d_xy_tracker_creator(default_xy_tracker_creator)
         , d_z_tracker_creator(default_z_tracker_creator)
     {};
@@ -737,6 +738,9 @@ public:
     // Returns information about the trackers we're managing.
     unsigned tracker_count(void) const { return d_trackers.size(); }
     Spot_Information  *tracker(unsigned which) const;
+    Spot_Information  *active_tracker(void) const;
+    int active_tracker_index(void) const { return d_active_tracker; }
+    bool set_active_tracker_index(unsigned which);
 
     // Accessor methods for member variables.
     float default_radius(void) const { return d_default_radius; }
@@ -761,11 +765,16 @@ public:
     void set_z_tracker_creator(TCM_ZTRACKER_CREATOR newz);
 
     // Adds a new tracker using the default XY and Z tracker creation
-    // functions and the specified parameters.
+    // functions and the specified parameters.  Also sets the active
+    // tracker to be the new tracker.
     void add_tracker(double x, double y, double radius);
 
-    // Removes a specific tracker
+    // Removes a specific tracker by its index.  Sets the first tracker
+    // on the list to be the active one, if this was the active tracker.
     bool delete_tracker(unsigned which);
+
+    // Delete the active tracker.
+    bool delete_active_tracker(void);
 
     // Delete all trackers.
     void delete_trackers(void);
@@ -880,6 +889,7 @@ protected:
     unsigned                        d_color_index;          // Color index from the image.
     bool                            d_invert;               // Look for dark bead on bright background?
     std::list<Spot_Information *>   d_trackers; // Trackers we're managing
+    int                             d_active_tracker;       // Index of the active tracker, -1 if none.
     TCM_XYTRACKER_CREATOR           d_xy_tracker_creator; // Used to make new trackers
     TCM_ZTRACKER_CREATOR            d_z_tracker_creator; // Used to make new trackers
 
