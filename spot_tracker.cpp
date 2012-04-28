@@ -1801,8 +1801,7 @@ void Tracker_Collection_Manager::add_tracker(double x, double y, double radius)
 
 // Delete all trackers and replace with the correct types.
 // Make sure to put them back where they came from.
-// Re-point the active tracker at its corresponding new
-// tracker.  This is done by the app when it changes the kind
+// This is done by the app when it changes the kind
 // of tracker it wants, after replacing the XY and Z tracker
 // creation functions.
 void Tracker_Collection_Manager::rebuild_trackers(void)
@@ -2189,7 +2188,7 @@ bool Tracker_Collection_Manager::find_more_brightfield_beads_in(
                 (*loop)->xytracker()->optimize_xy(s_image, d_color_index, x, y,
                     (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y());
                 // XXX This should also check for lost in non-fluorescence...
-                mark_tracker_if_lost(*loop, s_image, d_default_fluorescence_lost_threshold);
+                mark_tracker_if_lost_in_fluorescence(*loop, s_image, d_default_fluorescence_lost_threshold);
 		if (!(*loop)->lost()) {
 			++numnotlost;
                         d_trackers.push_back(new Spot_Information(default_xy_tracker_creator((*loop)->xytracker()->get_x(),(*loop)->xytracker()->get_y(),d_default_radius),default_z_tracker_creator()));
@@ -2348,7 +2347,7 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
           break;
         }
         // XXX This should also check for lost in non-fluorescence...
-        mark_tracker_if_lost( si, s_image, var_thresh );
+        mark_tracker_if_lost_in_fluorescence( si, s_image, var_thresh );
         if (si->lost()) {
           // Deleting the SpotInformation also deletes its trackers.
           delete si;
@@ -2395,7 +2394,7 @@ unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_im
 // at least the specified number of standard deviations above the mean of the
 // pixels around its border.  Also returns true if the tracker is lost and
 // false if it is not.
-bool Tracker_Collection_Manager::mark_tracker_if_lost(Spot_Information *tracker,
+bool Tracker_Collection_Manager::mark_tracker_if_lost_in_fluorescence(Spot_Information *tracker,
                                             const image_wrapper &image,
                                             float var_thresh)
 {
@@ -2477,7 +2476,7 @@ unsigned Tracker_Collection_Manager::delete_lost_fluorescent_beads_in(const imag
     int i;
     #pragma omp parallel for
     for (i = 0; i < (int)(d_trackers.size()); i++) {
-        mark_tracker_if_lost(tracker(i), s_image, var_thresh);
+        mark_tracker_if_lost_in_fluorescence(tracker(i), s_image, var_thresh);
     }
     d_trackers.remove_if(deleteLost);
     return d_trackers.size();
@@ -2501,7 +2500,8 @@ unsigned Tracker_Collection_Manager::delete_lost_fluorescent_beads_in(const imag
 // FIONA kernel operates differently; it looks to see if the value at the
 //    center is more than the specified fraction of twice the standard deviation away
 //    from the mean of the surrounding values.  For an inverted tracker, this
-//    must be below; for a non-inverted tracker it is above.    XXX_delete_lost_brightfield_beads_in();
+//    must be below; for a non-inverted tracker it is above.
+// XXX_delete_lost_brightfield_beads_in();
 // Returns true if the tracker is lost and false if it is not.
 bool Tracker_Collection_Manager::mark_tracker_if_lost_in_brightfield(Spot_Information *tracker,
                                             const image_wrapper &image,

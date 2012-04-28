@@ -620,7 +620,7 @@ protected:
 
 //----------------------------------------------------------------------------------
 // Application-level object to keep track of the information about each spot tracker
-// that is currently active.  It includes code to provide a
+// that is currently available.  It includes code to provide a
 // unique index to each tracker that is ever created during one run of the program
 // to ensure that no two traces that might be from different beads are recorded as
 // having the same bead index.  It uses a global static variable to hold the number
@@ -705,11 +705,14 @@ typedef spot_tracker_Z *(*TCM_ZTRACKER_CREATOR)(void);
 // Application-level object that manages a list of trackers and keeps track of autofinding,
 // deleting, and causing them to track across images.  This is an OpenMP-threaded
 // implementation, so it will utilize multiple cores.  It pulls together the code
-// that deals with fluorescent-spot finding and tracking.  Invert sets whether we
-// look for dark-on-light beads.
+// that deals with fluorescent-spot finding and tracking.
+// It also has a notion of the "active tracker", which is the one that operations
+// would be applied to by default.  This can be ignored by the application if it is
+// not useful.
 
 class Tracker_Collection_Manager {
 public:
+    // Invert sets whether we look for dark-on-light beads.
     Tracker_Collection_Manager(unsigned image_x, unsigned image_y,
                      float default_radius = 15.0, float min_bead_separation = 30.0,
                      float min_border_distance = 20.0,
@@ -730,6 +733,10 @@ public:
 
     // Clean up (delete trackers in our vector, etc.)
     ~Tracker_Collection_Manager();
+
+    // Returns information about the trackers we're managing.
+    unsigned tracker_count(void) const { return d_trackers.size(); }
+    Spot_Information  *tracker(unsigned which) const;
 
     // Accessor methods for member variables.
     float default_radius(void) const { return d_default_radius; }
@@ -753,23 +760,30 @@ public:
     void set_xy_tracker_creator(TCM_XYTRACKER_CREATOR newxy);
     void set_z_tracker_creator(TCM_ZTRACKER_CREATOR newz);
 
-    // Delete all active trackers.
-    void delete_trackers(void);
-
-    // Removes a specific tracker
-    bool delete_tracker(unsigned which);
-
     // Adds a new tracker using the default XY and Z tracker creation
     // functions and the specified parameters.
     void add_tracker(double x, double y, double radius);
 
+    // Removes a specific tracker
+    bool delete_tracker(unsigned which);
+
+    // Delete all trackers.
+    void delete_trackers(void);
+
     // Delete all trackers and replace with the correct types.
     // Make sure to put them back where they came from.
-    // Re-point the active tracker at its corresponding new
-    // tracker.  This is done by the app when it changes the kind
+    // This is done by the app when it changes the kind
     // of tracker it wants, after replacing the XY and Z tracker
     // creation functions.
     void rebuild_trackers(void);
+
+    // Update the positions of the trackers we are managing based on a new image.
+    // For kymograph applications, we only want to optimize the first two trackers,
+    // so we have the ability to tell how many to optimize; by default, they
+    // are all optimized (negative value).
+    // Returns the number of beads in the vector of trackers we're managing.
+    unsigned optimize_based_on(const image_wrapper &s_image,
+      int max_tracker_to_optimize = -1, unsigned color_index = 0);
 
     // Autofind fluorescence beads within the image whose pointer is passed in.
     // Avoids adding trackers that are too close to other existing trackers.
@@ -796,14 +810,6 @@ public:
                                         unsigned how_many_more,
                                         std::vector<int> &vertCandidates,
                                         std::vector<int> &horiCandidates);
-
-    // Update the positions of the trackers we are managing based on a new image.
-    // For kymograph applications, we only want to optimize the first two trackers,
-    // so we have the ability to tell how many to optimize; by default, they
-    // are all optimized (negative value).
-    // Returns the number of beads in the vector of trackers we're managing.
-    unsigned optimize_based_on(const image_wrapper &s_image,
-      int max_tracker_to_optimize = -1, unsigned color_index = 0);
 
     // Auto-deletes trackers that have wandered off of fluorescent beads.
     // Uses the specified variance threshold to determine if they are lost.
@@ -832,29 +838,12 @@ public:
     // been deleted.
     unsigned delete_colliding_beads_in(const image_wrapper &s_image);
 
-    // Returns information about the trackers we're managing.
-    unsigned tracker_count(void) const { return d_trackers.size(); }
-    Spot_Information  *tracker(unsigned which) const;
-
-protected:
-    unsigned                        d_image_x;              // Size of the image in X
-    unsigned                        d_image_y;              // Size of the image in Y
-    float                           d_default_radius;       // Radius for new trackers
-    float                           d_min_bead_separation;  // How close is too close to beads
-    float                           d_min_border_distance;  // How close is too close to edge?
-    float                           d_default_fluorescence_lost_threshold;  // Default lost-tracking threshold for new beads
-    unsigned                        d_color_index;          // Color index from the image.
-    bool                            d_invert;               // Look for dark bead on bright background?
-    std::list<Spot_Information *>   d_trackers; // Trackers we're managing
-    TCM_XYTRACKER_CREATOR           d_xy_tracker_creator; // Used to make new trackers
-    TCM_ZTRACKER_CREATOR            d_z_tracker_creator; // Used to make new trackers
-
-    // Check to see if the specified tracker is lost given the specified image
+        // Check to see if the specified tracker is lost given the specified image
     // and standard-deviation threshold; the tracker is lost if its center is not
     // at least the specified number of standard deviations above the mean of the
     // pixels around its border.  Also returns true if the tracker is lost and
     // false if it is not.
-    bool mark_tracker_if_lost(Spot_Information *tracker, const image_wrapper &image,
+    bool mark_tracker_if_lost_in_fluorescence(Spot_Information *tracker, const image_wrapper &image,
                               float var_thresh = 1.5);
 
     // Check for lost beads.  This is done by finding the value of
@@ -875,11 +864,24 @@ protected:
     // FIONA kernel operates differently; it looks to see if the value at the
     //    center is more than the specified fraction of twice the standard deviation away
     //    from the mean of the surrounding values.  For an inverted tracker, this
-    //    must be below; for a non-inverted tracker it is above.    XXX_delete_lost_brightfield_beads_in();
+    //    must be below; for a non-inverted tracker it is above.
     // Returns true if the tracker is lost and false if it is not.
     bool mark_tracker_if_lost_in_brightfield(Spot_Information *tracker, const image_wrapper &image,
                               float var_thresh = 1.5,
                               KERNEL_TYPE kernel_type = KT_SYMMETRIC);
+
+protected:
+    unsigned                        d_image_x;              // Size of the image in X
+    unsigned                        d_image_y;              // Size of the image in Y
+    float                           d_default_radius;       // Radius for new trackers
+    float                           d_min_bead_separation;  // How close is too close to beads
+    float                           d_min_border_distance;  // How close is too close to edge?
+    float                           d_default_fluorescence_lost_threshold;  // Default lost-tracking threshold for new beads
+    unsigned                        d_color_index;          // Color index from the image.
+    bool                            d_invert;               // Look for dark bead on bright background?
+    std::list<Spot_Information *>   d_trackers; // Trackers we're managing
+    TCM_XYTRACKER_CREATOR           d_xy_tracker_creator; // Used to make new trackers
+    TCM_ZTRACKER_CREATOR            d_z_tracker_creator; // Used to make new trackers
 
     // Helper function for find_more_brightfield_beads_in.
     // Computes a local SMD measure (cross) at the location (x,y) with
