@@ -1750,7 +1750,6 @@ static void optimize_tracker(Spot_Information *tracker)
   // step taken.
   if ( g_predict && (g_last_optimized_frame_number != g_frame_number) ) {
     const double vel_frac_to_use = 0.9; //< 0.85-0.95 seems optimal for cilia in pulnix; 1 is too much, 0.83 is too little
-    const double acc_frac_to_use = 0.0; //< Due to the noise, acceleration estimation makes things worse
 
     // Compute the new velocity estimate as the subtraction of the
     // last position from the current position.
@@ -1758,19 +1757,8 @@ static void optimize_tracker(Spot_Information *tracker)
     new_vel[0] = (tracker->xytracker()->get_x() - last_pos[0]) * vel_frac_to_use;
     new_vel[1] = (tracker->xytracker()->get_y() - last_pos[1]) * vel_frac_to_use;
 
-    // Compute the new acceleration estimate as the subtraction of the new
-    // estimate from the old.
-    double new_acc[2];
-    new_acc[0] = (new_vel[0] - last_vel[0]) * acc_frac_to_use;
-    new_acc[1] = (new_vel[1] - last_vel[1]) * acc_frac_to_use;
-
-    // Re-estimate the new velocity by taking into account the acceleration.
-    new_vel[0] += new_acc[0];
-    new_vel[1] += new_acc[1];
-
     // Store the quantities for use next time around.
     tracker->set_velocity(new_vel);
-    tracker->set_acceleration(new_acc);
   }
 
   // Determine which image we should be looking at for seeing if a tracker
