@@ -713,15 +713,13 @@ typedef spot_tracker_Z *(*TCM_ZTRACKER_CREATOR)(void);
 class Tracker_Collection_Manager {
 public:
     // Invert sets whether we look for dark-on-light beads.
-    Tracker_Collection_Manager(unsigned image_x, unsigned image_y,
-                     float default_radius = 15.0, float min_bead_separation = 30.0,
+    Tracker_Collection_Manager(float default_radius = 15.0,
+                     float min_bead_separation = 30.0,
                      float min_border_distance = 20.0,
                      float default_fluorescence_lost_threshold = 0,
                      unsigned color_index = 0,
                      bool invert = false)
-        : d_image_x(image_x)
-        , d_image_y(image_y)
-        , d_default_radius(default_radius)
+        : d_default_radius(default_radius)
         , d_min_bead_separation(min_bead_separation)
         , d_min_border_distance(min_border_distance)
         , d_default_fluorescence_lost_threshold(default_fluorescence_lost_threshold)
@@ -880,8 +878,6 @@ public:
                               KERNEL_TYPE kernel_type = KT_SYMMETRIC);
 
 protected:
-    unsigned                        d_image_x;              // Size of the image in X
-    unsigned                        d_image_y;              // Size of the image in Y
     float                           d_default_radius;       // Radius for new trackers
     float                           d_min_bead_separation;  // How close is too close to beads
     float                           d_min_border_distance;  // How close is too close to edge?

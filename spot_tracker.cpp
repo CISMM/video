@@ -1808,6 +1808,16 @@ bool Tracker_Collection_Manager::delete_tracker(unsigned which)
 bool Tracker_Collection_Manager::delete_active_tracker(void)
 {
   if (d_active_tracker < 0) { return false; }
+
+  // Play the "deleted tracker" sound.
+#ifdef	_WIN32
+#ifndef __MINGW32__
+  if (!PlaySound("deleted_tracker.wav", NULL, SND_FILENAME | SND_ASYNC)) {
+    fprintf(stderr,"Cannot play sound %s\n", "deleted_tracker.wav");
+  }
+#endif
+#endif
+
   return delete_tracker( d_active_tracker );
 }
 
