@@ -659,8 +659,6 @@ public:
 
   void get_velocity(double velocity[2]) const { velocity[0] = d_velocity[0]; velocity[1] = d_velocity[1]; }
   void set_velocity(const double velocity[2]) { d_velocity[0] = velocity[0]; d_velocity[1] = velocity[1]; }
-  void get_last_position(double last_position[2]) const { last_position[0] = d_last_position[0]; last_position[1] = d_last_position[1]; }
-  void set_last_position(const double last_position[2]) { d_last_position[0] = last_position[0]; d_last_position[1] = last_position[1]; }
 
   bool lost(void) const { return d_lost; };
   void lost(bool l) { d_lost = l; };
@@ -673,7 +671,6 @@ protected:
   spot_tracker_Z	*d_tracker_Z;	    //< The tracker we're keeping information for in Z
   unsigned		d_index;	    //< The index for this instance
   double		d_velocity[2];	    //< The velocity of the particle
-  double                d_last_position[2]; //< Where I was before being optimized
   bool                  d_lost;             //< Am I lost?
   static Semaphore      d_index_sem;        //< Semaphore for the following index.
   static unsigned	d_static_index;     //< The index to use for the next one (never to be re-used).
@@ -787,7 +784,8 @@ public:
     // are all optimized (negative value).
     // Returns the number of beads in the vector of trackers we're managing.
     unsigned optimize_based_on(const image_wrapper &s_image,
-      int max_tracker_to_optimize = -1, unsigned color_index = 0);
+      int max_tracker_to_optimize = -1, unsigned color_index = 0,
+      bool do_prediction = false);
 
     // Autofind fluorescence beads within the image whose pointer is passed in.
     // Avoids adding trackers that are too close to other existing trackers.
