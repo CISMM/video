@@ -679,11 +679,12 @@ protected:
 // Type describing which available kernel types there are.
 // XXX Embed this into the class below, rather than making it a parameter to
 // lost.  Once we do this, we can also make the auto-create functions pick.
+// These must match the ones used in video_spot_tracker, to match the Tcl GUI
 enum KERNEL_TYPE {
-  KT_FIONA,
-  KT_SYMMETRIC,
-  KT_DISC,
-  KT_CONE
+  KT_DISC = 0,
+  KT_CONE = 1,
+  KT_SYMMETRIC = 2,
+  KT_FIONA = 3
 };
 
 //----------------------------------------------------------------------------------
@@ -784,9 +785,13 @@ public:
     // so we have the ability to tell how many to optimize; by default, they
     // are all optimized (negative value).
     // Returns the number of beads in the vector of trackers we're managing.
+    // XXX Inconsistent to have color_index here and in d_color_index implicit
+    // for some functions...
     unsigned optimize_based_on(const image_wrapper &s_image,
       int max_tracker_to_optimize = -1, unsigned color_index = 0,
       bool optimize_radius = false, bool parabolic_opt = false);
+    bool optimize_z_based_on(const image_wrapper &s_image,
+      int max_tracker_to_optimize = -1, unsigned color_index = 0);
 
     // If we want to do prediction of new location based on previous, first call
     // initialize to set up the state and then call take_prediction_step() before
@@ -836,6 +841,9 @@ public:
     // to test for multiple conditions, you should call the various marking
     // codes that you want and then call the delete_beads_marked_as_lost()
     // just once.
+
+    // Marks all beads as not lost.
+    void mark_all_beads_not_lost(void);
 
     // Auto-deletes trackers that have wandered off of fluorescent beads.
     // Uses the specified variance threshold to determine if they are lost.

@@ -1656,345 +1656,6 @@ void mykymographDisplayFunc(void)
 }
 
 
-// Optimize to find the best fit starting from last position for a tracker.
-// Don't let it adjust the radius here (otherwise it gets too jumpy).
-static void optimize_tracker(Spot_Information *tracker)
-{
-  double  x, y;
-  double last_pos[2];
-  last_pos[0] = tracker->xytracker()->get_x();
-  last_pos[1] = tracker->xytracker()->get_y();
-
-  // If we are doing prediction, apply the estimated last velocity to
-  // move the estimated position to a new location
-  if ( g_predict && (g_last_optimized_frame_number != g_frame_number) ) {
-    double new_pos[2];
-    double last_vel[2];
-    tracker->get_velocity(last_vel);
-    new_pos[0] = last_pos[0] + last_vel[0];
-    new_pos[1] = last_pos[1] + last_vel[1];
-    tracker->xytracker()->set_location(new_pos[0], new_pos[1]);
-  }
-
-  // If the frame number has changed, and we are doing global searches
-  // within a radius, then create an image-based tracker at the last
-  // location for the current tracker on the last frame; scan all locations
-  // within radius and find the maximum fit on this frame; move the tracker
-  // location to that maximum before doing the optimization.  We use the
-  // image-based tracker for this because other trackers may have maximum
-  // fits outside the region where the bead is -- the symmetric tracker often
-  // has a local maximum at best fit and global maxima elsewhere.
-  if ( g_last_image && ((double)(g_search_radius) > 0) && (g_last_optimized_frame_number != g_frame_number) ) {
-
-    double x_base = tracker->xytracker()->get_x();
-    double y_base = tracker->xytracker()->get_y();
-
-    // If we are doing prediction, reduce the search radius to 3 because we rely
-    // on the prediction to get us close to the global maximum.  If we make it 2.5,
-    // it starts to lose track with an accuracy of 1 pixel for a bead on cilia in
-    // pulnix video (acquired at 120 frames/second).
-    double used_search_radius = g_search_radius;
-    if ( g_predict && (used_search_radius > 3) ) {
-      used_search_radius = 3;
-    }
-
-    // Create an image spot tracker and initialize it at the location where the current
-    // tracker started this frame (before prediction), but in the last image.  Grab enough
-    // of the image that we will be able to check over the used_search_radius for a match.
-    // Use the faster twolines version of the image-based tracker.
-    twolines_image_spot_tracker_interp max_find(tracker->xytracker()->get_radius(), (g_invert != 0), g_precision,
-      0.1, g_sampleSpacing);
-    max_find.set_location(last_pos[0], last_pos[1]);
-    max_find.set_image(*g_last_image, g_colorIndex, last_pos[0], last_pos[1], tracker->xytracker()->get_radius() + used_search_radius);
-
-    // Loop over the pixels within used_search_radius of the initial location and find the
-    // location with the best match over all of these points.  Do this in the current image,
-    // at the (possibly-predicted) starting location and find the offset from the (possibly
-    // predicted) current location to get to the right place.
-    double radsq = used_search_radius * used_search_radius;
-    int x_offset, y_offset;
-    int best_x_offset = 0;
-    int best_y_offset = 0;
-    double best_value = max_find.check_fitness(*g_image, g_colorIndex);
-    for (x_offset = -floor(used_search_radius); x_offset <= floor(used_search_radius); x_offset++) {
-      for (y_offset = -floor(used_search_radius); y_offset <= floor(used_search_radius); y_offset++) {
-	if ( (x_offset * x_offset) + (y_offset * y_offset) <= radsq) {
-	  max_find.set_location(x_base + x_offset, y_base + y_offset);
-	  double val = max_find.check_fitness(*g_image, g_colorIndex);
-	  if (val > best_value) {
-	    best_x_offset = x_offset;
-	    best_y_offset = y_offset;
-	    best_value = val;
-	  }
-	}
-      }
-    }
-
-    // Put the tracker at the location of the maximum, so that it will find the
-    // total maximum when it finds the local maximum.
-    tracker->xytracker()->set_location(x_base + best_x_offset, y_base + best_y_offset);
-  }
-
-  // Here's where the tracker is optimized to its new location.
-  // FIONA trackers always try to optimize radius along with XY.
-  if (g_parabolafit) {
-    tracker->xytracker()->optimize_xy_parabolafit(*g_image, g_colorIndex, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
-  } else {
-    if (g_kernel_type == KERNEL_FIONA) {
-      tracker->xytracker()->optimize(*g_image, g_colorIndex, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
-    } else {
-      tracker->xytracker()->optimize_xy(*g_image, g_colorIndex, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
-    }
-  }
-
-  // If we are doing prediction, update the estimated velocity based on the
-  // step taken.
-  if ( g_predict && (g_last_optimized_frame_number != g_frame_number) ) {
-    const double vel_frac_to_use = 0.9; //< 0.85-0.95 seems optimal for cilia in pulnix; 1 is too much, 0.83 is too little
-
-    // Compute the new velocity estimate as the subtraction of the
-    // last position from the current position.
-    double new_vel[2];
-    new_vel[0] = (tracker->xytracker()->get_x() - last_pos[0]) * vel_frac_to_use;
-    new_vel[1] = (tracker->xytracker()->get_y() - last_pos[1]) * vel_frac_to_use;
-
-    // Store the quantities for use next time around.
-    tracker->set_velocity(new_vel);
-  }
-
-  // Determine which image we should be looking at for seeing if a tracker
-  // is lost.  If we have a blurred image, we look at that one.  Otherwise,
-  // we look at the global image.
-  image_wrapper *l_image = g_image;
-  if (g_blurred_image) {
-    l_image = g_blurred_image;
-  }
-
-  // If we have a non-zero kernel-based threshold for determining if we are lost,
-  // check and see if we are.  This is done by finding the value of
-  // the fitness function at the actual tracker location and comparing
-  // it to the maximum values located on concentric rings around the
-  // tracker.  We look for the minimum of these maximum values (the
-  // deepest moat around the peak in the center) and determine if we're
-  // lost based on the type of kernel we are using.
-  // Some ideas for determining goodness of tracking for a bead...
-  //   (It looks like different metrics are needed for symmetric and cone and disk.)
-  // For symmetric:
-  //    Value compared to initial value when tracking that bead: When in a flat area, it can be better.
-  //    Minimum over area vs. center value: get low-valued lobes in certain directions, but other directions bad.
-  //    Maximum of all minima as you travel in different directions from center: dunno.
-  //    Maximum at radius from center: How do you know what radius to select?
-  //      Max at radius of the minimum value from center?
-  //      Minimum of the maxima over a number of radii? -- Yep, we're trying this one.
-  // FIONA kernel operates differently; it looks to see if the value at the
-  //    center is more than the specified fraction of twice the standard deviation away
-  //    from the mean of the surrounding values.  For an inverted tracker, this
-  //    must be below; for a non-inverted tracker it is above.
-  tracker->lost(false); // Not lost yet...
-  if (g_lossSensitivity > 0.0) {
-   if (g_kernel_type == KERNEL_FIONA) {
-     // Compute the mean of the values two radii out from the
-     // center of the tracker.
-     double mean = 0.0, value;
-     double theta;
-     unsigned count = 0;
-     double r = 2 * tracker->xytracker()->get_radius();
-     double start_x = tracker->xytracker()->get_x();
-     double start_y = tracker->xytracker()->get_y();
-     double x, y;
-     for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
-       x = start_x + r * cos(theta);
-       y = start_y + r * sin(theta);
-       if (l_image->read_pixel_bilerp(x, y, value, g_colorIndex)) {
-         mean += value;
-         count++;
-       }
-     }
-     if (count != 0) {
-       mean /= count;
-     }
-
-     // Compute the standard deviation of the values
-     double std_dev = 0.0;
-     count = 0;
-     for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
-       x = start_x + r * cos(theta);
-       y = start_y + r * sin(theta);
-       if (l_image->read_pixel_bilerp(x, y, value, g_colorIndex)) {
-         std_dev += (mean - value) * (mean - value);
-         count++;
-       }
-     }
-     if (count > 0) {
-       std_dev /= (count-1);
-     }
-     std_dev = sqrt(std_dev);
-
-     // Check to see if we're lost based on how far we are above/below the
-     // mean.
-     double threshold = g_lossSensitivity * (2 * std_dev);
-     if (l_image->read_pixel_bilerp(start_x, start_y, value, g_colorIndex)) {
-       double diff = value - mean;
-       if (g_invert) { diff *= -1; }
-       if (diff < threshold) {
-         tracker->lost(true);
-       } else {
-         tracker->lost(false);
-       }
-     }
-
-   } else {
-    double min_val = 1e100; //< Min over all circles
-    double start_x = tracker->xytracker()->get_x();
-    double start_y = tracker->xytracker()->get_y();
-    double this_val;
-    double r, theta;
-    double x, y;
-    // Only look every two-pixel radius from three out to the radius of the tracker.
-    for (r = 3; r <= tracker->xytracker()->get_radius(); r += 2) {
-      double max_val = -1e100;  //< Max over this particular circle
-      // Look at every pixel around the circle.
-      for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
-        x = r * cos(theta);
-        y = r * sin(theta);
-	tracker->xytracker()->set_location(x + start_x, y + start_y);
-	this_val = tracker->xytracker()->check_fitness(*l_image, g_colorIndex);
-	if (this_val > max_val) { max_val = this_val; }
-      }
-      if (max_val < min_val) { min_val = max_val; }
-    }
-    //Put the tracker back where it started.
-    tracker->xytracker()->set_location(start_x, start_y);
-
-    // See if we are lost.  The way we tell if we are lost or not depends
-    // on the type of kernel we are using.  It also depends on the setting of
-    // the "lost sensitivity" parameter, which varies from 0 (not sensitive at
-    // all) to 1 (most sensitive).
-    double starting_value = tracker->xytracker()->check_fitness(*l_image, g_colorIndex);
-    //printf("dbg: Center = %lg, min of maxes = %lg, scale = %lg\n", starting_value, min_val, min_val/starting_value);
-    if (g_kernel_type == KERNEL_SYMMETRIC) {
-      // The symmetric kernel reports values that are strictly non-positive for
-      // its fitness function.  Some observation of values reveals that the key factor
-      // seems to be how many more times negative the "moat" is than the central peak.
-      // Based on a few observations of different bead tracks, it looks like a factor
-      // of 2 is almost always too small, and a factor of 4-10 is almost always fine.
-      // So, we'll set the "scale factor" to be between 1 (when sensitivity is just
-      // above zero) and 10 (when the scale factor is just at one).  If a tracker gets
-      // lost, set it to be the active tracker so the user can tell which one is
-      // causing trouble.
-      double scale_factor = 1 + 9*g_lossSensitivity;
-      if (starting_value * scale_factor < min_val) {
-        tracker->lost(true);
-      } else {
-        tracker->lost(false);
-      }
-    } else if (g_kernel_type == KERNEL_CONE) {
-      // Differences (not factors) of 0-5 seem more appropriate for a quick test of the cone kernel.
-      double difference = 5*g_lossSensitivity;
-      if (starting_value - min_val < difference) {
-        tracker->lost(true);
-      } else {
-        tracker->lost(false);
-      }
-    } else {  // Must be a disk kernel
-      // Differences (not factors) of 0-5 seem more appropriate for a quick test of the disk kernel.
-      double difference = 5*g_lossSensitivity;
-      if (starting_value - min_val < difference) {
-        tracker->lost(true);
-      } else {
-        tracker->lost(false);
-      }
-    }
-   }
-  }
-
-  // If the intensity-based lost threshold setting is nonzero, check to see
-  // whether the pixel at the center of the tracker is significantly different
-  // from the pixels around the outside of the tracker.  We do this by looking at
-  // the mean and variance of the pixels along a box with sides that are
-  // 1.5 times the diameter of the tracker (3x the radius) and seeing if the
-  // squared difference between the center pixel and mean is greater than the
-  // variance scaled by the sensitivity.  If it is, there is a well-defined
-  // bead and so we're not lost.  (This routine does not check the corner
-  // pixels of the square surrounding, to avoid double-weighting them based
-  // on our loop strategy.)
-  if (g_intensityLossSensitivity > 0.0) {
-     int halfwidth = static_cast<int>(1.5 * tracker->xytracker()->get_radius());
-     int x = static_cast<int>(tracker->xytracker()->get_x());
-     int y = static_cast<int>(tracker->xytracker()->get_y());
-     int pixels = 0;
-     double val = 0;
-     double mean = 0;
-     double variance = 0;
-     int offset;
-     for (offset = -halfwidth+1; offset < halfwidth; offset++) {
-       if (l_image->read_pixel(x-offset, y-halfwidth, val, g_colorIndex)) {
-         mean += val;
-         variance += val*val;
-         pixels++;
-       }
-       if (l_image->read_pixel(x-offset, y+halfwidth, val, g_colorIndex)) {
-         mean += val;
-         variance += val*val;
-         pixels++;
-       }
-       if (l_image->read_pixel(x-halfwidth, y+offset, val, g_colorIndex)) {
-         mean += val;
-         variance += val*val;
-         pixels++;
-       }
-       if (l_image->read_pixel(x+halfwidth, y+offset, val, g_colorIndex)) {
-         mean += val;
-         variance += val*val;
-         pixels++;
-       }
-     }
-
-     // Compute the variance of all the points using the shortcut
-     // formula: var = (sum of squares of measures) - (sum of measurements)^2 / n.
-     // Then compute the mean.
-     if (pixels) {
-       variance = variance - mean*mean/pixels;
-       mean /= pixels;
-     }
-
-     // Compare to see if we're lost.  Check <= rather than < because in
-     // regions where the pixels clamp to 0 or max there is no difference on
-     // either side of the equation and we should be lost.
-     l_image->read_pixel(x, y, val, g_colorIndex);
-     if ((val - mean)*(val-mean) <= variance * g_intensityLossSensitivity) {
-       tracker->lost(true);
-     }
-  }
-
-  // If we have a non-zero threshold to check against the boundary of the
-  // image, check to see if we've wandered too close to it.
-  if (g_borderDeadZone > 0) {   
-      double x = tracker->xytracker()->get_x();
-      double y = tracker->xytracker()->get_y();
-      double zone = g_borderDeadZone;
-
-      // Check against the border.
-      if ( (x < (*g_minX) + zone) || (x > (*g_maxX) - zone) ||
-           (y < (*g_minY) + zone) || (y > (*g_maxY) - zone) ) {
-        tracker->lost(true);
-      }
-  }
-
-  // If we're set to hover when lost and we are lost, then go back to where we
-  // started.
-  if (tracker->lost() && (g_lostBehavior == LOST_HOVER)) {
-    tracker->xytracker()->set_location(last_pos[0], last_pos[1]);
-  }
-
-  // If we are optimizing in Z, then do it here.
-  if (g_opt_z) {
-    double  z = 0;
-    tracker->ztracker()->locate_close_fit_in_depth(*g_image, g_colorIndex, tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), z);
-    tracker->ztracker()->optimize(*g_image, g_colorIndex, tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), z);
-  }
-}
-
 // The logging on the VRPN connection is done by a separate thread so that
 // the network buffer won't get filled up while writing video data, causing
 // the porgram to hang while trying to pack more.  The CSV file writing is
@@ -2126,11 +1787,54 @@ void optimize_all_trackers(void)
     // Optimize.
     g_trackers.optimize_based_on(*g_image, max_to_opt, g_colorIndex, g_kernel_type == KERNEL_FIONA, g_parabolafit);
 
-    // Check to see if any trackers are lost due to brightfield criteria
-    if (g_lossSensitivity > 0.0) {
-      g_trackers.mark_tracker_if_lost_in_brightfield(XXX);
+    // Mark all beads as not being lost.
+    g_trackers.mark_all_beads_not_lost();
+
+    // Determine which image we should be looking at for seeing if a tracker
+    // is lost.  If we have a blurred image, we look at that one.  Otherwise,
+    // we look at the global image.
+    image_wrapper *l_image = g_image;
+    if (g_blurred_image) {
+      l_image = g_blurred_image;
     }
 
+    // Check to see if any trackers are lost due to brightfield criteria, using the
+    // appropriate lost image
+    if (g_lossSensitivity > 0.0) {
+      g_trackers.mark_lost_brightfield_beads_in(*l_image, g_lossSensitivity, g_kernel_type);
+    }
+
+    // Check to see if any trackers are lost due to intensity criteria.
+    if (g_intensityLossSensitivity > 0.0) {
+      g_trackers.mark_lost_fluorescent_beads_in(*l_image, g_intensityLossSensitivity);
+    }
+
+    // If we have a non-zero threshold to check against the boundary of the
+    // image, check to see if we've wandered too close to it.
+    if (g_borderDeadZone > 0) {
+      g_trackers.min_border_distance(g_borderDeadZone);
+      g_trackers.mark_edge_beads_in(*g_image);
+    }
+
+    // Check for beads getting too close to each other.
+    if (g_trackerDeadZone > 0) {
+      g_trackers.min_bead_separation(g_trackerDeadZone);
+      g_trackers.mark_colliding_beads_in(*g_image);
+    }
+
+    // If hovering, move lost beads back to their previous position.
+    for (i = 0; i < g_trackers.tracker_count(); i++) {
+      Spot_Information *tracker = g_trackers.tracker(i);
+      if (tracker->lost()) {
+        double last_pos[2];
+        tracker->get_last_position(last_pos);
+        tracker->set_location(last_pos);
+      }
+    }
+
+    if (g_opt_z) {
+      g_trackers.optimize_z_based_on(*g_image, max_to_opt, g_colorIndex);
+    }
   }
 
   XXX_remove_below_here;

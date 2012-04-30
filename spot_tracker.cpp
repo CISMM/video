@@ -2537,6 +2537,32 @@ unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_im
     return d_trackers.size();
 }
 
+bool Tracker_Collection_Manager::optimize_z_based_on(const image_wrapper &s_image,
+                                                       int max_tracker_to_optimize,
+                                                       unsigned color_index)
+{
+    int i;
+    #pragma omp parallel for
+    for (i = 0; i < (int)(d_trackers.size()); i++) {
+      if ( (max_tracker_to_optimize < 0) || (i <= max_tracker_to_optimize) ) {
+        Spot_Information *tracker = Tracker_Collection_Manager::tracker(i);
+        double  z = 0;
+        tracker->ztracker()->locate_close_fit_in_depth(s_image, color_index, tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), z);
+        tracker->ztracker()->optimize(s_image, color_index, tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), z);
+      }
+    }
+
+    return true;
+}
+
+void Tracker_Collection_Manager::mark_all_beads_not_lost(void)
+{
+    int i;
+    for (i = 0; i < (int)(d_trackers.size()); i++) {
+        tracker(i)->lost(false);
+    }
+}
+
 // Check to see if the specified tracker is lost given the specified image
 // and standard-deviation threshold; the tracker is lost if its center is not
 // at least the specified number of standard deviations above the mean of the
@@ -2851,26 +2877,27 @@ unsigned Tracker_Collection_Manager::delete_edge_beads_in(const image_wrapper &s
 // Marks trackers that have gotten too close to another tracker.
 // Uses the specified distance threshold to determine if they are too close.
 // Returns the number of remaining trackers after any have
-// been deleted.
+// been deleted.  IMPORTANT: We delete the larger-
+// numbered tracker if we find two that overlap, to make the longest possible
+// tracks from earlier trackers.
 void Tracker_Collection_Manager::mark_colliding_beads_in(const image_wrapper &s_image)
 {
-    int i;
-    #pragma omp parallel for
-    for (i = 0; i < (int)(d_trackers.size()); i++) {
-      double x = tracker(i)->xytracker()->get_x();
-      double y = tracker(i)->xytracker()->get_y();
+  std::list<Spot_Information *>::iterator  loop;
+  for (loop = d_trackers.begin(); loop != d_trackers.end(); loop++) {
+    double x = (*loop)->xytracker()->get_x();
+    double y = (*loop)->xytracker()->get_y();
 
-      double zone2 = d_min_bead_separation * d_min_bead_separation;
-      int j;
-      for (j = 0; j < i; j++) {
-        double x2 = tracker(j)->xytracker()->get_x();
-        double y2 = tracker(j)->xytracker()->get_y();
-        double dist2 = ( (x-x2)*(x-x2) + (y-y2)*(y-y2) );
-        if (dist2 < zone2) {
-          tracker(i)->lost(true);
-        }
+    std::list<Spot_Information *>::iterator loop2;
+    double zone2 = d_min_border_distance * d_min_border_distance;
+    for (loop2 = d_trackers.begin(); loop2 != loop; loop2++) {
+      double x2 = (*loop2)->xytracker()->get_x();
+      double y2 = (*loop2)->xytracker()->get_y();
+      double dist2 = ( (x-x2)*(x-x2) + (y-y2)*(y-y2) );
+      if (dist2 < zone2) {
+        (*loop)->lost(true);
       }
     }
+  }
 }
 
 // Auto-deletes trackers that have gotten too close to another tracker.
