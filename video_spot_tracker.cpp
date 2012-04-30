@@ -2410,10 +2410,11 @@ void  activate_and_drag_nearest_tracker_to(double x, double y)
     if (g_trackers.active_tracker()->ztracker()) {
       g_Z = g_trackers.active_tracker()->ztracker()->get_z();
     }
-    // Set the initial position to the current position, for prediction
+    // Set the initial last position to the current position, for prediction
     double last_pos[2];
-    g_trackers.tracker(minTracker)->get_last_position(last_pos);
-    g_trackers.tracker(minTracker)->xytracker()->set_location(last_pos[0], last_pos[1]);
+    last_pos[0] = g_X;
+    last_pos[1] = g_Y;
+    g_trackers.tracker(minTracker)->set_last_position(last_pos);
 
     g_Radius = g_trackers.active_tracker()->xytracker()->get_radius();
     if (g_rod) {
