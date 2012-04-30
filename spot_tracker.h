@@ -712,7 +712,9 @@ public:
                      float min_border_distance = 20.0,
                      float default_fluorescence_lost_threshold = 0,
                      unsigned color_index = 0,
-                     bool invert = false)
+                     bool invert = false,
+                     TCM_XYTRACKER_CREATOR xycreator = default_xy_tracker_creator,
+                     TCM_ZTRACKER_CREATOR zcreator = default_z_tracker_creator)
         : d_default_radius(default_radius)
         , d_min_bead_separation(min_bead_separation)
         , d_min_border_distance(min_border_distance)
@@ -720,8 +722,8 @@ public:
         , d_color_index(color_index)
         , d_invert(invert)
         , d_active_tracker(-1)
-        , d_xy_tracker_creator(default_xy_tracker_creator)
-        , d_z_tracker_creator(default_z_tracker_creator)
+        , d_xy_tracker_creator(xycreator)
+        , d_z_tracker_creator(zcreator)
     {};
 
     // Clean up (delete trackers in our vector, etc.)

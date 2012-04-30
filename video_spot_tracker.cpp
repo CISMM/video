@@ -1,4 +1,3 @@
-// XXXXX Fix g_active_tracker because it is now an index...
 //---------------------------------------------------------------------------
 // This section contains configuration settings for the Video Spot Tracker.
 // It is used to make it possible to compile and link the code when one or
@@ -71,7 +70,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "06.11";
+const char *Version_string = "06.12";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -131,10 +130,6 @@ int                 g_last_optimized_frame_number = -1000;
 int		    g_tracking_window;		  //< Glut window displaying tracking
 unsigned char	    *g_glut_image = NULL;	  //< Pointer to the storage for the image
 
-// XXXXX Set the default parameters?
-// XXX Set create_appropriate_XXX for both.
-Tracker_Collection_Manager  g_trackers;           //< List of trackers.
-Spot_Information    *g_active_tracker = NULL;	  //< The tracker that the controls refer to
 bool		    g_ready_to_display = false;	  //< Don't unless we get an image
 bool		    g_already_posted = false;	  //< Posted redisplay since the last display?
 int		    g_mousePressX, g_mousePressY; //< Where the mouse was when the button was pressed
@@ -270,6 +265,16 @@ double			g_log_offset_x, g_log_offset_y, g_log_offset_z;
 Tclvar_int              g_logging("logging"); //< Accessor for the GUI logging button so rewind can turn it off.
 bool g_video_valid = false; // Do we have a valid video frame in memory?
 int		        g_log_frame_number_last_logged = -1;
+
+//--------------------------------------------------------------------------
+spot_tracker_XY  *create_appropriate_xytracker(double x, double y, double r);
+spot_tracker_Z  *create_appropriate_ztracker(void);
+Tracker_Collection_Manager  g_trackers(g_Radius,g_trackerDeadZone,g_borderDeadZone,
+                                       g_intensityLossSensitivity,
+                                       g_colorIndex,
+                                       g_invert != 0,
+                                       create_appropriate_xytracker,
+                                       create_appropriate_ztracker); //< List of trackers.
 
 //--------------------------------------------------------------------------
 // Return the length of the named file.  Used to help figure out what
@@ -1268,7 +1273,7 @@ void myBeadDisplayFunc(void)
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  if (g_show_video && g_active_tracker) {
+  if (g_show_video && g_trackers.active_tracker()) {
     if (g_kernel_type == KERNEL_FIONA) {
       // For FIONA, we want to draw the shape of the Gaussian kernel against
       // the shape of the underlying image, rather than just the image resampled
@@ -1277,16 +1282,16 @@ void myBeadDisplayFunc(void)
 
       // Determine the scale needed to make the maximum Z value equal
       // to 1.
-      double radius = g_active_tracker->xytracker()->get_radius();
-      double xImageOffset = g_active_tracker->xytracker()->get_x();
-      double yImageOffset = g_active_tracker->xytracker()->get_y();
+      double radius = g_trackers.active_tracker()->xytracker()->get_radius();
+      double xImageOffset = g_trackers.active_tracker()->xytracker()->get_x();
+      double yImageOffset = g_trackers.active_tracker()->xytracker()->get_y();
       double max = -1e10;
       double x,y;
       double double_pix;
 
       // Include the maximum (center) spot in the Gaussian in the max calculation.  Then look
       // at all of the pixel values in the image near the tracker center.
-      static_cast<FIONA_spot_tracker *>(g_active_tracker->xytracker())->read_pixel(0, 0, max);
+      static_cast<FIONA_spot_tracker *>(g_trackers.active_tracker()->xytracker())->read_pixel(0, 0, max);
       for (x = - 2*radius; x <= 2*radius; x++) {
         for (y = - 2*radius; y <= 2*radius; y++) {
 	  g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix, g_colorIndex);
@@ -1352,7 +1357,7 @@ void myBeadDisplayFunc(void)
       for (x = floor(-max_to_draw); x <= max_to_draw; x++) {
         glBegin(GL_LINE_STRIP);
         for (y = floor(-max_to_draw); y <= max_to_draw; y++) {
-	  static_cast<FIONA_spot_tracker *>(g_active_tracker->xytracker())->read_pixel(x, y, double_pix);
+	  static_cast<FIONA_spot_tracker *>(g_trackers.active_tracker()->xytracker())->read_pixel(x, y, double_pix);
           glVertex3d( (x-x_frac)*scale, (y-y_frac)*scale, double_pix*zScale);
         }
         glEnd();
@@ -1361,7 +1366,7 @@ void myBeadDisplayFunc(void)
       for (y = floor(-max_to_draw); y <= max_to_draw; y++) {
         glBegin(GL_LINE_STRIP);
         for (x = floor(-max_to_draw); x <= max_to_draw; x++) {
-	  static_cast<FIONA_spot_tracker *>(g_active_tracker->xytracker())->read_pixel(x, y, double_pix);
+	  static_cast<FIONA_spot_tracker *>(g_trackers.active_tracker()->xytracker())->read_pixel(x, y, double_pix);
           glVertex3d((x-x_frac)*scale, (y-y_frac)*scale, double_pix*zScale);
         }
         glEnd();
@@ -1372,8 +1377,8 @@ void myBeadDisplayFunc(void)
     } else {
       // Copy pixels into the image buffer.
       int x,y;
-      float xImageOffset = g_active_tracker->xytracker()->get_x() - (g_beadseye_size+1)/2.0;
-      float yImageOffset = g_active_tracker->xytracker()->get_y() - (g_beadseye_size+1)/2.0;
+      float xImageOffset = g_trackers.active_tracker()->xytracker()->get_x() - (g_beadseye_size+1)/2.0;
+      float yImageOffset = g_trackers.active_tracker()->xytracker()->get_y() - (g_beadseye_size+1)/2.0;
       double  double_pix;
 
       // If we are outside 2 radii, then leave it blank to avoid having a
@@ -1387,10 +1392,10 @@ void myBeadDisplayFunc(void)
 	  g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
         }
       }
-      double radius = g_active_tracker->xytracker()->get_radius();
+      double radius = g_trackers.active_tracker()->xytracker()->get_radius();
       if (g_rod) {
         // Horrible hack to make this work with rod type
-        radius = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_length() / 2;
+        radius = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_length() / 2;
       }
       int min_x = (g_beadseye_size+1)/2 - 2 * radius;
       int max_x = (g_beadseye_size+1)/2 + 2 * radius;
@@ -1450,7 +1455,7 @@ void myLandscapeDisplayFunc(void)
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT);
 
-  if (g_show_video && g_active_tracker) {
+  if (g_show_video && g_trackers.active_tracker()) {
     int x,y;
 
     // Find the raw fitness function values for a range of locations
@@ -1460,15 +1465,15 @@ void myLandscapeDisplayFunc(void)
     // Solve for the max and min values in the floating-point buffer, then
     // a scale and offset to map them to the range 0-255.
     double min_val = 1e100, max_val = -1e100;
-    double start_x = g_active_tracker->xytracker()->get_x();
-    double start_y = g_active_tracker->xytracker()->get_y();
+    double start_x = g_trackers.active_tracker()->xytracker()->get_x();
+    double start_y = g_trackers.active_tracker()->xytracker()->get_y();
     float xImageOffset = start_x - (g_landscape_size+1)/2.0;
     float yImageOffset = start_y - (g_landscape_size+1)/2.0;
     double this_val;
     for (x = 0; x < g_landscape_size; x++) {
       for (y = 0; y < g_landscape_size; y++) {
-	g_active_tracker->xytracker()->set_location(x + xImageOffset, y + yImageOffset);
-	this_val = g_active_tracker->xytracker()->check_fitness(*g_image, g_colorIndex);
+	g_trackers.active_tracker()->xytracker()->set_location(x + xImageOffset, y + yImageOffset);
+	this_val = g_trackers.active_tracker()->xytracker()->check_fitness(*g_image, g_colorIndex);
 	g_landscape_floats[x + g_landscape_size * y] = this_val;
 	if (this_val < min_val) { min_val = this_val; }
 	if (this_val > max_val) { max_val = this_val; }
@@ -1510,22 +1515,22 @@ void myLandscapeDisplayFunc(void)
       // axis.  Otherwise, we translate in X.
       if (g_rod) {
 	// Horrible hack to make this work with rod type
-	double orient = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_orientation();
-	double length = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_length();
+	double orient = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
+	double length = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_length();
 	double dx =   cos(orient * M_PI/180);
 	double dy = - sin(orient * M_PI/180);
 	double delta = x - (g_landscape_strip_width+1)/2.0;
-	g_active_tracker->xytracker()->set_location(start_x + dx*delta, start_y + dy*delta);
+	g_trackers.active_tracker()->xytracker()->set_location(start_x + dx*delta, start_y + dy*delta);
       } else {
-	g_active_tracker->xytracker()->set_location(x + xImageOffset, start_y);
+	g_trackers.active_tracker()->xytracker()->set_location(x + xImageOffset, start_y);
       }
-      this_val = g_active_tracker->xytracker()->check_fitness(*g_image, g_colorIndex);
+      this_val = g_trackers.active_tracker()->xytracker()->check_fitness(*g_image, g_colorIndex);
       glVertex3f( strip_start_x + x * strip_step_x, this_val * scale - offset,0);
     }
     glEnd();
 
     // Put the tracker back where it started.
-    g_active_tracker->xytracker()->set_location(start_x, start_y);
+    g_trackers.active_tracker()->xytracker()->set_location(start_x, start_y);
   }
 
   // Swap buffers so we can see it.
@@ -1915,7 +1920,7 @@ void myIdleFunc(void)
   // bounding boxes.  Do not do this if the tracker is lost, mainly
   // because it causes the program to exit when a wanted pixel is not
   // found but also because we don't want to follow the lost tracker.
-  if (g_opt && g_small_area && g_active_tracker && !g_tracker_is_lost) {
+  if (g_opt && g_small_area && g_trackers.active_tracker() && !g_tracker_is_lost) {
     // Initialize it with values from the active tracker, which are stored
     // in the global variables.
     (*g_minX) = g_X - 4*g_Radius;
@@ -1935,7 +1940,7 @@ void myIdleFunc(void)
       double fourRad = 4 * tracker->xytracker()->get_radius();
       if (g_rod) {
 	// Horrible hack to make this work with rod type
-	fourRad = 2 * static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_length();
+	fourRad = 2 * static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_length();
       }
       if (*g_minX > x - fourRad) { *g_minX = x - fourRad; }
       if (*g_maxX < x + fourRad) { *g_maxX = x + fourRad; }
@@ -2073,13 +2078,13 @@ void myIdleFunc(void)
   // We're ready to display an image.
   g_ready_to_display = true;
 
-  if (g_active_tracker) { 
-    g_active_tracker->xytracker()->set_radius(g_Radius);
+  if (g_trackers.active_tracker()) { 
+    g_trackers.active_tracker()->xytracker()->set_radius(g_Radius);
     if (g_rod) {
       // Horrible hack to enable adjustment of a parameter that only exists on
       // the rod tracker
-      static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->set_length(g_length);
-      static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->set_orientation(g_orientation);
+      static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->set_length(g_length);
+      static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->set_orientation(g_orientation);
     }
   }
 
@@ -2282,18 +2287,18 @@ void myIdleFunc(void)
 
   //------------------------------------------------------------
   // Make the GUI track the result for the active tracker
-  if (g_active_tracker) {
-    g_X = (float)g_active_tracker->xytracker()->get_x();
-    g_Y = (float)flip_y(g_active_tracker->xytracker()->get_y());
-    if (g_active_tracker->ztracker()) {
-      g_Z = g_active_tracker->ztracker()->get_z();
+  if (g_trackers.active_tracker()) {
+    g_X = (float)g_trackers.active_tracker()->xytracker()->get_x();
+    g_Y = (float)flip_y(g_trackers.active_tracker()->xytracker()->get_y());
+    if (g_trackers.active_tracker()->ztracker()) {
+      g_Z = g_trackers.active_tracker()->ztracker()->get_z();
     }
-    g_Radius = (float)g_active_tracker->xytracker()->get_radius();
-    g_Error = (float)g_active_tracker->xytracker()->get_fitness();
+    g_Radius = (float)g_trackers.active_tracker()->xytracker()->get_radius();
+    g_Error = (float)g_trackers.active_tracker()->xytracker()->get_fitness();
     if (g_rod) {
       // Horrible hack to make this work with rod type
-      g_orientation = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_orientation();
-      g_length = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_length();
+      g_orientation = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
+      g_length = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_length();
     }
   }
 
@@ -2382,7 +2387,7 @@ void  activate_and_drag_nearest_tracker_to(double x, double y)
   // Looks for the minimum squared distance and the tracker that is
   // there.
   double  minDist2 = 1e100;
-  Spot_Information *minTracker = NULL;
+  int minTracker = -1;
   double  dist2;
 
   unsigned i;
@@ -2392,29 +2397,29 @@ void  activate_and_drag_nearest_tracker_to(double x, double y)
       (y - tracker->xytracker()->get_y())*(y - tracker->xytracker()->get_y());
     if (dist2 < minDist2) {
       minDist2 = dist2;
-      minTracker = tracker;
+      minTracker = i;
     }
   }
-  if (minTracker == NULL) {
+  if (minTracker < 0) {
     fprintf(stderr, "No tracker to pick out of %d\n", g_trackers.tracker_count());
   } else {
-    g_active_tracker = minTracker;
-    g_active_tracker->xytracker()->set_location(x, y);
-    g_X = g_active_tracker->xytracker()->get_x();
-    g_Y = flip_y(g_active_tracker->xytracker()->get_y());
-    if (g_active_tracker->ztracker()) {
-      g_Z = g_active_tracker->ztracker()->get_z();
+    g_trackers.set_active_tracker_index(minTracker);
+    g_trackers.active_tracker()->xytracker()->set_location(x, y);
+    g_X = g_trackers.active_tracker()->xytracker()->get_x();
+    g_Y = flip_y(g_trackers.active_tracker()->xytracker()->get_y());
+    if (g_trackers.active_tracker()->ztracker()) {
+      g_Z = g_trackers.active_tracker()->ztracker()->get_z();
     }
     // Set the initial position to the current position, for prediction
     double last_pos[2];
-    minTracker->get_last_position(last_pos);
-    minTracker->xytracker()->set_location(last_pos[0], last_pos[1]);
+    g_trackers.tracker(minTracker)->get_last_position(last_pos);
+    g_trackers.tracker(minTracker)->xytracker()->set_location(last_pos[0], last_pos[1]);
 
-    g_Radius = g_active_tracker->xytracker()->get_radius();
+    g_Radius = g_trackers.active_tracker()->xytracker()->get_radius();
     if (g_rod) {
       // Horrible hack to make this work with rod type
-      g_orientation = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_orientation();
-      g_length = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_length();
+      g_orientation = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
+      g_length = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_length();
     }
   }
 }
@@ -2467,8 +2472,8 @@ void mouseCallbackForGLUT(int button, int state, int raw_x, int raw_y)
 	// Invert Y to match the coordinate systems.
 	g_X = x;
 	g_Y = flip_y(y);
-	if (g_active_tracker->ztracker()) {
-	  g_Z = g_active_tracker->ztracker()->get_z();
+	if (g_trackers.active_tracker()->ztracker()) {
+	  g_Z = g_trackers.active_tracker()->ztracker()->get_z();
 	}
       } else {
 	// Nothing to do at release.
@@ -2524,7 +2529,7 @@ void motionCallbackForGLUT(int raw_x, int raw_y)
       // Set the radius based on how far the user has moved from click
       double radius = sqrt( static_cast<double>( (x - pressX) * (x - pressX) + (y - pressY) * (y - pressY) ) );
       if (radius >= 3) {
-	g_active_tracker->xytracker()->set_radius(radius);
+	g_trackers.active_tracker()->xytracker()->set_radius(radius);
 	g_Radius = radius;
       }
     }
@@ -2618,11 +2623,11 @@ void  logfilename_changed(char *newvalue, void *)
   // then these offsets are 0,0.  If we are, then they are the current position of
   // the active tracker (if it exists).
   g_log_offset_x = g_log_offset_y = g_log_offset_z = 0;
-  if (g_log_relative && g_active_tracker) {
-    g_log_offset_x = g_active_tracker->xytracker()->get_x();
-    g_log_offset_y = flip_y(g_active_tracker->xytracker()->get_y());
-    if (g_active_tracker->ztracker()) {
-      g_log_offset_z = g_active_tracker->ztracker()->get_z();
+  if (g_log_relative && g_trackers.active_tracker()) {
+    g_log_offset_x = g_trackers.active_tracker()->xytracker()->get_x();
+    g_log_offset_y = flip_y(g_trackers.active_tracker()->xytracker()->get_y());
+    if (g_trackers.active_tracker()->ztracker()) {
+      g_log_offset_z = g_trackers.active_tracker()->ztracker()->get_z();
     }
   }
 }
@@ -2709,7 +2714,6 @@ void  set_kymograph_visibility(int newvalue, void *)
 // This version is for float sliders
 void  rebuild_trackers(float /*newvalue*/, void *)
 {
-  // XXXXX Set all of these parameters before doing relevant operations.
   g_trackers.min_bead_separation(g_trackerDeadZone);
   g_trackers.min_border_distance(g_borderDeadZone);
   g_trackers.color_index(g_colorIndex);
