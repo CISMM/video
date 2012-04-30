@@ -437,15 +437,6 @@ void drawStringAtXY(double x, double y, char *string)
 }
 
 
-// This function allows for much simpler freeing up of std::lists of
-//  Spot_Information pointers.
-static bool deleteAll( Spot_Information * theElement ) {
-	if (theElement != NULL)
-		delete theElement; // we'll let our Spot_Information destructor do the work
-	return true;
-}
-
-
 // This is called when someone kills the task by closing Glut or some
 // other means we don't have control over.  If we try to delete the VRPN
 // objects here, we get a seg fault for some reason.  VRPN must have already

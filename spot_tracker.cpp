@@ -1791,17 +1791,19 @@ bool Tracker_Collection_Manager::delete_tracker(unsigned which)
       delete *loop;
       // Remove this element from the list.
       d_trackers.erase(loop);
-      return true;
-  }
 
-  // If this was the active tracker, set the active tracker
-  // to be the first tracker.
-  if (which == d_active_tracker) {
-    if (d_trackers.size() == 0) {
-      d_active_tracker = -1;
-    } else {
-      d_active_tracker = 0;
-    }
+      // If this was the active tracker, set the active tracker
+      // to be the first tracker (or to none if there are no more
+      // trackers).
+      if (which == d_active_tracker) {
+        if (d_trackers.size() == 0) {
+          d_active_tracker = -1;
+        } else {
+          d_active_tracker = 0;
+        }
+      }
+
+      return true;
   }
 }
 
