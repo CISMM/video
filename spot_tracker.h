@@ -755,6 +755,7 @@ public:
     void set_xy_tracker_creator(TCM_XYTRACKER_CREATOR newxy);
     void set_z_tracker_creator(TCM_ZTRACKER_CREATOR newz);
 
+    //---------------------------------------------------------------------
     // Adds a new tracker using the default XY and Z tracker creation
     // functions and the specified parameters.  Also sets the active
     // tracker to be the new tracker.
@@ -777,13 +778,15 @@ public:
     // creation functions.
     void rebuild_trackers(void);
 
+    //---------------------------------------------------------------------
     // Update the positions of the trackers we are managing based on a new image.
     // For kymograph applications, we only want to optimize the first two trackers,
     // so we have the ability to tell how many to optimize; by default, they
     // are all optimized (negative value).
     // Returns the number of beads in the vector of trackers we're managing.
     unsigned optimize_based_on(const image_wrapper &s_image,
-      int max_tracker_to_optimize = -1, unsigned color_index = 0);
+      int max_tracker_to_optimize = -1, unsigned color_index = 0,
+      bool optimize_radius = false, bool parabolic_opt = false);
 
     // If we want to do prediction of new location based on previous, first call
     // initialize to set up the state and then call take_prediction_step() before
@@ -791,6 +794,15 @@ public:
     void initialize_prediction(int max_tracker_to_optimize);
     void take_prediction_step(int max_tracker_to_optimize);
 
+    // This does a local image-matched search to handle the case where the
+    // tracker has moved beyond its local capture radius.  It is passed both
+    // the previous image (to take the snapshot in) and the current image (to
+    // maximize the fit to).  It is also given the radius around the initial
+    // position to search.
+    bool perform_local_image_search(int max_tracker_to_optimize, double search_radius,
+      const image_wrapper &previous_image, const image_wrapper &new_image);
+
+    //---------------------------------------------------------------------
     // Autofind fluorescence beads within the image whose pointer is passed in.
     // Avoids adding trackers that are too close to other existing trackers.
     // Adds beads that are above the threshold (fraction of the way from the minimum
@@ -817,10 +829,20 @@ public:
                                         std::vector<int> &vertCandidates,
                                         std::vector<int> &horiCandidates);
 
+    //---------------------------------------------------------------------
+    // The routines below enable marking of lost beads and deletion of
+    // lost beads.  The deletion routine associated with each condition
+    // will do the marking for that condition and then delete.  If you want
+    // to test for multiple conditions, you should call the various marking
+    // codes that you want and then call the delete_beads_marked_as_lost()
+    // just once.
+
     // Auto-deletes trackers that have wandered off of fluorescent beads.
     // Uses the specified variance threshold to determine if they are lost.
     // Returns the number of remaining trackers after the lost ones have
     // been deleted.
+    void mark_lost_fluorescent_beads_in(const image_wrapper &s_image,
+                                              float var_thresh = 1.5);
     unsigned delete_lost_fluorescent_beads_in(const image_wrapper &s_image,
                                               float var_thresh = 1.5);
 
@@ -828,6 +850,9 @@ public:
     // Uses the specified variance threshold to determine if they are lost.
     // Returns the number of remaining trackers after the lost ones have
     // been deleted.
+    void mark_lost_brightfield_beads_in(const image_wrapper &s_image,
+                                              float var_thresh = 1.5,
+                                              KERNEL_TYPE kernel_type = KT_SYMMETRIC);
     unsigned delete_lost_brightfield_beads_in(const image_wrapper &s_image,
                                               float var_thresh = 1.5,
                                               KERNEL_TYPE kernel_type = KT_SYMMETRIC);
@@ -836,15 +861,40 @@ public:
     // Uses the specified distance threshold to determine if they are too close.
     // Returns the number of remaining trackers after any have
     // been deleted.
+    void mark_edge_beads_in(const image_wrapper &s_image);
     unsigned delete_edge_beads_in(const image_wrapper &s_image);
 
     // Auto-deletes trackers that have gotten too close to another tracker.
     // Uses the specified distance threshold to determine if they are too close.
     // Returns the number of remaining trackers after any have
     // been deleted.
+    void mark_colliding_beads_in(const image_wrapper &s_image);
     unsigned delete_colliding_beads_in(const image_wrapper &s_image);
 
-        // Check to see if the specified tracker is lost given the specified image
+    // This routine will remove all beads marked as lost.  It also adjusts the active
+    // tracker in response to being deleted, if it was deleted.  It returns the number
+    // of beads left after the deletion.
+    unsigned delete_beads_marked_as_lost(void);
+
+protected:
+    float                           d_default_radius;       // Radius for new trackers
+    float                           d_min_bead_separation;  // How close is too close to beads
+    float                           d_min_border_distance;  // How close is too close to edge?
+    float                           d_default_fluorescence_lost_threshold;  // Default lost-tracking threshold for new beads
+    unsigned                        d_color_index;          // Color index from the image.
+    bool                            d_invert;               // Look for dark bead on bright background?
+    std::list<Spot_Information *>   d_trackers; // Trackers we're managing
+    int                             d_active_tracker;       // Index of the active tracker, -1 if none.
+    TCM_XYTRACKER_CREATOR           d_xy_tracker_creator; // Used to make new trackers
+    TCM_ZTRACKER_CREATOR            d_z_tracker_creator; // Used to make new trackers
+
+    // Helper function for find_more_brightfield_beads_in.
+    // Computes a local SMD measure (cross) at the location (x,y) with
+    //  the specified radius.
+    double localSMD(const image_wrapper &img, int x, int y, int radius,
+                    unsigned color_index = 0);
+
+    // Check to see if the specified tracker is lost given the specified image
     // and standard-deviation threshold; the tracker is lost if its center is not
     // at least the specified number of standard deviations above the mean of the
     // pixels around its border.  Also returns true if the tracker is lost and
@@ -875,24 +925,6 @@ public:
     bool mark_tracker_if_lost_in_brightfield(Spot_Information *tracker, const image_wrapper &image,
                               float var_thresh = 1.5,
                               KERNEL_TYPE kernel_type = KT_SYMMETRIC);
-
-protected:
-    float                           d_default_radius;       // Radius for new trackers
-    float                           d_min_bead_separation;  // How close is too close to beads
-    float                           d_min_border_distance;  // How close is too close to edge?
-    float                           d_default_fluorescence_lost_threshold;  // Default lost-tracking threshold for new beads
-    unsigned                        d_color_index;          // Color index from the image.
-    bool                            d_invert;               // Look for dark bead on bright background?
-    std::list<Spot_Information *>   d_trackers; // Trackers we're managing
-    int                             d_active_tracker;       // Index of the active tracker, -1 if none.
-    TCM_XYTRACKER_CREATOR           d_xy_tracker_creator; // Used to make new trackers
-    TCM_ZTRACKER_CREATOR            d_z_tracker_creator; // Used to make new trackers
-
-    // Helper function for find_more_brightfield_beads_in.
-    // Computes a local SMD measure (cross) at the location (x,y) with
-    //  the specified radius.
-    double localSMD(const image_wrapper &img, int x, int y, int radius,
-                    unsigned color_index = 0);
 
     // Default functions to create new XY and Z trackers.
     static spot_tracker_XY *default_xy_tracker_creator(double x, double y, double r);

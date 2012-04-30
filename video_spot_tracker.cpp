@@ -131,6 +131,7 @@ int		    g_tracking_window;		  //< Glut window displaying tracking
 unsigned char	    *g_glut_image = NULL;	  //< Pointer to the storage for the image
 
 // XXXXX Set the default parameters?
+// XXX Set create_appropriate_XXX for both.
 Tracker_Collection_Manager  g_trackers;           //< List of trackers.
 Spot_Information    *g_active_tracker = NULL;	  //< The tracker that the controls refer to
 bool		    g_ready_to_display = false;	  //< Don't unless we get an image
@@ -2105,68 +2106,35 @@ void tracking_thread_function(void *pvThreadData)
 
 void optimize_all_trackers(void)
 {
+  if (g_opt) {
+    // Figure out how many trackers to optimize.
+    int max_to_opt = -1;  // Optimize all trackers, unless we have a kymograph
+    if (g_kymograph) {
+      max_to_opt = 1;
+    }
+
+    // Perform predictions, if we are doing them.
+    if ( g_predict && (g_last_optimized_frame_number != g_frame_number) ) {
+      g_trackers.take_prediction_step(max_to_opt);
+    }
+
+    // Perform local image-match search, if we are doing this.
+    if ( g_last_image && ((double)(g_search_radius) > 0) && (g_last_optimized_frame_number != g_frame_number) ) {
+      g_trackers.perform_local_image_search(max_to_opt, g_searc_radius, *g_last_image, *g_image);
+    }
+
+    // Optimize.
+    g_trackers.optimize_based_on(*g_image, max_to_opt, g_colorIndex, g_kernel_type == KERNEL_FIONA, g_parabolafit);
+
+    // Check to see if any trackers are lost due to brightfield criteria
+    if (g_lossSensitivity > 0.0) {
+      g_trackers.mark_tracker_if_lost_in_brightfield(XXX);
+    }
+
+  }
+
+  XXX_remove_below_here;
   list<Spot_Information *>::iterator  loop;
-
-  // Optimize all trackers, if we have trackers.
-  if (g_opt && g_active_tracker) {
-
-    int kymocount = 0;
-    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-
-      // If we're single-threaded, then call the tracker optimization loop
-      // directly.  If we're multi-threaded, then wait for a ready tracking
-      // thread and use it to do the tracking.
-      if (g_tracking_threads.size() == 0) {
-        optimize_tracker(*loop);
-      } else {
-        // Wait until at least one tracker has entered the ready state
-        // and indicated this using the active tracking semaphore.
-        g_ready_tracker_semaphore->p();
-
-        // Find a ready tracker (there may be more than one, just pick the
-        // first).
-        unsigned i;
-        for (i = 0; i < g_tracking_threads.size(); i++) {
-          if (g_tracking_threads[i]->d_thread_user_data->d_ready) {
-            break;
-          }
-        }
-        if (i >= g_tracking_threads.size()) {
-          fprintf(stderr,"The active tracking semaphore indicated a free tracker but none found in list\n");
-          exit(-1);
-        }
-
-        // Fill in the tracker pointer in the user data and then use the run
-        // semaphore to cause the tracking thread to run.  Tell ourselves that
-        // the tracker is busy, so we don't try to re-use it until it is done.
-        g_tracking_threads[i]->d_thread_user_data->d_tracker = *loop;
-        g_tracking_threads[i]->d_thread_user_data->d_ready = false;
-        g_tracking_threads[i]->d_thread_user_data->d_run_semaphore->v();
-      }
-
-      // If we are running a kymograph, then we don't optimize any trackers
-      // past the first two because they are only there as markers in the
-      // image for cell boundaries.
-      if (g_kymograph) {
-	if (++kymocount == 2) {
-	  break;
-	}
-      }
-    }
-
-    // If we're using multiple tracking threads, then we need to wait until all
-    // threads have finished tracking before going on, to avoid getting ahead of
-    // ourselves while one or more of them are finishing.  To avoid busy-waiting,
-    // we do this by grabbing as many extra entries in the active-tracking semaphore
-    // as there are threads and then freeing them up once we have them all.
-    // If we're not using threads, then there are no entries in the g_tracking_threads vector.
-    unsigned i;
-    for (i = 0; i < g_tracking_threads.size(); i++) {
-      g_ready_tracker_semaphore->p();
-    }
-    for (i = 0; i < g_tracking_threads.size(); i++) {
-      g_ready_tracker_semaphore->v();
-    }
 
     // Now that we are back in a single thread, run through the list of trackers
     // and see if any of them are lost.  If so, what happens depends on whether

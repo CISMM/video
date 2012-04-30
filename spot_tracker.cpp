@@ -1827,6 +1827,13 @@ void Tracker_Collection_Manager::add_tracker(double x, double y, double radius)
       new Spot_Information(default_xy_tracker_creator(x,y,radius),
                            default_z_tracker_creator()));
     d_active_tracker = d_trackers.size()-1;
+
+    // Set the last position in case we're doing prediction.
+    spot_tracker_XY *tkr = d_trackers.back()->xytracker();
+    double last_position[2];
+    last_position[0] = tkr->get_x();
+    last_position[1] = tkr->get_y();
+    d_trackers.back()->set_last_position(last_position);
 }
 
 // Delete all trackers and replace with the correct types.
@@ -2408,20 +2415,6 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
     return true;
 }
 
-void Tracker_Collection_Manager::initialize_prediction(int max_tracker_to_optimize)
-{
-    int i;
-    for (i = 0; i < (int)(d_trackers.size()); i++) {
-      if ( (max_tracker_to_optimize < 0) || (i <= max_tracker_to_optimize) ) {
-        spot_tracker_XY *tkr = tracker(i)->xytracker();
-        double last_position[2];
-        last_position[0] = tkr->get_x();
-        last_position[1] = tkr->get_y();
-        tracker(i)->set_last_position(last_position);
-      }
-    }
-}
-
 void Tracker_Collection_Manager::take_prediction_step(int max_tracker_to_optimize)
 {
     int i;
@@ -2438,7 +2431,8 @@ void Tracker_Collection_Manager::take_prediction_step(int max_tracker_to_optimiz
         // Compute the velocity that was taken between the last position and
         // the current position, scale it, and move the tracker based on it.
         // When it is optimized, it will now be based on this new estimated
-        // starting position.
+        // starting position.  The last position will have been set in the
+        // previous optimization step.
         double last_position[2];
         tracker(i)->get_last_position(last_position);
         double vel[2];
@@ -2449,12 +2443,62 @@ void Tracker_Collection_Manager::take_prediction_step(int max_tracker_to_optimiz
         new_pos[0] = position[0] + vel[0] * vel_frac_to_use;
         new_pos[1] = position[1] + vel[1] * vel_frac_to_use;
         tkr->set_location(new_pos[0], new_pos[1]);
-
-        // Record the initial position (before we moved it) as the last
-        // position for the next iteration.
-        tracker(i)->set_last_position(position);
       }
     }
+}
+
+bool Tracker_Collection_Manager::perform_local_image_search(int max_tracker_to_optimize,
+      double search_radius,
+      const image_wrapper &previous_image, const image_wrapper &new_image)
+{
+    int i;
+    for (i = 0; i < (int)(d_trackers.size()); i++) {
+      if ( (max_tracker_to_optimize < 0) || (i <= max_tracker_to_optimize) ) {
+        Spot_Information  *tracker = Tracker_Collection_Manager::tracker(i);
+        double last_pos[2];
+        tracker->get_last_position(last_pos);
+        double x_base = tracker->xytracker()->get_x();
+        double y_base = tracker->xytracker()->get_y();
+
+        // Create an image spot tracker and initialize it at the location where the current
+        // tracker started this frame (before prediction), but in the last image.  Grab enough
+        // of the image that we will be able to check over the used_search_radius for a match.
+        // Use the faster twolines version of the image-based tracker.
+        twolines_image_spot_tracker_interp max_find(tracker->xytracker()->get_radius(), d_invert, 1.0,
+          1.0, 1.0);
+        max_find.set_location(last_pos[0], last_pos[1]);
+        max_find.set_image(previous_image, d_color_index, last_pos[0], last_pos[1], tracker->xytracker()->get_radius() + search_radius);
+
+        // Loop over the pixels within used_search_radius of the initial location and find the
+        // location with the best match over all of these points.  Do this in the current image,
+        // at the (possibly-predicted) starting location and find the offset from the (possibly
+        // predicted) current location to get to the right place.
+        double radsq = search_radius * search_radius;
+        double x_offset, y_offset;
+        double best_x_offset = 0;
+        double best_y_offset = 0;
+        double best_value = max_find.check_fitness(new_image, d_color_index);
+        for (x_offset = -floor(search_radius); x_offset <= floor(search_radius); x_offset++) {
+          for (y_offset = -floor(search_radius); y_offset <= floor(search_radius); y_offset++) {
+	    if ( (x_offset * x_offset) + (y_offset * y_offset) <= radsq) {
+	      max_find.set_location(x_base + x_offset, y_base + y_offset);
+	      double val = max_find.check_fitness(new_image, d_color_index);
+	      if (val > best_value) {
+	        best_x_offset = x_offset;
+	        best_y_offset = y_offset;
+	        best_value = val;
+	      }
+	    }
+          }
+        }
+
+        // Put the tracker at the location of the maximum, so that it will find the
+        // total maximum when it finds the local maximum.
+        tracker->xytracker()->set_location(x_base + best_x_offset, y_base + best_y_offset);
+      }
+    }
+
+    return true;
 }
 
 // Update the positions of the trackers we are managing based on a new image.
@@ -2462,10 +2506,11 @@ void Tracker_Collection_Manager::take_prediction_step(int max_tracker_to_optimiz
 // so we have the ability to tell how many to optimize; by default, they
 // are all optimized (negative value).
 // Returns the number of beads in the track.
-// XXX FIONA trackers should also optimize radius, not just XY.
 unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_image,
                                                        int max_tracker_to_optimize,
-                                                       unsigned color_index)
+                                                       unsigned color_index,
+                                                       bool optimize_radius,
+                                                       bool parabolic_opt)
 {
     int i;
     #pragma omp parallel for
@@ -2473,7 +2518,20 @@ unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_im
       if ( (max_tracker_to_optimize < 0) || (i <= max_tracker_to_optimize) ) {
         double x, y;
         spot_tracker_XY *tkr = tracker(i)->xytracker();
-        tkr->optimize_xy(s_image, color_index, x, y, tkr->get_x(),tkr->get_y() );
+        if (parabolic_opt) {
+          tkr->optimize_xy_parabolafit(s_image, color_index, x, y, tkr->get_x(),tkr->get_y() );
+        } else if (optimize_radius) {
+          tkr->optimize(s_image, color_index, x, y, tkr->get_x(),tkr->get_y() );
+        } else {
+          tkr->optimize_xy(s_image, color_index, x, y, tkr->get_x(),tkr->get_y() );
+        }
+
+        // Record the last optimized position, in case we're doing either prediction
+        // or a local image-matched search.
+        double last_position[2];
+        last_position[0] = tkr->get_x();
+        last_position[1] = tkr->get_y();
+        tracker(i)->set_last_position(last_position);
       }
     }
     return d_trackers.size();
@@ -2557,10 +2615,10 @@ bool Tracker_Collection_Manager::mark_tracker_if_lost_in_fluorescence(Spot_Infor
     return tracker->lost();
 }
 
-// Auto-deletes trackers that have wandered off of fluorescent beads.
+// Marks trackers that have wandered off of fluorescent beads.
 // Returns the number of remaining trackers after the lost ones have
 // been deleted.
-unsigned Tracker_Collection_Manager::delete_lost_fluorescent_beads_in(const image_wrapper &s_image,
+void Tracker_Collection_Manager::mark_lost_fluorescent_beads_in(const image_wrapper &s_image,
                                                             float var_thresh)
 {
     int i;
@@ -2568,26 +2626,16 @@ unsigned Tracker_Collection_Manager::delete_lost_fluorescent_beads_in(const imag
     for (i = 0; i < (int)(d_trackers.size()); i++) {
         mark_tracker_if_lost_in_fluorescence(tracker(i), s_image, var_thresh);
     }
+}
 
-    // See if the active tracker is lost.
-    bool active_lost = false;
-    if (d_active_tracker >= 0) {
-      active_lost = tracker(d_active_tracker)->lost();
-    }
-
-    // Remove all lost fluorescence beads.
-    d_trackers.remove_if(deleteLost);
-
-    // If the active tracker was lost, set the active tracker to the first one.
-    if (active_lost) {
-      if (d_trackers.size() == 0) {
-        d_active_tracker = -1;
-      } else {
-        d_active_tracker = 0;
-      }
-    }
-
-    return d_trackers.size();
+// Auto-deletes trackers that have wandered off of fluorescent beads.
+// Returns the number of remaining trackers after the lost ones have
+// been deleted.
+unsigned Tracker_Collection_Manager::delete_lost_fluorescent_beads_in(const image_wrapper &s_image,
+                                                            float var_thresh)
+{
+  mark_lost_fluorescent_beads_in(s_image, var_thresh);
+  return delete_beads_marked_as_lost();
 }
 
 // Check for lost beads.  This is done by finding the value of
@@ -2609,7 +2657,6 @@ unsigned Tracker_Collection_Manager::delete_lost_fluorescent_beads_in(const imag
 //    center is more than the specified fraction of twice the standard deviation away
 //    from the mean of the surrounding values.  For an inverted tracker, this
 //    must be below; for a non-inverted tracker it is above.
-// XXX_delete_lost_brightfield_beads_in();
 // Returns true if the tracker is lost and false if it is not.
 bool Tracker_Collection_Manager::mark_tracker_if_lost_in_brightfield(Spot_Information *tracker,
                                             const image_wrapper &image,
@@ -2740,10 +2787,10 @@ bool Tracker_Collection_Manager::mark_tracker_if_lost_in_brightfield(Spot_Inform
     return tracker->lost();
 }
 
-// Auto-deletes trackers that have wandered off of brightfield beads.
+// Marks trackers that have wandered off of brightfield beads.
 // Returns the number of remaining trackers after the lost ones have
 // been deleted.
-unsigned Tracker_Collection_Manager::delete_lost_brightfield_beads_in(const image_wrapper &s_image,
+void Tracker_Collection_Manager::mark_lost_brightfield_beads_in(const image_wrapper &s_image,
                                                             float var_thresh,
                                                             KERNEL_TYPE kernel_type)
 {
@@ -2753,32 +2800,24 @@ unsigned Tracker_Collection_Manager::delete_lost_brightfield_beads_in(const imag
         mark_tracker_if_lost_in_brightfield(tracker(i), s_image, var_thresh,
           kernel_type);
     }
-    // See if the active tracker is lost.
-    bool active_lost = false;
-    if (d_active_tracker >= 0) {
-      active_lost = tracker(d_active_tracker)->lost();
-    }
-
-    // Remove all lost beads.
-    d_trackers.remove_if(deleteLost);
-
-    // If the active tracker was lost, set the active tracker to the first one.
-    if (active_lost) {
-      if (d_trackers.size() == 0) {
-        d_active_tracker = -1;
-      } else {
-        d_active_tracker = 0;
-      }
-    }
-
-    return d_trackers.size();
 }
 
-// Auto-deletes trackers that have gotten too close to the image edge.
+// Auto-deletes trackers that have wandered off of brightfield beads.
+// Returns the number of remaining trackers after the lost ones have
+// been deleted.
+unsigned Tracker_Collection_Manager::delete_lost_brightfield_beads_in(const image_wrapper &s_image,
+                                                            float var_thresh,
+                                                            KERNEL_TYPE kernel_type)
+{
+    mark_lost_brightfield_beads_in(s_image, var_thresh, kernel_type);
+    return delete_beads_marked_as_lost();
+}
+
+// Marks trackers that have gotten too close to the image edge.
 // Uses the specified distance threshold to determine if they are too close.
 // Returns the number of remaining trackers after any have
 // been deleted.
-unsigned Tracker_Collection_Manager::delete_edge_beads_in(const image_wrapper &s_image)
+void Tracker_Collection_Manager::mark_edge_beads_in(const image_wrapper &s_image)
 {
     int i;
     #pragma omp parallel for
@@ -2796,32 +2835,24 @@ unsigned Tracker_Collection_Manager::delete_edge_beads_in(const image_wrapper &s
           tkr->lost(true);
         }
     }
-    // See if the active tracker is lost.
-    bool active_lost = false;
-    if (d_active_tracker >= 0) {
-      active_lost = tracker(d_active_tracker)->lost();
-    }
-
-    // Remove all lost beads.
-    d_trackers.remove_if(deleteLost);
- 
-    // If the active tracker was lost, set the active tracker to the first one.
-    if (active_lost) {
-      if (d_trackers.size() == 0) {
-        d_active_tracker = -1;
-      } else {
-        d_active_tracker = 0;
-      }
-    }
-
-    return d_trackers.size();
 }
 
-// Auto-deletes trackers that have gotten too close to another tracker.
+// Auto-deletes trackers that have gotten too close to the image edge.
 // Uses the specified distance threshold to determine if they are too close.
 // Returns the number of remaining trackers after any have
 // been deleted.
-unsigned Tracker_Collection_Manager::delete_colliding_beads_in(const image_wrapper &s_image)
+unsigned Tracker_Collection_Manager::delete_edge_beads_in(const image_wrapper &s_image)
+{
+    // Mark beads that are too near the edge and then delete them.
+    mark_edge_beads_in(s_image);
+    return delete_beads_marked_as_lost();
+}
+
+// Marks trackers that have gotten too close to another tracker.
+// Uses the specified distance threshold to determine if they are too close.
+// Returns the number of remaining trackers after any have
+// been deleted.
+void Tracker_Collection_Manager::mark_colliding_beads_in(const image_wrapper &s_image)
 {
     int i;
     #pragma omp parallel for
@@ -2840,6 +2871,25 @@ unsigned Tracker_Collection_Manager::delete_colliding_beads_in(const image_wrapp
         }
       }
     }
+}
+
+// Auto-deletes trackers that have gotten too close to another tracker.
+// Uses the specified distance threshold to determine if they are too close.
+// Returns the number of remaining trackers after any have
+// been deleted.
+unsigned Tracker_Collection_Manager::delete_colliding_beads_in(const image_wrapper &s_image)
+{
+    // Find out which beads are lost and then delete them
+    mark_colliding_beads_in(s_image);
+    return delete_beads_marked_as_lost();
+}
+
+// Auto-deletes trackers that have gotten too close to another tracker.
+// Uses the specified distance threshold to determine if they are too close.
+// Returns the number of remaining trackers after any have
+// been deleted.
+unsigned Tracker_Collection_Manager::delete_beads_marked_as_lost(void)
+{
     // See if the active tracker is lost.
     bool active_lost = false;
     if (d_active_tracker >= 0) {
@@ -2860,6 +2910,7 @@ unsigned Tracker_Collection_Manager::delete_colliding_beads_in(const image_wrapp
 
     return d_trackers.size();
 }
+
 
 // Static
 spot_tracker_XY *Tracker_Collection_Manager::default_xy_tracker_creator(
