@@ -2890,7 +2890,7 @@ void Tracker_Collection_Manager::mark_colliding_beads_in(const image_wrapper &s_
     double y = (*loop)->xytracker()->get_y();
 
     std::list<Spot_Information *>::iterator loop2;
-    double zone2 = d_min_border_distance * d_min_border_distance;
+    double zone2 = d_min_bead_separation * d_min_bead_separation;
     for (loop2 = d_trackers.begin(); loop2 != loop; loop2++) {
       double x2 = (*loop2)->xytracker()->get_x();
       double y2 = (*loop2)->xytracker()->get_y();
