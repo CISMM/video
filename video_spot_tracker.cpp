@@ -2252,7 +2252,7 @@ void myIdleFunc(void)
         tracker = g_trackers.tracker(2);
 	double cx0 = tracker->xytracker()->get_x();
 	double cy0 = tracker->xytracker()->get_y();
-        tracker = g_trackers.tracker(2);
+        tracker = g_trackers.tracker(3);
 	double cx1 = tracker->xytracker()->get_x();
 	double cy1 = tracker->xytracker()->get_y();
 
