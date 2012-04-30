@@ -178,13 +178,19 @@ bool ffmpeg_video_server::write_to_opengl_texture(GLuint tex_id) {
 }
 
 bool ffmpeg_video_server::get_pixel_from_memory(unsigned int X, unsigned int Y, vrpn_uint8 &val, int RGB) const {
-	val = *( m_pFrameRGB->data[0] + RGB + 3*(X + _num_columns*Y) );
-	return true;
+  if ( (X < _minX) || (Y < _minY) || (X > _maxX) || (Y > _maxY) ) {
+    return false;
+  }
+  val = *( m_pFrameRGB->data[0] + RGB + 3*(X + _num_columns*Y) );
+  return true;
 }
 
 bool ffmpeg_video_server::get_pixel_from_memory(unsigned int X, unsigned int Y, vrpn_uint16 &val, int RGB) const {
-	val = *( m_pFrameRGB->data[0] + RGB + 3*(X + _num_columns*Y) );
-	return true;
+  if ( (X < _minX) || (Y < _minY) || (X > _maxX) || (Y > _maxY) ) {
+    return false;
+  }
+  val = *( m_pFrameRGB->data[0] + RGB + 3*(X + _num_columns*Y) );
+  return true;
 }
 
 bool ffmpeg_video_server::read_image_to_memory(unsigned int minX, unsigned int maxX, unsigned int minY, unsigned int maxY, double exposure_time_millisecs)
@@ -329,9 +335,9 @@ void  ffmpeg_video_server::rewind(void)
     }
 */
     // Since we can't seek, close and then re-open the file.  Ugly but works.
-    printf("dbg: closing video file\n");
+    //printf("dbg: closing video file\n");
     close_video_file();
-    printf("dbg: opening video file\n");
+    //printf("dbg: opening video file\n");
     open_video_file();
 
     // Read one frame when we start
