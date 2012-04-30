@@ -681,7 +681,7 @@ protected:
 // lost.  Once we do this, we can also make the auto-create functions pick.
 // These must match the ones used in video_spot_tracker, to match the Tcl GUI
 enum KERNEL_TYPE {
-  KT_DISC = 0,
+  KT_DISK = 0,
   KT_CONE = 1,
   KT_SYMMETRIC = 2,
   KT_FIONA = 3

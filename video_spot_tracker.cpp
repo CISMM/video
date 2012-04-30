@@ -1,3 +1,4 @@
+// XXXXX Fix g_active_tracker because it is now an index...
 //---------------------------------------------------------------------------
 // This section contains configuration settings for the Video Spot Tracker.
 // It is used to make it possible to compile and link the code when one or
@@ -185,29 +186,6 @@ Thread      *g_logging_thread = NULL;
 vrpn_Connection	    *g_client_connection = NULL;  //< Connection on which to perform logging
 vrpn_Tracker_Remote *g_client_tracker = NULL;	  //< Client tracker object to cause ping/pong server messages
 vrpn_Imager_Remote  *g_client_imager = NULL;	  //< Client imager object to cause ping/pong server messages
-
-//-----------------------------------------------------------------
-// This section deals with providing multiple threads for tracking.
-unsigned            g_num_tracking_processors = 1; //< Number of processors to use for tracking
-Semaphore           *g_ready_tracker_semaphore = NULL;
-    //< Lets us know if there is a tracker ready to run.  This is created with the number of
-    //< slots equal to the number of tracking processors.  It is decremented by each tracking
-    //< thread as it enters the ready state and is incremented by the application whenever it
-    //< wants a new thread to use for tracking.  This keeps the application from having to
-    //< busy-wait on the list of trackers waiting for one to free up.
-class ThreadUserData {
-public:
-  Semaphore *d_run_semaphore;   //< Thread calls P() on this when it wants to run, app calls V() to let it.
-  bool      d_ready;            //< Thread is ready to run; app checks for this before calling V().
-  Spot_Information  *d_tracker; //< The tracker to optimize.  App fills this in before calling V() to run thread.
-};
-class ThreadInfo {
-public:
-  Thread      *d_thread;            //< The thread to run
-  ThreadData  d_thread_data;        //< The data structure to pass it including a pointer to...
-  ThreadUserData  *d_thread_user_data; //< The user data to pass to the thread, protected by the semaphore in d_thread_data.
-};
-vector<ThreadInfo *>    g_tracking_threads;           //< The threads to use for tracking
 
 vector<int> vertCandidates;
 vector<int> horiCandidates;
@@ -502,17 +480,6 @@ static void  dirtyexit(void)
     }
   }
   printf("logging thread done...");
-
-  // Get rid of any tracking threads and their associated data
-  unsigned i;
-  for (i = 0; i < g_tracking_threads.size(); i++) {
-    delete g_tracking_threads[i]->d_thread;
-    delete g_tracking_threads[i]->d_thread_user_data;
-    delete g_tracking_threads[i]->d_thread_data.ps;
-    delete g_tracking_threads[i];
-  }
-  g_tracking_threads.clear();
-  printf("tracking threads deleted...");
 
   glutDestroyWindow(g_tracking_window);
   glutDestroyWindow(g_beadseye_window);
@@ -1730,41 +1697,6 @@ void logging_thread_function(void *)
   printf("Exiting VRPN logging thread\n");
 }
 
-// The tracking is now done by separate threads from the main program.  This function is
-// what is called for each of these threads.  Semaphores are used to communicate with
-// the main program thread and determine when each sub-thread will run.  This is basically
-// a big wrapper for the optimize_tracker() function, which is called by each thread on
-// an appropriate tracker on the current frame as needed.
-void tracking_thread_function(void *pvThreadData)
-{
-  struct ThreadData  *td = (struct ThreadData *)pvThreadData;
-  ThreadUserData *tud = static_cast<ThreadUserData *>(td->pvUD);
-
-  while (1) {
-    // Grab the semaphore for the thread data and then set the "ready" flag.
-    // This lets the application know that we're ready to do a tracking
-    // optimization.
-    td->ps->p();
-    tud->d_ready = true;
-    td->ps->v();
-
-    // Report that there is another free tracker using the global "number of active trackers"
-    // semaphore, which is used by the application to keep from having to
-    // busy-wait on the tracking threads to see when one is ready for a new task.
-    g_ready_tracker_semaphore->v();
-    
-    // Grab the run semaphore from the user data (which is accessed without
-    // grabbing the lock on the user data) and then run the associated tracking
-    // job.
-    tud->d_run_semaphore->p();
-    if (tud->d_tracker == NULL) {
-      fprintf(stderr,"tracking_thread_function(): Called with NULL tracker pointer!\n");
-      dirtyexit();
-    }
-    optimize_tracker(tud->d_tracker);
-  }
-}
-
 void optimize_all_trackers(void)
 {
   if (g_opt) {
@@ -1781,11 +1713,11 @@ void optimize_all_trackers(void)
 
     // Perform local image-match search, if we are doing this.
     if ( g_last_image && ((double)(g_search_radius) > 0) && (g_last_optimized_frame_number != g_frame_number) ) {
-      g_trackers.perform_local_image_search(max_to_opt, g_searc_radius, *g_last_image, *g_image);
+      g_trackers.perform_local_image_search(max_to_opt, g_search_radius, *g_last_image, *g_image);
     }
 
     // Optimize.
-    g_trackers.optimize_based_on(*g_image, max_to_opt, g_colorIndex, g_kernel_type == KERNEL_FIONA, g_parabolafit);
+    g_trackers.optimize_based_on(*g_image, max_to_opt, g_colorIndex, g_kernel_type == KERNEL_FIONA, g_parabolafit != 0);
 
     // Mark all beads as not being lost.
     g_trackers.mark_all_beads_not_lost();
@@ -1801,7 +1733,16 @@ void optimize_all_trackers(void)
     // Check to see if any trackers are lost due to brightfield criteria, using the
     // appropriate lost image
     if (g_lossSensitivity > 0.0) {
-      g_trackers.mark_lost_brightfield_beads_in(*l_image, g_lossSensitivity, g_kernel_type);
+      KERNEL_TYPE t;
+      switch (g_kernel_type) {
+        case KERNEL_DISK: t = KT_DISK; break;
+        case KERNEL_CONE: t = KT_CONE; break;
+        case KERNEL_SYMMETRIC: t = KT_SYMMETRIC; break;
+        case KERNEL_FIONA: t = KT_FIONA; break;
+        default: fprintf(stderr,"Unrecognized kernel type: %d\n", static_cast<int>(g_kernel_type));
+                 dirtyexit();
+      }
+      g_trackers.mark_lost_brightfield_beads_in(*l_image, g_lossSensitivity, t);
     }
 
     // Check to see if any trackers are lost due to intensity criteria.
@@ -1823,77 +1764,46 @@ void optimize_all_trackers(void)
     }
 
     // If hovering, move lost beads back to their previous position.
+    unsigned i;
     for (i = 0; i < g_trackers.tracker_count(); i++) {
       Spot_Information *tracker = g_trackers.tracker(i);
       if (tracker->lost()) {
         double last_pos[2];
         tracker->get_last_position(last_pos);
-        tracker->set_location(last_pos);
+        tracker->xytracker()->set_location(last_pos[0], last_pos[1]);
       }
     }
 
     if (g_opt_z) {
       g_trackers.optimize_z_based_on(*g_image, max_to_opt, g_colorIndex);
     }
-  }
 
-  XXX_remove_below_here;
-  list<Spot_Information *>::iterator  loop;
-
-    // Now that we are back in a single thread, run through the list of trackers
-    // and see if any of them are lost.  If so, what happens depends on whether
-    // the auto-deletion of lost trackers is enabled.  If so, then delete each
-    // lost tracker.  If not, then point at one of the lost trackers and
-    // set the global lost-tracker flag;
-
-    // We do additional lost-tracker checking here, marking trackers that are too near
-    // other trackers.  We do this here to avoid race conditions that would happen in
-    // the threads as each tracker moved itself.  IMPORTANT: We delete the larger-
-    // numbered tracker if we find two that overlap, to make the longest possible
-    // tracks from earlier trackers.
-    if (g_trackerDeadZone > 0) {   
-      for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-        double x = (*loop)->xytracker()->get_x();
-        double y = (*loop)->xytracker()->get_y();
-
-        list<Spot_Information *>::iterator loop2;
-        double zone2 = g_trackerDeadZone * g_trackerDeadZone;
-        for (loop2 = g_trackers.begin(); loop2 != loop; loop2++) {
-          double x2 = (*loop2)->xytracker()->get_x();
-          double y2 = (*loop2)->xytracker()->get_y();
-          double dist2 = ( (x-x2)*(x-x2) + (y-y2)*(y-y2) );
-          if (dist2 < zone2) {
-            (*loop)->lost(true);
-          }
-        }
-      }
-    }
-
-    // If this tracker is lost, and we have the "autodelete lost tracker" feature
-    // turned on, then delete this tracker and say that we are no longer lost.
-    loop = g_trackers.begin();
-    while (loop != g_trackers.end()) {
-      if ((*loop)->lost()) {
+    // If a tracker is lost, and we have the "autodelete lost tracker" feature
+    // turned on, then delete the tracker.  If not autodeleting, then say that
+    // we are lost.
+    for (i = 0; i < g_trackers.tracker_count(); /*Increment happens below*/) {
+      Spot_Information *tracker = g_trackers.tracker(i);
+      if (tracker->lost()) {
         // Set me to be the active tracker.
-        g_active_tracker = *loop;
+        g_trackers.set_active_tracker_index(i);
         if (g_lostBehavior == LOST_DELETE) {
           // Delete this tracker from the list (it was made active above)
           g_trackers.delete_active_tracker();
 
           // Set the loop back to the beginning of the list of trackers
           // so we don't miss a lost one by incrementing the loop counter.
-          loop = g_trackers.begin();
+          i = 0;
 
         } else {
           // Make me the active tracker (above) and set the global "lost tracker"
           // flag.
           // Then go to the next tracker in the list.
           g_tracker_is_lost = true;
-          loop++;
+          i++;
         }
       } else {
-        // Not lost, go to the next tracker in the list.
-        loop++;
+        // Not lost, go to the next tracker.
+        i++;
       }
     }
 
@@ -2239,31 +2149,31 @@ void myIdleFunc(void)
   // Keep track of whether we found any more beads.  If so, we need to re-run
   // optimization so that all the new beads find their final place.
   bool found_more_beads = false;
-  if (g_findThisManyBeads > g_trackers.size()) {
+  if (g_findThisManyBeads > g_trackers.tracker_count()) {
     // make sure we only try to auto-find once per new frame of video
     if (g_gotNewFrame) {
         if (g_trackers.find_more_brightfield_beads_in(*laf_image,
             g_slidingWindowRadius,
             g_candidateSpotThreshold,
-            g_findThisManyBeads - g_trackers.size(),
+            g_findThisManyBeads - g_trackers.tracker_count(),
             vertCandidates, horiCandidates)) {
 	    found_more_beads = true;
         }
         g_gotNewFrame = false;
     }
   }
-  if (g_findThisManyFluorescentBeads > g_trackers.size()) {
+  if (g_findThisManyFluorescentBeads > g_trackers.tracker_count()) {
     if (g_gotNewFluorescentFrame) {
       if (g_trackers.autofind_fluorescent_beads_in(*laf_image,
               g_fluorescentSpotThreshold,
               g_intensityLossSensitivity,
-              g_findThisManyFluorescentBeads - g_trackers.size())) {
+              g_findThisManyFluorescentBeads - g_trackers.tracker_count())) {
 	  found_more_beads = true;
       }
       g_gotNewFluorescentFrame = false;
     }
     // Delete responses that are in the dead zone around the image.
-    delete_edge_beads_in(*laf_image);
+    g_trackers.delete_edge_beads_in(*laf_image);
   }
 
   // If we found any new beads, then we need to optimize them.
@@ -2278,13 +2188,13 @@ void myIdleFunc(void)
     // Make sure we have at least two trackers, which will define the
     // frame of reference for the kymograph.  Also make sure that we are
     // not out of display room in the kymograph.
-    if ( (g_trackers.size() >= 2) && (g_kymograph_filled+1 < g_kymograph_height) ) {
+    if ( (g_trackers.tracker_count() >= 2) && (g_kymograph_filled+1 < g_kymograph_height) ) {
 
       // Find the two tracked points to use.
-      list<Spot_Information *>::iterator  loop = g_trackers.begin();
+      Spot_Information  *tracker = g_trackers.tracker(0);
       double x0 = tracker->xytracker()->get_x();
       double y0 = tracker->xytracker()->get_y();
-      loop++;
+      tracker = g_trackers.tracker(1);
       double x1 = tracker->xytracker()->get_x();
       double y1 = tracker->xytracker()->get_y();
 
@@ -2341,12 +2251,12 @@ void myIdleFunc(void)
       // Figure out the coordinates of the kymograph center in the coordinate system
       // of the cell, where the third tracker (#2) is the posterior end and the fourth
       // is the anterior end.
-      if (g_trackers.size() >= 4) {
+      if (g_trackers.tracker_count() >= 4) {
 	// Find the two tracked points to use.
-	loop++; // Skip to the third point.
+        tracker = g_trackers.tracker(2);
 	double cx0 = tracker->xytracker()->get_x();
 	double cy0 = tracker->xytracker()->get_y();
-	loop++;
+        tracker = g_trackers.tracker(2);
 	double cx1 = tracker->xytracker()->get_x();
 	double cy1 = tracker->xytracker()->get_y();
 
@@ -2474,18 +2384,19 @@ void  activate_and_drag_nearest_tracker_to(double x, double y)
   double  minDist2 = 1e100;
   Spot_Information *minTracker = NULL;
   double  dist2;
-  list<Spot_Information *>::iterator loop;
 
-  for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+  unsigned i;
+  for (i = 0; i < g_trackers.tracker_count(); i++) {
+    Spot_Information *tracker = g_trackers.tracker(i);
     dist2 = (x - tracker->xytracker()->get_x())*(x - tracker->xytracker()->get_x()) +
       (y - tracker->xytracker()->get_y())*(y - tracker->xytracker()->get_y());
     if (dist2 < minDist2) {
       minDist2 = dist2;
-      minTracker = *loop;
+      minTracker = tracker;
     }
   }
   if (minTracker == NULL) {
-    fprintf(stderr, "No tracker to pick out of %d\n", g_trackers.size());
+    fprintf(stderr, "No tracker to pick out of %d\n", g_trackers.tracker_count());
   } else {
     g_active_tracker = minTracker;
     g_active_tracker->xytracker()->set_location(x, y);
@@ -2494,10 +2405,10 @@ void  activate_and_drag_nearest_tracker_to(double x, double y)
     if (g_active_tracker->ztracker()) {
       g_Z = g_active_tracker->ztracker()->get_z();
     }
-    // Set the velocity and acceleration estimates to zero
-    double zeroes[2] = { 0, 0 };
-    minTracker->set_velocity(zeroes);
-    minTracker->set_acceleration(zeroes);
+    // Set the initial position to the current position, for prediction
+    double last_pos[2];
+    minTracker->get_last_position(last_pos);
+    minTracker->xytracker()->set_location(last_pos[0], last_pos[1]);
 
     g_Radius = g_active_tracker->xytracker()->get_radius();
     if (g_rod) {
@@ -2550,9 +2461,7 @@ void mouseCallbackForGLUT(int button, int state, int raw_x, int raw_y)
       if (state == GLUT_DOWN) {
 
 	g_whichDragAction = 1;
-	g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(x,y,g_Radius),create_appropriate_ztracker()));
-	g_active_tracker = g_trackers.back();
-	if (g_active_tracker->ztracker()) { g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
+	g_trackers.add_tracker(x,y,g_Radius);
 
 	// Move the pointer to where the user clicked.
 	// Invert Y to match the coordinate systems.
@@ -2801,10 +2710,10 @@ void  set_kymograph_visibility(int newvalue, void *)
 void  rebuild_trackers(float /*newvalue*/, void *)
 {
   // XXXXX Set all of these parameters before doing relevant operations.
-  g_trackers.min_bead_separation(g_trackerDeadZone());
-  g_trackers.min_border_distance(g_borderDeadZone());
-  g_trackers.color_index(g_colorIndex());
-  g_trackers.invert(g_invert());
+  g_trackers.min_bead_separation(g_trackerDeadZone);
+  g_trackers.min_border_distance(g_borderDeadZone);
+  g_trackers.color_index(g_colorIndex);
+  g_trackers.invert(g_invert != 0);
   g_trackers.rebuild_trackers();
 }
 
@@ -2969,11 +2878,7 @@ bool load_trackers_from_file(const char *inname)
       g_X = x;
       g_Y = y;
       g_Radius = r;
-      g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(g_X,g_Y,g_Radius),create_appropriate_ztracker()));
-      g_active_tracker = g_trackers.back();
-      if (g_active_tracker->ztracker()) {
-        g_active_tracker->ztracker()->set_depth_accuracy(0.25);
-      }
+      g_trackers.add_tracker(g_X,g_Y,g_Radius);
     }
   }
   fclose(f);
@@ -3071,14 +2976,18 @@ void  handle_optimize_z_change(int newvalue, void *)
     // Set the Z tracker in all of the existing trackers to
     // be the proper one (whether NULL or not).
     if (strcmp(g_psf_filename, "NONE") != 0) {
-      for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-	(*loop)->set_ztracker(create_appropriate_ztracker());
+      unsigned i;
+      for (i = 0; i < g_trackers.tracker_count(); i++) {
+        Spot_Information *tracker = g_trackers.tracker(i);
+	tracker->set_ztracker(create_appropriate_ztracker());
       }
     } else {
-      for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-	if ( (*loop)->ztracker() ) {
-	  delete (*loop)->ztracker();
-	  (*loop)->set_ztracker(NULL);
+      unsigned i;
+      for (i = 0; i < g_trackers.tracker_count(); i++) {
+        Spot_Information *tracker = g_trackers.tracker(i);
+	if ( tracker->ztracker() ) {
+	  delete tracker->ztracker();
+	  tracker->set_ztracker(NULL);
 	}
       }
       g_psf_filename = "";
@@ -3088,10 +2997,12 @@ void  handle_optimize_z_change(int newvalue, void *)
   // User is turning off Z tracking, so destroy any existing
   // Z tracker and set the pointer to NULL.
   } else {
-    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-      if ( (*loop)->ztracker() ) {
-	delete (*loop)->ztracker();
-	(*loop)->set_ztracker(NULL);
+    unsigned i;
+    for (i = 0; i < g_trackers.tracker_count(); i++) {
+      Spot_Information *tracker = g_trackers.tracker(i);
+      if ( tracker->ztracker() ) {
+	delete tracker->ztracker();
+	tracker->set_ztracker(NULL);
       }
     }
     g_psf_filename = "";
@@ -3171,60 +3082,6 @@ int main(int argc, char *argv[])
   // how we are quit.  We hope that we exit in a good way and so
   // cleanup() gets called, but if not then we do a dirty exit.
   atexit(dirtyexit);
-
-  //------------------------------------------------------------------
-  // Set up the threads used for tracking, if we have more than one
-  // processor to use for tracking.  Try to use all of the available
-  // processors for tracking.
-  g_num_tracking_processors = Thread::number_of_processors();
-  if (g_num_tracking_processors > 1) {
-    // Create the "Number of active tracking thread" semaphore that is used
-    // to determine when a tracker has finished and is ready to go.
-    g_ready_tracker_semaphore = new Semaphore(g_num_tracking_processors);
-    if (g_ready_tracker_semaphore == NULL) {
-      fprintf(stderr,"Could not create semaphore for number of active tracking threads\n");
-      exit(-1);
-    }
-
-    // Create the tracking threads.
-    printf("Creating %d tracking threads\n", g_num_tracking_processors);
-    unsigned i;
-    for (i = 0; i < g_num_tracking_processors; i++) {
-
-      // Create the semaphore that will be used to control access to the UserData object
-      Semaphore *tds = new Semaphore();
-
-      // Build the thread UserData object that will be passed to the thread function
-      ThreadUserData *tud = new ThreadUserData();
-      tud->d_ready = false;
-      tud->d_tracker = NULL;
-      tud->d_run_semaphore = new Semaphore();
-
-      // Fill in the ThreadInfo structure.  First the user data, then the thread
-      // data (which includes a pointer to the user data) and finally the thread
-      // itself.
-      ThreadInfo *ti = new ThreadInfo;
-      ti->d_thread_user_data = tud;
-      ti->d_thread_data.pvUD = tud;
-      ti->d_thread_data.ps = tds;
-      ti->d_thread = new Thread(tracking_thread_function, ti->d_thread_data);
-
-      // Add this to the thread list, and increment the semaphore so we
-      // won't try to run one of the threads until at least one has become
-      // ready.
-      g_tracking_threads.push_back(ti);
-      g_ready_tracker_semaphore->p();
-
-      // Call P() on the run semaphore so that the thread will not be able to run
-      // until we call V() on it later.  Then run the thread itself to get it into
-      // the ready state.
-      tud->d_run_semaphore->p();
-      if (ti->d_thread->go() != 0) {
-        fprintf(stderr,"Could not run tracking thread number %d\n", i+1);
-        exit(-1);
-      }
-    }
-  }
 
   //------------------------------------------------------------------
   // Create the tracking thread that will create and fill the
@@ -3454,11 +3311,7 @@ int main(int argc, char *argv[])
       g_Y = atof(argv[i]);
       if (++i >= argc) { Usage(argv[0]); }
       g_Radius = atof(argv[i]);
-      g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(g_X,g_Y,g_Radius),create_appropriate_ztracker()));
-      g_active_tracker = g_trackers.back();
-      if (g_active_tracker->ztracker()) {
-        g_active_tracker->ztracker()->set_depth_accuracy(0.25);
-      }
+      g_trackers.add_tracker(g_X,g_Y,g_Radius);
     } else if (!strncmp(argv[i], "-lost_tracking_sensitivity", strlen("-lost_tracking_sensitivity"))) {
 	if (++i >= argc) { Usage(argv[0]); }
 	g_lossSensitivity = atof(argv[i]);
@@ -3760,11 +3613,12 @@ int main(int argc, char *argv[])
   // flipped.  We can't have done this until we've created the image and
   // we know how large it is in y, so we do it here.
   g_image = g_camera;
-  list<Spot_Information *>::iterator  loop;
-  for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-    double x = (*loop)->xytracker()->get_x();
-    double y = flip_y((*loop)->xytracker()->get_y());
-    (*loop)->xytracker()->set_location( x, y );
+  unsigned j;
+  for (j = 0; j < g_trackers.tracker_count(); j++) {
+    Spot_Information *tracker = g_trackers.tracker(j);
+    double x = tracker->xytracker()->get_x();
+    double y = flip_y(tracker->xytracker()->get_y());
+    tracker->xytracker()->set_location( x, y );
   }
 
   //------------------------------------------------------------------
@@ -3774,7 +3628,7 @@ int main(int argc, char *argv[])
   // this if we're running without a GUI.  We also do this if we're trying
   // to autofind beads.  If we don't have a video in one
   // of these circumstances, then we go ahead and quit.
-  if (g_trackers.size() || !g_use_gui || (g_findThisManyBeads > 0.0)) {
+  if (g_trackers.tracker_count() || !g_use_gui || (g_findThisManyBeads > 0.0)) {
     g_opt = 1;
     g_quit_at_end_of_video = true;
     if (g_video) {
