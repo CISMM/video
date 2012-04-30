@@ -639,7 +639,6 @@ public:
     } else {
         d_index = -1;
     }
-    d_velocity[0] = d_velocity[1] = 0;
     d_lost = false;
   }
 
@@ -657,8 +656,8 @@ public:
   void set_xytracker(spot_tracker_XY *tracker) { d_tracker_XY = tracker; }
   void set_ztracker(spot_tracker_Z *tracker) { d_tracker_Z = tracker; }
 
-  void get_velocity(double velocity[2]) const { velocity[0] = d_velocity[0]; velocity[1] = d_velocity[1]; }
-  void set_velocity(const double velocity[2]) { d_velocity[0] = velocity[0]; d_velocity[1] = velocity[1]; }
+  void get_last_position(double last_position[2]) const { last_position[0] = d_last_position[0]; last_position[1] = d_last_position[1]; }
+  void set_last_position(const double last_position[2]) { d_last_position[0] = last_position[0]; d_last_position[1] = last_position[1]; }
 
   bool lost(void) const { return d_lost; };
   void lost(bool l) { d_lost = l; };
@@ -670,7 +669,7 @@ protected:
   spot_tracker_XY	*d_tracker_XY;	    //< The tracker we're keeping information for in XY
   spot_tracker_Z	*d_tracker_Z;	    //< The tracker we're keeping information for in Z
   unsigned		d_index;	    //< The index for this instance
-  double		d_velocity[2];	    //< The velocity of the particle
+  double                d_last_position[2]; //< Where I was before being optimized
   bool                  d_lost;             //< Am I lost?
   static Semaphore      d_index_sem;        //< Semaphore for the following index.
   static unsigned	d_static_index;     //< The index to use for the next one (never to be re-used).
@@ -784,8 +783,13 @@ public:
     // are all optimized (negative value).
     // Returns the number of beads in the vector of trackers we're managing.
     unsigned optimize_based_on(const image_wrapper &s_image,
-      int max_tracker_to_optimize = -1, unsigned color_index = 0,
-      bool do_prediction = false);
+      int max_tracker_to_optimize = -1, unsigned color_index = 0);
+
+    // If we want to do prediction of new location based on previous, first call
+    // initialize to set up the state and then call take_prediction_step() before
+    // optimize.
+    void initialize_prediction(int max_tracker_to_optimize);
+    void take_prediction_step(int max_tracker_to_optimize);
 
     // Autofind fluorescence beads within the image whose pointer is passed in.
     // Avoids adding trackers that are too close to other existing trackers.

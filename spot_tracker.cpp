@@ -2408,17 +2408,64 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
     return true;
 }
 
+void Tracker_Collection_Manager::initialize_prediction(int max_tracker_to_optimize)
+{
+    int i;
+    for (i = 0; i < (int)(d_trackers.size()); i++) {
+      if ( (max_tracker_to_optimize < 0) || (i <= max_tracker_to_optimize) ) {
+        spot_tracker_XY *tkr = tracker(i)->xytracker();
+        double last_position[2];
+        last_position[0] = tkr->get_x();
+        last_position[1] = tkr->get_y();
+        tracker(i)->set_last_position(last_position);
+      }
+    }
+}
+
+void Tracker_Collection_Manager::take_prediction_step(int max_tracker_to_optimize)
+{
+    int i;
+    for (i = 0; i < (int)(d_trackers.size()); i++) {
+      if ( (max_tracker_to_optimize < 0) || (i <= max_tracker_to_optimize) ) {
+
+        // Find out where the tracker is now.  This is after it has been
+        // optimized, presumably.
+        spot_tracker_XY *tkr = tracker(i)->xytracker();
+        double position[2];
+        position[0] = tkr->get_x();
+        position[1] = tkr->get_y();
+
+        // Compute the velocity that was taken between the last position and
+        // the current position, scale it, and move the tracker based on it.
+        // When it is optimized, it will now be based on this new estimated
+        // starting position.
+        double last_position[2];
+        tracker(i)->get_last_position(last_position);
+        double vel[2];
+        vel[0] = position[0] - last_position[0];
+        vel[1] = position[1] - last_position[1];
+        const double vel_frac_to_use = 0.9; //< 0.85-0.95 seems optimal for cilia in pulnix; 1 is too much, 0.83 is too little
+        double new_pos[2];
+        new_pos[0] = position[0] + vel[0] * vel_frac_to_use;
+        new_pos[1] = position[1] + vel[1] * vel_frac_to_use;
+        tkr->set_location(new_pos[0], new_pos[1]);
+
+        // Record the initial position (before we moved it) as the last
+        // position for the next iteration.
+        tracker(i)->set_last_position(position);
+      }
+    }
+}
+
 // Update the positions of the trackers we are managing based on a new image.
 // For kymograph applications, we only want to optimize the first two trackers,
 // so we have the ability to tell how many to optimize; by default, they
 // are all optimized (negative value).
 // Returns the number of beads in the track.
 // XXX FIONA trackers should also optimize radius, not just XY.
-// XXX What's up with checking to see if the frame number changed inside here?
 unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_image,
                                                        int max_tracker_to_optimize,
-                                                       unsigned color_index,
-                                                       bool do_prediction)
+                                                       unsigned color_index)
 {
     int i;
     #pragma omp parallel for
@@ -2426,25 +2473,7 @@ unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_im
       if ( (max_tracker_to_optimize < 0) || (i <= max_tracker_to_optimize) ) {
         double x, y;
         spot_tracker_XY *tkr = tracker(i)->xytracker();
-        double last_position[2];
-        last_position[0] = tkr->get_x();
-        last_position[1] = tkr->get_y();
-        if (do_prediction) {
-          double new_pos[2];
-          double last_vel[2];
-          const double vel_frac_to_use = 0.9; //< 0.85-0.95 seems optimal for cilia in pulnix; 1 is too much, 0.83 is too little
-          tracker(i)->get_velocity(last_vel);
-          new_pos[0] = last_position[0] + last_vel[0] * vel_frac_to_use;
-          new_pos[1] = last_position[1] + last_vel[1] * vel_frac_to_use;
-          tkr->set_location(new_pos[0], new_pos[1]);
-        }
         tkr->optimize_xy(s_image, color_index, x, y, tkr->get_x(),tkr->get_y() );
-        if (do_prediction) {
-          double vel[2];
-          vel[0] = x - last_position[0];
-          vel[1] = x - last_position[1];
-          tracker(i)->set_velocity(vel);
-        }
       }
     }
     return d_trackers.size();
