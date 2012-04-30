@@ -1663,13 +1663,13 @@ static void optimize_tracker(Spot_Information *tracker)
   double last_pos[2];
   last_pos[0] = tracker->xytracker()->get_x();
   last_pos[1] = tracker->xytracker()->get_y();
-  double last_vel[2];
-  tracker->get_velocity(last_vel);
 
   // If we are doing prediction, apply the estimated last velocity to
   // move the estimated position to a new location
   if ( g_predict && (g_last_optimized_frame_number != g_frame_number) ) {
     double new_pos[2];
+    double last_vel[2];
+    tracker->get_velocity(last_vel);
     new_pos[0] = last_pos[0] + last_vel[0];
     new_pos[1] = last_pos[1] + last_vel[1];
     tracker->xytracker()->set_location(new_pos[0], new_pos[1]);

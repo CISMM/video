@@ -2414,6 +2414,7 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
 // are all optimized (negative value).
 // Returns the number of beads in the track.
 // XXX FIONA trackers should also optimize radius, not just XY.
+// XXX What's up with checking to see if the frame number changed inside here?
 unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_image,
                                                        int max_tracker_to_optimize,
                                                        unsigned color_index,
@@ -2431,16 +2432,19 @@ unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_im
         if (do_prediction) {
           double new_pos[2];
           double last_vel[2];
+          const double vel_frac_to_use = 0.9; //< 0.85-0.95 seems optimal for cilia in pulnix; 1 is too much, 0.83 is too little
           tracker(i)->get_velocity(last_vel);
-          new_pos[0] = last_position[0] + last_vel[0];
-          new_pos[1] = last_position[1] + last_vel[1];
+          new_pos[0] = last_position[0] + last_vel[0] * vel_frac_to_use;
+          new_pos[1] = last_position[1] + last_vel[1] * vel_frac_to_use;
           tkr->set_location(new_pos[0], new_pos[1]);
         }
         tkr->optimize_xy(s_image, color_index, x, y, tkr->get_x(),tkr->get_y() );
-        double vel[2];
-        vel[0] = x - last_position[0];
-        vel[1] = x - last_position[1];
-        tracker(i)->set_velocity(vel);
+        if (do_prediction) {
+          double vel[2];
+          vel[0] = x - last_position[0];
+          vel[1] = x - last_position[1];
+          tracker(i)->set_velocity(vel);
+        }
       }
     }
     return d_trackers.size();
