@@ -2454,6 +2454,7 @@ bool Tracker_Collection_Manager::perform_local_image_search(int max_tracker_to_o
       const image_wrapper &previous_image, const image_wrapper &new_image)
 {
     int i;
+    #pragma omp parallel for
     for (i = 0; i < (int)(d_trackers.size()); i++) {
       if ( (max_tracker_to_optimize < 0) || (i <= max_tracker_to_optimize) ) {
         Spot_Information  *tracker = Tracker_Collection_Manager::tracker(i);
