@@ -54,7 +54,7 @@ static void dirtyexit();
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "02.02";
+const char *Version_string = "02.03";
 
 //--------------------------------------------------------------------------
 // Global constants
