@@ -70,7 +70,7 @@ const double M_PI = 2*asin(1.0);
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "06.11";
+const char *Version_string = "06.12";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -130,8 +130,6 @@ int                 g_last_optimized_frame_number = -1000;
 int		    g_tracking_window;		  //< Glut window displaying tracking
 unsigned char	    *g_glut_image = NULL;	  //< Pointer to the storage for the image
 
-list <Spot_Information *>g_trackers;		  //< List of active trackers
-Spot_Information    *g_active_tracker = NULL;	  //< The tracker that the controls refer to
 bool		    g_ready_to_display = false;	  //< Don't unless we get an image
 bool		    g_already_posted = false;	  //< Posted redisplay since the last display?
 int		    g_mousePressX, g_mousePressY; //< Where the mouse was when the button was pressed
@@ -183,29 +181,6 @@ Thread      *g_logging_thread = NULL;
 vrpn_Connection	    *g_client_connection = NULL;  //< Connection on which to perform logging
 vrpn_Tracker_Remote *g_client_tracker = NULL;	  //< Client tracker object to cause ping/pong server messages
 vrpn_Imager_Remote  *g_client_imager = NULL;	  //< Client imager object to cause ping/pong server messages
-
-//-----------------------------------------------------------------
-// This section deals with providing multiple threads for tracking.
-unsigned            g_num_tracking_processors = 1; //< Number of processors to use for tracking
-Semaphore           *g_ready_tracker_semaphore = NULL;
-    //< Lets us know if there is a tracker ready to run.  This is created with the number of
-    //< slots equal to the number of tracking processors.  It is decremented by each tracking
-    //< thread as it enters the ready state and is incremented by the application whenever it
-    //< wants a new thread to use for tracking.  This keeps the application from having to
-    //< busy-wait on the list of trackers waiting for one to free up.
-class ThreadUserData {
-public:
-  Semaphore *d_run_semaphore;   //< Thread calls P() on this when it wants to run, app calls V() to let it.
-  bool      d_ready;            //< Thread is ready to run; app checks for this before calling V().
-  Spot_Information  *d_tracker; //< The tracker to optimize.  App fills this in before calling V() to run thread.
-};
-class ThreadInfo {
-public:
-  Thread      *d_thread;            //< The thread to run
-  ThreadData  d_thread_data;        //< The data structure to pass it including a pointer to...
-  ThreadUserData  *d_thread_user_data; //< The user data to pass to the thread, protected by the semaphore in d_thread_data.
-};
-vector<ThreadInfo *>    g_tracking_threads;           //< The threads to use for tracking
 
 vector<int> vertCandidates;
 vector<int> horiCandidates;
@@ -290,6 +265,16 @@ double			g_log_offset_x, g_log_offset_y, g_log_offset_z;
 Tclvar_int              g_logging("logging"); //< Accessor for the GUI logging button so rewind can turn it off.
 bool g_video_valid = false; // Do we have a valid video frame in memory?
 int		        g_log_frame_number_last_logged = -1;
+
+//--------------------------------------------------------------------------
+spot_tracker_XY  *create_appropriate_xytracker(double x, double y, double r);
+spot_tracker_Z  *create_appropriate_ztracker(void);
+Tracker_Collection_Manager  g_trackers(g_Radius,g_trackerDeadZone,g_borderDeadZone,
+                                       g_intensityLossSensitivity,
+                                       g_colorIndex,
+                                       g_invert != 0,
+                                       create_appropriate_xytracker,
+                                       create_appropriate_ztracker); //< List of trackers.
 
 //--------------------------------------------------------------------------
 // Return the length of the named file.  Used to help figure out what
@@ -452,15 +437,6 @@ void drawStringAtXY(double x, double y, char *string)
 }
 
 
-// This function allows for much simpler freeing up of std::lists of
-//  Spot_Information pointers.
-static bool deleteAll( Spot_Information * theElement ) {
-	if (theElement != NULL)
-		delete theElement; // we'll let our Spot_Information destructor do the work
-	return true;
-}
-
-
 // This is called when someone kills the task by closing Glut or some
 // other means we don't have control over.  If we try to delete the VRPN
 // objects here, we get a seg fault for some reason.  VRPN must have already
@@ -501,24 +477,13 @@ static void  dirtyexit(void)
   }
   printf("logging thread done...");
 
-  // Get rid of any tracking threads and their associated data
-  unsigned i;
-  for (i = 0; i < g_tracking_threads.size(); i++) {
-    delete g_tracking_threads[i]->d_thread;
-    delete g_tracking_threads[i]->d_thread_user_data;
-    delete g_tracking_threads[i]->d_thread_data.ps;
-    delete g_tracking_threads[i];
-  }
-  g_tracking_threads.clear();
-  printf("tracking threads deleted...");
-
   glutDestroyWindow(g_tracking_window);
   glutDestroyWindow(g_beadseye_window);
   glutDestroyWindow(g_landscape_window);
   printf("OpenGL window deleted...");
 
   // Get rid of any trackers.
-  g_trackers.remove_if( deleteAll );
+  g_trackers.delete_trackers();
   printf("trackers removed...");
   if (g_camera) { delete g_camera; g_camera = NULL; }
   if (g_glut_image) { delete [] g_glut_image; g_glut_image = NULL; };
@@ -711,16 +676,18 @@ static	bool  save_log_frame(int frame_number)
       0, g_camera->get_num_rows()-1);
   }
 
-  list<Spot_Information *>::iterator loop;
-  for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+  unsigned loopi;
+  for (loopi = 0; loopi < g_trackers.tracker_count(); loopi++) {
+    Spot_Information *tracker = g_trackers.tracker(loopi);
+
     // If this tracker is lost, do not log its values (this can happen
     // when we're in "Hover when lost" mode).
-    if ((*loop)->lost()) { continue; }
+    if (tracker->lost()) { continue; }
 
-    vrpn_float64  pos[3] = {(*loop)->xytracker()->get_x() - g_log_offset_x,
-			    flip_y((*loop)->xytracker()->get_y()) - g_log_offset_y,
+    vrpn_float64  pos[3] = {tracker->xytracker()->get_x() - g_log_offset_x,
+			    flip_y(tracker->xytracker()->get_y()) - g_log_offset_y,
 			    0.0};
-    if ((*loop)->ztracker()) { pos[2] = (*loop)->ztracker()->get_z() - g_log_offset_z; };
+    if (tracker->ztracker()) { pos[2] = tracker->ztracker()->get_z() - g_log_offset_z; };
     vrpn_float64  quat[4] = { 0, 0, 0, 1};
     double orient = 0.0;
     double length = 0.0;
@@ -731,14 +698,14 @@ static	bool  save_log_frame(int frame_number)
     // If we are tracking rods, then we adjust the orientation to match.
     if (g_rod) {
       // Horrible hack to make this work with rod type
-      orient = reinterpret_cast<rod3_spot_tracker_interp*>((*loop)->xytracker())->get_orientation();
-      length = reinterpret_cast<rod3_spot_tracker_interp*>((*loop)->xytracker())->get_length();
+      orient = reinterpret_cast<rod3_spot_tracker_interp*>(tracker->xytracker())->get_orientation();
+      length = reinterpret_cast<rod3_spot_tracker_interp*>(tracker->xytracker())->get_length();
     }
 
     if (g_kernel_type == KERNEL_FIONA) {
       // Horrible hack to make this export extra stuff for a FIONA kernel
-      background = reinterpret_cast<FIONA_spot_tracker*>((*loop)->xytracker())->get_background();
-      gaussiansummedvalue = reinterpret_cast<FIONA_spot_tracker*>((*loop)->xytracker())->get_summedvalue();
+      background = reinterpret_cast<FIONA_spot_tracker*>(tracker->xytracker())->get_background();
+      gaussiansummedvalue = reinterpret_cast<FIONA_spot_tracker*>(tracker->xytracker())->get_summedvalue();
 
       // Calculate the background as the mean of the pixels around a 5-pixel radius
       // surrounding the tracker center.
@@ -746,8 +713,8 @@ static	bool  save_log_frame(int frame_number)
         double theta;
         unsigned count = 0;
         double r = 5;
-        double start_x = (*loop)->xytracker()->get_x();
-        double start_y = (*loop)->xytracker()->get_y();
+        double start_x = tracker->xytracker()->get_x();
+        double start_y = tracker->xytracker()->get_y();
         double x, y, value;
         for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
          x = start_x + r * cos(theta);
@@ -767,8 +734,8 @@ static	bool  save_log_frame(int frame_number)
       // radius.  It is chosen on integer lattice to avoid interpolation artifacts.  It is round
       // to avoid getting things in the corners.  Subtract the analytic background signal from each
       // pixel's value.
-      double x = (*loop)->xytracker()->get_x();
-      double y = (*loop)->xytracker()->get_y();
+      double x = tracker->xytracker()->get_x();
+      double y = tracker->xytracker()->get_y();
       int ix = static_cast<unsigned>(floor(x+0.5));
       int iy = static_cast<unsigned>(floor(y+0.5));
       int loopx, loopy;
@@ -786,9 +753,9 @@ static	bool  save_log_frame(int frame_number)
     // If we're sending video, then send a little snippet of video
     // around each tracker every frame.
     if (g_log_video) {
-      int x = (*loop)->xytracker()->get_x();
-      int y = (*loop)->xytracker()->get_y();
-      int halfwidth = (*loop)->xytracker()->get_radius() * 2;
+      int x = tracker->xytracker()->get_x();
+      int y = tracker->xytracker()->get_y();
+      int halfwidth = tracker->xytracker()->get_radius() * 2;
       int minX = x - halfwidth;
       int minY = y - halfwidth;
       int maxX = x + halfwidth;
@@ -805,8 +772,8 @@ static	bool  save_log_frame(int frame_number)
 
     // Rotation about the Z axis, reported in radians.
     q_from_euler(quat, orient * (M_PI/180),0,0);
-    if (g_vrpn_tracker->report_pose((*loop)->index(), now, pos, quat, vrpn_CONNECTION_RELIABLE) != 0) {
-      fprintf(stderr,"Error: Could not log tracker number %d\n", (*loop)->index());
+    if (g_vrpn_tracker->report_pose(tracker->index(), now, pos, quat, vrpn_CONNECTION_RELIABLE) != 0) {
+      fprintf(stderr,"Error: Could not log tracker number %d\n", tracker->index());
       return false;
     }
 
@@ -818,22 +785,22 @@ static	bool  save_log_frame(int frame_number)
       }
       double interval = timediff(now, start);
       fprintf(g_csv_file, "%d, %d, %lf,%lf,%lf, %lf, %lf,%lf, %lf,%lf, %lf,%lf\n",
-        frame_number, (*loop)->index(),
+        frame_number, tracker->index(),
         pos[0], pos[1], pos[2],
-        (*loop)->xytracker()->get_radius(),
+        tracker->xytracker()->get_radius(),
         orient, length,
         background, gaussiansummedvalue, mean_background,computedsummedvalue);
 
       // Make sure there are enough vectors to store all available trackers, then
       // store a new entry for each tracker that currently exists.
       // We do this only when the CSV file is open so we don't show un-logged locations
-      while ( g_logged_traces.size() < (*loop)->index() + 1 ) {
+      while ( g_logged_traces.size() < tracker->index() + 1 ) {
         g_logged_traces.push_back(Position_Vector_XY());
       }
       Position_XY tracepos;
-      tracepos.x = (*loop)->xytracker()->get_x();
-      tracepos.y = (*loop)->xytracker()->get_y();
-      g_logged_traces[(*loop)->index()].push_back(tracepos);
+      tracepos.x = tracker->xytracker()->get_x();
+      tracepos.y = tracker->xytracker()->get_y();
+      g_logged_traces[tracker->index()].push_back(tracepos);
     }
   }
 
@@ -1014,30 +981,32 @@ void myDisplayFunc(void)
     glHint (GL_LINE_SMOOTH_HINT, GL_NICEST);
     glLineWidth(1.5);
 
-    list <Spot_Information *>::iterator loop;
-    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
+    unsigned loopi;
+    for (loopi = 0; loopi < g_trackers.tracker_count(); loopi++) {
+      Spot_Information *tracker = g_trackers.tracker(loopi);
+
       // Normalize center and radius so that they match the coordinates
       // (-1..1) in X and Y.
-      double  x = -1.0 + (*loop)->xytracker()->get_x() * (2.0/g_image->get_num_columns());
-      double  y = -1.0 + ((*loop)->xytracker()->get_y()) * (2.0/g_image->get_num_rows());
-      double  dx = (*loop)->xytracker()->get_radius() * (2.0/g_image->get_num_columns());
-      double  dy = (*loop)->xytracker()->get_radius() * (2.0/g_image->get_num_rows());
+      double  x = -1.0 + tracker->xytracker()->get_x() * (2.0/g_image->get_num_columns());
+      double  y = -1.0 + (tracker->xytracker()->get_y()) * (2.0/g_image->get_num_rows());
+      double  dx = tracker->xytracker()->get_radius() * (2.0/g_image->get_num_columns());
+      double  dy = tracker->xytracker()->get_radius() * (2.0/g_image->get_num_rows());
 
-      if (*loop == g_active_tracker) {
+      if (tracker == g_trackers.active_tracker()) {
 	glColor3f(1,0,0);
       } else {
 	glColor3f(0,0,1);
       }
       if (g_rod) {
 	// Need to draw something for the Rod3 tracker type.
-	double orient = static_cast<rod3_spot_tracker_interp*>((*loop)->xytracker())->get_orientation();
-	double length = static_cast<rod3_spot_tracker_interp*>((*loop)->xytracker())->get_length();
+	double orient = static_cast<rod3_spot_tracker_interp*>(tracker->xytracker())->get_orientation();
+	double length = static_cast<rod3_spot_tracker_interp*>(tracker->xytracker())->get_length();
 	double dxx = (cos(orient * M_PI/180)) * (2.0/g_image->get_num_columns());
 	double dyx = (sin(orient * M_PI/180)) * (2.0/g_image->get_num_rows());
 	double dxy = (sin(orient * M_PI/180)) * (2.0/g_image->get_num_columns());
 	double dyy = -(cos(orient * M_PI/180)) * (2.0/g_image->get_num_rows());
         if (g_round_cursor) { // Draw a box around, with lines coming into edges of trackers
-          double radius = static_cast<rod3_spot_tracker_interp*>((*loop)->xytracker())->get_radius();
+          double radius = static_cast<rod3_spot_tracker_interp*>(tracker->xytracker())->get_radius();
 
           // Draw a box around that is two tracker radius past the ends and
           // two tracker radii away from the center on each side.  We'll be bringing
@@ -1092,7 +1061,7 @@ void myDisplayFunc(void)
         }
       } else if (g_round_cursor) {
         // First, make a ring that is twice the radius so that it does not obscure the border.
-	double stepsize = M_PI / (*loop)->xytracker()->get_radius();
+	double stepsize = M_PI / tracker->xytracker()->get_radius();
 	double runaround;
 	glBegin(GL_LINE_STRIP);
 	  for (runaround = 0; runaround <= 2*M_PI; runaround += stepsize) {
@@ -1119,9 +1088,9 @@ void myDisplayFunc(void)
       // Label the marker with its index
       // If we are doing a kymograph, then label posterior and anterior
       char numString[10];
-      sprintf(numString,"%d", (*loop)->index());
+      sprintf(numString,"%d", tracker->index());
       if (g_kymograph) {
-	switch ((*loop)->index()) {
+	switch (tracker->index()) {
 	case 2: sprintf(numString,"P"); break;
 	case 3: sprintf(numString,"A"); break;
 	default: break;
@@ -1133,13 +1102,13 @@ void myDisplayFunc(void)
 
   // If we are running a kymograph, draw a green line through the first two
   // trackers to show where we're collecting it from
-  if (g_kymograph && (g_trackers.size() >= 2)) {
-    list<Spot_Information *>::iterator  loop = g_trackers.begin();
-    double x0 = -1.0 + (*loop)->xytracker()->get_x() * (2.0/g_image->get_num_columns());
-    double y0 = -1.0 + ((*loop)->xytracker()->get_y()) * (2.0/g_image->get_num_rows());
-    loop++;
-    double x1 = -1.0 + (*loop)->xytracker()->get_x() * (2.0/g_image->get_num_columns());
-    double y1 = -1.0 + ((*loop)->xytracker()->get_y()) * (2.0/g_image->get_num_rows());
+  if (g_kymograph && (g_trackers.tracker_count() >= 2)) {
+    Spot_Information *  tracker = g_trackers.tracker(0);
+    double x0 = -1.0 + tracker->xytracker()->get_x() * (2.0/g_image->get_num_columns());
+    double y0 = -1.0 + (tracker->xytracker()->get_y()) * (2.0/g_image->get_num_rows());
+    tracker = g_trackers.tracker(1);
+    double x1 = -1.0 + tracker->xytracker()->get_x() * (2.0/g_image->get_num_columns());
+    double y1 = -1.0 + (tracker->xytracker()->get_y()) * (2.0/g_image->get_num_rows());
 
     // Draw the line between them
     glColor3f(0.5,0.9,0.5);
@@ -1170,14 +1139,14 @@ void myDisplayFunc(void)
 
     // If we have the anterior and posterior, draw the perpendicular to
     // the line between them through their center.
-    if (g_trackers.size() >= 4) {
+    if (g_trackers.tracker_count() >= 4) {
       // Find the two tracked points to use.
-      loop++; // Skip to the third point.
-      double cx0 = -1.0 + (*loop)->xytracker()->get_x() * (2.0/g_image->get_num_columns());
-      double cy0 = -1.0 + ((*loop)->xytracker()->get_y()) * (2.0/g_image->get_num_rows());
-      loop++;
-      double cx1 = -1.0 + (*loop)->xytracker()->get_x() * (2.0/g_image->get_num_columns());
-      double cy1 = -1.0 + ((*loop)->xytracker()->get_y()) * (2.0/g_image->get_num_rows());
+      tracker = g_trackers.tracker(2);
+      double cx0 = -1.0 + tracker->xytracker()->get_x() * (2.0/g_image->get_num_columns());
+      double cy0 = -1.0 + (tracker->xytracker()->get_y()) * (2.0/g_image->get_num_rows());
+      tracker = g_trackers.tracker(3);
+      double cx1 = -1.0 + tracker->xytracker()->get_x() * (2.0/g_image->get_num_columns());
+      double cy1 = -1.0 + (tracker->xytracker()->get_y()) * (2.0/g_image->get_num_rows());
 
       // Find the center of the two (origin of cell coordinates) and the unit vector (dx,dy)
       // going towards the second from the first.
@@ -1295,7 +1264,7 @@ void myBeadDisplayFunc(void)
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  if (g_show_video && g_active_tracker) {
+  if (g_show_video && g_trackers.active_tracker()) {
     if (g_kernel_type == KERNEL_FIONA) {
       // For FIONA, we want to draw the shape of the Gaussian kernel against
       // the shape of the underlying image, rather than just the image resampled
@@ -1304,16 +1273,16 @@ void myBeadDisplayFunc(void)
 
       // Determine the scale needed to make the maximum Z value equal
       // to 1.
-      double radius = g_active_tracker->xytracker()->get_radius();
-      double xImageOffset = g_active_tracker->xytracker()->get_x();
-      double yImageOffset = g_active_tracker->xytracker()->get_y();
+      double radius = g_trackers.active_tracker()->xytracker()->get_radius();
+      double xImageOffset = g_trackers.active_tracker()->xytracker()->get_x();
+      double yImageOffset = g_trackers.active_tracker()->xytracker()->get_y();
       double max = -1e10;
       double x,y;
       double double_pix;
 
       // Include the maximum (center) spot in the Gaussian in the max calculation.  Then look
       // at all of the pixel values in the image near the tracker center.
-      static_cast<FIONA_spot_tracker *>(g_active_tracker->xytracker())->read_pixel(0, 0, max);
+      static_cast<FIONA_spot_tracker *>(g_trackers.active_tracker()->xytracker())->read_pixel(0, 0, max);
       for (x = - 2*radius; x <= 2*radius; x++) {
         for (y = - 2*radius; y <= 2*radius; y++) {
 	  g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix, g_colorIndex);
@@ -1379,7 +1348,7 @@ void myBeadDisplayFunc(void)
       for (x = floor(-max_to_draw); x <= max_to_draw; x++) {
         glBegin(GL_LINE_STRIP);
         for (y = floor(-max_to_draw); y <= max_to_draw; y++) {
-	  static_cast<FIONA_spot_tracker *>(g_active_tracker->xytracker())->read_pixel(x, y, double_pix);
+	  static_cast<FIONA_spot_tracker *>(g_trackers.active_tracker()->xytracker())->read_pixel(x, y, double_pix);
           glVertex3d( (x-x_frac)*scale, (y-y_frac)*scale, double_pix*zScale);
         }
         glEnd();
@@ -1388,7 +1357,7 @@ void myBeadDisplayFunc(void)
       for (y = floor(-max_to_draw); y <= max_to_draw; y++) {
         glBegin(GL_LINE_STRIP);
         for (x = floor(-max_to_draw); x <= max_to_draw; x++) {
-	  static_cast<FIONA_spot_tracker *>(g_active_tracker->xytracker())->read_pixel(x, y, double_pix);
+	  static_cast<FIONA_spot_tracker *>(g_trackers.active_tracker()->xytracker())->read_pixel(x, y, double_pix);
           glVertex3d((x-x_frac)*scale, (y-y_frac)*scale, double_pix*zScale);
         }
         glEnd();
@@ -1399,8 +1368,8 @@ void myBeadDisplayFunc(void)
     } else {
       // Copy pixels into the image buffer.
       int x,y;
-      float xImageOffset = g_active_tracker->xytracker()->get_x() - (g_beadseye_size+1)/2.0;
-      float yImageOffset = g_active_tracker->xytracker()->get_y() - (g_beadseye_size+1)/2.0;
+      float xImageOffset = g_trackers.active_tracker()->xytracker()->get_x() - (g_beadseye_size+1)/2.0;
+      float yImageOffset = g_trackers.active_tracker()->xytracker()->get_y() - (g_beadseye_size+1)/2.0;
       double  double_pix;
 
       // If we are outside 2 radii, then leave it blank to avoid having a
@@ -1414,10 +1383,10 @@ void myBeadDisplayFunc(void)
 	  g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
         }
       }
-      double radius = g_active_tracker->xytracker()->get_radius();
+      double radius = g_trackers.active_tracker()->xytracker()->get_radius();
       if (g_rod) {
         // Horrible hack to make this work with rod type
-        radius = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_length() / 2;
+        radius = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_length() / 2;
       }
       int min_x = (g_beadseye_size+1)/2 - 2 * radius;
       int max_x = (g_beadseye_size+1)/2 + 2 * radius;
@@ -1477,7 +1446,7 @@ void myLandscapeDisplayFunc(void)
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glClear(GL_COLOR_BUFFER_BIT);
 
-  if (g_show_video && g_active_tracker) {
+  if (g_show_video && g_trackers.active_tracker()) {
     int x,y;
 
     // Find the raw fitness function values for a range of locations
@@ -1487,15 +1456,15 @@ void myLandscapeDisplayFunc(void)
     // Solve for the max and min values in the floating-point buffer, then
     // a scale and offset to map them to the range 0-255.
     double min_val = 1e100, max_val = -1e100;
-    double start_x = g_active_tracker->xytracker()->get_x();
-    double start_y = g_active_tracker->xytracker()->get_y();
+    double start_x = g_trackers.active_tracker()->xytracker()->get_x();
+    double start_y = g_trackers.active_tracker()->xytracker()->get_y();
     float xImageOffset = start_x - (g_landscape_size+1)/2.0;
     float yImageOffset = start_y - (g_landscape_size+1)/2.0;
     double this_val;
     for (x = 0; x < g_landscape_size; x++) {
       for (y = 0; y < g_landscape_size; y++) {
-	g_active_tracker->xytracker()->set_location(x + xImageOffset, y + yImageOffset);
-	this_val = g_active_tracker->xytracker()->check_fitness(*g_image, g_colorIndex);
+	g_trackers.active_tracker()->xytracker()->set_location(x + xImageOffset, y + yImageOffset);
+	this_val = g_trackers.active_tracker()->xytracker()->check_fitness(*g_image, g_colorIndex);
 	g_landscape_floats[x + g_landscape_size * y] = this_val;
 	if (this_val < min_val) { min_val = this_val; }
 	if (this_val > max_val) { max_val = this_val; }
@@ -1537,22 +1506,22 @@ void myLandscapeDisplayFunc(void)
       // axis.  Otherwise, we translate in X.
       if (g_rod) {
 	// Horrible hack to make this work with rod type
-	double orient = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_orientation();
-	double length = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_length();
+	double orient = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
+	double length = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_length();
 	double dx =   cos(orient * M_PI/180);
 	double dy = - sin(orient * M_PI/180);
 	double delta = x - (g_landscape_strip_width+1)/2.0;
-	g_active_tracker->xytracker()->set_location(start_x + dx*delta, start_y + dy*delta);
+	g_trackers.active_tracker()->xytracker()->set_location(start_x + dx*delta, start_y + dy*delta);
       } else {
-	g_active_tracker->xytracker()->set_location(x + xImageOffset, start_y);
+	g_trackers.active_tracker()->xytracker()->set_location(x + xImageOffset, start_y);
       }
-      this_val = g_active_tracker->xytracker()->check_fitness(*g_image, g_colorIndex);
+      this_val = g_trackers.active_tracker()->xytracker()->check_fitness(*g_image, g_colorIndex);
       glVertex3f( strip_start_x + x * strip_step_x, this_val * scale - offset,0);
     }
     glEnd();
 
     // Put the tracker back where it started.
-    g_active_tracker->xytracker()->set_location(start_x, start_y);
+    g_trackers.active_tracker()->xytracker()->set_location(start_x, start_y);
   }
 
   // Swap buffers so we can see it.
@@ -1649,406 +1618,6 @@ void mykymographDisplayFunc(void)
   glutSwapBuffers();
 }
 
-bool  delete_active_xytracker(void)
-{
-  if (!g_active_tracker) {
-    return false;
-  } else {
-    // Delete the entry in the list that corresponds to the active tracker.
-    list <Spot_Information *>::iterator loop;
-    list <Spot_Information *>::iterator next;
-    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-		if (*loop == g_active_tracker) {
-			next = loop; next++;
-			delete *loop;
-			g_trackers.erase(loop);
-			break;
-		}
-    }
-
-    // Set the active tracker to the next one in the list if there is
-    // a next one.  Otherwise, try to set it to the first one on the list,
-    // if there is one.  Otherwise, set it to NULL.
-    if (next != g_trackers.end()) {
-      g_active_tracker = *next;
-    } else {
-      if (g_trackers.size() > 0) {
-	g_active_tracker = *g_trackers.begin();
-      } else {
-	g_active_tracker = NULL;
-      }
-    }
-
-    // Set the radius slider to the value of the new active tracker to avoid
-    // having it change to the current radius value.
-    if (g_active_tracker) {
-      g_Radius = g_active_tracker->xytracker()->get_radius();
-    }
-
-    // Play the "deleted tracker" sound.
-#ifdef	_WIN32
-#ifndef __MINGW32__
-    if (!PlaySound("deleted_tracker.wav", NULL, SND_FILENAME | SND_ASYNC)) {
-      fprintf(stderr,"Cannot play sound %s\n", "deleted_tracker.wav");
-    }
-#endif
-#endif
-
-    return true;
-  }
-}
-
-
-// Optimize to find the best fit starting from last position for a tracker.
-// Don't let it adjust the radius here (otherwise it gets too jumpy).
-static void optimize_tracker(Spot_Information *tracker)
-{
-  double  x, y;
-  double last_pos[2];
-  last_pos[0] = tracker->xytracker()->get_x();
-  last_pos[1] = tracker->xytracker()->get_y();
-  double last_vel[2];
-  tracker->get_velocity(last_vel);
-
-  // If we are doing prediction, apply the estimated last velocity to
-  // move the estimated position to a new location
-  if ( g_predict && (g_last_optimized_frame_number != g_frame_number) ) {
-    double new_pos[2];
-    new_pos[0] = last_pos[0] + last_vel[0];
-    new_pos[1] = last_pos[1] + last_vel[1];
-    tracker->xytracker()->set_location(new_pos[0], new_pos[1]);
-  }
-
-  // If the frame number has changed, and we are doing global searches
-  // within a radius, then create an image-based tracker at the last
-  // location for the current tracker on the last frame; scan all locations
-  // within radius and find the maximum fit on this frame; move the tracker
-  // location to that maximum before doing the optimization.  We use the
-  // image-based tracker for this because other trackers may have maximum
-  // fits outside the region where the bead is -- the symmetric tracker often
-  // has a local maximum at best fit and global maxima elsewhere.
-  if ( g_last_image && ((double)(g_search_radius) > 0) && (g_last_optimized_frame_number != g_frame_number) ) {
-
-    double x_base = tracker->xytracker()->get_x();
-    double y_base = tracker->xytracker()->get_y();
-
-    // If we are doing prediction, reduce the search radius to 3 because we rely
-    // on the prediction to get us close to the global maximum.  If we make it 2.5,
-    // it starts to lose track with an accuracy of 1 pixel for a bead on cilia in
-    // pulnix video (acquired at 120 frames/second).
-    double used_search_radius = g_search_radius;
-    if ( g_predict && (used_search_radius > 3) ) {
-      used_search_radius = 3;
-    }
-
-    // Create an image spot tracker and initialize it at the location where the current
-    // tracker started this frame (before prediction), but in the last image.  Grab enough
-    // of the image that we will be able to check over the used_search_radius for a match.
-    // Use the faster twolines version of the image-based tracker.
-    twolines_image_spot_tracker_interp max_find(tracker->xytracker()->get_radius(), (g_invert != 0), g_precision,
-      0.1, g_sampleSpacing);
-    max_find.set_location(last_pos[0], last_pos[1]);
-    max_find.set_image(*g_last_image, g_colorIndex, last_pos[0], last_pos[1], tracker->xytracker()->get_radius() + used_search_radius);
-
-    // Loop over the pixels within used_search_radius of the initial location and find the
-    // location with the best match over all of these points.  Do this in the current image,
-    // at the (possibly-predicted) starting location and find the offset from the (possibly
-    // predicted) current location to get to the right place.
-    double radsq = used_search_radius * used_search_radius;
-    int x_offset, y_offset;
-    int best_x_offset = 0;
-    int best_y_offset = 0;
-    double best_value = max_find.check_fitness(*g_image, g_colorIndex);
-    for (x_offset = -floor(used_search_radius); x_offset <= floor(used_search_radius); x_offset++) {
-      for (y_offset = -floor(used_search_radius); y_offset <= floor(used_search_radius); y_offset++) {
-	if ( (x_offset * x_offset) + (y_offset * y_offset) <= radsq) {
-	  max_find.set_location(x_base + x_offset, y_base + y_offset);
-	  double val = max_find.check_fitness(*g_image, g_colorIndex);
-	  if (val > best_value) {
-	    best_x_offset = x_offset;
-	    best_y_offset = y_offset;
-	    best_value = val;
-	  }
-	}
-      }
-    }
-
-    // Put the tracker at the location of the maximum, so that it will find the
-    // total maximum when it finds the local maximum.
-    tracker->xytracker()->set_location(x_base + best_x_offset, y_base + best_y_offset);
-  }
-
-  // Here's where the tracker is optimized to its new location.
-  // FIONA trackers always try to optimize radius along with XY.
-  if (g_parabolafit) {
-    tracker->xytracker()->optimize_xy_parabolafit(*g_image, g_colorIndex, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
-  } else {
-    if (g_kernel_type == KERNEL_FIONA) {
-      tracker->xytracker()->optimize(*g_image, g_colorIndex, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
-    } else {
-      tracker->xytracker()->optimize_xy(*g_image, g_colorIndex, x, y, tracker->xytracker()->get_x(), tracker->xytracker()->get_y() );
-    }
-  }
-
-  // If we are doing prediction, update the estimated velocity based on the
-  // step taken.
-  if ( g_predict && (g_last_optimized_frame_number != g_frame_number) ) {
-    const double vel_frac_to_use = 0.9; //< 0.85-0.95 seems optimal for cilia in pulnix; 1 is too much, 0.83 is too little
-    const double acc_frac_to_use = 0.0; //< Due to the noise, acceleration estimation makes things worse
-
-    // Compute the new velocity estimate as the subtraction of the
-    // last position from the current position.
-    double new_vel[2];
-    new_vel[0] = (tracker->xytracker()->get_x() - last_pos[0]) * vel_frac_to_use;
-    new_vel[1] = (tracker->xytracker()->get_y() - last_pos[1]) * vel_frac_to_use;
-
-    // Compute the new acceleration estimate as the subtraction of the new
-    // estimate from the old.
-    double new_acc[2];
-    new_acc[0] = (new_vel[0] - last_vel[0]) * acc_frac_to_use;
-    new_acc[1] = (new_vel[1] - last_vel[1]) * acc_frac_to_use;
-
-    // Re-estimate the new velocity by taking into account the acceleration.
-    new_vel[0] += new_acc[0];
-    new_vel[1] += new_acc[1];
-
-    // Store the quantities for use next time around.
-    tracker->set_velocity(new_vel);
-    tracker->set_acceleration(new_acc);
-  }
-
-  // Determine which image we should be looking at for seeing if a tracker
-  // is lost.  If we have a blurred image, we look at that one.  Otherwise,
-  // we look at the global image.
-  image_wrapper *l_image = g_image;
-  if (g_blurred_image) {
-    l_image = g_blurred_image;
-  }
-
-  // If we have a non-zero kernel-based threshold for determining if we are lost,
-  // check and see if we are.  This is done by finding the value of
-  // the fitness function at the actual tracker location and comparing
-  // it to the maximum values located on concentric rings around the
-  // tracker.  We look for the minimum of these maximum values (the
-  // deepest moat around the peak in the center) and determine if we're
-  // lost based on the type of kernel we are using.
-  // Some ideas for determining goodness of tracking for a bead...
-  //   (It looks like different metrics are needed for symmetric and cone and disk.)
-  // For symmetric:
-  //    Value compared to initial value when tracking that bead: When in a flat area, it can be better.
-  //    Minimum over area vs. center value: get low-valued lobes in certain directions, but other directions bad.
-  //    Maximum of all minima as you travel in different directions from center: dunno.
-  //    Maximum at radius from center: How do you know what radius to select?
-  //      Max at radius of the minimum value from center?
-  //      Minimum of the maxima over a number of radii? -- Yep, we're trying this one.
-  // FIONA kernel operates differently; it looks to see if the value at the
-  //    center is more than the specified fraction of twice the standard deviation away
-  //    from the mean of the surrounding values.  For an inverted tracker, this
-  //    must be below; for a non-inverted tracker it is above.
-  tracker->lost(false); // Not lost yet...
-  if (g_lossSensitivity > 0.0) {
-   if (g_kernel_type == KERNEL_FIONA) {
-     // Compute the mean of the values two radii out from the
-     // center of the tracker.
-     double mean = 0.0, value;
-     double theta;
-     unsigned count = 0;
-     double r = 2 * tracker->xytracker()->get_radius();
-     double start_x = tracker->xytracker()->get_x();
-     double start_y = tracker->xytracker()->get_y();
-     double x, y;
-     for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
-       x = start_x + r * cos(theta);
-       y = start_y + r * sin(theta);
-       if (l_image->read_pixel_bilerp(x, y, value, g_colorIndex)) {
-         mean += value;
-         count++;
-       }
-     }
-     if (count != 0) {
-       mean /= count;
-     }
-
-     // Compute the standard deviation of the values
-     double std_dev = 0.0;
-     count = 0;
-     for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
-       x = start_x + r * cos(theta);
-       y = start_y + r * sin(theta);
-       if (l_image->read_pixel_bilerp(x, y, value, g_colorIndex)) {
-         std_dev += (mean - value) * (mean - value);
-         count++;
-       }
-     }
-     if (count > 0) {
-       std_dev /= (count-1);
-     }
-     std_dev = sqrt(std_dev);
-
-     // Check to see if we're lost based on how far we are above/below the
-     // mean.
-     double threshold = g_lossSensitivity * (2 * std_dev);
-     if (l_image->read_pixel_bilerp(start_x, start_y, value, g_colorIndex)) {
-       double diff = value - mean;
-       if (g_invert) { diff *= -1; }
-       if (diff < threshold) {
-         tracker->lost(true);
-       } else {
-         tracker->lost(false);
-       }
-     }
-
-   } else {
-    double min_val = 1e100; //< Min over all circles
-    double start_x = tracker->xytracker()->get_x();
-    double start_y = tracker->xytracker()->get_y();
-    double this_val;
-    double r, theta;
-    double x, y;
-    // Only look every two-pixel radius from three out to the radius of the tracker.
-    for (r = 3; r <= tracker->xytracker()->get_radius(); r += 2) {
-      double max_val = -1e100;  //< Max over this particular circle
-      // Look at every pixel around the circle.
-      for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
-        x = r * cos(theta);
-        y = r * sin(theta);
-	tracker->xytracker()->set_location(x + start_x, y + start_y);
-	this_val = tracker->xytracker()->check_fitness(*l_image, g_colorIndex);
-	if (this_val > max_val) { max_val = this_val; }
-      }
-      if (max_val < min_val) { min_val = max_val; }
-    }
-    //Put the tracker back where it started.
-    tracker->xytracker()->set_location(start_x, start_y);
-
-    // See if we are lost.  The way we tell if we are lost or not depends
-    // on the type of kernel we are using.  It also depends on the setting of
-    // the "lost sensitivity" parameter, which varies from 0 (not sensitive at
-    // all) to 1 (most sensitive).
-    double starting_value = tracker->xytracker()->check_fitness(*l_image, g_colorIndex);
-    //printf("dbg: Center = %lg, min of maxes = %lg, scale = %lg\n", starting_value, min_val, min_val/starting_value);
-    if (g_kernel_type == KERNEL_SYMMETRIC) {
-      // The symmetric kernel reports values that are strictly non-positive for
-      // its fitness function.  Some observation of values reveals that the key factor
-      // seems to be how many more times negative the "moat" is than the central peak.
-      // Based on a few observations of different bead tracks, it looks like a factor
-      // of 2 is almost always too small, and a factor of 4-10 is almost always fine.
-      // So, we'll set the "scale factor" to be between 1 (when sensitivity is just
-      // above zero) and 10 (when the scale factor is just at one).  If a tracker gets
-      // lost, set it to be the active tracker so the user can tell which one is
-      // causing trouble.
-      double scale_factor = 1 + 9*g_lossSensitivity;
-      if (starting_value * scale_factor < min_val) {
-        tracker->lost(true);
-      } else {
-        tracker->lost(false);
-      }
-    } else if (g_kernel_type == KERNEL_CONE) {
-      // Differences (not factors) of 0-5 seem more appropriate for a quick test of the cone kernel.
-      double difference = 5*g_lossSensitivity;
-      if (starting_value - min_val < difference) {
-        tracker->lost(true);
-      } else {
-        tracker->lost(false);
-      }
-    } else {  // Must be a disk kernel
-      // Differences (not factors) of 0-5 seem more appropriate for a quick test of the disk kernel.
-      double difference = 5*g_lossSensitivity;
-      if (starting_value - min_val < difference) {
-        tracker->lost(true);
-      } else {
-        tracker->lost(false);
-      }
-    }
-   }
-  }
-
-  // If the intensity-based lost threshold setting is nonzero, check to see
-  // whether the pixel at the center of the tracker is significantly different
-  // from the pixels around the outside of the tracker.  We do this by looking at
-  // the mean and variance of the pixels along a box with sides that are
-  // 1.5 times the diameter of the tracker (3x the radius) and seeing if the
-  // squared difference between the center pixel and mean is greater than the
-  // variance scaled by the sensitivity.  If it is, there is a well-defined
-  // bead and so we're not lost.  (This routine does not check the corner
-  // pixels of the square surrounding, to avoid double-weighting them based
-  // on our loop strategy.)
-  if (g_intensityLossSensitivity > 0.0) {
-     int halfwidth = static_cast<int>(1.5 * tracker->xytracker()->get_radius());
-     int x = static_cast<int>(tracker->xytracker()->get_x());
-     int y = static_cast<int>(tracker->xytracker()->get_y());
-     int pixels = 0;
-     double val = 0;
-     double mean = 0;
-     double variance = 0;
-     int offset;
-     for (offset = -halfwidth+1; offset < halfwidth; offset++) {
-       if (l_image->read_pixel(x-offset, y-halfwidth, val, g_colorIndex)) {
-         mean += val;
-         variance += val*val;
-         pixels++;
-       }
-       if (l_image->read_pixel(x-offset, y+halfwidth, val, g_colorIndex)) {
-         mean += val;
-         variance += val*val;
-         pixels++;
-       }
-       if (l_image->read_pixel(x-halfwidth, y+offset, val, g_colorIndex)) {
-         mean += val;
-         variance += val*val;
-         pixels++;
-       }
-       if (l_image->read_pixel(x+halfwidth, y+offset, val, g_colorIndex)) {
-         mean += val;
-         variance += val*val;
-         pixels++;
-       }
-     }
-
-     // Compute the variance of all the points using the shortcut
-     // formula: var = (sum of squares of measures) - (sum of measurements)^2 / n.
-     // Then compute the mean.
-     if (pixels) {
-       variance = variance - mean*mean/pixels;
-       mean /= pixels;
-     }
-
-     // Compare to see if we're lost.  Check <= rather than < because in
-     // regions where the pixels clamp to 0 or max there is no difference on
-     // either side of the equation and we should be lost.
-     l_image->read_pixel(x, y, val, g_colorIndex);
-     if ((val - mean)*(val-mean) <= variance * g_intensityLossSensitivity) {
-       tracker->lost(true);
-     }
-  }
-
-  // If we have a non-zero threshold to check against the boundary of the
-  // image, check to see if we've wandered too close to it.
-  if (g_borderDeadZone > 0) {   
-      double x = tracker->xytracker()->get_x();
-      double y = tracker->xytracker()->get_y();
-      double zone = g_borderDeadZone;
-
-      // Check against the border.
-      if ( (x < (*g_minX) + zone) || (x > (*g_maxX) - zone) ||
-           (y < (*g_minY) + zone) || (y > (*g_maxY) - zone) ) {
-        tracker->lost(true);
-      }
-  }
-
-  // If we're set to hover when lost and we are lost, then go back to where we
-  // started.
-  if (tracker->lost() && (g_lostBehavior == LOST_HOVER)) {
-    tracker->xytracker()->set_location(last_pos[0], last_pos[1]);
-  }
-
-  // If we are optimizing in Z, then do it here.
-  if (g_opt_z) {
-    double  z = 0;
-    tracker->ztracker()->locate_close_fit_in_depth(*g_image, g_colorIndex, tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), z);
-    tracker->ztracker()->optimize(*g_image, g_colorIndex, tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), z);
-  }
-}
 
 // The logging on the VRPN connection is done by a separate thread so that
 // the network buffer won't get filled up while writing video data, causing
@@ -2124,708 +1693,113 @@ void logging_thread_function(void *)
   printf("Exiting VRPN logging thread\n");
 }
 
-// The tracking is now done by separate threads from the main program.  This function is
-// what is called for each of these threads.  Semaphores are used to communicate with
-// the main program thread and determine when each sub-thread will run.  This is basically
-// a big wrapper for the optimize_tracker() function, which is called by each thread on
-// an appropriate tracker on the current frame as needed.
-void tracking_thread_function(void *pvThreadData)
-{
-  struct ThreadData  *td = (struct ThreadData *)pvThreadData;
-  ThreadUserData *tud = static_cast<ThreadUserData *>(td->pvUD);
-
-  while (1) {
-    // Grab the semaphore for the thread data and then set the "ready" flag.
-    // This lets the application know that we're ready to do a tracking
-    // optimization.
-    td->ps->p();
-    tud->d_ready = true;
-    td->ps->v();
-
-    // Report that there is another free tracker using the global "number of active trackers"
-    // semaphore, which is used by the application to keep from having to
-    // busy-wait on the tracking threads to see when one is ready for a new task.
-    g_ready_tracker_semaphore->v();
-    
-    // Grab the run semaphore from the user data (which is accessed without
-    // grabbing the lock on the user data) and then run the associated tracking
-    // job.
-    tud->d_run_semaphore->p();
-    if (tud->d_tracker == NULL) {
-      fprintf(stderr,"tracking_thread_function(): Called with NULL tracker pointer!\n");
-      dirtyexit();
-    }
-    optimize_tracker(tud->d_tracker);
-  }
-}
-
-
-// Helper function for find_more_trackers.
-// Computes a local SMD measure (cross) at the location (x,y) with
-//  the specified radius.
-// XXX This now looks in the (blurred) image passed into the
-// find_more_trackers() function rather than in the global image.
-// This will reduce the localSMD value...
-double localSMD(const image_wrapper &img, int x, int y, int radius)
-{
-	double Ia, Ib;
-	double xSMD = 0;
-	int n = 0;
-	for (int lx = x - radius; lx < x + radius; ++lx)
-	{
-		img.read_pixel(lx, y, Ia, g_colorIndex);
-		img.read_pixel(lx + 1, y, Ib, g_colorIndex);
-		xSMD += fabs(Ia - Ib);
-		++n;
-	}
-	xSMD = xSMD / (double)n;
-
-	double ySMD = 0;
-	n = 0;
-	for (int ly = y - radius; ly < y + radius; ++ly)
-	{
-		img.read_pixel(x, ly, Ia, g_colorIndex);
-		img.read_pixel(x, ly + 1, Ib, g_colorIndex);
-		ySMD += fabs(Ia - Ib);
-		++n;
-	}
-	ySMD = ySMD / (double)n;
-
-	return (xSMD + ySMD);
-}
-
-
-// Helper function for the next routine; it fills in the region of the
-// image around the specified tracer with the specified value.  It fills
-// the image in to twice the specified radius, to keep spots from overlapping.
-void fill_around_tracker_with_value(double_image &im, spot_tracker_XY *t, double v)
-{
-  int i,j;
-  int r = 2 * t->get_radius();
-  int x = t->get_x();
-  int y = t->get_y();
-  for (i = -r; i <= r; i++) {
-    for (j = -r; j <= r; j++) {
-      if (i*i+j*j <= r*r) {
-        im.write_pixel_nocheck(x+i, y+j, v);
-      }
-    }
-  }
-}
-
-// Find the specified number of additional trackers, which should be placed
-// at the highest-response locations in the image that is not within one
-// tracker radius of an existing tracker or within one tracker radius of the
-// border.  Create new trackers at those locations.  Returns true if it was
-// able to find them, false if not (or error).
-
-bool find_more_trackers(const image_wrapper *img, unsigned how_many_more)
-{
-	// empty out our candidate vectors...
-	vertCandidates.clear();
-	horiCandidates.clear();
-
-        int i, radius;
-        int minx, maxx, miny, maxy;
-        img->read_range(minx, maxx, miny, maxy);
-
-        int x, y;
-
-        // first, we calculate horizontal and vertical SMDs on the global image
-	double SMD = 0;
-	double Ia, Ib;
-
-	double sum = 0, max = -1, min = -1;
-
-	// vertical SMDs
-	double* vertSMDs = new double[maxx - minx + 1];
-	for (x = minx; x <= maxx; ++x) {
-		SMD = 0;
-		// calcualte one SMD
-		for (y = miny + 1; y <= maxy; ++y)
-		{
-                        Ia = img->read_pixel_nocheck(x, y);
-                        Ib = img->read_pixel_nocheck(x, y-1);
-			SMD += fabs(Ia - Ib);
-		}
-		// normalize by dividing by the number of pairwise computations
-		SMD = SMD / (float)(maxy - miny);
-		vertSMDs[x] = SMD;
-
-		if (max == -1)
-			max = SMD;
-		if (min == -1)
-			min = SMD;
-		
-		if (SMD > max)
-			max = SMD;
-		if (SMD < min)
-			min = SMD;		
-
-		sum += SMD;
-	}
-
-	double vertAvg = sum / ((float)maxx - minx + 1);
-	//printf("min = %f, max = %f, vertAvg = %f\n", min, max, vertAvg);
-	double vertThresh = 0;
-	//printf("using a vertThresh = %f\n", vertThresh);
-
-	sum = 0;
-	max = -1;
-	min = -1;
-
-	// horizontal SMDs
-	double* horiSMDs = new double[maxy - miny + 1];
-	for (y = miny; y <= maxy; ++y)
-	{
-		SMD = 0;
-		// calcualte one SMD
-		for (x = minx + 1; x <= maxx; ++x)
-		{
-                        Ia = img->read_pixel_nocheck(x, y);
-                        Ib = img->read_pixel_nocheck(x-1, y);
-			SMD += fabs(Ia - Ib);
-		}
-		// normalize by dividing by the number of pairwise computations
-		SMD = SMD / (float)(maxx - minx);
-		horiSMDs[y] = SMD;
-
-		if (max == -1)
-			max = SMD;
-		if (min == -1)
-			min = SMD;
-		
-		if (SMD > max)
-			max = SMD;
-		if (SMD < min)
-			min = SMD;		
-
-		sum += SMD;
-	}
-
-	double horiAvg = sum / ((float)maxx - minx + 1);
-	//printf("min = %f, max = %f, horiAvg = %f\n", min, max, horiAvg);
-	double horiThresh = 0;
-	//printf("using a horiThresh = %f\n", horiThresh);
-
-	// now we need to pick out the local maxes in our SMDs as candidate bead positions
-
-	int windowRadius = g_slidingWindowRadius;
-	double curMax = 0;
-
-	// pick out local maxes on our vertical SMDs
-	for (x = minx + windowRadius; x <= maxx - windowRadius; ++x) {
-		curMax = 0;
-		// check for the max SMD value within our window size that's > thresh
-		for (i = x - windowRadius; i < x + windowRadius; ++i) {
-			if (vertSMDs[i] > curMax && vertSMDs[i] > vertThresh) {
-				curMax = vertSMDs[i];
-			}
-		}
-		// if we were the max SMD value in our window, then we're a candidate!
-		if (curMax == vertSMDs[x] && curMax != 0) {
-			vertCandidates.push_back(x);
-			x = x + (windowRadius - 1);
-		}
-	}
-
-	// pick out local maxes on our horizontal SMDs
-	for (y = miny + windowRadius; y <= maxy - windowRadius; ++y) {
-		curMax = 0;
-		// check for the max SMD value within our window size that's > thresh
-		for (i = y - windowRadius; i < y + windowRadius; ++i) {
-			if (horiSMDs[i] > curMax && horiSMDs[i] > horiThresh) {
-				curMax = horiSMDs[i];
-			}
-		}
-		// if we were the max SMD value in our window, then we're a candidate!
-		if (curMax == horiSMDs[y] && curMax != 0) {
-			horiCandidates.push_back(y);
-			y = y + (windowRadius - 1);
-		}
-	}
-
-	// Calculate all candidate spot locations (intersections of horizontal and
-	//  vertical candidate scan lines).
-	vector<double> candidateSpotsX;
-	vector<double> candidateSpotsY;
-	vector<double> candidateSpotsSMD;
-
-	double tooClose = 5;
-	double curX, curY;
-	bool safe = false;
-	//Spot_Information* si;
-	list <Spot_Information *>::iterator loop;
-	int cx, cy;
-	spot_tracker_XY* curTracker;
-	for (y = 0; y < static_cast<int>(horiCandidates.size()); ++y) {
-		cy = horiCandidates[y];
-		for (x = 0; x < static_cast<int>(vertCandidates.size()); ++x) {
-			cx = vertCandidates[x];
-			safe = true;
-
-			// check to make sure we don't already have a tracker too close
-			for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++)  {
-			//for each (Spot_Information* si in g_trackers)
-			//{
-				//si = (*loop);
-				curTracker = (*loop)->xytracker();
-				curX = curTracker->get_x();
-				curY = curTracker->get_y();
-				if (cx >= curX - tooClose && cx <= curX + tooClose &&
-					cy >= curY - tooClose && cy <= curY + tooClose ) {
-				  safe = false;
-				}
-			}
-			if (safe) {
-				candidateSpotsX.push_back(cx);
-				candidateSpotsY.push_back(cy);
-			}
-		}
-	}
-
-	//printf("%i valid candidateSpots to check\n", candidateSpotsX.size());
-
-	// now do local SMDs at candidate spots to determine if they're actually spots.
-	double maxSMD = 0;
-	double minSMD = 1e50;
-	double avgSMD = 0;
-	SMD = 0;
-	radius = g_Radius;
-	for (i = 0; i < static_cast<int>(candidateSpotsX.size()); ++i) {
-		x = candidateSpotsX[i];
-		y = candidateSpotsY[i];
-		SMD = localSMD(*img, x, y, radius);
-		avgSMD += SMD;
-                if (SMD > maxSMD) {
-			maxSMD = SMD;
-                }
-                if (SMD < minSMD) {
-			minSMD = SMD;
-                }
-		candidateSpotsSMD.push_back(SMD);
-	}
-	avgSMD /= candidateSpotsX.size();
-
-	//printf("minSMD = %f, maxSMD = %f, avgSMD = %f\n", minSMD, maxSMD, avgSMD);
-	double SMDthresh = avgSMD * g_candidateSpotThreshold;
-
-	list<Spot_Information*> potentialTrackers;
-
-	int newTrackers = 0;
-	for (i = 0; i < static_cast<int>(candidateSpotsSMD.size()); ++i) {
-		if (candidateSpotsSMD[i] > SMDthresh) {
-			// add a new potential tracker!
-			++newTrackers;
-
-			// last argument = true tells Spot_Information that this isn't an official, logged tracker
-			potentialTrackers.push_back(new Spot_Information(create_appropriate_xytracker(candidateSpotsX[i],candidateSpotsY[i],g_Radius),create_appropriate_ztracker(), true));
-
-		}
-	}
-	//printf("%i potential new trackers added!\n", newTrackers);
-
-	int numlost = 0;
-	int numnotlost = 0;
-
-	// check to see which candidate spots aren't immediately lost
-	for (loop = potentialTrackers.begin(); loop != potentialTrackers.end(); loop++) {
-		// if our candidate tracker isn't lost, then we add it to our list of real trackers
-		optimize_tracker((*loop));
-		if (!(*loop)->lost()) {
-			++numnotlost;
-                        g_trackers.push_back(new Spot_Information(create_appropriate_xytracker((*loop)->xytracker()->get_x(),(*loop)->xytracker()->get_y(),g_Radius),create_appropriate_ztracker()));
-                        g_active_tracker = g_trackers.back();
-                        if (g_active_tracker->ztracker()) { g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
-                } else {
-			++numlost;
-                }
-	}
-
-	//printf("%i candidates were lost after optimizing\n", numlost);
-	//printf("%i candidates were not lost.\n", numnotlost);
-	
-	// clean up candidate spots memory
-	potentialTrackers.remove_if( deleteAll );
-
-	// clear up our SMD memory in reverse order from allocation to make it
-        // easier for the memory manager
-	delete [] horiSMDs;
-	delete [] vertSMDs;
-
-        return true;
-}
-
-//----------------------------------------------------------------------------
-// Class to deal with storing a list of locations on the image
-
-class Flood_Position {
-public:
-  Flood_Position(int x, int y) { d_x = x; d_y = y; };
-  int x(void) const { return d_x; };
-  int y(void) const { return d_y; };
-  void set_x(int x) { d_x = x; };
-  void set_y(int y) { d_y = y; };
-
-protected:
-  int   d_x;
-  int   d_y;
-};
-
-//--------------------------------------------------------------------------
-// Helper routine that fills all pixels that are connected to
-// the indicated pixel and which have a value of -1 with the new value that
-// is specified.  Recursion failed due to stack overflow when
-// the whole image was one region, so the new algorithm keeps a list of
-// "border positions" and repeatedly goes through that list until it is
-// empty.
-
-static void flood_connected_component(double_image *img, int x, int y, double value)
-{
-  int minx, maxx, miny, maxy;
-  img->read_range(minx, maxx, miny, maxy);
-
-  //------------------------------------------------------------
-  // Fill in the first pixel as requested, and add it to the
-  // boundary list.
-  list<Flood_Position>  boundary;
-  img->write_pixel_nocheck(x,y, value);
-  boundary.push_front(Flood_Position(x,y));
-
-  //------------------------------------------------------------
-  // Go looking for ways to expand the boundary so long as the
-  // boundary is not empty.  Once each boundary pixel has been
-  // completely handled, delete it from the boundary list.  
-  while (!boundary.empty()) {
-    list<Flood_Position>::iterator  i;
-
-    // We add new boundary pixels to the beginning of the list so that
-    // we won't see them while traversing the list: each time through,
-    // we only consider the positions that were on the boundary when
-    // we started through that time.
-    i = boundary.begin();
-    while (i != boundary.end()) {
-
-      // Move to the location of the pixel and check around it.
-      x = i->x();
-      y = i->y();
-
-      // If any of the four neighbors are valid new boundary elements,
-      // mark them and insert them into the boundary list.
-      if ( x-1 >= minx ) {
-        if (img->read_pixel_nocheck(x-1,y) == -1) {
-          img->write_pixel_nocheck(x-1,y, value);
-          boundary.push_front(Flood_Position(x-1,y));
-        }
-      }
-      if ( x+1 <= maxx ) {
-        if (img->read_pixel_nocheck(x+1,y) == -1) {
-          img->write_pixel_nocheck(x+1,y, value);
-          boundary.push_front(Flood_Position(x+1,y));
-        }
-      }
-      if ( y-1 >= miny ) {
-        if (img->read_pixel_nocheck(x,y-1) == -1) {
-          img->write_pixel_nocheck(x,y-1, value);
-          boundary.push_front(Flood_Position(x,y-1));
-        }
-      }
-      if ( y+1 <= maxy ) {
-        if (img->read_pixel_nocheck(x,y+1) == -1) {
-          img->write_pixel_nocheck(x,y+1, value);
-          boundary.push_front(Flood_Position(x,y+1));
-        }
-      }
-      
-      // Get rid of this entry, stepping to the next one before doing so.
-      list<Flood_Position>::iterator j = i;
-      ++i;
-      boundary.erase(j);
-    }
-  }
-}
-
-
-// Find the specified number of additional trackers, which should be placed
-// at the highest-response fluorescenct locations in the image that are not
-// within one tracker radius of an existing tracker or within one tracker radius of the
-// border.  Create new trackers at those locations.  Returns true if it was
-// able to find them, false if not (or error).  It may in fact locate more
-// trackers than requested.  It may also locate fewer.
-bool find_more_fluorescent_trackers(const image_wrapper *img, unsigned how_many_more)
-{
-  // make sure we only try to auto-find once per new frame of video
-  if (!g_gotNewFluorescentFrame) {
-    return true;
-  } else {
-    g_gotNewFluorescentFrame = false;
-  }
-
-  //printf("dbg: Looking for %d fluorescent beads.\n", how_many_more);
-
-  // Find out how large the image is.
-  // Ignore pixels that are in the dead zone around the border when doing
-  // this (this lets that control double as a way to remove bad/zero
-  // pixels in the border of the image).
-
-  int minx, maxx, miny, maxy;
-  img->read_range(minx, maxx, miny, maxy);
-  minx += static_cast<int>(g_borderDeadZone);
-  miny += static_cast<int>(g_borderDeadZone);
-  maxx -= static_cast<int>(g_borderDeadZone);
-  maxy -= static_cast<int>(g_borderDeadZone);
-
-  // first, find the max and min pixel value and scale our threshold.
-  int x, y;
-  double maxi = 0, mini = 1e50;
-  double curi;
-  for (y = miny; y <= maxy; ++y) {
-    for (x = minx; x <= maxx; ++x) {
-      curi = img->read_pixel_nocheck(x, y);
-      if (curi > maxi) { maxi = curi; }
-      if (curi < mini) { mini = curi; }
-    }
-  }
-  double threshold = mini + (maxi-mini)*g_fluorescentSpotThreshold;
-
-  // Make a threshold image that has 0 everywhere our original image was
-  // below threshold and -1 everywhere it was at or above threshold.  The
-  // -1 value means "no label yet selected".
-  double_image *threshold_image = new double_image(minx, maxx, miny, maxy);
-  if (threshold_image == NULL) {
-    fprintf(stderr,"find_more_fluorescent_trackers(): Out of memory\n");
-    return false;
-  }
-  for (y = miny; y <= maxy; ++y) {
-    for (x = minx; x <= maxx; ++x) {
-      if (img->read_pixel_nocheck(x,y) >= threshold) {
-        threshold_image->write_pixel_nocheck(x, y, -1.0);
-      } else {
-        threshold_image->write_pixel_nocheck(x, y, 0.0);
-      }
-    }
-  }
-
-  // Go through the threshold image and label each component with a number
-  // greater than zero (starting with 1).  This replaces the "-1" values from
-  // above along the way.  This leaves us with a set of labeled components
-  // embedded in the image.
-  int index = 0;
-  for (x =  minx; x <= maxx; x++) {
-    for (y = miny; y <= maxy; y++) {
-      if (threshold_image->read_pixel_nocheck(x,y) == -1) {
-        index++;
-        flood_connected_component(threshold_image, x,y, index);
-      }
-    }
-  }
-  //printf("dbg: Found %d components.\n", index);
-
-  // If we have too many components, then only use some of them.
-  // This keep the program from filling up all of memory and crashing.
-  // XXX This can still be very slow to run for certain threshold
-  // settings on certain files.  It also crashes depending on how much
-  // memory is left (which depends on the image size opened).
-  if (index > g_fluorescentMaxRegions) {
-	  fprintf(stderr, "Warning:find_more_fluorescent_trackers() found %d components, using %d\n",
-		  index, static_cast<int>(static_cast<double>(g_fluorescentMaxRegions)));
-	  index = static_cast<int>(static_cast<double>(g_fluorescentMaxRegions));
-  }
-
-  // Compute the center of mass of each connected component.  If we do not have a
-  // tracker already too close to this center of mass, create a tracker there
-  // and see if it is immediately lost.  If not, then we add it to the list of
-  // trackers.
-
-  list <Spot_Information *>::iterator loop;
-  double tooClose = g_trackerDeadZone;
-
-  int comp;
-  for (comp = 1; comp <= index; comp++) {
-
-    // Compute the center of mass for this component.  All components exist
-    // and have at least one pixel in them.
-    double cx = 0, cy = 0;
-    unsigned count = 0;
-    for (x = minx; x <= maxx; x++) {
-      for (y = miny; y <= maxy; y++) {
-        if (threshold_image->read_pixel_nocheck(x,y) == comp) {
-          count++;
-          cx += x;
-          cy += y;
-        }
-      }
-    }
-    cx /= count;
-    cy /= count;
-    bool safe = true;
-
-    // check to make sure we don't already have a tracker too close.
-    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++)  {
-      double curX, curY;  
-      spot_tracker_XY *curTracker = (*loop)->xytracker();
-      curX = curTracker->get_x();
-      curY = curTracker->get_y();
-      if ( (cx >= curX - tooClose) && (cx <= curX + tooClose) &&
-          (cy >= curY - tooClose) && (cy <= curY + tooClose) ) {
-	//printf("dbg: Tracker too close to existing one\n");
-        safe = false;
-      }
-    }
-    if (safe) {
-      spot_tracker_XY *xy = create_appropriate_xytracker(cx,cy,g_Radius);
-      if (xy == NULL) {
-        fprintf(stderr,"find_more_fluorescent_trackers(): Can't make XY tracker\n");
-        break;
-      }
-      spot_tracker_Z *z = create_appropriate_ztracker();
-      Spot_Information *si = new Spot_Information(xy,z);
-      if (si == NULL) {
-        fprintf(stderr,"find_more_fluorescent_trackers(): Can't make Spot Information\n");
-        break;
-      }
-      optimize_tracker(si);
-      if (si->lost()) {
-        // Deleting the SpotInformation also deletes its trackers.
-        delete si;
-      } else {
-        g_trackers.push_back(si);
-        g_active_tracker = g_trackers.back();
-        if (g_active_tracker->ztracker()) {
-          g_active_tracker->ztracker()->set_depth_accuracy(0.25);
-        }
-      }    
-    }
-  }
-
-  //printf("dbg: After finding\n");
-
-  // Clean up our temporary images in reverse order to make it easier for the
-  // memory allocator.
-  delete threshold_image;
-
-  return true;
-}
-
 void optimize_all_trackers(void)
 {
-  list<Spot_Information *>::iterator  loop;
-
-  // Optimize all trackers, if we have trackers.
-  if (g_opt && g_active_tracker) {
-
-    int kymocount = 0;
-    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-
-      // If we're single-threaded, then call the tracker optimization loop
-      // directly.  If we're multi-threaded, then wait for a ready tracking
-      // thread and use it to do the tracking.
-      if (g_tracking_threads.size() == 0) {
-        optimize_tracker(*loop);
-      } else {
-        // Wait until at least one tracker has entered the ready state
-        // and indicated this using the active tracking semaphore.
-        g_ready_tracker_semaphore->p();
-
-        // Find a ready tracker (there may be more than one, just pick the
-        // first).
-        unsigned i;
-        for (i = 0; i < g_tracking_threads.size(); i++) {
-          if (g_tracking_threads[i]->d_thread_user_data->d_ready) {
-            break;
-          }
-        }
-        if (i >= g_tracking_threads.size()) {
-          fprintf(stderr,"The active tracking semaphore indicated a free tracker but none found in list\n");
-          exit(-1);
-        }
-
-        // Fill in the tracker pointer in the user data and then use the run
-        // semaphore to cause the tracking thread to run.  Tell ourselves that
-        // the tracker is busy, so we don't try to re-use it until it is done.
-        g_tracking_threads[i]->d_thread_user_data->d_tracker = *loop;
-        g_tracking_threads[i]->d_thread_user_data->d_ready = false;
-        g_tracking_threads[i]->d_thread_user_data->d_run_semaphore->v();
-      }
-
-      // If we are running a kymograph, then we don't optimize any trackers
-      // past the first two because they are only there as markers in the
-      // image for cell boundaries.
-      if (g_kymograph) {
-	if (++kymocount == 2) {
-	  break;
-	}
-      }
+  if (g_opt) {
+    // Figure out how many trackers to optimize.
+    int max_to_opt = -1;  // Optimize all trackers, unless we have a kymograph
+    if (g_kymograph) {
+      max_to_opt = 1;
     }
 
-    // If we're using multiple tracking threads, then we need to wait until all
-    // threads have finished tracking before going on, to avoid getting ahead of
-    // ourselves while one or more of them are finishing.  To avoid busy-waiting,
-    // we do this by grabbing as many extra entries in the active-tracking semaphore
-    // as there are threads and then freeing them up once we have them all.
-    // If we're not using threads, then there are no entries in the g_tracking_threads vector.
+    // Perform predictions, if we are doing them.
+    if ( g_predict && (g_last_optimized_frame_number != g_frame_number) ) {
+      g_trackers.take_prediction_step(max_to_opt);
+    }
+
+    // Perform local image-match search, if we are doing this.
+    if ( g_last_image && ((double)(g_search_radius) > 0) && (g_last_optimized_frame_number != g_frame_number) ) {
+      g_trackers.perform_local_image_search(max_to_opt, g_search_radius, *g_last_image, *g_image);
+    }
+
+    // Optimize.
+    g_trackers.optimize_based_on(*g_image, max_to_opt, g_colorIndex, g_kernel_type == KERNEL_FIONA, g_parabolafit != 0);
+
+    // Mark all beads as not being lost.
+    g_trackers.mark_all_beads_not_lost();
+
+    // Determine which image we should be looking at for seeing if a tracker
+    // is lost.  If we have a blurred image, we look at that one.  Otherwise,
+    // we look at the global image.
+    image_wrapper *l_image = g_image;
+    if (g_blurred_image) {
+      l_image = g_blurred_image;
+    }
+
+    // Check to see if any trackers are lost due to brightfield criteria, using the
+    // appropriate lost image
+    if (g_lossSensitivity > 0.0) {
+      KERNEL_TYPE t;
+      switch (g_kernel_type) {
+        case KERNEL_DISK: t = KT_DISK; break;
+        case KERNEL_CONE: t = KT_CONE; break;
+        case KERNEL_SYMMETRIC: t = KT_SYMMETRIC; break;
+        case KERNEL_FIONA: t = KT_FIONA; break;
+        default: fprintf(stderr,"Unrecognized kernel type: %d\n", static_cast<int>(g_kernel_type));
+                 dirtyexit();
+      }
+      g_trackers.mark_lost_brightfield_beads_in(*l_image, g_lossSensitivity, t);
+    }
+
+    // Check to see if any trackers are lost due to intensity criteria.
+    if (g_intensityLossSensitivity > 0.0) {
+      g_trackers.mark_lost_fluorescent_beads_in(*l_image, g_intensityLossSensitivity);
+    }
+
+    // If we have a non-zero threshold to check against the boundary of the
+    // image, check to see if we've wandered too close to it.
+    if (g_borderDeadZone > 0) {
+      g_trackers.min_border_distance(g_borderDeadZone);
+      g_trackers.mark_edge_beads_in(*g_image);
+    }
+
+    // Check for beads getting too close to each other.
+    if (g_trackerDeadZone > 0) {
+      g_trackers.min_bead_separation(g_trackerDeadZone);
+      g_trackers.mark_colliding_beads_in(*g_image);
+    }
+
+    // If hovering, move lost beads back to their previous position.
     unsigned i;
-    for (i = 0; i < g_tracking_threads.size(); i++) {
-      g_ready_tracker_semaphore->p();
-    }
-    for (i = 0; i < g_tracking_threads.size(); i++) {
-      g_ready_tracker_semaphore->v();
-    }
-
-    // Now that we are back in a single thread, run through the list of trackers
-    // and see if any of them are lost.  If so, what happens depends on whether
-    // the auto-deletion of lost trackers is enabled.  If so, then delete each
-    // lost tracker.  If not, then point at one of the lost trackers and
-    // set the global lost-tracker flag;
-
-    // We do additional lost-tracker checking here, marking trackers that are too near
-    // other trackers.  We do this here to avoid race conditions that would happen in
-    // the threads as each tracker moved itself.  IMPORTANT: We delete the larger-
-    // numbered tracker if we find two that overlap, to make the longest possible
-    // tracks from earlier trackers.
-    if (g_trackerDeadZone > 0) {   
-      for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-        double x = (*loop)->xytracker()->get_x();
-        double y = (*loop)->xytracker()->get_y();
-
-        list<Spot_Information *>::iterator loop2;
-        double zone2 = g_trackerDeadZone * g_trackerDeadZone;
-        for (loop2 = g_trackers.begin(); loop2 != loop; loop2++) {
-          double x2 = (*loop2)->xytracker()->get_x();
-          double y2 = (*loop2)->xytracker()->get_y();
-          double dist2 = ( (x-x2)*(x-x2) + (y-y2)*(y-y2) );
-          if (dist2 < zone2) {
-            (*loop)->lost(true);
-          }
-        }
+    for (i = 0; i < g_trackers.tracker_count(); i++) {
+      Spot_Information *tracker = g_trackers.tracker(i);
+      if (tracker->lost()) {
+        double last_pos[2];
+        tracker->get_last_position(last_pos);
+        tracker->xytracker()->set_location(last_pos[0], last_pos[1]);
       }
     }
 
-    // If this tracker is lost, and we have the "autodelete lost tracker" feature
-    // turned on, then delete this tracker and say that we are no longer lost.
-    loop = g_trackers.begin();
-    while (loop != g_trackers.end()) {
-      if ((*loop)->lost()) {
+    if (g_opt_z) {
+      g_trackers.optimize_z_based_on(*g_image, max_to_opt, g_colorIndex);
+    }
+
+    // If a tracker is lost, and we have the "autodelete lost tracker" feature
+    // turned on, then delete the tracker.  If not autodeleting, then say that
+    // we are lost.
+    for (i = 0; i < g_trackers.tracker_count(); /*Increment happens below*/) {
+      Spot_Information *tracker = g_trackers.tracker(i);
+      if (tracker->lost()) {
         // Set me to be the active tracker.
-        g_active_tracker = *loop;
+        g_trackers.set_active_tracker_index(i);
         if (g_lostBehavior == LOST_DELETE) {
           // Delete this tracker from the list (it was made active above)
-          delete_active_xytracker();
+          g_trackers.delete_active_tracker();
 
           // Set the loop back to the beginning of the list of trackers
           // so we don't miss a lost one by incrementing the loop counter.
-          loop = g_trackers.begin();
+          i = 0;
 
         } else {
           // Make me the active tracker (above) and set the global "lost tracker"
           // flag.
           // Then go to the next tracker in the list.
           g_tracker_is_lost = true;
-          loop++;
+          i++;
         }
       } else {
-        // Not lost, go to the next tracker in the list.
-        loop++;
+        // Not lost, go to the next tracker.
+        i++;
       }
     }
 
@@ -2937,7 +1911,7 @@ void myIdleFunc(void)
   // bounding boxes.  Do not do this if the tracker is lost, mainly
   // because it causes the program to exit when a wanted pixel is not
   // found but also because we don't want to follow the lost tracker.
-  if (g_opt && g_small_area && g_active_tracker && !g_tracker_is_lost) {
+  if (g_opt && g_small_area && g_trackers.active_tracker() && !g_tracker_is_lost) {
     // Initialize it with values from the active tracker, which are stored
     // in the global variables.
     (*g_minX) = g_X - 4*g_Radius;
@@ -2948,14 +1922,16 @@ void myIdleFunc(void)
     // Check them against all of the open trackers and push them to bound all
     // of them.
 
-    list<Spot_Information *>::iterator  loop;
-    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-      double x = (*loop)->xytracker()->get_x();
-      double y = ((*loop)->xytracker()->get_y());
-      double fourRad = 4 * (*loop)->xytracker()->get_radius();
+    unsigned loopi;
+    for (loopi = 0; loopi < g_trackers.tracker_count(); loopi++) {
+      Spot_Information *tracker = g_trackers.tracker(loopi);
+
+      double x = tracker->xytracker()->get_x();
+      double y = (tracker->xytracker()->get_y());
+      double fourRad = 4 * tracker->xytracker()->get_radius();
       if (g_rod) {
 	// Horrible hack to make this work with rod type
-	fourRad = 2 * static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_length();
+	fourRad = 2 * static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_length();
       }
       if (*g_minX > x - fourRad) { *g_minX = x - fourRad; }
       if (*g_maxX < x + fourRad) { *g_maxX = x + fourRad; }
@@ -3093,13 +2069,13 @@ void myIdleFunc(void)
   // We're ready to display an image.
   g_ready_to_display = true;
 
-  if (g_active_tracker) { 
-    g_active_tracker->xytracker()->set_radius(g_Radius);
+  if (g_trackers.active_tracker()) { 
+    g_trackers.active_tracker()->xytracker()->set_radius(g_Radius);
     if (g_rod) {
       // Horrible hack to enable adjustment of a parameter that only exists on
       // the rod tracker
-      static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->set_length(g_length);
-      static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->set_orientation(g_orientation);
+      static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->set_length(g_length);
+      static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->set_orientation(g_orientation);
     }
   }
 
@@ -3169,19 +2145,31 @@ void myIdleFunc(void)
   // Keep track of whether we found any more beads.  If so, we need to re-run
   // optimization so that all the new beads find their final place.
   bool found_more_beads = false;
-  if (g_findThisManyBeads > g_trackers.size()) {
+  if (g_findThisManyBeads > g_trackers.tracker_count()) {
     // make sure we only try to auto-find once per new frame of video
     if (g_gotNewFrame) {
-        if (find_more_trackers(laf_image, g_findThisManyBeads - g_trackers.size())) {
+        if (g_trackers.find_more_brightfield_beads_in(*laf_image,
+            g_slidingWindowRadius,
+            g_candidateSpotThreshold,
+            g_findThisManyBeads - g_trackers.tracker_count(),
+            vertCandidates, horiCandidates)) {
 	    found_more_beads = true;
         }
         g_gotNewFrame = false;
     }
   }
-  if (g_findThisManyFluorescentBeads > g_trackers.size()) {
-    if (find_more_fluorescent_trackers(laf_image, g_findThisManyFluorescentBeads - g_trackers.size())) {
-	found_more_beads = true;
+  if (g_findThisManyFluorescentBeads > g_trackers.tracker_count()) {
+    if (g_gotNewFluorescentFrame) {
+      if (g_trackers.autofind_fluorescent_beads_in(*laf_image,
+              g_fluorescentSpotThreshold,
+              g_intensityLossSensitivity,
+              g_findThisManyFluorescentBeads - g_trackers.tracker_count())) {
+	  found_more_beads = true;
+      }
+      g_gotNewFluorescentFrame = false;
     }
+    // Delete responses that are in the dead zone around the image.
+    g_trackers.delete_edge_beads_in(*laf_image);
   }
 
   // If we found any new beads, then we need to optimize them.
@@ -3196,15 +2184,15 @@ void myIdleFunc(void)
     // Make sure we have at least two trackers, which will define the
     // frame of reference for the kymograph.  Also make sure that we are
     // not out of display room in the kymograph.
-    if ( (g_trackers.size() >= 2) && (g_kymograph_filled+1 < g_kymograph_height) ) {
+    if ( (g_trackers.tracker_count() >= 2) && (g_kymograph_filled+1 < g_kymograph_height) ) {
 
       // Find the two tracked points to use.
-      list<Spot_Information *>::iterator  loop = g_trackers.begin();
-      double x0 = (*loop)->xytracker()->get_x();
-      double y0 = (*loop)->xytracker()->get_y();
-      loop++;
-      double x1 = (*loop)->xytracker()->get_x();
-      double y1 = (*loop)->xytracker()->get_y();
+      Spot_Information  *tracker = g_trackers.tracker(0);
+      double x0 = tracker->xytracker()->get_x();
+      double y0 = tracker->xytracker()->get_y();
+      tracker = g_trackers.tracker(1);
+      double x1 = tracker->xytracker()->get_x();
+      double y1 = tracker->xytracker()->get_y();
 
       // Find the center of the two (origin of kymograph coordinates) and the unit vector (dx,dy)
       // going towards the second from the first.
@@ -3259,14 +2247,14 @@ void myIdleFunc(void)
       // Figure out the coordinates of the kymograph center in the coordinate system
       // of the cell, where the third tracker (#2) is the posterior end and the fourth
       // is the anterior end.
-      if (g_trackers.size() >= 4) {
+      if (g_trackers.tracker_count() >= 4) {
 	// Find the two tracked points to use.
-	loop++; // Skip to the third point.
-	double cx0 = (*loop)->xytracker()->get_x();
-	double cy0 = (*loop)->xytracker()->get_y();
-	loop++;
-	double cx1 = (*loop)->xytracker()->get_x();
-	double cy1 = (*loop)->xytracker()->get_y();
+        tracker = g_trackers.tracker(2);
+	double cx0 = tracker->xytracker()->get_x();
+	double cy0 = tracker->xytracker()->get_y();
+        tracker = g_trackers.tracker(3);
+	double cx1 = tracker->xytracker()->get_x();
+	double cy1 = tracker->xytracker()->get_y();
 
 	// Find the center of the two (origin of cell coordinates) and the unit vector (dx,dy)
 	// going towards the second from the first.
@@ -3290,18 +2278,18 @@ void myIdleFunc(void)
 
   //------------------------------------------------------------
   // Make the GUI track the result for the active tracker
-  if (g_active_tracker) {
-    g_X = (float)g_active_tracker->xytracker()->get_x();
-    g_Y = (float)flip_y(g_active_tracker->xytracker()->get_y());
-    if (g_active_tracker->ztracker()) {
-      g_Z = g_active_tracker->ztracker()->get_z();
+  if (g_trackers.active_tracker()) {
+    g_X = (float)g_trackers.active_tracker()->xytracker()->get_x();
+    g_Y = (float)flip_y(g_trackers.active_tracker()->xytracker()->get_y());
+    if (g_trackers.active_tracker()->ztracker()) {
+      g_Z = g_trackers.active_tracker()->ztracker()->get_z();
     }
-    g_Radius = (float)g_active_tracker->xytracker()->get_radius();
-    g_Error = (float)g_active_tracker->xytracker()->get_fitness();
+    g_Radius = (float)g_trackers.active_tracker()->xytracker()->get_radius();
+    g_Error = (float)g_trackers.active_tracker()->xytracker()->get_fitness();
     if (g_rod) {
       // Horrible hack to make this work with rod type
-      g_orientation = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_orientation();
-      g_length = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_length();
+      g_orientation = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
+      g_length = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_length();
     }
   }
 
@@ -3390,38 +2378,40 @@ void  activate_and_drag_nearest_tracker_to(double x, double y)
   // Looks for the minimum squared distance and the tracker that is
   // there.
   double  minDist2 = 1e100;
-  Spot_Information *minTracker = NULL;
+  int minTracker = -1;
   double  dist2;
-  list<Spot_Information *>::iterator loop;
 
-  for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-    dist2 = (x - (*loop)->xytracker()->get_x())*(x - (*loop)->xytracker()->get_x()) +
-      (y - (*loop)->xytracker()->get_y())*(y - (*loop)->xytracker()->get_y());
+  unsigned i;
+  for (i = 0; i < g_trackers.tracker_count(); i++) {
+    Spot_Information *tracker = g_trackers.tracker(i);
+    dist2 = (x - tracker->xytracker()->get_x())*(x - tracker->xytracker()->get_x()) +
+      (y - tracker->xytracker()->get_y())*(y - tracker->xytracker()->get_y());
     if (dist2 < minDist2) {
       minDist2 = dist2;
-      minTracker = *loop;
+      minTracker = i;
     }
   }
-  if (minTracker == NULL) {
-    fprintf(stderr, "No tracker to pick out of %d\n", g_trackers.size());
+  if (minTracker < 0) {
+    fprintf(stderr, "No tracker to pick out of %d\n", g_trackers.tracker_count());
   } else {
-    g_active_tracker = minTracker;
-    g_active_tracker->xytracker()->set_location(x, y);
-    g_X = g_active_tracker->xytracker()->get_x();
-    g_Y = flip_y(g_active_tracker->xytracker()->get_y());
-    if (g_active_tracker->ztracker()) {
-      g_Z = g_active_tracker->ztracker()->get_z();
+    g_trackers.set_active_tracker_index(minTracker);
+    g_trackers.active_tracker()->xytracker()->set_location(x, y);
+    g_X = g_trackers.active_tracker()->xytracker()->get_x();
+    g_Y = flip_y(g_trackers.active_tracker()->xytracker()->get_y());
+    if (g_trackers.active_tracker()->ztracker()) {
+      g_Z = g_trackers.active_tracker()->ztracker()->get_z();
     }
-    // Set the velocity and acceleration estimates to zero
-    double zeroes[2] = { 0, 0 };
-    minTracker->set_velocity(zeroes);
-    minTracker->set_acceleration(zeroes);
+    // Set the initial last position to the current position, for prediction
+    double last_pos[2];
+    last_pos[0] = g_X;
+    last_pos[1] = g_Y;
+    g_trackers.tracker(minTracker)->set_last_position(last_pos);
 
-    g_Radius = g_active_tracker->xytracker()->get_radius();
+    g_Radius = g_trackers.active_tracker()->xytracker()->get_radius();
     if (g_rod) {
       // Horrible hack to make this work with rod type
-      g_orientation = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_orientation();
-      g_length = static_cast<rod3_spot_tracker_interp*>(g_active_tracker->xytracker())->get_length();
+      g_orientation = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
+      g_length = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_length();
     }
   }
 }
@@ -3437,7 +2427,7 @@ void keyboardCallbackForGLUT(unsigned char key, int x, int y)
 
   case 8:   // Backspace
   case 127: // Delete on Windows
-    delete_active_xytracker();
+    g_trackers.delete_active_tracker();
   }
 }
 
@@ -3468,16 +2458,14 @@ void mouseCallbackForGLUT(int button, int state, int raw_x, int raw_y)
       if (state == GLUT_DOWN) {
 
 	g_whichDragAction = 1;
-	g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(x,y,g_Radius),create_appropriate_ztracker()));
-	g_active_tracker = g_trackers.back();
-	if (g_active_tracker->ztracker()) { g_active_tracker->ztracker()->set_depth_accuracy(0.25); }
+	g_trackers.add_tracker(x,y,g_Radius);
 
 	// Move the pointer to where the user clicked.
 	// Invert Y to match the coordinate systems.
 	g_X = x;
 	g_Y = flip_y(y);
-	if (g_active_tracker->ztracker()) {
-	  g_Z = g_active_tracker->ztracker()->get_z();
+	if (g_trackers.active_tracker()->ztracker()) {
+	  g_Z = g_trackers.active_tracker()->ztracker()->get_z();
 	}
       } else {
 	// Nothing to do at release.
@@ -3533,7 +2521,7 @@ void motionCallbackForGLUT(int raw_x, int raw_y)
       // Set the radius based on how far the user has moved from click
       double radius = sqrt( static_cast<double>( (x - pressX) * (x - pressX) + (y - pressY) * (y - pressY) ) );
       if (radius >= 3) {
-	g_active_tracker->xytracker()->set_radius(radius);
+	g_trackers.active_tracker()->xytracker()->set_radius(radius);
 	g_Radius = radius;
       }
     }
@@ -3627,11 +2615,11 @@ void  logfilename_changed(char *newvalue, void *)
   // then these offsets are 0,0.  If we are, then they are the current position of
   // the active tracker (if it exists).
   g_log_offset_x = g_log_offset_y = g_log_offset_z = 0;
-  if (g_log_relative && g_active_tracker) {
-    g_log_offset_x = g_active_tracker->xytracker()->get_x();
-    g_log_offset_y = flip_y(g_active_tracker->xytracker()->get_y());
-    if (g_active_tracker->ztracker()) {
-      g_log_offset_z = g_active_tracker->ztracker()->get_z();
+  if (g_log_relative && g_trackers.active_tracker()) {
+    g_log_offset_x = g_trackers.active_tracker()->xytracker()->get_x();
+    g_log_offset_y = flip_y(g_trackers.active_tracker()->xytracker()->get_y());
+    if (g_trackers.active_tracker()->ztracker()) {
+      g_log_offset_z = g_trackers.active_tracker()->ztracker()->get_z();
     }
   }
 }
@@ -3658,42 +2646,6 @@ void  reset_background_image(int newvalue, void *)
   if (g_mean_image) {
     delete g_mean_image;
     g_mean_image = NULL;
-  }
-}
-
-// If the value of the interpolate box changes, then create a new spot
-// tracker of the appropriate type in the same location and with the
-// same radius as the one that was used before.
-// XXX Re-point the active tracker at tis corresponding new tracker.
-
-void  rebuild_trackers(int newvalue, void *)
-{
-  // Delete all trackers and replace with the correct types.
-  // Make sure to put them back where they came from.
-  // Re-point the active tracker at its corresponding new
-  // tracker.
-  list<Spot_Information *>::iterator  loop;
-
-  for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-    double x = (*loop)->xytracker()->get_x();
-    double y = (*loop)->xytracker()->get_y();
-    double r = (*loop)->xytracker()->get_radius();
-
-    // Be sure to delete only the trackers and not the indices when
-    // rebuilding the trackers.
-    if (g_active_tracker == *loop) {
-      delete (*loop)->xytracker();
-      if ( (*loop)->ztracker() ) { delete (*loop)->ztracker(); }
-      (*loop)->set_xytracker(create_appropriate_xytracker(x,y,r));
-      (*loop)->set_ztracker(create_appropriate_ztracker());
-      g_active_tracker = *loop;
-    } else {
-      delete (*loop)->xytracker();
-      if ( (*loop)->ztracker() ) { delete (*loop)->ztracker(); }
-      (*loop)->set_xytracker(create_appropriate_xytracker(x,y,r));
-      (*loop)->set_ztracker(create_appropriate_ztracker());
-    }
-    if ((*loop)->ztracker()) { (*loop)->ztracker()->set_depth_accuracy(g_precision); }
   }
 }
 
@@ -3752,9 +2704,22 @@ void  set_kymograph_visibility(int newvalue, void *)
 }
 
 // This version is for float sliders
-void  rebuild_trackers(float newvalue, void *) {
-  rebuild_trackers((int)newvalue, NULL);
+void  rebuild_trackers(float /*newvalue*/, void *)
+{
+  g_trackers.min_bead_separation(g_trackerDeadZone);
+  g_trackers.min_border_distance(g_borderDeadZone);
+  g_trackers.color_index(g_colorIndex);
+  g_trackers.invert(g_invert != 0);
+  g_trackers.rebuild_trackers();
 }
+
+// This version is for integer values
+void  rebuild_trackers(int /*newvalue*/, void *)
+{
+  // Just call the floating-point version.
+  rebuild_trackers(1.0f, NULL);
+}
+
 
 // Sets the radius as the check-box is turned on (1) and off (0);
 // it will be set to 4x the current bead radius
@@ -3909,11 +2874,7 @@ bool load_trackers_from_file(const char *inname)
       g_X = x;
       g_Y = y;
       g_Radius = r;
-      g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(g_X,g_Y,g_Radius),create_appropriate_ztracker()));
-      g_active_tracker = g_trackers.back();
-      if (g_active_tracker->ztracker()) {
-        g_active_tracker->ztracker()->set_depth_accuracy(0.25);
-      }
+      g_trackers.add_tracker(g_X,g_Y,g_Radius);
     }
   }
   fclose(f);
@@ -4011,14 +2972,18 @@ void  handle_optimize_z_change(int newvalue, void *)
     // Set the Z tracker in all of the existing trackers to
     // be the proper one (whether NULL or not).
     if (strcmp(g_psf_filename, "NONE") != 0) {
-      for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-	(*loop)->set_ztracker(create_appropriate_ztracker());
+      unsigned i;
+      for (i = 0; i < g_trackers.tracker_count(); i++) {
+        Spot_Information *tracker = g_trackers.tracker(i);
+	tracker->set_ztracker(create_appropriate_ztracker());
       }
     } else {
-      for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-	if ( (*loop)->ztracker() ) {
-	  delete (*loop)->ztracker();
-	  (*loop)->set_ztracker(NULL);
+      unsigned i;
+      for (i = 0; i < g_trackers.tracker_count(); i++) {
+        Spot_Information *tracker = g_trackers.tracker(i);
+	if ( tracker->ztracker() ) {
+	  delete tracker->ztracker();
+	  tracker->set_ztracker(NULL);
 	}
       }
       g_psf_filename = "";
@@ -4028,10 +2993,12 @@ void  handle_optimize_z_change(int newvalue, void *)
   // User is turning off Z tracking, so destroy any existing
   // Z tracker and set the pointer to NULL.
   } else {
-    for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-      if ( (*loop)->ztracker() ) {
-	delete (*loop)->ztracker();
-	(*loop)->set_ztracker(NULL);
+    unsigned i;
+    for (i = 0; i < g_trackers.tracker_count(); i++) {
+      Spot_Information *tracker = g_trackers.tracker(i);
+      if ( tracker->ztracker() ) {
+	delete tracker->ztracker();
+	tracker->set_ztracker(NULL);
       }
     }
     g_psf_filename = "";
@@ -4111,60 +3078,6 @@ int main(int argc, char *argv[])
   // how we are quit.  We hope that we exit in a good way and so
   // cleanup() gets called, but if not then we do a dirty exit.
   atexit(dirtyexit);
-
-  //------------------------------------------------------------------
-  // Set up the threads used for tracking, if we have more than one
-  // processor to use for tracking.  Try to use all of the available
-  // processors for tracking.
-  g_num_tracking_processors = Thread::number_of_processors();
-  if (g_num_tracking_processors > 1) {
-    // Create the "Number of active tracking thread" semaphore that is used
-    // to determine when a tracker has finished and is ready to go.
-    g_ready_tracker_semaphore = new Semaphore(g_num_tracking_processors);
-    if (g_ready_tracker_semaphore == NULL) {
-      fprintf(stderr,"Could not create semaphore for number of active tracking threads\n");
-      exit(-1);
-    }
-
-    // Create the tracking threads.
-    printf("Creating %d tracking threads\n", g_num_tracking_processors);
-    unsigned i;
-    for (i = 0; i < g_num_tracking_processors; i++) {
-
-      // Create the semaphore that will be used to control access to the UserData object
-      Semaphore *tds = new Semaphore();
-
-      // Build the thread UserData object that will be passed to the thread function
-      ThreadUserData *tud = new ThreadUserData();
-      tud->d_ready = false;
-      tud->d_tracker = NULL;
-      tud->d_run_semaphore = new Semaphore();
-
-      // Fill in the ThreadInfo structure.  First the user data, then the thread
-      // data (which includes a pointer to the user data) and finally the thread
-      // itself.
-      ThreadInfo *ti = new ThreadInfo;
-      ti->d_thread_user_data = tud;
-      ti->d_thread_data.pvUD = tud;
-      ti->d_thread_data.ps = tds;
-      ti->d_thread = new Thread(tracking_thread_function, ti->d_thread_data);
-
-      // Add this to the thread list, and increment the semaphore so we
-      // won't try to run one of the threads until at least one has become
-      // ready.
-      g_tracking_threads.push_back(ti);
-      g_ready_tracker_semaphore->p();
-
-      // Call P() on the run semaphore so that the thread will not be able to run
-      // until we call V() on it later.  Then run the thread itself to get it into
-      // the ready state.
-      tud->d_run_semaphore->p();
-      if (ti->d_thread->go() != 0) {
-        fprintf(stderr,"Could not run tracking thread number %d\n", i+1);
-        exit(-1);
-      }
-    }
-  }
 
   //------------------------------------------------------------------
   // Create the tracking thread that will create and fill the
@@ -4394,11 +3307,7 @@ int main(int argc, char *argv[])
       g_Y = atof(argv[i]);
       if (++i >= argc) { Usage(argv[0]); }
       g_Radius = atof(argv[i]);
-      g_trackers.push_back(new Spot_Information(create_appropriate_xytracker(g_X,g_Y,g_Radius),create_appropriate_ztracker()));
-      g_active_tracker = g_trackers.back();
-      if (g_active_tracker->ztracker()) {
-        g_active_tracker->ztracker()->set_depth_accuracy(0.25);
-      }
+      g_trackers.add_tracker(g_X,g_Y,g_Radius);
     } else if (!strncmp(argv[i], "-lost_tracking_sensitivity", strlen("-lost_tracking_sensitivity"))) {
 	if (++i >= argc) { Usage(argv[0]); }
 	g_lossSensitivity = atof(argv[i]);
@@ -4700,11 +3609,12 @@ int main(int argc, char *argv[])
   // flipped.  We can't have done this until we've created the image and
   // we know how large it is in y, so we do it here.
   g_image = g_camera;
-  list<Spot_Information *>::iterator  loop;
-  for (loop = g_trackers.begin(); loop != g_trackers.end(); loop++) {
-    double x = (*loop)->xytracker()->get_x();
-    double y = flip_y((*loop)->xytracker()->get_y());
-    (*loop)->xytracker()->set_location( x, y );
+  unsigned j;
+  for (j = 0; j < g_trackers.tracker_count(); j++) {
+    Spot_Information *tracker = g_trackers.tracker(j);
+    double x = tracker->xytracker()->get_x();
+    double y = flip_y(tracker->xytracker()->get_y());
+    tracker->xytracker()->set_location( x, y );
   }
 
   //------------------------------------------------------------------
@@ -4714,7 +3624,7 @@ int main(int argc, char *argv[])
   // this if we're running without a GUI.  We also do this if we're trying
   // to autofind beads.  If we don't have a video in one
   // of these circumstances, then we go ahead and quit.
-  if (g_trackers.size() || !g_use_gui || (g_findThisManyBeads > 0.0)) {
+  if (g_trackers.tracker_count() || !g_use_gui || (g_findThisManyBeads > 0.0)) {
     g_opt = 1;
     g_quit_at_end_of_video = true;
     if (g_video) {
