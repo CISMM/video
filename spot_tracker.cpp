@@ -2460,17 +2460,18 @@ bool Tracker_Collection_Manager::perform_local_image_search(int max_tracker_to_o
         Spot_Information  *tracker = Tracker_Collection_Manager::tracker(i);
         double last_pos[2];
         tracker->get_last_position(last_pos);
-        double x_base = tracker->xytracker()->get_x();
-        double y_base = tracker->xytracker()->get_y();
+        spot_tracker_XY *tkr = tracker->xytracker();
+        double x_base = tkr->get_x();
+        double y_base = tkr->get_y();
+        double rad = tkr->get_radius();
 
         // Create an image spot tracker and initialize it at the location where the current
         // tracker started this frame (before prediction), but in the last image.  Grab enough
         // of the image that we will be able to check over the used_search_radius for a match.
         // Use the faster twolines version of the image-based tracker.
-        twolines_image_spot_tracker_interp max_find(tracker->xytracker()->get_radius(), d_invert, 1.0,
-          1.0, 1.0);
+        twolines_image_spot_tracker_interp max_find(rad, d_invert, 1.0, 1.0, 1.0);
         max_find.set_location(last_pos[0], last_pos[1]);
-        max_find.set_image(previous_image, d_color_index, last_pos[0], last_pos[1], tracker->xytracker()->get_radius() + search_radius);
+        max_find.set_image(previous_image, d_color_index, last_pos[0], last_pos[1], rad + search_radius);
 
         // Loop over the pixels within used_search_radius of the initial location and find the
         // location with the best match over all of these points.  Do this in the current image,
@@ -2520,7 +2521,8 @@ unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_im
     for (i = 0; i < (int)(d_trackers.size()); i++) {
       if ( (max_tracker_to_optimize < 0) || (i <= max_tracker_to_optimize) ) {
         double x, y;
-        spot_tracker_XY *tkr = tracker(i)->xytracker();
+        Spot_Information *tracker = Tracker_Collection_Manager::tracker(i);
+        spot_tracker_XY *tkr = tracker->xytracker();
         if (parabolic_opt) {
           tkr->optimize_xy_parabolafit(s_image, color_index, x, y, tkr->get_x(),tkr->get_y() );
         } else if (optimize_radius) {
@@ -2534,7 +2536,7 @@ unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_im
         double last_position[2];
         last_position[0] = tkr->get_x();
         last_position[1] = tkr->get_y();
-        tracker(i)->set_last_position(last_position);
+        tracker->set_last_position(last_position);
       }
     }
     return d_trackers.size();
