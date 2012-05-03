@@ -747,6 +747,11 @@ TARGET_LINK_LIBRARIES(video_spot_tracker
 	${GLUT_LIBRARIES}
 )
 SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
+install(TARGETS video_spot_tracker
+	RUNTIME DESTINATION bin)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/video_spot_tracker.tcl
+		${CMAKE_CURRENT_SOURCE_DIR}/russ_widgets.tcl
+	DESTINATION bin)
 
 SET(TARGET_NAME swap_ppm_lines)
 ADD_EXECUTABLE(swap_ppm_lines swap_ppm_lines.cpp ppm.C)
