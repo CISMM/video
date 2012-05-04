@@ -1391,6 +1391,10 @@ int main(int argc, char *argv[])
   case 2:
     // Filename argument: open the file specified.
     g_device_name = argv[1];
+#ifdef __APPLE__
+    if (argv[1][0] == '-' && argv[1][1]=='p' && argv[1][2]=='s' && argv[1][3]=='n')
+	g_device_name = NULL;
+#endif
     break;
 
   default:

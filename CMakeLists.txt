@@ -765,7 +765,7 @@ INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
 # Need to comment out this section to create an install on Mac
 # See Redmine in video project
 #-------------------------------------------------------------
-#INSTALL(CODE "
+INSTALL(CODE "
     MESSAGE(\"Fixing dependencies... Please be patient.\")	
     include(BundleUtilities)
     fixup_bundle( \"${CMAKE_BINARY_DIR}/${TARGET_NAME}.app\" \"\" \"\")
@@ -880,7 +880,30 @@ ENDMACRO(CAPC_APPLICATION)
 
 MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
   SET(TARGET_NAME ${APPLICATION_NAME})
+
+if( ${APPLICATION_NAME} MATCHES cismm_video_optimizer )
+
+IF(WIN32)
   ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp thread.cpp)
+ELSE(WIN32)
+  ADD_EXECUTABLE(${APPLICATION_NAME} MACOSX_BUNDLE ${APPLICATION_NAME}.cpp thread.cpp)
+  FILE(COPY cismm_video_optimizer.tcl russ_widgets.tcl DESTINATION cismm_video_optimizer.app/Contents/MacOS)
+INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
+
+# Need to comment out this section to create an install on Mac
+# See Redmine in video project
+#-------------------------------------------------------------
+INSTALL(CODE "
+    MESSAGE(\"Fixing dependencies... Please be patient.\")	
+    include(BundleUtilities)
+    fixup_bundle( \"${CMAKE_BINARY_DIR}/${APPLICATION_NAME}.app\" \"\" \"\")
+    ")
+
+ENDIF(WIN32)
+else()
+  ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp thread.cpp)
+endif()
+
   TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
 	stocc_random_number_generator_library
 	spot_tracker_library
@@ -955,6 +978,8 @@ MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 	${PTHREAD_LIBRARY}
   )
   SET_TARGET_PROPERTIES(${APPLICATION_NAME} PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
+
+
 ENDMACRO(CPP_APPLICATION)
 
 MACRO(CPP_NOGUI_APPLICATION APPLICATION_NAME SOLUTION_NAME)
