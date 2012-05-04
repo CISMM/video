@@ -32,9 +32,12 @@
 #include "spot_tracker.h"
 #ifdef	_WIN32
 #include <windows.h>
-#endif
 #include <GL/gl.h>
 #include <GL/glut.h>
+#elif __APPLE__
+#include <OPENGL/gl.h>
+#include <GLUT/glut.h>
+#endif
 #include <quat.h>
 #include <vrpn_Types.h>
 #include <vrpn_FileConnection.h>

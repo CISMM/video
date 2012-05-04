@@ -36,9 +36,12 @@
 #include "spot_tracker.h"
 #ifdef	_WIN32
 #include <windows.h>
-#endif
 #include <GL/gl.h>
 #include <GL/glut.h>
+#elif __APPLE__
+#include <OPENGL/gl.h>
+#include <GLUT/glut.h>
+#endif
 #include "controllable_video.h"
 
 #include <quat.h>
@@ -3365,6 +3368,12 @@ int main(int argc, char *argv[])
         fprintf(stderr,"-contintue_from: Could not load trackers from %s\n", argv[i]);
         exit(-1);
       }
+// argv[1] will be -psn103_xxx when launched in a bundle
+// So we need to ignore it. 
+#ifdef __APPLE__
+    } else if (argv[i][0] == '-' && argv[i][1]=='p' && argv[i][2]=='s' && argv[i][3]=='n') {
+      continue;
+#endif
     } else if (argv[i][0] == '-') {
       Usage(argv[0]);
     } else {

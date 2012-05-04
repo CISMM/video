@@ -677,7 +677,11 @@ if (VIDEO_BUILD_APPLICATIONS)
 
 
 SET(TARGET_NAME video_spot_tracker)
+IF(WIN32)
 ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp thread.cpp)
+ELSE(WIN32)
+ADD_EXECUTABLE(video_spot_tracker MACOSX_BUNDLE video_spot_tracker.cpp thread.cpp)
+ENDIF(WIN32)
 if (VIDEO_USE_IMAGEMAGICK)
 	TARGET_LINK_LIBRARIES(video_spot_tracker
 		file_stack_library
@@ -747,11 +751,27 @@ TARGET_LINK_LIBRARIES(video_spot_tracker
 	${GLUT_LIBRARIES}
 )
 SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
+
+IF(WIN32)
 install(TARGETS video_spot_tracker
 	RUNTIME DESTINATION bin)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/video_spot_tracker.tcl
 		${CMAKE_CURRENT_SOURCE_DIR}/russ_widgets.tcl
 	DESTINATION bin)
+ELSE(WIN32)
+FILE(COPY video_spot_tracker.tcl russ_widgets.tcl DESTINATION video_spot_tracker.app/Contents/MacOS)
+INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
+
+# Need to comment out this section to create an install on Mac
+# See Redmine in video project
+#-------------------------------------------------------------
+#INSTALL(CODE "
+    MESSAGE(\"Fixing dependencies... Please be patient.\")	
+    include(BundleUtilities)
+    fixup_bundle( \"${CMAKE_BINARY_DIR}/${TARGET_NAME}.app\" \"\" \"\")
+    ")
+
+ENDIF(WIN32)
 
 SET(TARGET_NAME swap_ppm_lines)
 ADD_EXECUTABLE(swap_ppm_lines swap_ppm_lines.cpp ppm.C)
@@ -1043,3 +1063,8 @@ CPP_APPLICATION(test_spot_tracker tests)
 # CPP_APPLICATION(stack_collector apps) XXX requires vrpn_Generic_Server_Object
 
 endif (VIDEO_BUILD_APPLICATIONS)
+
+IF(APPLE)
+SET(CPACK_GENERATOR DragNDrop)
+INCLUDE(CPACK)
+ENDIF(APPLE)
