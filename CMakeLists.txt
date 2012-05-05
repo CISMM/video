@@ -569,8 +569,6 @@ ADD_EXECUTABLE(PanopticNerve_LEWOS
 	PanopticNerve_LEWOS/ImageAnalyzer.cpp
 	PanopticNerve_LEWOS/NerveTest.cpp
 	PanopticNerve_LEWOS/USBMAC6000.cpp
-	PanopticNerve_LEWOS/SyncControl.cpp
-	PanopticNerve_LEWOS/sciString2send.cpp
 	PanopticNerve_LEWOS/LEWOS_Alfred_xmit.cpp
 	PanopticNerve_LEWOS/LEWOS_Alfred_api.cpp
 )
