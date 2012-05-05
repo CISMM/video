@@ -32,9 +32,12 @@
 #include "spot_tracker.h"
 #ifdef	_WIN32
 #include <windows.h>
-#endif
 #include <GL/gl.h>
 #include <GL/glut.h>
+#elif __APPLE__
+#include <OPENGL/gl.h>
+#include <GLUT/glut.h>
+#endif
 #include <quat.h>
 #include <vrpn_Types.h>
 #include <vrpn_FileConnection.h>
@@ -1388,6 +1391,10 @@ int main(int argc, char *argv[])
   case 2:
     // Filename argument: open the file specified.
     g_device_name = argv[1];
+#ifdef __APPLE__
+    if (argv[1][0] == '-' && argv[1][1]=='p' && argv[1][2]=='s' && argv[1][3]=='n')
+	g_device_name = NULL;
+#endif
     break;
 
   default:

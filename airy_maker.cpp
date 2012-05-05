@@ -7,11 +7,16 @@
 #include <tcl.h>
 #include <tk.h>
 #include "Tcl_Linkvar.h"
+
 #ifdef	_WIN32
 #include <windows.h>
-#endif
 #include <GL/gl.h>
 #include <GL/glut.h>
+#elif __APPLE__
+#include <OPENGL/gl.h>
+#include <GLUT/glut.h>
+#endif
+
 #include <vrpn_Shared.h>
 #include "spot_math.h"
 #include "base_camera_server.h"
