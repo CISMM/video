@@ -589,6 +589,9 @@ gaussian_blurred_image::gaussian_blurred_image(const image_wrapper &input
     : float_image(0, input.get_num_columns()-1,
                    0, input.get_num_rows()-1)
 {
+  // If we have no buffer, we're hopeless.
+  if (_image == NULL) { return; }
+
   //printf("dbg: Aperture = %u\n", aperture);
 
   // If we have CUDA defined, then first try the CUDA-based routines.
@@ -596,50 +599,31 @@ gaussian_blurred_image::gaussian_blurred_image(const image_wrapper &input
   // XXX This implementation will do extra work on machines that don't have
   // CUDA installed, because it copies to an image that is then not used.
 #ifdef  VST_USE_CUDA
+  // Copy the input image into our local _image buffer and then call CUDA
+  // to blur it.
+
   // Make a buffer to hold a copy of the input image that will be
   // passed down to the GPU and back.  Fill it with the image we
   // got passed in.
   VST_cuda_image_buffer copy_of_image;
-  copy_of_image.nx = input.get_num_columns();
-  copy_of_image.ny = input.get_num_rows();
-  copy_of_image.buf = new float[copy_of_image.nx * copy_of_image.ny];
-  if (copy_of_image.buf != NULL) {
+  copy_of_image.nx = get_num_columns();
+  copy_of_image.ny = get_num_rows();
+  copy_of_image.buf = _image;
+  {
     int x;
     #pragma omp parallel for
     for (x = 0; x < copy_of_image.nx; x++) {
       int y;
       for (y = 0; y < copy_of_image.ny; y++) {
-        double val = input.read_pixel_nocheck(x,y);
-        copy_of_image.buf[x + y*copy_of_image.nx] = static_cast<float>(val);
+        write_pixel_nocheck( x,y, input.read_pixel_nocheck(x,y) );
       }
     }
   }
 
-  // Blur the image using CUDA if we can, and then copy it into our
-  // output.
-  if ( (copy_of_image.buf != NULL) &&
-        VST_cuda_blur_image(copy_of_image, aperture, std) ) {
-
-      // Write the blurred image into our buffer.
-      int x;
-      #pragma omp parallel for
-      for (x = 0; x < copy_of_image.nx; x++) {
-        int y;
-        for (y = 0; y < copy_of_image.ny; y++) {
-          write_pixel_nocheck(x, y, copy_of_image.buf[x + y*copy_of_image.nx]);
-        }
-      }
-
-      // Done with the copy image, get rid of it!
-      delete [] copy_of_image.buf;
-      copy_of_image.buf = NULL;
-
-  } else {
-    // Free the buffer, if we allocated it.
-    if (copy_of_image.buf != NULL) {
-      delete [] copy_of_image.buf;
-      copy_of_image.buf = NULL;
-    }
+  // Blur the image using CUDA if we can, with the function
+  // doing the blurring in place.  If CUDA fails, then we go
+  // ahead and use the serial code.
+  if ( !VST_cuda_blur_image(copy_of_image, aperture, std) ) {
 
 #else
   {
