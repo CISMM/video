@@ -6,12 +6,88 @@ WARNING: All of the CUDA code for the entire project has to be in here
 so that we only initialize the device once.
 **********************************************************************/
 
+#include "image_wrapper.h"
 #include <stdio.h>
 #include <cuda.h>
 #include <math_constants.h>
 
 //----------------------------------------------------------------------
-// XXX Constants and stuff from Pantopes Simulator.
+// Definitions and routines needed by all functions below.
+//----------------------------------------------------------------------
+
+static CUdevice     g_cuDevice;     // CUDA device
+static CUcontext    g_cuContext;    // CUDA context on the device
+
+// Open the CUDA device and get a context.  Return false
+// if we cannot get one.  This function can be called every time a
+// CUDA_using function is called, but it only does the device opening
+// and image-buffer allocation once.
+static bool VST_ensure_cuda_ready(void)
+{
+  static bool initialized = false;	// Have we initialized yet?
+  static bool okay = false;			// Did the initialization work?
+  if (!initialized) {
+    // Whether this works or not, we'll be initialized.
+    initialized = true;
+    
+    // Open the largest-ID CUDA device in the system
+    cuInit(0);
+    int num_devices = 0;
+    cuDeviceGetCount(&num_devices);
+    if (num_devices == 0) {
+      fprintf(stderr,"VST_ensure_cuda_ready(): No CUDA devices.\n");
+      return false;
+    }
+    if (cuDeviceGet(&g_cuDevice, num_devices-1) != CUDA_SUCCESS) {
+      fprintf(stderr,"VST_ensure_cuda_ready(): Could not get device.\n");
+      return false;
+    }
+    if (cuCtxCreate( &g_cuContext, 0, g_cuDevice ) != CUDA_SUCCESS) {
+      fprintf(stderr,"VST_ensure_cuda_ready(): Could not get context.\n");
+      return false;
+    }
+    
+    // Everything worked, so we're okay.
+    okay = true;
+  }
+
+  // Return true if we are okay.
+  return okay;
+}
+
+//----------------------------------------------------------------------
+// Functions called from image_wrapper.cpp.
+//----------------------------------------------------------------------
+
+bool VST_cuda_blur_image(VST_cuda_image_buffer &buf, unsigned aperture, float std)
+{
+// XXX until we fix this to work
+return false;
+
+	// Make sure we can initialize CUDA.
+	if (!VST_ensure_cuda_ready()) { return false; }
+	
+	// Allocate a CUDA buffer on the card to store the image.  Copy the
+	// image to the buffer.
+	// XXX;
+	
+	// Call the CUDA kernel to do the blurring on the image.
+	// XXX
+	
+	// Copy the buffer back from the card.
+	// XXX
+	
+	// Free the CUDA buffer that was allocated to copy to and from the
+	// card.
+	// XXX
+	
+	// Everything worked!
+	return true;
+}
+
+
+//----------------------------------------------------------------------
+// XXX Constants and stuff from Panoptes Simulator.
 //----------------------------------------------------------------------
 
 const unsigned PSCS_cols = 648;   // Image size for the camera.
@@ -28,12 +104,6 @@ typedef struct {
   float fluoro2_response;   // Number of photons emitted for a 1-second exposure, fluorophore 2
 } PS_Bead;
 
-//----------------------------------------------------------------------
-// Definitions and routines needed by all simulators.
-//----------------------------------------------------------------------
-
-static CUdevice     g_cuDevice;     // CUDA device
-static CUcontext    g_cuContext;    // CUDA context on the device
 static float        *g_cuda_buffer = NULL;
 
 // For the camera simulator, block size and number of kernels to run to cover a whole grid.

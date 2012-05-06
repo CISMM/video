@@ -586,154 +586,209 @@ rod_image::rod_image(int minx, int maxx, int miny, int maxy,
 gaussian_blurred_image::gaussian_blurred_image(const image_wrapper &input
     , const unsigned aperture
     , const float std)
-    : float_image(0, input.get_num_rows()-1,
-                   0, input.get_num_columns()-1)
+    : float_image(0, input.get_num_columns()-1,
+                   0, input.get_num_rows()-1)
 {
   //printf("dbg: Aperture = %u\n", aperture);
 
-  // There is a simpler and a (slightly) faster version of this code.  The
-  // simpler is easier to follow and see what it does, but it does
-  // a ton of comparisons for pixel boundaries, which slows it
-  // way down.
-//#define VIDEO_SIMPLE_GAUSSIAN_BLUR
-#ifdef VIDEO_SIMPLE_GAUSSIAN_BLUR
-  // Construct a temporary Gaussian image with a size that is twice
-  // the aperture plus one to store the Gaussian with which we will
-  // convolve the input image.  Fill it with the subset of a unit
-  // Gaussian whose standard deviation is the one passed in.
-  unsigned kernel_size = 2 * aperture + 1;
-  Integrated_Gaussian_image kernel(0, kernel_size - 1, 0, kernel_size - 1,
-    0, 0, aperture, aperture, std, 1, 4);
+  // If we have CUDA defined, then first try the CUDA-based routines.
+  // If they fail (or if we don't have CUDA), then use the serial routines.
+  // XXX This implementation will do extra work on machines that don't have
+  // CUDA installed, because it copies to an image that is then not used.
+#ifdef  VST_USE_CUDA
+  // Make a buffer to hold a copy of the input image that will be
+  // passed down to the GPU and back.  Fill it with the image we
+  // got passed in.
+  VST_cuda_image_buffer copy_of_image;
+  copy_of_image.nx = input.get_num_columns();
+  copy_of_image.ny = input.get_num_rows();
+  copy_of_image.buf = new float[copy_of_image.nx * copy_of_image.ny];
+  if (copy_of_image.buf != NULL) {
+    int x;
+    #pragma omp parallel for
+    for (x = 0; x < copy_of_image.nx; x++) {
+      int y;
+      for (y = 0; y < copy_of_image.ny; y++) {
+        double val = input.read_pixel_nocheck(x,y);
+        copy_of_image.buf[x + y*copy_of_image.nx] = static_cast<float>(val);
+      }
+    }
+  }
 
-  // Convolve the image with the Gaussian kernel.  At each pixel, we
-  // sum up the amount of the kernel that is on the inside of time image
-  // and rescale by this so that we get equal energy at all locations,
-  // even near the edges.
-  unsigned x,y;
-  unsigned center = aperture; // Index of the center pixel in the kernel
-  double value;
-  for (x = 0; x < get_num_rows(); x++) {
-    for (y = 0; y < get_num_columns(); y++) {
-      int i, j;
-      int aperture_int = aperture;
-      double sum = 0;
-      double weight = 0;
-      for (i = -aperture_int; i <= aperture_int; i++) {
-        for (j = -aperture_int; j <= aperture_int; j++) {
-          if (input.read_pixel(x+i, y+j, value)) {
-            double kval = kernel.read_pixel_nocheck(center+i,center+j);
-            weight += kval;
-            sum += kval * value;
+  // Blur the image using CUDA if we can, and then copy it into our
+  // output.
+  if ( (copy_of_image.buf != NULL) &&
+        VST_cuda_blur_image(copy_of_image, aperture, std) ) {
+
+      // Write the blurred image into our buffer.
+      int x;
+      #pragma omp parallel for
+      for (x = 0; x < copy_of_image.nx; x++) {
+        int y;
+        for (y = 0; y < copy_of_image.ny; y++) {
+          write_pixel_nocheck(x, y, copy_of_image.buf[x + y*copy_of_image.nx]);
+        }
+      }
+
+      // Done with the copy image, get rid of it!
+      delete [] copy_of_image.buf;
+      copy_of_image.buf = NULL;
+
+  } else {
+    // Free the buffer, if we allocated it.
+    if (copy_of_image.buf != NULL) {
+      delete [] copy_of_image.buf;
+      copy_of_image.buf = NULL;
+    }
+
+#else
+  {
+#endif
+
+    // There is a simpler version and a (slightly) faster version of this code.  The
+    // simpler is easier to follow and see what it does, but it does
+    // a ton of comparisons for pixel boundaries, which slows it
+    // way down.
+  //#define VIDEO_SIMPLE_GAUSSIAN_BLUR
+  #ifdef VIDEO_SIMPLE_GAUSSIAN_BLUR
+    // Construct a temporary Gaussian image with a size that is twice
+    // the aperture plus one to store the Gaussian with which we will
+    // convolve the input image.  Fill it with the subset of a unit
+    // Gaussian whose standard deviation is the one passed in.
+    unsigned kernel_size = 2 * aperture + 1;
+    Integrated_Gaussian_image kernel(0, kernel_size - 1, 0, kernel_size - 1,
+      0, 0, aperture, aperture, std, 1, 4);
+
+    // Convolve the image with the Gaussian kernel.  At each pixel, we
+    // sum up the amount of the kernel that is on the inside of time image
+    // and rescale by this so that we get equal energy at all locations,
+    // even near the edges.
+    unsigned x,y;
+    unsigned center = aperture; // Index of the center pixel in the kernel
+    double value;
+    for (x = 0; x < get_num_columns(); x++) {
+      for (y = 0; y < get_num_rows(); y++) {
+        int i, j;
+        int aperture_int = aperture;
+        double sum = 0;
+        double weight = 0;
+        for (i = -aperture_int; i <= aperture_int; i++) {
+          for (j = -aperture_int; j <= aperture_int; j++) {
+            if (input.read_pixel(x+i, y+j, value)) {
+              double kval = kernel.read_pixel_nocheck(center+i,center+j);
+              weight += kval;
+              sum += kval * value;
+            }
           }
         }
+        write_pixel(x, y, sum/weight);
       }
-      write_pixel(x, y, sum/weight);
     }
-  }
-#else
-  // Faster version of convolution that avoids checking for boundary
-  // conditions on the images.  We first create a Gaussian kernel image
-  // and copy it into a buffer that is fast for reading.  We then copy
-  // the input image into a buffer that has a border around it so we can
-  // run past during convolution.  Inside the original image, we place
-  // the values; outside, zero.  We then make a second weighting image
-  // that has weights of 1 inside the image an 0 in the border.  That way,
-  // we can run the same algorithm at every pixel and not have to check
-  // whether we're going outside the image.  We write the results directly
-  // into our floating-point image values.
+  #else
+    // Faster version of convolution that avoids checking for boundary
+    // conditions on the images.  We first create a Gaussian kernel image
+    // and copy it into a buffer that is fast for reading.  We then copy
+    // the input image into a buffer that has a border around it so we can
+    // run past during convolution.  Inside the original image, we place
+    // the values; outside, zero.  We then make a second weighting image
+    // that has weights of 1 inside the image an 0 in the border.  That way,
+    // we can run the same algorithm at every pixel and not have to check
+    // whether we're going outside the image.  We write the results directly
+    // into our floating-point image values.
 
-  // Construct a temporary Gaussian image with a size that is twice
-  // the aperture plus one to store the Gaussian with which we will
-  // convolve the input image.  Fill it with the subset of a unit
-  // Gaussian whose standard deviation is the one passed in.
-  unsigned kernel_size = 2 * aperture + 1;
-  Integrated_Gaussian_image kernel(0, kernel_size - 1, 0, kernel_size - 1,
-    0, 0, aperture, aperture, std, 1, 4);
+    // Construct a temporary Gaussian image with a size that is twice
+    // the aperture plus one to store the Gaussian with which we will
+    // convolve the input image.  Fill it with the subset of a unit
+    // Gaussian whose standard deviation is the one passed in.
+    unsigned kernel_size = 2 * aperture + 1;
+    Integrated_Gaussian_image kernel(0, kernel_size - 1, 0, kernel_size - 1,
+      0, 0, aperture, aperture, std, 1, 4);
 
-  // Construct a temporary floating-point image to store the padded
-  // version of the input image.  Fill the boundaries with zeroes and
-  // then fill the image with values.
-  float_image copy(0, input.get_num_rows() + 2*aperture -1,
-                   0, input.get_num_columns() + 2*aperture -1);
-  int x;  // Needs to be int for OpenMP
-  // We parallelize the inner loop here because aperture will be small.
-  for (x = 0; x < (int)(aperture); x++) {
-    int y;  // Needs to be int for OpenMP
+    // Construct a temporary floating-point image to store the padded
+    // version of the input image.  Fill the boundaries with zeroes and
+    // then fill the image with values.
+    float_image copy(0, input.get_num_columns() + 2*aperture -1,
+                     0, input.get_num_rows() + 2*aperture -1);
+    int x;  // Needs to be int for OpenMP
+    // We parallelize the inner loop here because aperture will be small.
+    for (x = 0; x < (int)(aperture); x++) {
+      int y;  // Needs to be int for OpenMP
+      #pragma omp parallel for
+      for (y = 0; y < (int)(input.get_num_rows() + 2 * aperture); y++) {
+        copy.write_pixel_nocheck(x, y, 0);
+        copy.write_pixel_nocheck(input.get_num_columns() + 2*aperture - 1 - x, y, 0);
+      }
+    }
     #pragma omp parallel for
-    for (y = 0; y < (int)(input.get_num_columns() + 2 * aperture); y++) {
-      copy.write_pixel_nocheck(x, y, 0);
-      copy.write_pixel_nocheck(input.get_num_rows() + 2*aperture - 1 - x, y, 0);
-    }
-  }
-  #pragma omp parallel for
-  for (x = 0; x < (int)(input.get_num_rows() + 2 * aperture); x++) {
-    int y;  // Needs to be int for OpenMP
-    for (y = 0; y < (int)(aperture); y++) {
-      copy.write_pixel_nocheck(x, y, 0);
-      copy.write_pixel_nocheck(x, input.get_num_columns() + 2*aperture - 1 - y, 0);
-    }
-  }
-  #pragma omp parallel for
-  for (x = 0; x < (int)(input.get_num_rows()); x++) {
-    int y;  // Needs to be int for OpenMP
-    for (y = 0; y < (int)(input.get_num_columns()); y++) {
-      copy.write_pixel_nocheck(x+aperture, y+aperture,
-        input.read_pixel_nocheck(x,y));
-    }
-  }
-
-  // Construct a temporary floating-point mask image to store the weights
-  // which are 1 within the copied image and 0 around the border.
-  float_image mask(0, input.get_num_rows() + 2*aperture -1,
-                   0, input.get_num_columns() + 2*aperture -1);
-  #pragma omp parallel for
-  for (x = 0; x < (int)(aperture); x++) {
-    int y;  // Needs to be int for OpenMP
-    for (y = 0; y < (int)(input.get_num_columns() + 2 * aperture); y++) {
-      mask.write_pixel_nocheck(x, y, 0);
-      mask.write_pixel_nocheck(input.get_num_rows() + 2*aperture - 1 - x, y, 0);
-    }
-  }
-  #pragma omp parallel for
-  for (x = 0; x < (int)(input.get_num_rows() + 2 * aperture); x++) {
-    int y;  // Needs to be int for OpenMP
-    for (y = 0; y < (int)(aperture); y++) {
-      mask.write_pixel_nocheck(x, y, 0);
-      mask.write_pixel_nocheck(x, input.get_num_columns() + 2*aperture - 1 - y, 0);
-    }
-  }
-  #pragma omp parallel for
-  for (x = 0; x < (int)(input.get_num_rows()); x++) {
-    int y;  // Needs to be int for OpenMP
-    for (y = 0; y < (int)(input.get_num_columns()); y++) {
-      mask.write_pixel_nocheck(x+aperture, y+aperture, 1);
-    }
-  }
-
-  // Convolve the image with the Gaussian kernel.  At each pixel, we
-  // sum up the amount of the kernel that is on the inside of time image
-  // and rescale by this so that we get equal energy at all locations,
-  // even near the edges.
-  unsigned center = aperture; // Index of the center pixel in the kernel
-  int aperture_int = aperture;
-  #pragma omp parallel for
-  for (x = 0; x < (int)(get_num_rows()); x++) {
-    int y;  // Needs to be int for OpenMP
-    for (y = 0; y < (int)(get_num_columns()); y++) {
-      int i, j;
-      double sum = 0;
-      double weight = 0;
-      for (i = -aperture_int; i <= aperture_int; i++) {
-        for (j = -aperture_int; j <= aperture_int; j++) {
-          double kval = kernel.read_pixel_nocheck(center+i,center+j);
-          weight += kval * mask.read_pixel_nocheck(x+aperture+i, y+aperture+j);
-          sum += kval * copy.read_pixel_nocheck(x+aperture+i, y+aperture+j);
-        }
+    for (x = 0; x < (int)(input.get_num_columns() + 2 * aperture); x++) {
+      int y;  // Needs to be int for OpenMP
+      for (y = 0; y < (int)(aperture); y++) {
+        copy.write_pixel_nocheck(x, y, 0);
+        copy.write_pixel_nocheck(x, input.get_num_rows() + 2*aperture - 1 - y, 0);
       }
-      write_pixel(x, y, sum/weight);
     }
+    #pragma omp parallel for
+    for (x = 0; x < (int)(input.get_num_columns()); x++) {
+      int y;  // Needs to be int for OpenMP
+      for (y = 0; y < (int)(input.get_num_rows()); y++) {
+        copy.write_pixel_nocheck(x+aperture, y+aperture,
+          input.read_pixel_nocheck(x,y));
+      }
+    }
+
+    // Construct a temporary floating-point mask image to store the weights
+    // which are 1 within the copied image and 0 around the border.
+    float_image mask(0, input.get_num_columns() + 2*aperture -1,
+                     0, input.get_num_rows() + 2*aperture -1);
+    #pragma omp parallel for
+    for (x = 0; x < (int)(aperture); x++) {
+      int y;  // Needs to be int for OpenMP
+      for (y = 0; y < (int)(input.get_num_rows() + 2 * aperture); y++) {
+        mask.write_pixel_nocheck(x, y, 0);
+        mask.write_pixel_nocheck(input.get_num_columns() + 2*aperture - 1 - x, y, 0);
+      }
+    }
+    #pragma omp parallel for
+    for (x = 0; x < (int)(input.get_num_columns() + 2 * aperture); x++) {
+      int y;  // Needs to be int for OpenMP
+      for (y = 0; y < (int)(aperture); y++) {
+        mask.write_pixel_nocheck(x, y, 0);
+        mask.write_pixel_nocheck(x, input.get_num_rows() + 2*aperture - 1 - y, 0);
+      }
+    }
+    #pragma omp parallel for
+    for (x = 0; x < (int)(input.get_num_columns()); x++) {
+      int y;  // Needs to be int for OpenMP
+      for (y = 0; y < (int)(input.get_num_rows()); y++) {
+        mask.write_pixel_nocheck(x+aperture, y+aperture, 1);
+      }
+    }
+
+    // Convolve the image with the Gaussian kernel.  At each pixel, we
+    // sum up the amount of the kernel that is on the inside of time image
+    // and rescale by this so that we get equal energy at all locations,
+    // even near the edges.
+    unsigned center = aperture; // Index of the center pixel in the kernel
+    int aperture_int = aperture;
+    #pragma omp parallel for
+    for (x = 0; x < (int)(get_num_columns()); x++) {
+      int y;  // Needs to be int for OpenMP
+      for (y = 0; y < (int)(get_num_rows()); y++) {
+        int i, j;
+        double sum = 0;
+        double weight = 0;
+        for (i = -aperture_int; i <= aperture_int; i++) {
+          for (j = -aperture_int; j <= aperture_int; j++) {
+            double kval = kernel.read_pixel_nocheck(center+i,center+j);
+            weight += kval * mask.read_pixel_nocheck(x+aperture+i, y+aperture+j);
+            sum += kval * copy.read_pixel_nocheck(x+aperture+i, y+aperture+j);
+          }
+        }
+        write_pixel(x, y, sum/weight);
+      }
+    }
+  #endif
   }
-#endif
 }
 
 

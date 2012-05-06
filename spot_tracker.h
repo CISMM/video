@@ -696,6 +696,21 @@ typedef spot_tracker_XY *(*TCM_XYTRACKER_CREATOR)(double x, double y, double r);
 typedef spot_tracker_Z *(*TCM_ZTRACKER_CREATOR)(void);
 
 //----------------------------------------------------------------------------------
+// CUDA equivalents of various methods in the Tracker_Collection_Manager class
+// below.  They need to be in C code.
+// They are stored in a .cu file so that they will be compiled by the
+// nVidia compiler.  These are called by the methods in the main class
+// if we are using CUDA.  If they fail, then it means that CUDA was not
+// able to do what we want, so the routines should fall back to serial
+// code if the routines return false.  See the comments in front of the
+// functions definitions for info on the parameters.
+#ifdef  VST_USE_CUDA
+
+//XXX
+
+#endif
+
+//----------------------------------------------------------------------------------
 // Application-level object that manages a list of trackers and keeps track of autofinding,
 // deleting, and causing them to track across images.  This is an OpenMP-threaded
 // implementation, so it will utilize multiple cores.  It pulls together the code

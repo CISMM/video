@@ -211,4 +211,24 @@ public:
 protected:
 };
 
+//----------------------------------------------------------------------------------
+// CUDA equivalents of methods in the class above.  They need to be in C code.
+// They are stored in a .cu file so that they will be compiled by the
+// nVidia compiler.  These are called by the methods in the main class
+// if we are using CUDA.  If they fail, then it means that CUDA was not
+// able to do what we want, so the routines should fall back to serial
+// code if the routines return false.  See the comments in front of the
+// functions definitions for info on the parameters.
+#ifdef  VST_USE_CUDA
+
+typedef struct {
+  int      nx;      // Number of pixels in x
+  int      ny;      // Number of pixels in y
+  float    *buf;    // Pointer to the beginning of an [x] by [y] buffer of pixels
+} VST_cuda_image_buffer;
+
+extern bool VST_cuda_blur_image(VST_cuda_image_buffer &buf, unsigned aperture, float std);
+
+#endif
+
 #endif
