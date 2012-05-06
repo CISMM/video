@@ -105,6 +105,14 @@ else(WIN32)
 	set (ImageMagick_Needed_Libs MagickCore MagickWand)
 endif (WIN32)
 
+FIND_PACKAGE(CUDA)
+if (CUDA_FOUND)
+	OPTION(VIDEO_USE_CUDA "Compile and link to CUDA library" ON)
+	include_directories(${CUDA_TOOLKIT_INCLUDE})
+	add_definitions(-DVST_USE_CUDA)
+else()
+	OPTION(VIDEO_USE_CUDA "Compile and link to CUDA library" OFF)
+endif()
 
 if (ImageMagick_FOUND)
 	OPTION(VIDEO_USE_IMAGEMAGICK "Enable to include ImageMagick code in build" ON)
@@ -673,13 +681,22 @@ endif (VIDEO_USE_IMAGEMAGICK)
 # Applications that need more than one file or nonstandard things.
 if (VIDEO_BUILD_APPLICATIONS)
 
-
+# XXX Should move the CUDA compilation into the spot-tracker library code.
+# XXX Then do we CUDA compile everything that uses spot-tracker lib?
 SET(TARGET_NAME video_spot_tracker)
-IF(WIN32)
-ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp thread.cpp)
-ELSE(WIN32)
-ADD_EXECUTABLE(video_spot_tracker MACOSX_BUNDLE video_spot_tracker.cpp thread.cpp)
-ENDIF(WIN32)
+if (VIDEO_USE_CUDA)
+	IF(WIN32)
+		CUDA_ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp thread.cpp spot_tracker.cu)
+	ELSE(WIN32)
+		CUDA_ADD_EXECUTABLE(video_spot_tracker MACOSX_BUNDLE video_spot_tracker.cpp thread.cpp)
+	ENDIF(WIN32)
+else (VIDEO_USE_CUDA)
+	IF(WIN32)
+		ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp thread.cpp)
+	ELSE(WIN32)
+		ADD_EXECUTABLE(video_spot_tracker MACOSX_BUNDLE video_spot_tracker.cpp thread.cpp)
+	ENDIF(WIN32)
+endif (VIDEO_USE_CUDA)
 if (VIDEO_USE_IMAGEMAGICK)
 	TARGET_LINK_LIBRARIES(video_spot_tracker
 		file_stack_library
