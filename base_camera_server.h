@@ -18,7 +18,12 @@
 #include  <vrpn_Types.h>
 #include  <vrpn_Connection.h>
 #include  <vrpn_Imager.h>
+
+#ifdef _WIN32
 #include  <GL/gl.h>
+#elif __APPLE__
+#include <OPENGL/gl.h>
+#endif
 
 //----------------------------------------------------------------------------
 // This class forms a basic wrapper for an image.  It treats an image as anything

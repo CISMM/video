@@ -569,8 +569,6 @@ ADD_EXECUTABLE(PanopticNerve_LEWOS
 	PanopticNerve_LEWOS/ImageAnalyzer.cpp
 	PanopticNerve_LEWOS/NerveTest.cpp
 	PanopticNerve_LEWOS/USBMAC6000.cpp
-	PanopticNerve_LEWOS/SyncControl.cpp
-	PanopticNerve_LEWOS/sciString2send.cpp
 	PanopticNerve_LEWOS/LEWOS_Alfred_xmit.cpp
 	PanopticNerve_LEWOS/LEWOS_Alfred_api.cpp
 )
@@ -677,7 +675,11 @@ if (VIDEO_BUILD_APPLICATIONS)
 
 
 SET(TARGET_NAME video_spot_tracker)
+IF(WIN32)
 ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp thread.cpp)
+ELSE(WIN32)
+ADD_EXECUTABLE(video_spot_tracker MACOSX_BUNDLE video_spot_tracker.cpp thread.cpp)
+ENDIF(WIN32)
 if (VIDEO_USE_IMAGEMAGICK)
 	TARGET_LINK_LIBRARIES(video_spot_tracker
 		file_stack_library
@@ -747,6 +749,27 @@ TARGET_LINK_LIBRARIES(video_spot_tracker
 	${GLUT_LIBRARIES}
 )
 SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
+
+IF(WIN32)
+install(TARGETS video_spot_tracker
+	RUNTIME DESTINATION bin)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/video_spot_tracker.tcl
+		${CMAKE_CURRENT_SOURCE_DIR}/russ_widgets.tcl
+	DESTINATION bin)
+ELSE(WIN32)
+FILE(COPY video_spot_tracker.tcl russ_widgets.tcl DESTINATION video_spot_tracker.app/Contents/MacOS)
+INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
+
+# Need to comment out this section to create an install on Mac
+# See Redmine in video project
+#-------------------------------------------------------------
+INSTALL(CODE "
+    MESSAGE(\"Fixing dependencies... Please be patient.\")	
+    include(BundleUtilities)
+    fixup_bundle( \"${CMAKE_BINARY_DIR}/${TARGET_NAME}.app\" \"\" \"\")
+    ")
+
+ENDIF(WIN32)
 
 SET(TARGET_NAME swap_ppm_lines)
 ADD_EXECUTABLE(swap_ppm_lines swap_ppm_lines.cpp ppm.C)
@@ -855,7 +878,30 @@ ENDMACRO(CAPC_APPLICATION)
 
 MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
   SET(TARGET_NAME ${APPLICATION_NAME})
+
+if( ${APPLICATION_NAME} MATCHES cismm_video_optimizer )
+
+IF(WIN32)
   ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp thread.cpp)
+ELSE(WIN32)
+  ADD_EXECUTABLE(${APPLICATION_NAME} MACOSX_BUNDLE ${APPLICATION_NAME}.cpp thread.cpp)
+  FILE(COPY cismm_video_optimizer.tcl russ_widgets.tcl DESTINATION cismm_video_optimizer.app/Contents/MacOS)
+INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
+
+# Need to comment out this section to create an install on Mac
+# See Redmine in video project
+#-------------------------------------------------------------
+INSTALL(CODE "
+    MESSAGE(\"Fixing dependencies... Please be patient.\")	
+    include(BundleUtilities)
+    fixup_bundle( \"${CMAKE_BINARY_DIR}/${APPLICATION_NAME}.app\" \"\" \"\")
+    ")
+
+ENDIF(WIN32)
+else()
+  ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp thread.cpp)
+endif()
+
   TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
 	stocc_random_number_generator_library
 	spot_tracker_library
@@ -930,6 +976,8 @@ MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 	${PTHREAD_LIBRARY}
   )
   SET_TARGET_PROPERTIES(${APPLICATION_NAME} PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
+
+
 ENDMACRO(CPP_APPLICATION)
 
 MACRO(CPP_NOGUI_APPLICATION APPLICATION_NAME SOLUTION_NAME)
@@ -1038,3 +1086,8 @@ CPP_APPLICATION(test_spot_tracker tests)
 # CPP_APPLICATION(stack_collector apps) XXX requires vrpn_Generic_Server_Object
 
 endif (VIDEO_BUILD_APPLICATIONS)
+
+IF(APPLE)
+SET(CPACK_GENERATOR DragNDrop)
+INCLUDE(CPACK)
+ENDIF(APPLE)
