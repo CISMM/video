@@ -17,12 +17,17 @@ so that we only initialize the device once.
 
 static CUdevice     g_cuDevice;     // CUDA device
 static CUcontext    g_cuContext;    // CUDA context on the device
+static float        *g_cuda_fromhost_buffer = NULL;
+static unsigned		g_cuda_fromhost_nx = 0;
+static unsigned		g_cuda_fromhost_ny = 0;
 
-// Open the CUDA device and get a context.  Return false
+// Open the CUDA device and get a context.  Also allocate a buffer of
+// appropriate size.  Do this allocation only when the size of the buffer
+// allocated is different from the newly-requested size.  Return false
 // if we cannot get one.  This function can be called every time a
 // CUDA_using function is called, but it only does the device opening
 // and image-buffer allocation once.
-static bool VST_ensure_cuda_ready(void)
+static bool VST_ensure_cuda_ready(const VST_cuda_image_buffer &inbuf)
 {
   static bool initialized = false;	// Have we initialized yet?
   static bool okay = false;			// Did the initialization work?
@@ -47,6 +52,26 @@ static bool VST_ensure_cuda_ready(void)
       return false;
     }
     
+    // Allocate a buffer to be used on the GPU.  It will be
+    // copied from host memory.
+    if ( (inbuf.nx != g_cuda_fromhost_nx) || (inbuf.ny != g_cuda_fromhost_nx) ) {
+	    
+		unsigned int numBytes = inbuf.nx * inbuf.ny * sizeof(float);
+		if (g_cuda_fromhost_buffer != NULL) {
+			cudaFree(g_cuda_fromhost_buffer);
+		}
+		if (cudaMalloc((void**)&g_cuda_fromhost_buffer, numBytes) != cudaSuccess) {
+		  fprintf(stderr,"VST_ensure_cuda_ready(): Could not allocate memory.\n");
+		  return false;
+		}
+		if (g_cuda_fromhost_buffer == NULL) {
+		  fprintf(stderr,"VST_ensure_cuda_ready(): Buffer is NULL pointer.\n");
+		  return false;
+		}
+		g_cuda_fromhost_nx = inbuf.nx;
+		g_cuda_fromhost_ny = inbuf.ny;
+	}
+
     // Everything worked, so we're okay.
     okay = true;
   }
@@ -61,26 +86,50 @@ static bool VST_ensure_cuda_ready(void)
 
 bool VST_cuda_blur_image(VST_cuda_image_buffer &buf, unsigned aperture, float std)
 {
+	// Make sure we can initialize CUDA.  This also allocates the global
+	// input buffer that we'll copy data from the host into.
+	if (!VST_ensure_cuda_ready(buf)) { return false; }
+	
+	// Copy the input image from host memory into the GPU buffer.
+	size_t size = buf.nx * buf.ny * sizeof(float);
+	if (cudaMemcpy(g_cuda_fromhost_buffer, buf.buf, size, cudaMemcpyHostToDevice) != cudaSuccess) {
+		fprintf(stderr, "VST_cuda_blur_image(): Could not copy memory to CUDA\n");
+		return false;
+	}
+	
+	// Allocate a CUDA buffer to blur into from the input buffer.  It should
+	// be the same size as the input buffer.  We only allocate this when the
+	// size changes.
+	static int blur_nx = 0;
+	static int blur_ny = 0;
+	static float *blur_buf = NULL;
+	if ( (blur_nx != g_cuda_fromhost_nx) || (blur_ny != g_cuda_fromhost_ny) ) {
+		if (blur_buf != NULL) { cudaFree(blur_buf); }
+		blur_nx = g_cuda_fromhost_nx;
+		blur_ny = g_cuda_fromhost_ny;
+		if (cudaMalloc((void**)&blur_buf, size) != cudaSuccess) {
+		  fprintf(stderr,"VST_cuda_blur_image(): Could not allocate memory.\n");
+		  return false;
+		}
+	}
+	if (blur_buf == NULL) {
+	  fprintf(stderr,"VST_cuda_blur_image(): Buffer is NULL pointer.\n");
+	  return false;
+	}
+	
+	// Call the CUDA kernel to do the blurring on the image, reading from
+	// the global input buffer and writing to the blur buffer.
+	// XXX
+	
+	// Copy the buffer back from the GPU to host memory.
+	if (cudaMemcpy(buf.buf, blur_buf, size, cudaMemcpyDeviceToHost) != cudaSuccess) {
+		fprintf(stderr, "VST_cuda_blur_image(): Could not copy memory back to host\n");
+		return false;
+	}
+	
 // XXX until we fix this to work
-return false;
+//return false;
 
-	// Make sure we can initialize CUDA.
-	if (!VST_ensure_cuda_ready()) { return false; }
-	
-	// Allocate a CUDA buffer on the card to store the image.  Copy the
-	// image to the buffer.
-	// XXX;
-	
-	// Call the CUDA kernel to do the blurring on the image.
-	// XXX
-	
-	// Copy the buffer back from the card.
-	// XXX
-	
-	// Free the CUDA buffer that was allocated to copy to and from the
-	// card.
-	// XXX
-	
 	// Everything worked!
 	return true;
 }
