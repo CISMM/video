@@ -21,6 +21,11 @@ static float        *g_cuda_fromhost_buffer = NULL;
 static unsigned		g_cuda_fromhost_nx = 0;
 static unsigned		g_cuda_fromhost_ny = 0;
 
+// For the GPU code, block size and number of kernels to run to cover a whole grid.
+// Initialized once in VST_ensure_cuda_ready();
+static dim3         g_threads;      // 16x16x1
+static dim3         g_grid;         // Computed to cover array (slightly larger than array)
+
 // Open the CUDA device and get a context.  Also allocate a buffer of
 // appropriate size.  Do this allocation only when the size of the buffer
 // allocated is different from the newly-requested size.  Return false
@@ -71,6 +76,16 @@ static bool VST_ensure_cuda_ready(const VST_cuda_image_buffer &inbuf)
 		g_cuda_fromhost_nx = inbuf.nx;
 		g_cuda_fromhost_ny = inbuf.ny;
 	}
+	
+    // Set up enough threads (and enough blocks of threads) to at least
+    // cover the size of the array.  We use a thread block size of 16x16
+    // because that's what the example matrixMul code from nVidia does.
+    g_threads.x = 16;
+    g_threads.y = 16;
+    g_threads.z = 1;
+    g_grid.x = (g_cuda_fromhost_nx / g_threads.x) + 1;
+    g_grid.y = (g_cuda_fromhost_ny / g_threads.y) + 1;
+    g_grid.z = 1;	
 
     // Everything worked, so we're okay.
     okay = true;
@@ -83,6 +98,67 @@ static bool VST_ensure_cuda_ready(const VST_cuda_image_buffer &inbuf)
 //----------------------------------------------------------------------
 // Functions called from image_wrapper.cpp.
 //----------------------------------------------------------------------
+
+// Compute the value of a Gaussian at the specified point.  The function is 2D,
+// centered at the origin.  The "standard normal distribution" Gaussian has an integrated
+// volume of 1 over all space and a variance of 1.  It is defined as:
+//               1           -(R^2)/2
+//   G(x) = ------------ * e
+//             2*PI
+// where R is the radius of the sample point from the origin.
+// We let the user set the standard deviation s, changing the function to:
+//                  1           -(R^2)/(2*s^2)
+//   G(x) = --------------- * e
+//           s^2 * 2*PI
+// For computational efficiency, we refactor this into A * e ^ (B * R^2).
+
+inline __device__ float	cuda_Gaussian(
+  float s_meters,      //< standard deviation (square root of variance)
+  float x, float y)	//< Point to sample (relative to origin)
+{
+  float variance = s_meters * s_meters;
+  float R_squared = x*x + y*y;
+
+  const float twoPI = static_cast<float>(2*CUDART_PI_F);
+  const float twoPIinv = 1.0f / twoPI;
+  float A = twoPIinv / variance;
+  float B = -1 / (2 * variance);
+
+  return A * __expf(B * R_squared);
+}
+
+// CUDA kernel to clear all of the elements of the matrix to zero.
+// Told the buffer beginning and the buffer size.  Assumes at least
+// as many threads are run as there are elements in the buffer.
+// Assumes a 2D array of threads.
+static __global__ void VST_cuda_gaussian_blur(float *in, float *out, int nx, int ny,
+							unsigned aperture, float std)
+{
+  int x = blockIdx.x * blockDim.x + threadIdx.x;
+  int y = blockIdx.y * blockDim.y + threadIdx.y;
+  if ( (x < nx) && (y < ny) ) {
+  
+	// XXX This may be made faster and more accurate
+	// by precomputing the Gaussian kernel as a multi-sampled one
+	// and reading it from texture memory.
+    int i, j;
+    float sum = 0;
+    float weight = 0;
+    int aperture_int = aperture;	// Needed to make -aperture defined
+    for (i = -aperture_int; i <= aperture_int; i++) {
+      for (j = -aperture_int; j <= aperture_int; j++) {
+        if ( (x+i >= 0) && (x+i < nx) && (y+j >= 0) && (y+j < ny) ) {
+		  float value = in[x+i + (y+j)*nx];
+          float kval = cuda_Gaussian(std,i,j);
+          weight += kval;
+          sum += kval * value;
+        }
+      }
+    }
+	out[x + y*nx] = sum/weight;
+	
+  }
+}
 
 bool VST_cuda_blur_image(VST_cuda_image_buffer &buf, unsigned aperture, float std)
 {
@@ -119,17 +195,23 @@ bool VST_cuda_blur_image(VST_cuda_image_buffer &buf, unsigned aperture, float st
 	
 	// Call the CUDA kernel to do the blurring on the image, reading from
 	// the global input buffer and writing to the blur buffer.
-	// XXX
-	
+	// Synchronize the threads when
+	// we are done so we know that they finish before we copy the memory
+	// back.
+	VST_cuda_gaussian_blur<<< g_grid, g_threads >>>(g_cuda_fromhost_buffer,
+					blur_buf, blur_nx, blur_ny, aperture, std);
+	if (cudaThreadSynchronize() != cudaSuccess) {
+		fprintf(stderr, "VST_cuda_blur_image(): Could not synchronize threads\n");
+		return false;
+	}
+
 	// Copy the buffer back from the GPU to host memory.
+	// XXX This is completely black, what's gone wrong?
 	if (cudaMemcpy(buf.buf, blur_buf, size, cudaMemcpyDeviceToHost) != cudaSuccess) {
 		fprintf(stderr, "VST_cuda_blur_image(): Could not copy memory back to host\n");
 		return false;
 	}
 	
-// XXX until we fix this to work
-//return false;
-
 	// Everything worked!
 	return true;
 }
@@ -154,11 +236,6 @@ typedef struct {
 } PS_Bead;
 
 static float        *g_cuda_buffer = NULL;
-
-// For the camera simulator, block size and number of kernels to run to cover a whole grid.
-// Initialized once in ensure_cuda_ready();
-static dim3         g_threads;      // 16x16x1
-static dim3         g_grid;         // Computed to cover array (slightly larger than array)
 
 // Allocate a PCSC_buffer-sized element on the GPU.  Return false
 // if we cannot get one.  This function can be called every time a
@@ -308,34 +385,6 @@ bool PSCS_cuda_accumulate_brightfield_photons(PSCS_buffer &buf, float photons)
 
   // Done!
   return true;
-}
-
-// Compute the value of a Gaussian at the specified point.  The function is 2D,
-// centered at the origin.  The "standard normal distribution" Gaussian has an integrated
-// volume of 1 over all space and a variance of 1.  It is defined as:
-//               1           -(R^2)/2
-//   G(x) = ------------ * e
-//             2*PI
-// where R is the radius of the sample point from the origin.
-// We let the user set the standard deviation s, changing the function to:
-//                  1           -(R^2)/(2*s^2)
-//   G(x) = --------------- * e
-//           s^2 * 2*PI
-// For computational efficiency, we refactor this into A * e ^ (B * R^2).
-
-inline __device__ float	cuda_Gaussian(
-  float s_meters,      //< standard deviation (square root of variance)
-  float x, float y)	//< Point to sample (relative to origin)
-{
-  float variance = s_meters * s_meters;
-  float R_squared = x*x + y*y;
-
-  const float twoPI = static_cast<float>(2*CUDART_PI_F);
-  const float twoPIinv = 1.0f / twoPI;
-  float A = twoPIinv / variance;
-  float B = -1 / (2 * variance);
-
-  return A * __expf(B * R_squared);
 }
 
 // CUDA kernel to add sums of Gaussians to the image.

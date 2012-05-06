@@ -593,6 +593,7 @@ gaussian_blurred_image::gaussian_blurred_image(const image_wrapper &input
   if (_image == NULL) { return; }
 
   //printf("dbg: Aperture = %u\n", aperture);
+  //printf("dbg: Std = %f\n", std);
 
   // If we have CUDA defined, then first try the CUDA-based routines.
   // If they fail (or if we don't have CUDA), then use the serial routines.
