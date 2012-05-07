@@ -109,9 +109,12 @@ FIND_PACKAGE(CUDA)
 if (CUDA_FOUND)
 	OPTION(VIDEO_USE_CUDA "Compile and link to CUDA library" ON)
 	include_directories(${CUDA_TOOLKIT_INCLUDE})
-	add_definitions(-DVST_USE_CUDA)
 else()
 	OPTION(VIDEO_USE_CUDA "Compile and link to CUDA library" OFF)
+endif()
+
+if (VIDEO_USE_CUDA)
+	add_definitions(-DVST_USE_CUDA)
 endif()
 
 if (ImageMagick_FOUND)
