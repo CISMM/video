@@ -80,6 +80,8 @@ static bool VST_ensure_cuda_ready(const VST_cuda_image_buffer &inbuf)
     // Set up enough threads (and enough blocks of threads) to at least
     // cover the size of the array.  We use a thread block size of 16x16
     // because that's what the example matrixMul code from nVidia does.
+    // Changing them to 8 and 8 makes the Gaussian kernel slower.  Changing
+    // them to 32 and 32 also makes it slower (by not as much)
     g_threads.x = 16;
     g_threads.y = 16;
     g_threads.z = 1;
@@ -121,8 +123,8 @@ inline __device__ float	cuda_Gaussian(
 
   const float twoPI = static_cast<float>(2*CUDART_PI_F);
   const float twoPIinv = 1.0f / twoPI;
-  float A = twoPIinv / variance;
   float B = -1 / (2 * variance);
+  float A = twoPIinv / variance;
 
   return A * __expf(B * R_squared);
 }
@@ -138,20 +140,54 @@ static __global__ void VST_cuda_gaussian_blur(float *in, float *out, int nx, int
   int y = blockIdx.y * blockDim.y + threadIdx.y;
   if ( (x < nx) && (y < ny) ) {
 
-	// Replacing the cuda_Gaussian() calls below changed the speed from
-	// 21 frames/second to 25 frames/second, so it is not the bottleneck.  
-    int i, j;
+	// Replacing the cuda_Gaussian() calls below with 1 changed the speed from
+	// 23 frames/second to 25 frames/second, so it is not the bottleneck.
+	// Replacing the in[] read call with 1 slows things down to 21.
+	// Replacing the inside-if with (weight++; sum++) speeds things to 29.
+	// Removing the if() test speeds things up to 45 (but gets funky answers).
+	// Pulling the if() statement out of the inner loop and into the bounds
+	// setting for the i and j loops made the speed 39.
+	// Swapping the sum += and weight += lines below to put weight later brought
+	// us up to 43.
+	// Swapping the kval = and value = lines to put kval first brought it up
+	// to 43.8.
+	// Moving the kval and value definitions outside the loop dropped back to
+	// 39.
+	// Moving the definition of int j into the i loop bumped it up to 44.  Looks
+	// like the compiler doesn't always do the best optimizing for us...
+	// After the above mods, changing the cuda_Gaussian() to = 1.0f made things
+	// go 53 frames/second, so there may be some computational gain to be had
+	// in there.
+	// XXX Switching the code below to one like the faster algorithm in the
+	// CPU code may speed things up a bit more.
+	// Changing the radius (affects the aperture) from 5 to 3 makes things
+	// go 41 frames/second.
+    // If we don't have an integer version of aperture, the "-aperture"
+    // below turns into a large positive number, meaning that
+    // the loops never get executed.
+    int aperture_int = aperture;
+    
+    // Determine the safe bounds to read from around this point.  This avoids
+    // having to put an if() statement in the inner loop, which slows us down
+    // a bunch.
+    int min_i = -aperture_int;
+    int max_i = aperture_int;
+    int min_j = -aperture_int;
+    int max_j = aperture_int;
+    int min_x = x - aperture_int; if (min_x < 0) { min_i = -min_x; }
+    int min_y = y - aperture_int; if (min_y < 0) { min_j = -min_y; }
+    int max_x = x + aperture_int; if (max_x >= nx) { max_i -= ( max_x - (nx-1) ); }
+    int max_y = y + aperture_int; if (max_y >= ny) { max_j -= ( max_y - (ny-1) ); }
+    int i;
     float sum = 0;
     float weight = 0;
-    int aperture_int = aperture;	// Needed to make -aperture defined
-    for (i = -aperture_int; i <= aperture_int; i++) {
-      for (j = -aperture_int; j <= aperture_int; j++) {
-        if ( (x+i >= 0) && (x+i < nx) && (y+j >= 0) && (y+j < ny) ) {
-		  float value = in[x+i + (y+j)*nx];
+    for (i = min_i; i <= max_i; i++) {
+	  int j;
+      for (j = min_j; j <= max_j; j++) {
           float kval = cuda_Gaussian(std,i,j);
-          weight += kval;
+		  float value = in[x+i + (y+j)*nx];
           sum += kval * value;
-        }
+          weight += kval;
       }
     }
 	out[x + y*nx] = sum/weight;
