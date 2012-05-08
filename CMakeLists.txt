@@ -580,8 +580,12 @@ ADD_EXECUTABLE(PanopticNerve_LEWOS
 	PanopticNerve_LEWOS/ImageAnalyzer.cpp
 	PanopticNerve_LEWOS/NerveTest.cpp
 	PanopticNerve_LEWOS/USBMAC6000.cpp
-	PanopticNerve_LEWOS/LEWOS_Alfred_xmit.cpp
-	PanopticNerve_LEWOS/LEWOS_Alfred_api.cpp
+	#PanopticNerve_LEWOS/LEWOS_Alfred_xmit.cpp
+	#PanopticNerve_LEWOS/LEWOS_Alfred_api.cpp
+	PanopticNerve_LEWOS/LEWOS_xmit.cpp
+	PanopticNerve_LEWOS/LEWOS_api.cpp
+	PanopticNerve_LEWOS/LEWOS_xlate.c
+	PanopticNerve_LEWOS/LEWOS_xlate_test.c
 )
   if (VIDEO_USE_DIRECTSHOW)
     TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
