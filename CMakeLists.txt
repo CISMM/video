@@ -774,13 +774,13 @@ TARGET_LINK_LIBRARIES(video_spot_tracker
 )
 SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
 
-IF(WIN32)
+IF(WIN32 OR UNIX)
 install(TARGETS video_spot_tracker
 	RUNTIME DESTINATION bin)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/video_spot_tracker.tcl
 		${CMAKE_CURRENT_SOURCE_DIR}/russ_widgets.tcl
 	DESTINATION bin)
-ELSE(WIN32)
+ELSE(WIN32 OR UNIX)
 FILE(COPY video_spot_tracker.tcl russ_widgets.tcl DESTINATION video_spot_tracker.app/Contents/MacOS)
 INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
 
@@ -793,7 +793,7 @@ INSTALL(CODE "
     fixup_bundle( \"${CMAKE_BINARY_DIR}/${TARGET_NAME}.app\" \"\" \"\")
     ")
 
-ENDIF(WIN32)
+ENDIF(WIN32 OR UNIX)
 
 SET(TARGET_NAME swap_ppm_lines)
 ADD_EXECUTABLE(swap_ppm_lines swap_ppm_lines.cpp ppm.C)
@@ -905,9 +905,9 @@ MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 
 if( ${APPLICATION_NAME} MATCHES cismm_video_optimizer )
 
-IF(WIN32)
+IF(WIN32 OR UNIX)
   ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp thread.cpp)
-ELSE(WIN32)
+ELSE(WIN32 OR UNIX)
   ADD_EXECUTABLE(${APPLICATION_NAME} MACOSX_BUNDLE ${APPLICATION_NAME}.cpp thread.cpp)
   FILE(COPY cismm_video_optimizer.tcl russ_widgets.tcl DESTINATION cismm_video_optimizer.app/Contents/MacOS)
 INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
@@ -921,7 +921,7 @@ INSTALL(CODE "
     fixup_bundle( \"${CMAKE_BINARY_DIR}/${APPLICATION_NAME}.app\" \"\" \"\")
     ")
 
-ENDIF(WIN32)
+ENDIF(WIN32 OR UNIX)
 else()
   ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp thread.cpp)
 endif()

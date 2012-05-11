@@ -8,13 +8,16 @@
 #include <tk.h>
 #include "Tcl_Linkvar.h"
 
-#ifdef	_WIN32
+#ifdef _WIN32
 #include <windows.h>
-#include <GL/gl.h>
-#include <GL/glut.h>
-#elif __APPLE__
+#endif
+
+#ifdef __APPLE__
 #include <OPENGL/gl.h>
 #include <GLUT/glut.h>
+#else
+#include <GL/gl.h>
+#include <GL/glut.h>
 #endif
 
 #include <vrpn_Shared.h>

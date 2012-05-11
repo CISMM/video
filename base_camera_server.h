@@ -19,10 +19,10 @@
 #include  <vrpn_Connection.h>
 #include  <vrpn_Imager.h>
 
-#ifdef _WIN32
-#include  <GL/gl.h>
-#elif __APPLE__
+#ifdef __APPLE__
 #include <OPENGL/gl.h>
+#else
+#include  <GL/gl.h>
 #endif
 
 //----------------------------------------------------------------------------
