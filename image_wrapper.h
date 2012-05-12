@@ -228,7 +228,6 @@ typedef struct {
 } VST_cuda_image_buffer;
 
 extern bool VST_cuda_blur_image(VST_cuda_image_buffer &buf, unsigned aperture, float std);
-
 #endif
 
 #endif

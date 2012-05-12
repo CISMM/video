@@ -7,6 +7,7 @@ so that we only initialize the device once.
 **********************************************************************/
 
 #include "image_wrapper.h"
+#include "spot_tracker.h"
 #include <stdio.h>
 #include <cuda.h>
 #include <math_constants.h>
@@ -129,7 +130,8 @@ inline __device__ float	cuda_Gaussian(
   return A * __expf(B * R_squared);
 }
 
-// CUDA kernel to clear all of the elements of the matrix to zero.
+// CUDA kernel to do a Gaussian blur of the passed-in image and place
+// it into the output images.
 // Told the buffer beginning and the buffer size.  Assumes at least
 // as many threads are run as there are elements in the buffer.
 // Assumes a 2D array of threads.
@@ -241,12 +243,139 @@ bool VST_cuda_blur_image(VST_cuda_image_buffer &buf, unsigned aperture, float st
 	}
 
 	// Copy the buffer back from the GPU to host memory.
-	// XXX This is completely black, what's gone wrong?
 	if (cudaMemcpy(buf.buf, blur_buf, size, cudaMemcpyDeviceToHost) != cudaSuccess) {
 		fprintf(stderr, "VST_cuda_blur_image(): Could not copy memory back to host\n");
 		return false;
 	}
 	
 	// Everything worked!
+	return true;
+}
+
+//----------------------------------------------------------------------
+// Functions called from spot_tracker.cpp.
+//----------------------------------------------------------------------
+
+typedef struct {
+	float radius;
+	float sample_separation;
+	float pixel_accuracy;
+	float x;
+	float y;
+} CUDA_Tracker_Info;
+
+// CUDA kernel to optimize the passed-in list of trackers based on the
+// passed-in image.  Moves the X and Y position of each tracker to its
+// final optimum location.
+// Assumes that we have at least as many threads in X as we have trackers.
+// Assumes a 2D array of threads.
+static __global__ void VST_cuda_symmetric_opt_kernel(float *img, int nx, int ny,
+							CUDA_Tracker_Info *tkrs, int nt)
+{
+  int x = blockIdx.x * blockDim.x + threadIdx.x;
+  int y = blockIdx.y * blockDim.y + threadIdx.y;
+  
+  // For now, just do one thread per tracker and have it be the one with y=0.
+  if ( (x < nt) && (y < 1) ) {
+	// XXXXX
+
+  }
+}
+
+// Optimize the passed-in list of symmetric XY trackers based on the
+bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
+                                                 std::list<Spot_Information *> &tkrs,
+                                                 unsigned num_to_optimize)
+{
+	// Make sure we can initialize CUDA.  This also allocates the global
+	// input buffer that we'll copy data from the host into.
+	if (!VST_ensure_cuda_ready(buf)) { return false; }
+	
+	// Copy the input image from host memory into the GPU buffer.
+	size_t imgsize = buf.nx * buf.ny * sizeof(float);
+	if (cudaMemcpy(g_cuda_fromhost_buffer, buf.buf, imgsize, cudaMemcpyHostToDevice) != cudaSuccess) {
+		fprintf(stderr, "VST_cuda_optimize_symmetric_trackers(): Could not copy memory to CUDA\n");
+		return false;
+	}
+	
+	// Allocate an array of tracker information to pass down to the kernel.
+	// with one entry per tracker we are optimizing.  This stores the tracking
+	// parameters associated with each tracker along with its X and Y positions;
+	// the kernel will replace the X and Y locations, which are then copied back
+	// into the trackers.
+	CUDA_Tracker_Info *ti = new CUDA_Tracker_Info[tkrs.size()];
+	if (ti == NULL) {
+		fprintf(stderr, "VST_cuda_optimize_symmetric_trackers(): Out of memory\n");
+		return false;
+	}
+	int i;
+	std::list<Spot_Information *>::iterator  loop;
+	for (loop = tkrs.begin(), i = 0; i < (int)(num_to_optimize); loop++, i++) {
+		spot_tracker_XY *t = (*loop)->xytracker();
+		ti[i].radius = static_cast<float>(t->get_radius());
+		ti[i].sample_separation = static_cast<float>(t->get_sample_separation());
+		ti[i].pixel_accuracy = static_cast<float>(t->get_pixel_accuracy());
+		ti[i].x = static_cast<float>(t->get_x());
+		ti[i].y = static_cast<float>(t->get_y());
+	}
+	
+	// Allocate a GPU buffer to store the tracker information.
+	// Copy the tracker information from the host to GPU memory.
+	CUDA_Tracker_Info *gpu_ti;
+	size_t tkrsize = num_to_optimize * sizeof(CUDA_Tracker_Info);
+	if (cudaMalloc((void**)&gpu_ti, tkrsize) != cudaSuccess) {
+	  fprintf(stderr,"VST_cuda_optimize_symmetric_trackers(): Could not allocate memory.\n");
+	  delete [] ti;
+	  return false;
+	}
+	if (cudaMemcpy(gpu_ti, ti, tkrsize, cudaMemcpyHostToDevice) != cudaSuccess) {
+		fprintf(stderr, "VST_cuda_optimize_symmetric_trackers(): Could not copy memory to CUDA\n");
+		delete [] ti;
+		return false;
+	}
+	
+    // Set up enough threads (and enough blocks of threads) to at least
+    // cover the number of trackers in X, and we have only one thread per
+    // tracker (so y = 1).  We use a thread block size of 1x1
+    // because we don't want to share a cache between different trackers.
+    g_threads.x = 1;
+    g_threads.y = 1;
+    g_threads.z = 1;
+    g_grid.x = num_to_optimize;
+    g_grid.y = 1;
+    g_grid.z = 1;	
+	
+	// Call the CUDA kernel to do the tracking, reading from
+	// the input buffer and editing the positions in place.
+	// Synchronize the threads when we are done so we know that 
+	// they finish before we copy the memory back.
+	printf("XXX Not yet completely implemented\n");
+	VST_cuda_symmetric_opt_kernel<<< g_grid, g_threads >>>(g_cuda_fromhost_buffer,
+					buf.nx, buf.ny,
+					gpu_ti, num_to_optimize);
+	if (cudaThreadSynchronize() != cudaSuccess) {
+		fprintf(stderr, "VST_cuda_blur_image(): Could not synchronize threads\n");
+		return false;
+	}
+
+	// Copy the tracker info back from the GPU to the host memory.
+	if (cudaMemcpy(ti, gpu_ti, tkrsize, cudaMemcpyDeviceToHost) != cudaSuccess) {
+		fprintf(stderr, "VST_cuda_optimize_symmetric_trackers(): Could not copy memory back to host\n");
+		cudaFree(gpu_ti);
+		delete [] ti;
+		return false;
+	}
+	
+	// Copy the positions back into the trackers.
+	for (loop = tkrs.begin(), i = 0; i < (int)(num_to_optimize); loop++, i++) {
+		spot_tracker_XY *t = (*loop)->xytracker();
+		t->set_location(ti[i].x, ti[i].y);
+	}
+		
+	// Free the array of tracker info on the GPU and host sides.
+	cudaFree(gpu_ti); gpu_ti = NULL;
+	delete [] ti; ti = NULL;
+
+	// Done!
 	return true;
 }

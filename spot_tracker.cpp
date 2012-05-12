@@ -2516,6 +2516,79 @@ unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_im
                                                        bool optimize_radius,
                                                        bool parabolic_opt)
 {
+  // Nothing to do if no trackers.
+  if (d_trackers.size() == 0) { return 0; }
+
+#ifdef  VST_USE_CUDA
+  // Figure out if we're using a symmetric kernel by dynamic casting the first
+  // tracker to a symmetric kernel and seeing if we get a NULL pointer.
+  bool appropriate = true;
+  if (dynamic_cast<symmetric_spot_tracker_interp *>(Tracker_Collection_Manager::tracker(0)->xytracker()) == NULL) {
+    appropriate = false;
+  }
+  // Only do this if we're not doing parabolafit or radius optimization
+  if (optimize_radius || parabolic_opt) {
+    appropriate = false;
+  }
+
+  // If we have CUDA and symmetric trackers, then go ahead and use the CUDA-accelerated
+  // optimization routines.  Otherwise, or if CUDA fails, fall back to the OpenMP
+  // code.
+
+  // Make a buffer to hold a copy of the input image that will be
+  // passed down to the GPU and back.  Fill it with the image we
+  // got passed in.
+  // XXX See if we can cast into a floating-point buffer and ask it
+  // for its buffer directly to save another round of copying here;
+  // this will violate information hiding but make things faster.
+  VST_cuda_image_buffer copy_of_image;
+  if (appropriate) {
+    copy_of_image.nx = s_image.get_num_columns();
+    copy_of_image.ny = s_image.get_num_rows();
+    copy_of_image.buf = new float[copy_of_image.nx*copy_of_image.ny];
+    if (copy_of_image.buf != NULL) {
+      int x;
+      #pragma omp parallel for
+      for (x = 0; x < copy_of_image.nx; x++) {
+        int y;
+        for (y = 0; y < copy_of_image.ny; y++) {
+          copy_of_image.buf[x + y*copy_of_image.nx] =
+            static_cast<float>(s_image.read_pixel_nocheck(x,y) );
+        }
+      }
+    }
+  }
+  unsigned num_to_opt = d_trackers.size();
+  if (max_tracker_to_optimize >= 0) {
+    num_to_opt = static_cast<unsigned>(max_tracker_to_optimize);
+  }
+  if ( appropriate && (copy_of_image.buf != NULL) &&
+       VST_cuda_optimize_symmetric_trackers(copy_of_image, d_trackers, num_to_opt) ) {
+
+    // Free the buffer
+    delete [] copy_of_image.buf;
+
+    // Record the last optimized position, in case we're doing either prediction
+    // or a local image-matched search.
+    int i;
+    for (i = 0; i < (int)(d_trackers.size()); i++) {
+      if ( (max_tracker_to_optimize < 0) || (i <= max_tracker_to_optimize) ) {
+        Spot_Information *tracker = Tracker_Collection_Manager::tracker(i);
+        spot_tracker_XY *tkr = tracker->xytracker();
+        double last_position[2];
+        last_position[0] = tkr->get_x();
+        last_position[1] = tkr->get_y();
+        tracker->set_last_position(last_position);
+      }
+    }
+  } else {
+
+    // Free the buffer, if it is not NULL
+    if (copy_of_image.buf) { delete [] copy_of_image.buf; }
+
+#else
+  {
+#endif
     int i;
     #pragma omp parallel for
     for (i = 0; i < (int)(d_trackers.size()); i++) {
@@ -2539,7 +2612,10 @@ unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_im
         tracker->set_last_position(last_position);
       }
     }
-    return d_trackers.size();
+  }
+
+  // Return the number of trackers.
+  return d_trackers.size();
 }
 
 bool Tracker_Collection_Manager::optimize_z_based_on(const image_wrapper &s_image,

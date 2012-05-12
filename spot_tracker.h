@@ -60,9 +60,11 @@ public:
   /// Get at internal information
   inline double  get_radius(void) const { return _rad; };
   inline double  get_fitness(void) const { return _fitness; };
+  inline double  get_sample_separation(void) const { return _samplesep; };
+  inline double  get_pixel_accuracy(void) const { return _pixelacc; };
   inline double  get_x(void) const { return _x; };
   inline double  get_y(void) const { return _y; };
-
+  
   /// Set the radius for the bead.  Return false on failure
   virtual bool	set_radius(const double r) { if (r <= 1) { _rad = 1; return false; } else {_rad = r; return true; } };
 
@@ -668,7 +670,7 @@ public:
 protected:
   spot_tracker_XY	*d_tracker_XY;	    //< The tracker we're keeping information for in XY
   spot_tracker_Z	*d_tracker_Z;	    //< The tracker we're keeping information for in Z
-  unsigned		d_index;	    //< The index for this instance
+  int		        d_index;	    //< The index for this instance
   double                d_last_position[2]; //< Where I was before being optimized
   bool                  d_lost;             //< Am I lost?
   static Semaphore      d_index_sem;        //< Semaphore for the following index.
@@ -955,5 +957,20 @@ protected:
     static spot_tracker_XY *default_xy_tracker_creator(double x, double y, double r);
     static spot_tracker_Z *default_z_tracker_creator(void);
 };
+
+//----------------------------------------------------------------------------------
+// CUDA equivalents of methods in the classes above.  They need to be in C code.
+// They are stored in a .cu file so that they will be compiled by the
+// nVidia compiler.  These are called by the methods in the main class
+// if we are using CUDA.  If they fail, then it means that CUDA was not
+// able to do what we want, so the routines should fall back to serial
+// code if the routines return false.  See the comments in front of the
+// functions definitions for info on the parameters.
+#ifdef  VST_USE_CUDA
+
+extern bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
+                                                 std::list<Spot_Information *> &tkrs,
+                                                 unsigned num_to_optimize);
+#endif
 
 #endif
