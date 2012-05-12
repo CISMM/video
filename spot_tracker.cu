@@ -788,3 +788,42 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
 	// Done!
 	return true;
 }
+
+//----------------------------------------------------------------------
+// Notes on speedup attempts for tracking are below here
+//----------------------------------------------------------------------
+
+/*
+Speed with CPU on two 20-radius trackers with precision 0.05 and spacing 0.5: 55 fps.
+Speed with initial GPU implementation: 3.8 fps.
+Changing the radius to 10 makes it12.7-13.2 fps.
+Changing the sample separation from 0.5 to 1 for radius 20 makes it 7.1 fps.
+Changing the sample separation from 0.5 to 0.1 for radius 20 makes it 0.8 fps.
+Changing the precision from 0.05 to 0.5 makes it 8.1 fps.
+
+Switching to using the bilinear interpolation texture hardware makes it around 7 fps.
+	(turning off if() checks within bilerp only increased to 8.6 fps)
+	(calling synchthreads has no impact -- only one thread per block!)
+Running 32 threads in parallel per tracker in a fan pattern around the origin got 29 fps.
+	This is 60 fps for a 10-pixel tracker.  And it scales up to lots of trackers.
+	Changing sample spacing to 1.0 gets us up to 43 fps.
+Running a lattice of 32x32 points around the current location got us to 24 fps.
+Running a lattice of 24x24 points around the current location got us to 35 fps.
+Running a lattice of 16x16 points around the current location got us to 39 fps.
+	Slowed down to 36 with 8 trackers.
+Running a lattice of 12x12 points around the current location got us to 39 fps.
+Running a lattice of 8x8 points around the current location got us 38 fps.
+Running a lattice of 6x6 points around the current location got us to 32 fps.
+Running a lattice of 4x4 points around the current location got us to 33 fps.
+	Stayed the same speed for 8 trackers.
+Running a lattice of 2x2 points around the current location got us to 21 fps.
+	Just checking the scaling, didn't expect speedup.
+
+Recomputing the "are we done" sooner at a lattice of 4x4 points gets us to 38
+
+Ideas:
+	Precompute the kernel offsets and store them in shared memory
+	Remove if statements in inner loop (bilerp) (got a little less than 2x).
+		Texture version is set to clamp, but this is not quite what we want.
+		Pad image with -1 around border and use that to squash?
+*/
