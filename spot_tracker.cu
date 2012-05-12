@@ -19,12 +19,11 @@ so that we only initialize the device once.
 static CUdevice     g_cuDevice;     // CUDA device
 static CUcontext    g_cuContext;    // CUDA context on the device
 
-//#define USE_TEXTURE
+#define USE_TEXTURE
 #ifdef USE_TEXTURE
 static cudaArray	*g_cuda_fromhost_array = NULL;
 static cudaChannelFormatDesc	g_channel_desc;
 static texture<float,cudaTextureType2D,cudaReadModeElementType>	g_tex_ref;
-static float        *g_cuda_fromhost_buffer = NULL; // XXX DO NOT USE!
 #else
 static float        *g_cuda_fromhost_buffer = NULL;
 #endif
@@ -162,7 +161,7 @@ inline __device__ float	cuda_Gaussian(
 // as many threads are run as there are elements in the buffer.
 // Assumes a 2D array of threads.
 #ifdef	USE_TEXTURE
-static __global__ void VST_cuda_gaussian_blur(const cudaArray *in, float *out, int nx, int ny,
+static __global__ void VST_cuda_gaussian_blur(float *out, int nx, int ny,
 							unsigned aperture, float std)
 #else
 static __global__ void VST_cuda_gaussian_blur(const float *in, float *out, int nx, int ny,
@@ -288,8 +287,7 @@ bool VST_cuda_blur_image(VST_cuda_image_buffer &buf, unsigned aperture, float st
 	// we are done so we know that they finish before we copy the memory
 	// back.
 #ifdef USE_TEXTURE
-	VST_cuda_gaussian_blur<<< g_grid, g_threads >>>(g_cuda_fromhost_array,
-					blur_buf, blur_nx, blur_ny, aperture, std);
+	VST_cuda_gaussian_blur<<< g_grid, g_threads >>>(blur_buf, blur_nx, blur_ny, aperture, std);
 #else
 	VST_cuda_gaussian_blur<<< g_grid, g_threads >>>(g_cuda_fromhost_buffer,
 					blur_buf, blur_nx, blur_ny, aperture, std);
@@ -355,9 +353,26 @@ inline __device__ bool cuda_read_pixel(
 // the spot tracker and other codes.
 // Return a result of zero and false if the coordinate its outside the image.
 // Return the correct interpolated result and true if the coordinate is inside.
-// XXX Later, consider using the hardware-accelerated bilerp function by using
+// Use the hardware-accelerated bilerp function by using
 // a texture to read from; beware that the interpolator will only do a maximum
-// of 256 subpixel locations, which won't get us below a resolution of 1/256.
+// of 512 subpixel locations, which won't get us below a resolution of 1/256.
+#ifdef	USE_TEXTURE
+inline __device__ bool cuda_read_pixel_bilerp(
+	const int &nx, const int &ny,
+	const float &x, const float &y,
+	float &result)
+{
+	if ( (x < 0) || (y < 0) || (x >= nx) || (y >= ny) ) {
+		result = 0;
+		return false;
+	} else {
+	  // Because array indices are not normalized to [0,1], we need to
+	  // add 0.5f to each coordinate (quirk inherited from graphics).
+	  result = tex2D( g_tex_ref, x+0.5f, y+0.5f  );
+	  return true;
+	}
+};
+#else
 inline __device__ bool cuda_read_pixel_bilerp(
 	const float *img, const int &nx, const int &ny,
 	const float &x, const float &y,
@@ -391,6 +406,7 @@ inline __device__ bool cuda_read_pixel_bilerp(
 		 hh * xhighfrac * yhighfrac;
 	return true;
 };
+#endif
 
 // Check the fitness of the specified symmetric tracker within the
 // specified image at the specified location.
@@ -398,9 +414,15 @@ inline __device__ bool cuda_read_pixel_bilerp(
 // symmetric_spot_tracker_interp function.
 // XXX Later, put the locations to search into constant memory rather
 // than computing them on the fly here.
+#ifdef	USE_TEXTURE
+inline __device__ float	cuda_check_fitness_symmetric(
+	const cudaArray *img, const int &nx, const int &ny,
+	const CUDA_Tracker_Info &tkr)
+#else
 inline __device__ float	cuda_check_fitness_symmetric(
 	const float *img, const int &nx, const int &ny,
 	const CUDA_Tracker_Info &tkr)
+#endif
 {
 	// Construct aliases for the parameters that give us easy local names.
 	const float &radius = tkr.radius;
@@ -423,7 +445,11 @@ inline __device__ float	cuda_check_fitness_symmetric(
 			float newx = x + r*cos(theta);
 			float newy = y + r*sin(theta);
 			float val;
+#ifdef	USE_TEXTURE
+			if (cuda_read_pixel_bilerp(nx, ny, newx, newy, val)) {
+#else
 			if (cuda_read_pixel_bilerp(img, nx, ny, newx, newy, val)) {
+#endif
 				squareValSum += val*val;
 				valSum += val;
 				count++;
@@ -442,9 +468,15 @@ inline __device__ float	cuda_check_fitness_symmetric(
 // Take only one optimization step.  Return whether we ended up finding a
 // better location or not.  Return new location in any case.  One step means
 // one step in X,Y, and radius space each.  We always optimize in xy only.
+#ifdef	USE_TEXTURE
+inline __device__ bool cuda_take_single_optimization_step_xy(const cudaArray *img,
+							const int &nx, const int &ny,
+							CUDA_Tracker_Info &t)
+#else
 inline __device__ bool cuda_take_single_optimization_step_xy(const float *img,
 							const int &nx, const int &ny,
 							CUDA_Tracker_Info &t)
+#endif
 {
   // Aliases to make it easier to refer to things.
   const float &pixelstep = t.pixelstep;
@@ -519,8 +551,13 @@ inline __device__ bool cuda_take_single_optimization_step_xy(const float *img,
 // Assumes a 2D array of threads.
 // XXX Later, at least use four threads for the four directional checks
 // at each level to speed things up.
+#ifdef	USE_TEXTURE
+static __global__ void VST_cuda_symmetric_opt_kernel(const cudaArray *img, int nx, int ny,
+							CUDA_Tracker_Info *tkrs, int nt)
+#else
 static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, int ny,
 							CUDA_Tracker_Info *tkrs, int nt)
+#endif
 {
   // For now, just do one thread per tracker and have it be the one with y=0.
   int tx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -539,7 +576,11 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 	float &pixelstep = t.pixelstep;
 	pixelstep = 2.0f;	// Start with a large value.
 	
+#ifdef	USE_TEXTURE
 	fitness = cuda_check_fitness_symmetric(img, nx, ny, t);
+#else
+	fitness = cuda_check_fitness_symmetric(img, nx, ny, t);
+#endif
 	do {
 		while (cuda_take_single_optimization_step_xy(img, nx, ny, t)) {};
 		if (pixelstep <= accuracy) {
@@ -562,10 +603,29 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
 	
 	// Copy the input image from host memory into the GPU buffer.
 	size_t imgsize = buf.nx * buf.ny * sizeof(float);
+#ifdef USE_TEXTURE
+	if (cudaMemcpyToArray(g_cuda_fromhost_array, 0, 0, buf.buf, imgsize, cudaMemcpyHostToDevice) != cudaSuccess) {
+		fprintf(stderr, "VST_cuda_optimize_symmetric_trackers(): Could not copy array to CUDA\n");
+		return false;
+	}
+
+	// Bind the texture reference to the texture after describing it.
+	g_tex_ref.addressMode[0] = cudaAddressModeClamp;
+	g_tex_ref.addressMode[1] = cudaAddressModeClamp;
+
+	// Do linear interpolation on the result.  NOTE: The precision of the interpolator
+	// is only 9 bits, so there are only 512 possible locations at which to sample
+	// within a pixel in each axis; if we want better accuracy than 1/256, we won't
+	// be happy with this result.
+	g_tex_ref.filterMode = cudaFilterModeLinear;
+	g_tex_ref.normalized = false;
+	cudaBindTextureToArray(g_tex_ref, g_cuda_fromhost_array, g_channel_desc);
+#else
 	if (cudaMemcpy(g_cuda_fromhost_buffer, buf.buf, imgsize, cudaMemcpyHostToDevice) != cudaSuccess) {
 		fprintf(stderr, "VST_cuda_optimize_symmetric_trackers(): Could not copy memory to CUDA\n");
 		return false;
 	}
+#endif
 	
 	// Allocate an array of tracker information to pass down to the kernel.
 	// with one entry per tracker we are optimizing.  This stores the tracking
@@ -620,9 +680,15 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
 	// the input buffer and editing the positions in place.
 	// Synchronize the threads when we are done so we know that 
 	// they finish before we copy the memory back.
+#ifdef	USE_TEXTURE
+	VST_cuda_symmetric_opt_kernel<<< g_grid, g_threads >>>(g_cuda_fromhost_array,
+					buf.nx, buf.ny,
+					gpu_ti, num_to_optimize);
+#else
 	VST_cuda_symmetric_opt_kernel<<< g_grid, g_threads >>>(g_cuda_fromhost_buffer,
 					buf.nx, buf.ny,
 					gpu_ti, num_to_optimize);
+#endif
 	if (cudaThreadSynchronize() != cudaSuccess) {
 		fprintf(stderr, "VST_cuda_blur_image(): Could not synchronize threads\n");
 		return false;

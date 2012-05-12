@@ -2530,6 +2530,12 @@ unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_im
   if (optimize_radius || parabolic_opt) {
     appropriate = false;
   }
+  // Only do this if we don't need better than 1 part in 256 localization;
+  // the bilinear interpolation only handles up to 1 part in 512 positions
+  // between pixels.
+  if (Tracker_Collection_Manager::tracker(0)->xytracker()->get_pixel_accuracy() < 1.0/256.0 ) {
+    appropriate = false;
+  }
 
   // If we have CUDA and symmetric trackers, then go ahead and use the CUDA-accelerated
   // optimization routines.  Otherwise, or if CUDA fails, fall back to the OpenMP
@@ -2542,6 +2548,7 @@ unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_im
   // for its buffer directly to save another round of copying here;
   // this will violate information hiding but make things faster.
   VST_cuda_image_buffer copy_of_image;
+  copy_of_image.buf = NULL;
   if (appropriate) {
     copy_of_image.nx = s_image.get_num_columns();
     copy_of_image.ny = s_image.get_num_rows();
@@ -2566,7 +2573,10 @@ unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_im
        VST_cuda_optimize_symmetric_trackers(copy_of_image, d_trackers, num_to_opt) ) {
 
     // Free the buffer
-    delete [] copy_of_image.buf;
+    if (copy_of_image.buf) {
+      delete [] copy_of_image.buf;
+      copy_of_image.buf = NULL;
+    }
 
     // Record the last optimized position, in case we're doing either prediction
     // or a local image-matched search.
