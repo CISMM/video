@@ -18,7 +18,17 @@ so that we only initialize the device once.
 
 static CUdevice     g_cuDevice;     // CUDA device
 static CUcontext    g_cuContext;    // CUDA context on the device
+
+//#define USE_TEXTURE
+#ifdef USE_TEXTURE
+static cudaArray	*g_cuda_fromhost_array = NULL;
+static cudaChannelFormatDesc	g_channel_desc;
+static texture<float,cudaTextureType2D,cudaReadModeElementType>	g_tex_ref;
+static float        *g_cuda_fromhost_buffer = NULL; // XXX DO NOT USE!
+#else
 static float        *g_cuda_fromhost_buffer = NULL;
+#endif
+
 static unsigned		g_cuda_fromhost_nx = 0;
 static unsigned		g_cuda_fromhost_ny = 0;
 
@@ -62,6 +72,21 @@ static bool VST_ensure_cuda_ready(const VST_cuda_image_buffer &inbuf)
     // copied from host memory.
     if ( (inbuf.nx != g_cuda_fromhost_nx) || (inbuf.ny != g_cuda_fromhost_nx) ) {
 	    
+#ifdef	USE_TEXTURE
+		if (g_cuda_fromhost_array != NULL) {
+			cudaFreeArray(g_cuda_fromhost_array);
+		}
+		// 32-bit floating-point values in the first texture component only.
+		g_channel_desc = cudaCreateChannelDesc(32,0,0,0,cudaChannelFormatKindFloat);
+		if (cudaMallocArray(&g_cuda_fromhost_array, &g_channel_desc, inbuf.nx, inbuf.ny)  != cudaSuccess) {
+		  fprintf(stderr,"VST_ensure_cuda_ready(): Could not allocate array.\n");
+		  return false;
+		}
+		if (g_cuda_fromhost_array == NULL) {
+		  fprintf(stderr,"VST_ensure_cuda_ready(): Array is NULL pointer.\n");
+		  return false;
+		}
+#else
 		unsigned int numBytes = inbuf.nx * inbuf.ny * sizeof(float);
 		if (g_cuda_fromhost_buffer != NULL) {
 			cudaFree(g_cuda_fromhost_buffer);
@@ -74,6 +99,7 @@ static bool VST_ensure_cuda_ready(const VST_cuda_image_buffer &inbuf)
 		  fprintf(stderr,"VST_ensure_cuda_ready(): Buffer is NULL pointer.\n");
 		  return false;
 		}
+#endif
 		g_cuda_fromhost_nx = inbuf.nx;
 		g_cuda_fromhost_ny = inbuf.ny;
 	}
@@ -135,8 +161,13 @@ inline __device__ float	cuda_Gaussian(
 // Told the buffer beginning and the buffer size.  Assumes at least
 // as many threads are run as there are elements in the buffer.
 // Assumes a 2D array of threads.
-static __global__ void VST_cuda_gaussian_blur(float *in, float *out, int nx, int ny,
+#ifdef	USE_TEXTURE
+static __global__ void VST_cuda_gaussian_blur(const cudaArray *in, float *out, int nx, int ny,
 							unsigned aperture, float std)
+#else
+static __global__ void VST_cuda_gaussian_blur(const float *in, float *out, int nx, int ny,
+							unsigned aperture, float std)
+#endif
 {
   int x = blockIdx.x * blockDim.x + threadIdx.x;
   int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -155,15 +186,16 @@ static __global__ void VST_cuda_gaussian_blur(float *in, float *out, int nx, int
 	// to 43.8.
 	// Moving the kval and value definitions outside the loop dropped back to
 	// 39.
+	// Changing the radius (affects the aperture) from 5 to 3 makes things
+	// go 59 frames/second.
 	// Moving the definition of int j into the i loop bumped it up to 44.  Looks
 	// like the compiler doesn't always do the best optimizing for us...
 	// After the above mods, changing the cuda_Gaussian() to = 1.0f made things
 	// go 53 frames/second, so there may be some computational gain to be had
 	// in there.
+    // Switching to texture reads kept us at 44 frames/second (same 44.5 as floats).
 	// XXX Switching the code below to one like the faster algorithm in the
 	// CPU code may speed things up a bit more.
-	// Changing the radius (affects the aperture) from 5 to 3 makes things
-	// go 41 frames/second.
     // If we don't have an integer version of aperture, the "-aperture"
     // below turns into a large positive number, meaning that
     // the loops never get executed.
@@ -176,8 +208,8 @@ static __global__ void VST_cuda_gaussian_blur(float *in, float *out, int nx, int
     int max_i = aperture_int;
     int min_j = -aperture_int;
     int max_j = aperture_int;
-    int min_x = x - aperture_int; if (min_x < 0) { min_i = -min_x; }
-    int min_y = y - aperture_int; if (min_y < 0) { min_j = -min_y; }
+    int min_x = x - aperture_int; if (min_x < 0) { min_i += -min_x; }
+    int min_y = y - aperture_int; if (min_y < 0) { min_j += -min_y; }
     int max_x = x + aperture_int; if (max_x >= nx) { max_i -= ( max_x - (nx-1) ); }
     int max_y = y + aperture_int; if (max_y >= ny) { max_j -= ( max_y - (ny-1) ); }
     int i;
@@ -187,7 +219,13 @@ static __global__ void VST_cuda_gaussian_blur(float *in, float *out, int nx, int
 	  int j;
       for (j = min_j; j <= max_j; j++) {
           float kval = cuda_Gaussian(std,i,j);
+#ifdef	USE_TEXTURE
+		  // Because array indices are not normalized to [0,1], we need to
+		  // add 0.5f to each coordinate (quirk inherited from graphics).
+		  float value = tex2D( g_tex_ref, x+i+0.5f, y+j+0.5f  );
+#else
 		  float value = in[x+i + (y+j)*nx];
+#endif
           sum += kval * value;
           weight += kval;
       }
@@ -205,11 +243,25 @@ bool VST_cuda_blur_image(VST_cuda_image_buffer &buf, unsigned aperture, float st
 	
 	// Copy the input image from host memory into the GPU buffer.
 	size_t size = buf.nx * buf.ny * sizeof(float);
+#ifdef USE_TEXTURE
+	if (cudaMemcpyToArray(g_cuda_fromhost_array, 0, 0, buf.buf, size, cudaMemcpyHostToDevice) != cudaSuccess) {
+		fprintf(stderr, "VST_cuda_blur_image(): Could not copy array to CUDA\n");
+		return false;
+	}
+
+	// Bind the texture reference to the texture after describing it.
+	g_tex_ref.addressMode[0] = cudaAddressModeClamp;
+	g_tex_ref.addressMode[1] = cudaAddressModeClamp;
+	g_tex_ref.filterMode = cudaFilterModePoint;
+	g_tex_ref.normalized = false;
+	cudaBindTextureToArray(g_tex_ref, g_cuda_fromhost_array, g_channel_desc);
+#else
 	if (cudaMemcpy(g_cuda_fromhost_buffer, buf.buf, size, cudaMemcpyHostToDevice) != cudaSuccess) {
 		fprintf(stderr, "VST_cuda_blur_image(): Could not copy memory to CUDA\n");
 		return false;
 	}
-	
+#endif
+
 	// Allocate a CUDA buffer to blur into from the input buffer.  It should
 	// be the same size as the input buffer.  We only allocate this when the
 	// size changes.
@@ -235,8 +287,13 @@ bool VST_cuda_blur_image(VST_cuda_image_buffer &buf, unsigned aperture, float st
 	// Synchronize the threads when
 	// we are done so we know that they finish before we copy the memory
 	// back.
+#ifdef USE_TEXTURE
+	VST_cuda_gaussian_blur<<< g_grid, g_threads >>>(g_cuda_fromhost_array,
+					blur_buf, blur_nx, blur_ny, aperture, std);
+#else
 	VST_cuda_gaussian_blur<<< g_grid, g_threads >>>(g_cuda_fromhost_buffer,
 					blur_buf, blur_nx, blur_ny, aperture, std);
+#endif
 	if (cudaThreadSynchronize() != cudaSuccess) {
 		fprintf(stderr, "VST_cuda_blur_image(): Could not synchronize threads\n");
 		return false;
