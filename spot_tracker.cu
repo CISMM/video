@@ -116,8 +116,8 @@ static bool VST_ensure_cuda_ready(const VST_cuda_image_buffer &inbuf)
 // For computational efficiency, we refactor this into A * e ^ (B * R^2).
 
 inline __device__ float	cuda_Gaussian(
-  float s_meters,      //< standard deviation (square root of variance)
-  float x, float y)	//< Point to sample (relative to origin)
+  const float &s_meters,      //< standard deviation (square root of variance)
+  const float &x, const float &y)	//< Point to sample (relative to origin)
 {
   float variance = s_meters * s_meters;
   float R_squared = x*x + y*y;
@@ -262,7 +262,19 @@ typedef struct {
 	float pixel_accuracy;
 	float x;
 	float y;
+	float fitness;
+	float pixelstep;
 } CUDA_Tracker_Info;
+
+// Find the maximum of three elements.  Return the
+// index of which one was picked.
+inline __device__ float max3(const float &v0, const float &v1, const float &v2,
+							 unsigned &index) {
+  float max = v0; index = 0;
+  if (v1 > max) { max = v1; index = 1; }
+  if (v2 > max) { max = v2; index = 2; }
+  return max;
+}
 
 // Read a pixel value from the specified image.
 // Return false if the coordinate its outside the image.
@@ -323,12 +335,123 @@ inline __device__ bool cuda_read_pixel_bilerp(
 };
 
 // Check the fitness of the specified symmetric tracker within the
-// specified image.
+// specified image at the specified location.
+// This code should compute exactly the same thing as the
+// symmetric_spot_tracker_interp function.
+// XXX Later, put the locations to search into constant memory rather
+// than computing them on the fly here.
 inline __device__ float	cuda_check_fitness_symmetric(
-	float *img, int nx, int ny,
-	CUDA_Tracker_Info tkr)
+	const float *img, const int &nx, const int &ny,
+	const CUDA_Tracker_Info &tkr)
 {
-	// XXXX
+	// Construct aliases for the parameters that give us easy local names.
+	const float &radius = tkr.radius;
+	const float &samplesep = tkr.sample_separation;
+	const float &x = tkr.x;
+	const float &y = tkr.y;
+	
+	// Sum up over rings that are samplesep away from the center; we
+	// don't count the center pixel because it will never have variance.
+	float r;
+	float ring_variance_sum = 0;
+	for (r = samplesep; r <= radius; r += samplesep) {
+		int count = 0;
+		float valSum = 0.0f;
+		float squareValSum = 0.0f;
+		float rads_per_step = 1.0f / r;
+		float start = (r/samplesep)*rads_per_step*0.5f;
+		float theta;
+		for (theta = start; theta < 2*CUDART_PI_F + start; theta += rads_per_step) {
+			float newx = x + r*cos(theta);
+			float newy = y + r*sin(theta);
+			float val;
+			if (cuda_read_pixel_bilerp(img, nx, ny, newx, newy, val)) {
+				squareValSum += val*val;
+				valSum += val;
+				count++;
+			}
+		}
+	
+		if (count) {
+			ring_variance_sum += squareValSum - valSum*valSum / count;
+		}
+	}
+	
+	return -ring_variance_sum;
+}
+
+// Optimize starting at the specified location to find the best-fit disk.
+// Take only one optimization step.  Return whether we ended up finding a
+// better location or not.  Return new location in any case.  One step means
+// one step in X,Y, and radius space each.  We always optimize in xy only.
+inline __device__ bool cuda_take_single_optimization_step_xy(const float *img,
+							const int &nx, const int &ny,
+							CUDA_Tracker_Info &t)
+{
+  // Aliases to make it easier to refer to things.
+  const float &pixelstep = t.pixelstep;
+  float &fitness = t.fitness;
+  float &x = t.x;
+  float &y = t.y;
+  
+  float	  new_fitness;	    //< Checked fitness value to see if it is better than current one
+  bool	  betterxy = false; //< Do we find a better location?
+
+  // Try going in +/- X and see if we find a better location.  It is
+  // important that we check both directions before deciding to step
+  // to avoid unbiased estimations.
+  {
+    float v0, vplus, vminus;
+    float starting_x = x;
+    v0 = fitness;                                   // Value at starting location
+    // XXX Need to do this differently when we run in parallel.  Also for Y.
+    x = starting_x + pixelstep;
+    vplus = cuda_check_fitness_symmetric(img, nx, ny, t);
+    x = starting_x - pixelstep;
+    vminus = cuda_check_fitness_symmetric(img, nx, ny, t);
+    unsigned which;
+    new_fitness = max3(v0, vplus, vminus, which);
+    switch (which) {
+      case 0: x = starting_x;
+              break;
+      case 1: x = starting_x + pixelstep;
+              betterxy = true;
+              break;
+      case 2: x = starting_x - pixelstep;
+              betterxy = true;
+              break;
+    }
+    fitness = new_fitness;
+  }
+  
+  // Try going in +/- Y and see if we find a better location.  It is
+  // important that we check both directions before deciding to step
+  // to avoid unbiased estimations.
+  {
+    float v0, vplus, vminus;
+    float starting_y = y;
+    v0 = fitness;                                      // Value at starting location
+    y = starting_y + pixelstep;	// Try going a step in +Y
+    vplus = cuda_check_fitness_symmetric(img, nx, ny, t);
+    y = starting_y - pixelstep;	// Try going a step in +Y
+    vminus = cuda_check_fitness_symmetric(img, nx, ny, t);
+    unsigned which;
+    new_fitness = max3(v0, vplus, vminus, which);
+    switch (which) {
+      case 0: y = starting_y;
+              break;
+      case 1: y = starting_y + pixelstep;
+              betterxy = true;
+              break;
+      case 2: y = starting_y - pixelstep;
+              betterxy = true;
+              break;
+    }
+    fitness = new_fitness;
+  }
+  
+  // Tell if we found a better location.
+  return betterxy;
 }
 
 // CUDA kernel to optimize the passed-in list of trackers based on the
@@ -336,16 +459,37 @@ inline __device__ float	cuda_check_fitness_symmetric(
 // final optimum location.
 // Assumes that we have at least as many threads in X as we have trackers.
 // Assumes a 2D array of threads.
-static __global__ void VST_cuda_symmetric_opt_kernel(float *img, int nx, int ny,
+// XXX Later, at least use four threads for the four directional checks
+// at each level to speed things up.
+static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, int ny,
 							CUDA_Tracker_Info *tkrs, int nt)
 {
-  int x = blockIdx.x * blockDim.x + threadIdx.x;
-  int y = blockIdx.y * blockDim.y + threadIdx.y;
-  
   // For now, just do one thread per tracker and have it be the one with y=0.
-  if ( (x < nt) && (y < 1) ) {
-	// XXXXX
+  int tx = blockIdx.x * blockDim.x + threadIdx.x;
+  int ty = blockIdx.y * blockDim.y + threadIdx.y;
+  int tkr_id = tx;
+  int group_id = ty;
 
+  // Do the whole optimization here, checking with smaller and smaller
+  // steps until we reach the accuracy requested.
+  if ( (tkr_id < nt) && (group_id == 0) ) {
+  
+	// Get local aliases for the passed-in variables we need to use.    
+	CUDA_Tracker_Info &t = tkrs[tkr_id];
+	const float &accuracy = t.pixel_accuracy;
+	float &fitness = t.fitness;	// Keeps track of current fitness
+	float &pixelstep = t.pixelstep;
+	pixelstep = 2.0f;	// Start with a large value.
+	
+	fitness = cuda_check_fitness_symmetric(img, nx, ny, t);
+	do {
+		while (cuda_take_single_optimization_step_xy(img, nx, ny, t)) {};
+		if (pixelstep <= accuracy) {
+			break;
+		}
+		pixelstep /= 2.0f;
+	} while (true);
+	
   }
 }
 
@@ -418,7 +562,6 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
 	// the input buffer and editing the positions in place.
 	// Synchronize the threads when we are done so we know that 
 	// they finish before we copy the memory back.
-	printf("XXX Not yet completely implemented\n");
 	VST_cuda_symmetric_opt_kernel<<< g_grid, g_threads >>>(g_cuda_fromhost_buffer,
 					buf.nx, buf.ny,
 					gpu_ti, num_to_optimize);

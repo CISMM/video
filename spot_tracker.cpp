@@ -36,7 +36,7 @@ spot_tracker_XY::spot_tracker_XY(double radius, bool inverted, double pixelaccur
 {
 }
 
-// Optimize starting at the specified location to find the best-fit disk.
+// Optimize starting at the specified location to find the best-fit location.
 // Take only one optimization step.  Return whether we ended up finding a
 // better location or not.  Return new location in any case.  One step means
 // one step in X,Y, and radius space each.  The boolean parameters tell
