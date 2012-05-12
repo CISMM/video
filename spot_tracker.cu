@@ -560,33 +560,35 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 							CUDA_Tracker_Info *tkrs, int nt)
 #endif
 {
-  // X coordinate tells us which tracker.
-  // Y coordinate tells us which member of the group we are for that tracker.
-  int tx = blockIdx.x * blockDim.x + threadIdx.x;
-  int ty = blockIdx.y * blockDim.y + threadIdx.y;
-  int tkr_id = tx;
-  int member_id = ty;
+  // All of the threads within one block access the same tracker.
+  // There is only one block in Y; there are as many blocks in X as there
+  // are trackers.  We assure that the block is square and we sample on
+  // a lattice with that many points on it.
+  int tkr_id = blockIdx.x;
+  int my_x = threadIdx.x;
+  int my_y = threadIdx.y;
+  const int MAX_LATTICE = 32;
+  int lattice = blockDim.x;
+  if (blockDim.y < blockDim.x) { lattice = blockDim.y; }
+  if (lattice > MAX_LATTICE) { lattice = MAX_LATTICE; }
   
   // This is shared memory among the threads in a block that stores the
   // position offset for each group member and the fitness that was
   // found by that group member at its position.  We fill in the offsets
-  // here, each member doing its own; each 4 go away from the center
-  // along an axis that goes from straight in +X to +X-Y in 45-degree
-  // steps.  These deltas are normalized from -1 to 1, and are later
+  // here, each member doing its own; they make a lattice from (-,-) to
+  // (+,+) where the corners are normalized from -1 to 1, and are later
   // scaled by the current step size so that the last one is at the
   // step location.
-  // XXX Later, generalize the array sizes and angles and such so we can
-  // put however many threads in a block.
-  __shared__ float	dx[32], dy[32], fitnesses[32];
+  // This storage must be as large as the lattice.
+  __shared__ float	dx[MAX_LATTICE][MAX_LATTICE], dy[MAX_LATTICE][MAX_LATTICE];
+  __shared__ float	fitnesses[MAX_LATTICE][MAX_LATTICE];
   __shared__ bool	done;
-  float angle = (CUDART_PI_F/4.0f)*(member_id/4);
-  float radius = 0.25*(1 + (member_id%4));	// Radii 0.25, 0.5, 0.75, 1.0
-  dx[member_id] = radius * cos(angle);
-  dy[member_id] = radius * sin(angle);
+  dx[my_x][my_y] = (2*my_x / (lattice - 1.0) - 1);
+  dy[my_x][my_y] = (2*my_y / (lattice - 1.0) - 1);
 
   // Do the whole optimization here, checking with smaller and smaller
   // steps until we reach the accuracy requested.
-  if ( (tkr_id < nt) && (member_id < 32) ) {
+  if (tkr_id < nt) {
   
 	// Get local aliases for the passed-in variables we need to use.    
 	CUDA_Tracker_Info &t = tkrs[tkr_id];
@@ -600,19 +602,18 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 	CUDA_Tracker_Info member_t = t;
 	
 	// Compute the fitness for all offsets and then figure out which
-	// is the best.  If none are better than the original one, divide
-	// the step size by 8 so that it will look at the next half-step
-	// below the set of 4 we just tested along each axis.  We only have
-	// to check the original spot's fitness on one thread.
-	if (member_id == 0) {
+	// is the best.  If the best location is not found on the outside
+	// of the lattice, then we go ahead and divide by the lattice size
+	// before doing the next step.
+	if ( (my_x == 0) && (my_y == 0) ) {
 		fitness = cuda_check_fitness_symmetric(img, nx, ny, t);
 		done = false;
 	}
 	do {	
 		// Check all offsets and compute their fitness.
-		member_t.x = t.x + dx[member_id] * pixelstep;
-		member_t.y = t.y + dy[member_id] * pixelstep;
-		fitnesses[member_id] = cuda_check_fitness_symmetric(img, nx, ny, member_t);
+		member_t.x = t.x + dx[my_x][my_y] * pixelstep;
+		member_t.y = t.y + dy[my_x][my_y] * pixelstep;
+		fitnesses[my_x][my_y] = cuda_check_fitness_symmetric(img, nx, ny, member_t);
 		
 		// Synchronize all of the threads in the block.
 		syncthreads();
@@ -622,29 +623,45 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 		// its value as our next start and try again.  If none are better,
 		// divide the pixelstep and try again until we have a step that is
 		// below our requested accuracy.
-		if (member_id == 0) {
-			int i, best_i = -1;
+		// XXX As we have larger numbers of threads, maybe do a faster
+		// parallel reduction on these values.
+		if ( (my_x == 0) && (my_y == 0) ) {
+			int x, best_x = -1;
+			int y, best_y = -1;
 			float best_fitness = fitness;
-			for (i = 0; i < 32; i++) {
-				if (fitnesses[i] > best_fitness) {
-					best_i = i;
-					best_fitness = fitnesses[i];
+			for (x = 0; x < lattice; x++) {
+			  for (y = 0; y < lattice; y++) {
+				if (fitnesses[x][y] > best_fitness) {
+					best_x = x;
+					best_y = y;
+					best_fitness = fitnesses[x][y];
 				}
+			  }
 			}
-			if (best_i >= 0) {
-				t.x += dx[best_i] * pixelstep;
-				t.y += dy[best_i] * pixelstep;
+			// If we found a better place, move there.
+			if (best_x >= 0) {
+				t.x += dx[best_x][best_y] * pixelstep;
+				t.y += dy[best_x][best_y] * pixelstep;
 				fitness = best_fitness;
-			} else {
-				// We found no better location within the requested accuracy,
-				// so we're done!
-				if (pixelstep <= accuracy) {
-					done = true;
-				}
-				
+			}
+			
+			// If we didn't find a better place at the edge of the
+			// lattice (including not finding one at all), then go ahead
+			// and divide the pixel step by the lattice size, so we
+			// confine our search around the best point on this lattice
+			// the next time around.
+			if ( (best_x != 0) && (best_x != lattice-1) &&
+				 (best_y != 0) && (best_y != lattice-1) ) {
+				 				
 				// Try a smaller step size and see if that finds a better
 				// solution.
-				pixelstep /= 8.0f;			
+				pixelstep /= lattice;			
+
+				// If our smallest step from before was at or
+				// below the desired accuracy, we're done!
+				if (pixelstep*2 <= accuracy) {
+					done = true;
+				}
 			}
 		}
 	} while (!done);	  
@@ -722,19 +739,15 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
 		return false;
 	}
 	
-    // Set up enough threads (and enough blocks of threads) to at least
-    // cover the number of trackers in X; we want each tracker to be in
-    // is own block so we don't pollute caches between trackers (which are
-    // not near each other), and we have 32 threads per
-    // tracker (so y = 32).  These are laid out with 8 along the X axis,
-    // 8 along Y, and then 8 more along each diagonal, so we can test multiple
-    // locations for a best fit.
-    g_threads.x = 1;
-    g_threads.y = 32;
+    // We have as many blocks in X as we have trackers.  We have one block
+    // in Y.  We have a lattice of threads within a block that should be the
+    // same number in X and Y; we test on points on that lattice and then
+    // divide by that size to set a smaller lattice to check.
+    g_threads.x = 8;
+    g_threads.y = 8;
     g_threads.z = 1;
     g_grid.x = num_to_optimize;
-    g_grid.x = ((num_to_optimize-1) / g_threads.x) + 1;
-    g_grid.y = ((32-1) / g_threads.y) + 1;
+    g_grid.y = 1;
 	
 	// Call the CUDA kernel to do the tracking, reading from
 	// the input buffer and editing the positions in place.
