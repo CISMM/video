@@ -264,6 +264,73 @@ typedef struct {
 	float y;
 } CUDA_Tracker_Info;
 
+// Read a pixel value from the specified image.
+// Return false if the coordinate its outside the image.
+// Return the correct result and true if the coordinate is inside.
+inline __device__ bool cuda_read_pixel(
+	const float *img, const int &nx, const int &ny,
+	const int &x, const int &y,
+	float &result)
+{
+	if ( (x < 0) || (y < 0) || (x >= nx) || (y >= ny) ) {
+		return false;
+	}
+	result = img[x + y*nx];
+	return true;
+}
+
+// Do bilinear interpolation to read from the image, in order to
+// smoothly interpolate between pixel values.
+// All sorts of speed tweaks in here because it is in the inner loop for
+// the spot tracker and other codes.
+// Return a result of zero and false if the coordinate its outside the image.
+// Return the correct interpolated result and true if the coordinate is inside.
+// XXX Later, consider using the hardware-accelerated bilerp function by using
+// a texture to read from; beware that the interpolator will only do a maximum
+// of 256 subpixel locations, which won't get us below a resolution of 1/256.
+inline __device__ bool cuda_read_pixel_bilerp(
+	const float *img, const int &nx, const int &ny,
+	const float &x, const float &y,
+	float &result)
+{
+	result = 0;	// In case of failure.
+	// The order of the following statements is optimized for speed.
+	// The float version is used below for xlowfrac comp, ixlow also used later.
+	// Slightly faster to explicitly compute both here to keep the answer around.
+	float xlow = floor(x); int ixlow = (int)xlow;
+	// The float version is used below for ylowfrac comp, ixlow also used later
+	// Slightly faster to explicitly compute both here to keep the answer around.
+	float ylow = floor(y); int iylow = (int)ylow;
+	int ixhigh = ixlow+1;
+	int iyhigh = iylow+1;
+	float xhighfrac = x - xlow;
+	float yhighfrac = y - ylow;
+	float xlowfrac = 1.0 - xhighfrac;
+	float ylowfrac = 1.0 - yhighfrac;
+	float ll, lh, hl, hh;
+
+	// Combining the if statements into one using || makes it slightly slower.
+	// Interleaving the result calculation with the returns makes it slower.
+	if (!cuda_read_pixel(img, nx, ny, ixlow, iylow, ll)) { return false; }
+	if (!cuda_read_pixel(img, nx, ny, ixlow, iyhigh, lh)) { return false; }
+	if (!cuda_read_pixel(img, nx, ny, ixhigh, iylow, hl)) { return false; }
+	if (!cuda_read_pixel(img, nx, ny, ixhigh, iyhigh, hh)) { return false; }
+	result = ll * xlowfrac * ylowfrac + 
+		 lh * xlowfrac * yhighfrac +
+		 hl * xhighfrac * ylowfrac +
+		 hh * xhighfrac * yhighfrac;
+	return true;
+};
+
+// Check the fitness of the specified symmetric tracker within the
+// specified image.
+inline __device__ float	cuda_check_fitness_symmetric(
+	float *img, int nx, int ny,
+	CUDA_Tracker_Info tkr)
+{
+	// XXXX
+}
+
 // CUDA kernel to optimize the passed-in list of trackers based on the
 // passed-in image.  Moves the X and Y position of each tracker to its
 // final optimum location.
@@ -338,6 +405,8 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
     // cover the number of trackers in X, and we have only one thread per
     // tracker (so y = 1).  We use a thread block size of 1x1
     // because we don't want to share a cache between different trackers.
+	// XXX Later, consider how to make use of multiple threads in the
+	// same tracker (doing 4+ offsets at once).
     g_threads.x = 1;
     g_threads.y = 1;
     g_threads.z = 1;
