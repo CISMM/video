@@ -549,10 +549,9 @@ inline __device__ bool cuda_take_single_optimization_step_xy(const float *img,
 // CUDA kernel to optimize the passed-in list of trackers based on the
 // passed-in image.  Moves the X and Y position of each tracker to its
 // final optimum location.
-// Assumes that we have at least as many threads in X as we have trackers.
 // Assumes a 2D array of threads.
-// XXX Later, at least use four threads for the four directional checks
-// at each level to speed things up.
+// Assumes that we have at least as many threads in X as we have trackers.
+// Assumes 32 threads per tracker, which are laid out in Y.
 #ifdef	USE_TEXTURE
 static __global__ void VST_cuda_symmetric_opt_kernel(const cudaArray *img, int nx, int ny,
 							CUDA_Tracker_Info *tkrs, int nt)
@@ -561,15 +560,33 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 							CUDA_Tracker_Info *tkrs, int nt)
 #endif
 {
-  // For now, just do one thread per tracker and have it be the one with y=0.
+  // X coordinate tells us which tracker.
+  // Y coordinate tells us which member of the group we are for that tracker.
   int tx = blockIdx.x * blockDim.x + threadIdx.x;
   int ty = blockIdx.y * blockDim.y + threadIdx.y;
   int tkr_id = tx;
-  int group_id = ty;
+  int member_id = ty;
+  
+  // This is shared memory among the threads in a block that stores the
+  // position offset for each group member and the fitness that was
+  // found by that group member at its position.  We fill in the offsets
+  // here, each member doing its own; each 4 go away from the center
+  // along an axis that goes from straight in +X to +X-Y in 45-degree
+  // steps.  These deltas are normalized from -1 to 1, and are later
+  // scaled by the current step size so that the last one is at the
+  // step location.
+  // XXX Later, generalize the array sizes and angles and such so we can
+  // put however many threads in a block.
+  __shared__ float	dx[32], dy[32], fitnesses[32];
+  __shared__ bool	done;
+  float angle = (CUDART_PI_F/4.0f)*(member_id/4);
+  float radius = 0.25*(1 + (member_id%4));	// Radii 0.25, 0.5, 0.75, 1.0
+  dx[member_id] = radius * cos(angle);
+  dy[member_id] = radius * sin(angle);
 
   // Do the whole optimization here, checking with smaller and smaller
   // steps until we reach the accuracy requested.
-  if ( (tkr_id < nt) && (group_id == 0) ) {
+  if ( (tkr_id < nt) && (member_id < 32) ) {
   
 	// Get local aliases for the passed-in variables we need to use.    
 	CUDA_Tracker_Info &t = tkrs[tkr_id];
@@ -577,29 +594,60 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 	float &fitness = t.fitness;	// Keeps track of current fitness
 	float &pixelstep = t.pixelstep;
 	pixelstep = 2.0f;	// Start with a large value.
+
+	// Make my own tracker with its information copied from the original
+	// passed-in tracker I'm associated with.
+	CUDA_Tracker_Info member_t = t;
 	
-#ifdef	USE_TEXTURE
-	fitness = cuda_check_fitness_symmetric(img, nx, ny, t);
-#else
-	fitness = cuda_check_fitness_symmetric(img, nx, ny, t);
-#endif
-	do {
-		while (cuda_take_single_optimization_step_xy(img, nx, ny, t)) {};
+	// Compute the fitness for all offsets and then figure out which
+	// is the best.  If none are better than the original one, divide
+	// the step size by 8 so that it will look at the next half-step
+	// below the set of 4 we just tested along each axis.  We only have
+	// to check the original spot's fitness on one thread.
+	if (member_id == 0) {
+		fitness = cuda_check_fitness_symmetric(img, nx, ny, t);
+		done = false;
+	}
+	do {	
+		// Check all offsets and compute their fitness.
+		member_t.x = t.x + dx[member_id] * pixelstep;
+		member_t.y = t.y + dy[member_id] * pixelstep;
+		fitnesses[member_id] = cuda_check_fitness_symmetric(img, nx, ny, member_t);
 		
 		// Synchronize all of the threads in the block.
 		syncthreads();
 		
-		// We found no better location within the requested accuracy,
-		// so we're done!
-		if (pixelstep <= accuracy) {
-			break;
+		// In the first thread, find the highest fitness and its index.
+		// Compare this with the original fitness.  If one is better, set
+		// its value as our next start and try again.  If none are better,
+		// divide the pixelstep and try again until we have a step that is
+		// below our requested accuracy.
+		if (member_id == 0) {
+			int i, best_i = -1;
+			float best_fitness = fitness;
+			for (i = 0; i < 32; i++) {
+				if (fitnesses[i] > best_fitness) {
+					best_i = i;
+					best_fitness = fitnesses[i];
+				}
+			}
+			if (best_i >= 0) {
+				t.x += dx[best_i] * pixelstep;
+				t.y += dy[best_i] * pixelstep;
+				fitness = best_fitness;
+			} else {
+				// We found no better location within the requested accuracy,
+				// so we're done!
+				if (pixelstep <= accuracy) {
+					done = true;
+				}
+				
+				// Try a smaller step size and see if that finds a better
+				// solution.
+				pixelstep /= 8.0f;			
+			}
 		}
-		
-		// Try a smaller step size and see if that finds a better
-		// solution.
-		pixelstep /= 2.0f;
-	} while (true);
-	
+	} while (!done);	  
   }
 }
 
@@ -675,17 +723,18 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
 	}
 	
     // Set up enough threads (and enough blocks of threads) to at least
-    // cover the number of trackers in X, and we have only one thread per
-    // tracker (so y = 1).  We use a thread block size of 1x1
-    // because we don't want to share a cache between different trackers.
-	// XXX Later, consider how to make use of multiple threads in the
-	// same tracker (doing 4+ offsets at once).
+    // cover the number of trackers in X; we want each tracker to be in
+    // is own block so we don't pollute caches between trackers (which are
+    // not near each other), and we have 32 threads per
+    // tracker (so y = 32).  These are laid out with 8 along the X axis,
+    // 8 along Y, and then 8 more along each diagonal, so we can test multiple
+    // locations for a best fit.
     g_threads.x = 1;
-    g_threads.y = 1;
+    g_threads.y = 32;
     g_threads.z = 1;
     g_grid.x = num_to_optimize;
     g_grid.x = ((num_to_optimize-1) / g_threads.x) + 1;
-    g_grid.y = ((1-1) / g_threads.y) + 1;
+    g_grid.y = ((32-1) / g_threads.y) + 1;
 	
 	// Call the CUDA kernel to do the tracking, reading from
 	// the input buffer and editing the positions in place.
