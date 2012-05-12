@@ -269,7 +269,8 @@ typedef struct {
 // Find the maximum of three elements.  Return the
 // index of which one was picked.
 inline __device__ float max3(const float &v0, const float &v1, const float &v2,
-							 unsigned &index) {
+							 unsigned &index)
+{
   float max = v0; index = 0;
   if (v1 > max) { max = v1; index = 1; }
   if (v2 > max) { max = v2; index = 2; }

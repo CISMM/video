@@ -1826,8 +1826,8 @@ bool Tracker_Collection_Manager::delete_active_tracker(void)
 void Tracker_Collection_Manager::add_tracker(double x, double y, double radius)
 {
     d_trackers.push_back(
-      new Spot_Information(default_xy_tracker_creator(x,y,radius),
-                           default_z_tracker_creator()));
+      new Spot_Information(d_xy_tracker_creator(x,y,radius),
+                           d_z_tracker_creator()));
     d_active_tracker = d_trackers.size()-1;
 
     // Set the last position in case we're doing prediction.
