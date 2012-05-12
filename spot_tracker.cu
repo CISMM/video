@@ -555,8 +555,8 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
     g_threads.y = 1;
     g_threads.z = 1;
     g_grid.x = num_to_optimize;
-    g_grid.y = 1;
-    g_grid.z = 1;	
+    g_grid.x = (num_to_optimize / g_threads.x) + 1;
+    g_grid.y = (1 / g_threads.y) + 1;
 	
 	// Call the CUDA kernel to do the tracking, reading from
 	// the input buffer and editing the positions in place.
