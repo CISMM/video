@@ -111,8 +111,8 @@ static bool VST_ensure_cuda_ready(const VST_cuda_image_buffer &inbuf)
     g_threads.x = 16;
     g_threads.y = 16;
     g_threads.z = 1;
-    g_grid.x = (g_cuda_fromhost_nx / g_threads.x) + 1;
-    g_grid.y = (g_cuda_fromhost_ny / g_threads.y) + 1;
+    g_grid.x = ((g_cuda_fromhost_nx-1) / g_threads.x) + 1;
+    g_grid.y = ((g_cuda_fromhost_ny-1) / g_threads.y) + 1;
     g_grid.z = 1;	
 
     // Everything worked, so we're okay.
@@ -368,6 +368,8 @@ inline __device__ bool cuda_read_pixel_bilerp(
 	} else {
 	  // Because array indices are not normalized to [0,1], we need to
 	  // add 0.5f to each coordinate (quirk inherited from graphics).
+	  // This is doing bilinear interpolation because the g_tex_ref
+	  // we're using was set up to do this before our kernel was called.
 	  result = tex2D( g_tex_ref, x+0.5f, y+0.5f  );
 	  return true;
 	}
@@ -583,9 +585,18 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 #endif
 	do {
 		while (cuda_take_single_optimization_step_xy(img, nx, ny, t)) {};
+		
+		// Synchronize all of the threads in the block.
+		syncthreads();
+		
+		// We found no better location within the requested accuracy,
+		// so we're done!
 		if (pixelstep <= accuracy) {
 			break;
 		}
+		
+		// Try a smaller step size and see if that finds a better
+		// solution.
 		pixelstep /= 2.0f;
 	} while (true);
 	
@@ -673,8 +684,8 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
     g_threads.y = 1;
     g_threads.z = 1;
     g_grid.x = num_to_optimize;
-    g_grid.x = (num_to_optimize / g_threads.x) + 1;
-    g_grid.y = (1 / g_threads.y) + 1;
+    g_grid.x = ((num_to_optimize-1) / g_threads.x) + 1;
+    g_grid.y = ((1-1) / g_threads.y) + 1;
 	
 	// Call the CUDA kernel to do the tracking, reading from
 	// the input buffer and editing the positions in place.
