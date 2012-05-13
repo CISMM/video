@@ -356,25 +356,7 @@ inline __device__ bool cuda_read_pixel(
 // Use the hardware-accelerated bilerp function by using
 // a texture to read from; beware that the interpolator will only do a maximum
 // of 512 subpixel locations, which won't get us below a resolution of 1/256.
-#ifdef	USE_TEXTURE
-inline __device__ bool cuda_read_pixel_bilerp(
-	const int &nx, const int &ny,
-	const float &x, const float &y,
-	float &result)
-{
-	if ( (x < 0) || (y < 0) || (x >= nx) || (y >= ny) ) {
-		result = 0;
-		return false;
-	} else {
-	  // Because array indices are not normalized to [0,1], we need to
-	  // add 0.5f to each coordinate (quirk inherited from graphics).
-	  // This is doing bilinear interpolation because the g_tex_ref
-	  // we're using was set up to do this before our kernel was called.
-	  result = tex2D( g_tex_ref, x+0.5f, y+0.5f  );
-	  return true;
-	}
-};
-#else
+
 inline __device__ bool cuda_read_pixel_bilerp(
 	const float *img, const int &nx, const int &ny,
 	const float &x, const float &y,
@@ -408,7 +390,6 @@ inline __device__ bool cuda_read_pixel_bilerp(
 		 hh * xhighfrac * yhighfrac;
 	return true;
 };
-#endif
 
 // Check the fitness of the specified symmetric tracker within the
 // specified image at the specified location.
@@ -437,30 +418,39 @@ inline __device__ float	cuda_check_fitness_symmetric(
 	float r;
 	float ring_variance_sum = 0;
 	for (r = samplesep; r <= radius; r += samplesep) {
-		int count = 0;
+		float count = 0.000001f;	// Avoids need for divide-by-zero check
 		float valSum = 0.0f;
 		float squareValSum = 0.0f;
 		float rads_per_step = 1.0f / r;
 		float start = (r/samplesep)*rads_per_step*0.5f;
 		float theta;
 		for (theta = start; theta < 2*CUDART_PI_F + start; theta += rads_per_step) {
-			float newx = x + r*cos(theta);
-			float newy = y + r*sin(theta);
+			float sintheta, costheta;
+			sincos(theta, &sintheta, &costheta);
+			float newx = x + r*costheta;
+			float newy = y + r*sintheta;
 			float val;
 #ifdef	USE_TEXTURE
-			if (cuda_read_pixel_bilerp(nx, ny, newx, newy, val)) {
+			// Because array indices are not normalized to [0,1], we need to
+			// add 0.5f to each coordinate (quirk inherited from graphics).
+			// This is doing bilinear interpolation because the g_tex_ref
+			// we're using was set up to do this before our kernel was called.
+			// Texture read will clamp if out of bounds.
+			// This order of operations is faster than only setting val
+			// once we know that we are in bounds.
+			val = tex2D( g_tex_ref, newx+0.5f, newy+0.5f );
+			if ( (newx >= 0) && (newy >= 0) && (newx < nx) && (newy < ny) ) {
 #else
 			if (cuda_read_pixel_bilerp(img, nx, ny, newx, newy, val)) {
 #endif
-				squareValSum += val*val;
-				valSum += val;
+				// Reordering these three lines makes no speed difference.
 				count++;
+				valSum += val;
+				squareValSum += val*val;
 			}
 		}
 	
-		if (count) {
-			ring_variance_sum += squareValSum - valSum*valSum / count;
-		}
+		ring_variance_sum += squareValSum - valSum*valSum / count;
 	}
 	
 	return -ring_variance_sum;
@@ -741,8 +731,16 @@ Running a lattice of 2x2 points around the current location got us to 21 fps.
 
 Recomputing the "are we done" sooner at a lattice of 4x4 points gets us to 38
 
+Switching from cos() and sin() to sincos() gets us to 44 fps.
+
+Switching the count from int to float and re-ordering the texure read in
+	cuda_read_pixel_bilerp gets us up to 50 fps.
+	
+Pulling the bilerp texture call into the code from inline gets us to 52 fps.
+
 Ideas:
 	Precompute the kernel offsets and store them in shared memory
+			Taking out the sin() and cos() from the inner loop speeds up to 60
 	Remove if statements in inner loop (bilerp) (got a little less than 2x).
 		Texture version is set to clamp, but this is not quite what we want.
 		Pad image with -1 around border and use that to squash?

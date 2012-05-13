@@ -760,6 +760,9 @@ symmetric_spot_tracker_interp::symmetric_spot_tracker_interp(double radius, bool
   // keep them from lining up with each other.
   _radius_lists[0] = NULL;
   for (r = 1; r <= _MAX_RADIUS / _samplesep; r++) {
+
+    // The floating-point value of how far we've come from the center of
+    // the circle; the integer count of steps times the step size.
     double scaled_r = r * _samplesep;
     double rads_per_step = 1.0 / scaled_r;
 
