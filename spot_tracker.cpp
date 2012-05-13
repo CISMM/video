@@ -764,7 +764,13 @@ symmetric_spot_tracker_interp::symmetric_spot_tracker_interp(double radius, bool
     // The floating-point value of how far we've come from the center of
     // the circle; the integer count of steps times the step size.
     double scaled_r = r * _samplesep;
-    double rads_per_step = 1.0 / scaled_r;
+
+    // How many radians are in a step of one _samplesep at the given
+    // radius.  There are 2pi radians at a distance of 1 from the
+    // center, and 2pi*scaled_r at the scaled_r distance.  So the
+    // radians/2pi = _samplestep/(2pi*scaled_r), so
+    // radians = _samplesep / scaled_r;
+    double rads_per_step = _samplesep / scaled_r;
 
     pixels = (int)(1 + 2*M_PI / rads_per_step);
     if ( (_radius_lists[r] = new offset[pixels]) == NULL) {

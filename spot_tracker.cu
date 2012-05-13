@@ -421,7 +421,7 @@ inline __device__ float	cuda_check_fitness_symmetric(
 		float count = 0.000001f;	// Avoids need for divide-by-zero check
 		float valSum = 0.0f;
 		float squareValSum = 0.0f;
-		float rads_per_step = 1.0f / r;
+		float rads_per_step = samplesep / r;
 		float start = (r/samplesep)*rads_per_step*0.5f;
 		float theta;
 		for (theta = start; theta < 2*CUDART_PI_F + start; theta += rads_per_step) {
@@ -738,6 +738,14 @@ Switching the count from int to float and re-ordering the texure read in
 	
 Pulling the bilerp texture call into the code from inline gets us to 52 fps.
 
+*** Bug found.  The pixel separation around the circle on the symmetric
+    tracker was being computed incorrectly.  This resulted in too few
+    points being sampled.  This was in both the serial and the CUDA code.
+    Timings below are from the new code.
+    
+Serial code ran at 34.5 fps.
+CUDA code ran at pretty much the exact same speed.
+	
 Ideas:
 	Precompute the kernel offsets and store them in shared memory
 			Taking out the sin() and cos() from the inner loop speeds up to 60
