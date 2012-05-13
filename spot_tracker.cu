@@ -424,12 +424,40 @@ inline __device__ float	cuda_check_fitness_symmetric(
 		float rads_per_step = samplesep / r;
 		float start = (r/samplesep)*rads_per_step*0.5f;
 		float theta;
-		for (theta = start; theta < 2*CUDART_PI_F + start; theta += rads_per_step) {
+		// We use the fact that sin(theta+PI) = -sin(theta) and
+		// cos(theta+PI) = -cos(theta) to only have to calculate the
+		// sin and cosine half as many times -- we go halfway around the
+		// circle and use two points per step on opposite sides.
+		for (theta = start; theta < CUDART_PI_F + start; theta += rads_per_step) {
 			float sintheta, costheta;
 			sincos(theta, &sintheta, &costheta);
+
+			// Do the point on the top half of the circle.
 			float newx = x + r*costheta;
 			float newy = y + r*sintheta;
 			float val;
+#ifdef	USE_TEXTURE
+			// Because array indices are not normalized to [0,1], we need to
+			// add 0.5f to each coordinate (quirk inherited from graphics).
+			// This is doing bilinear interpolation because the g_tex_ref
+			// we're using was set up to do this before our kernel was called.
+			// Texture read will clamp if out of bounds.
+			// This order of operations is faster than only setting val
+			// once we know that we are in bounds.
+			val = tex2D( g_tex_ref, newx+0.5f, newy+0.5f );
+			if ( (newx >= 0) && (newy >= 0) && (newx < nx) && (newy < ny) ) {
+#else
+			if (cuda_read_pixel_bilerp(img, nx, ny, newx, newy, val)) {
+#endif
+				// Reordering these three lines makes no speed difference.
+				count++;
+				valSum += val;
+				squareValSum += val*val;
+			}
+
+			// Do the point on the bottom half of the circle.
+			newx = x - r*costheta;
+			newy = y - r*sintheta;
 #ifdef	USE_TEXTURE
 			// Because array indices are not normalized to [0,1], we need to
 			// add 0.5f to each coordinate (quirk inherited from graphics).
@@ -744,7 +772,9 @@ Pulling the bilerp texture call into the code from inline gets us to 52 fps.
     Timings below are from the new code.
     
 Serial code ran at 34.5 fps.
-CUDA code ran at pretty much the exact same speed.
+CUDA code ran at pretty much the exact same speed.  It slowed down a little with
+		9 beads.
+Switching to only computing half the sin() and cos() and re-using them got 43
 	
 Ideas:
 	Precompute the kernel offsets and store them in shared memory
