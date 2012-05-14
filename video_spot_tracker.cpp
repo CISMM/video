@@ -217,7 +217,7 @@ Tclvar_float_with_scale	*g_maxY;
 Tclvar_float_with_scale	g_exposure("exposure_millisecs", "", 1, 1000, 10);
 Tclvar_float_with_scale	g_colorIndex("red_green_blue", NULL, 0, 2, 0);
 Tclvar_float_with_scale	g_brighten("brighten", "", 0, 8, 0);
-Tclvar_float_with_scale g_precision("precision", "", 0.001, 1.0, 0.05, rebuild_trackers);
+Tclvar_float_with_scale g_precision("precision", "", 0.005, 1.0, 0.05, rebuild_trackers);
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
 Tclvar_float_with_scale g_blurLostAndFound("blur_lost_and_found", ".lost_and_found_controls.top", 0.0, 5.0, 0.0);
 Tclvar_float_with_scale g_lossSensitivity("kernel_lost_tracking_sensitivity", ".lost_and_found_controls.top", 0.0, 1.0, 0.0);

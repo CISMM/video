@@ -594,18 +594,16 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 			// and divide the pixel step by the lattice size, so we
 			// confine our search around the best point on this lattice
 			// the next time around.
-#if 0
 			if ( (best_x != 0) && (best_x != (lattice-1)) &&
 				 (best_y != 0) && (best_y != (lattice-1)) ) {
-#else
-if ( (best_x == -1) && (best_y == -1) ) {
-#endif
+
 				// If our just-checked size (including the lattice) is
 				// below the required accuracy, we're done.
 				// XXX We need to be careful here -- the interval size
 				// is not always the lattice -- it is for 2 but not for
-				// higher ones (there are N-1 gaps, not N).
-				if (pixelstep / (lattice) <= accuracy/2) {
+				// higher ones (there are N-1 gaps, not N).  This code will
+				// fail for a 2x2 lattice, but works for the others.
+				if (pixelstep / (lattice-1) <= accuracy/2) {
 					done = true;
 				}
 				
@@ -792,6 +790,8 @@ Serial code ran at 34.5 fps.
 CUDA code ran at pretty much the exact same speed.  It slowed down a little with
 		9 beads.
 Switching to only computing half the sin() and cos() and re-using them got 43
+After fixing some bugs and passing information back, it got to 49
+	This is surprising -- it should have gone slower.
 	
 Ideas:
 	Precompute the kernel offsets and store them in shared memory
