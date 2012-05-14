@@ -3137,7 +3137,37 @@ int main(int argc, char *argv[])
 
   /* Load the Tcl scripts that handle widget definition and
    * variable controls */
+#ifdef __APPLE__
+  char	executable_directory[256];
+  const char *last_slash = strrchr(argv[0], '/');
+  const char *last_backslash = strrchr(argv[0], '\\');
+  const char *last_mark = max(last_slash, last_backslash);
+  int root_length = 0;
+  if (last_mark != NULL) {
+	root_length = last_mark - argv[0] + 1;
+  }
+  if (root_length >= sizeof(executable_directory)) {
+	fprintf(stderr,"Too long filename for executable directory\n");
+	return(-1);
+  }
+  strncpy(executable_directory, argv[0], root_length);
+  executable_directory[root_length] = '\0';
+  if (root_length == 0) {
+	strncpy(executable_directory, ".", sizeof(executable_directory));
+  }
+
+  /* Load the Tcl scripts that handle widget definition and
+   * variable controls */
+  sprintf(command, "source %s/russ_widgets.tcl", executable_directory);
+  if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
+          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+                  g_tk_control_interp->result);
+          return(-1);
+  }
+#elif
   sprintf(command, "source russ_widgets.tcl");
+#endif
+
   if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
           fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
                   g_tk_control_interp->result);
@@ -3190,7 +3220,11 @@ int main(int argc, char *argv[])
   // Load the specialized Tcl code needed by this program.  This must
   // be loaded before the Tclvar_init() routine is called because it
   // puts together some of the windows needed by the variables.
+#ifdef __APPLE__
+  sprintf(command, "source %s/video_spot_tracker.tcl", executable_directory);
+#elif
   sprintf(command, "source video_spot_tracker.tcl");
+#endif
   if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
           fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
                   g_tk_control_interp->result);
