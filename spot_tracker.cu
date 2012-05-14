@@ -516,13 +516,14 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
   // here, each member doing its own; they make a lattice from (-,-) to
   // (+,+) where the corners are normalized from -1 to 1, and are later
   // scaled by the current step size so that the last one is at the
-  // step location.
+  // step location.  Need to subtract 1.0f rather than 1 from lattice to
+  // make sure we're using floating-point division.
   // This storage must be as large as the lattice.
   __shared__ float	dx[MAX_LATTICE][MAX_LATTICE], dy[MAX_LATTICE][MAX_LATTICE];
   __shared__ float	fitnesses[MAX_LATTICE][MAX_LATTICE];
   __shared__ bool	done;
-  dx[my_x][my_y] = (2*my_x / (lattice - 1.0) - 1);
-  dy[my_x][my_y] = (2*my_y / (lattice - 1.0) - 1);
+  dx[my_x][my_y] = (2.0f * my_x/(lattice - 1.0f) - 1.0f);
+  dy[my_x][my_y] = (2.0f * my_y/(lattice - 1.0f) - 1.0f);
 
   // Do the whole optimization here, checking with smaller and smaller
   // steps until we reach the accuracy requested.
@@ -531,22 +532,25 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 	// Get local aliases for the passed-in variables we need to use.    
 	CUDA_Tracker_Info &t = tkrs[tkr_id];
 	const float &accuracy = t.pixel_accuracy;
-	float &fitness = t.fitness;	// Keeps track of current fitness
 	float &pixelstep = t.pixelstep;
-	pixelstep = 2.0f;	// Start with a large value.
 
-	// Make my own tracker with its information copied from the original
-	// passed-in tracker I'm associated with.
-	CUDA_Tracker_Info member_t = t;
-	
 	// Compute the fitness for all offsets and then figure out which
 	// is the best.  If the best location is not found on the outside
 	// of the lattice, then we go ahead and divide by the lattice size
 	// before doing the next step.
 	if ( (my_x == 0) && (my_y == 0) ) {
-		fitness = cuda_check_fitness_symmetric(img, nx, ny, t);
+		pixelstep = 2.0f;	// Start with a large value.
+		t.fitness = cuda_check_fitness_symmetric(img, nx, ny, t);
 		done = false;
 	}
+
+	// Synchronize all of the threads in the block.
+	syncthreads();
+		
+	// Make my own tracker with its information copied from the original
+	// passed-in tracker I'm associated with.
+	CUDA_Tracker_Info member_t = t;
+	
 	do {	
 		// Check all offsets and compute their fitness.
 		member_t.x = t.x + dx[my_x][my_y] * pixelstep;
@@ -560,14 +564,16 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 		// Compare this with the original fitness.  If one is better, set
 		// its value as our next start and try again.  If none are better,
 		// divide the pixelstep and try again until we have a step that is
-		// below our requested accuracy.
+		// below our requested accuracy.  If we found a better one at the
+		// edge, then we repeat our test with the same step size.
 		// XXX As we have larger numbers of threads, maybe do a faster
 		// parallel reduction on these values.
 		if ( (my_x == 0) && (my_y == 0) ) {
 			int x, best_x = -1;
-			int y, best_y = -1;
-			float best_fitness = fitness;
+			int best_y = -1;
+			float best_fitness = t.fitness;
 			for (x = 0; x < lattice; x++) {
+			  int y;
 			  for (y = 0; y < lattice; y++) {
 				if (fitnesses[x][y] > best_fitness) {
 					best_x = x;
@@ -580,7 +586,7 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 			if (best_x >= 0) {
 				t.x += dx[best_x][best_y] * pixelstep;
 				t.y += dy[best_x][best_y] * pixelstep;
-				fitness = best_fitness;
+				t.fitness = best_fitness;
 			}
 			
 			// If we didn't find a better place at the edge of the
@@ -588,20 +594,30 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 			// and divide the pixel step by the lattice size, so we
 			// confine our search around the best point on this lattice
 			// the next time around.
-			if ( (best_x != 0) && (best_x != lattice-1) &&
-				 (best_y != 0) && (best_y != lattice-1) ) {
-				 				
-				// Try a smaller step size and see if that finds a better
-				// solution.
-				pixelstep /= lattice;			
-
-				// If our smallest step from before was at or
-				// below the desired accuracy, we're done!
-				if (pixelstep*2 <= accuracy) {
+#if 0
+			if ( (best_x != 0) && (best_x != (lattice-1)) &&
+				 (best_y != 0) && (best_y != (lattice-1)) ) {
+#else
+if ( (best_x == -1) && (best_y == -1) ) {
+#endif
+				// If our just-checked size (including the lattice) is
+				// below the required accuracy, we're done.
+				// XXX We need to be careful here -- the interval size
+				// is not always the lattice -- it is for 2 but not for
+				// higher ones (there are N-1 gaps, not N).
+				if (pixelstep / (lattice) <= accuracy/2) {
 					done = true;
 				}
+				
+				// Try a smaller step size and see if that finds a better
+				// solution.
+				pixelstep /= (lattice-1);			
 			}
 		}
+
+		// Synchronize all of the threads in the block.
+		syncthreads();
+		
 	} while (!done);	  
   }
 }
@@ -713,10 +729,11 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
 		return false;
 	}
 	
-	// Copy the positions back into the trackers.
+	// Copy the positions and fitnesses back into the trackers.
 	for (loop = tkrs.begin(), i = 0; i < (int)(num_to_optimize); loop++, i++) {
 		spot_tracker_XY *t = (*loop)->xytracker();
 		t->set_location(ti[i].x, ti[i].y);
+		t->set_fitness(ti[i].fitness);
 	}
 		
 	// Free the array of tracker info on the GPU and host sides.

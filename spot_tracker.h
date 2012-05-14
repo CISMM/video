@@ -83,6 +83,10 @@ public:
   /// Set with the fitting functions should be inverted.
   virtual bool set_invert(const bool invert) { _invert = invert; return true; };
 
+  /// This is used only by the CUDA code or other code that calculates the
+  // fitness outside the object itself; it should be used with caution.
+  virtual void set_fitness(const double fitness) { _fitness = fitness; };
+
 protected:
   double  _samplesep; //< Spacing between samples in pixels
   double  _rad;	      //< Current radius of the disk

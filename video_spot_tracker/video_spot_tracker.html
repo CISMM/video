@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v06.12</title>
+<title>Video Spot Tracker v07.00</title>
 
-<h1>Video Spot Tracker version 06.12</h1>
+<h1>Video Spot Tracker version 07.00</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots (particles) in an <a href="http://ffmpeg.org/">FFMPEG</a>-compatible 
@@ -411,6 +411,20 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 7.00:</h3>
+<ul>
+  <li>Fixed a bug introduced in 6.10 that caused the spacing and precision to 
+    both be 0.25 for new trackers no matter what the GUI settings were.</li>
+  <li>Fixed a long-standing bug where the spacing around the circle for symmetric 
+    kernels was always 1.0 no matter what the GUI settings were.</li>
+  <li>Fixed a bug for blurring during autofind introduced in 6.10 that caused 
+    the left and top edge to blur incorrectly.</li>
+  <li>The symmetric tracker will now use CUDA to have the graphics card do the 
+    tracking calculations so long as the requested precision is greater than 1/256 
+    pixel (the bilinear interpolator in the texture reads can only go to 512 discrete 
+    positions between pixels). This speeds up tracking.</li>
+</ul>
+<h3></h3>
 <h3>Version 6.12:</h3>
 <ul>
   <li>Fixed a crash bug when spots get too close to the edge in a video file.</li>
