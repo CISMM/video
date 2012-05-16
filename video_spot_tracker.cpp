@@ -279,7 +279,11 @@ bool                g_quit_at_end_of_video = false; //< When we reach the end of
 
 double              g_FIONA_background = 0.0;     //< Can be specified on the command line.
 
+#ifdef VST_NO_GUI
+bool                g_use_gui = false;             //< Use OpenGL video window?
+#else
 bool                g_use_gui = true;             //< Use OpenGL video window?
+#endif
 
 //-----------------------------------------------------------------
 // This section deals with providing a thread for logging, which runs
@@ -3150,7 +3154,7 @@ void  handle_optimize_z_change(int newvalue, void *)
 
 void Usage(const char *progname)
 {
-    fprintf(stderr, "Usage: %s [-nogui] [-kernel disc|cone|symmetric|FIONA]\n", progname);
+    fprintf(stderr, "Usage: %s [-nogui] [-gui] [-kernel disc|cone|symmetric|FIONA]\n", progname);
     fprintf(stderr, "           [-dark_spot] [-follow_jumps] [-rod3 LENGTH ORIENT] [-outfile NAME]\n");
     fprintf(stderr, "           [-precision P] [-sample_spacing S] [-show_lost_and_found]\n");
     fprintf(stderr, "           [-lost_behavior B] [-lost_tracking_sensitivity L] [-blur_lost_and_found B]\n");
@@ -3165,6 +3169,7 @@ void Usage(const char *progname)
     fprintf(stderr, "           [-load_state FILE] [-log_video N] [-continue_from FILE]\n");
     fprintf(stderr, "           [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n");
     fprintf(stderr, "       -nogui: Run without the video display window (no Glut/OpenGL)\n");
+    fprintf(stderr, "       -gui: Run with the video display window (no Glut/OpenGL)\n");
     fprintf(stderr, "       -kernel: Use kernels of the specified type (default symmetric)\n");
     fprintf(stderr, "       -rod3: Make a rod3 kernel of specified LENGTH(pixels) & ORIENT(degrees)\n");
     fprintf(stderr, "       -dark_spot: Track a dark spot (default is bright spot)\n");
@@ -3419,6 +3424,8 @@ int main(int argc, char *argv[])
       }
     } else if (!strncmp(argv[i], "-nogui", strlen("-nogui"))) {
       g_use_gui = false;
+    } else if (!strncmp(argv[i], "-gui", strlen("-gui"))) {
+      g_use_gui = true;
     } else if (!strncmp(argv[i], "-dark_spot", strlen("-dark_spot"))) {
       g_invert = true;
     } else if (!strncmp(argv[i], "-follow_jumps", strlen("-follow_jumps"))) {
@@ -3545,11 +3552,6 @@ int main(int argc, char *argv[])
       }
     }
   }
-
-#ifdef VST_NO_GUI
-  // Don't use the OpenGL GUI
-  g_use_gui = false;
-#endif
 
   //------------------------------------------------------------
   // This pushes changes in the C variables over to Tcl and then
