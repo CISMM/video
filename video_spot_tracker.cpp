@@ -1,38 +1,18 @@
-//---------------------------------------------------------------------------
-// This section contains configuration settings for the Video Spot Tracker.
-// It is used to make it possible to compile and link the code when one or
-// more of the camera- or file- driver libraries are unavailable. First comes
-// a list of definitions.  These should all be defined when building the
-// program for distribution.  Following that comes a list of paths and other
-// things that depend on these definitions.  They may need to be changed
-// as well, depending on where the libraries were installed.
-
-// XXX Moved into CMAKE
-//#ifdef _WIN32
-//#define	VST_USE_ROPER
-//#define	VST_USE_COOKE
-//#define	VST_USE_EDT
-//#define	VST_USE_DIAGINC
-//#define	VST_USE_SEM
-//#define	VST_USE_DIRECTX
-//#define VST_USE_VRPN_IMAGER
-////#define USE_METAMORPH	    // Metamorph reader not completed.
-//#endif
-
-// END configuration section.
-//---------------------------------------------------------------------------
-
 // This pragma tells the compiler not to tell us about truncated debugging info
 // due to name expansion within the string, list, and vector classes.
 #pragma warning( disable : 4786 4995 4996 )
+
+#define VST_NO_GUI
 
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef VST_NO_GUI
 #include <tcl.h>
 #include <tk.h>
 #include "Tcl_Linkvar.h"
+#endif
 #include "spot_tracker.h"
 #ifdef	_WIN32
 #include <windows.h>
@@ -73,6 +53,131 @@ const double M_PI = 2*asin(1.0);
 #endif
 #endif
 
+#ifdef VST_NO_GUI
+// Need to fake the behavior for all of the Tcl variables.  Try without
+// the callback and see if this works.
+
+// One thing we need to be able to do is parse a "set" command, so we can
+// read in the state file and update the variables based on it.  This means
+// that we need to keep a list of the variables and have a function that
+// can look through them and set the right one.  These are kept in a vector
+// (added to in each constructor) that can be searched by a function that
+// can parse Tcl set commands and set the value for one of the existing variables.
+
+class	Tclvar_int;
+class	Tclvar_float;
+class	Tclvar_selector;
+std::vector<Tclvar_int *>	g_Tclvar_ints;
+std::vector<Tclvar_float *>	g_Tclvar_floats;
+std::vector<Tclvar_selector *>	g_Tclvar_selectors;
+// Returns false if can't find a variable to set
+static bool parse_tcl_set_command(const char *cmd);
+
+// Callback types (not currently used, but need to be declared).
+typedef void    (*Linkvar_Intcall)(int new_value, void *userdata);
+typedef void    (*Linkvar_Floatcall)(float new_value, void *userdata);
+typedef void    (*Linkvar_Selectcall)(char *new_value, void *userdata);
+typedef void    (*Linkvar_Checkcall)(char *entry, int new_value,void *userdata);
+
+class	Tclvar_int {
+  public:
+	Tclvar_int(const char *name, int default_value = 0, Linkvar_Intcall = NULL, void * = NULL)
+		{ d_value = default_value; strcpy(d_name, name); g_Tclvar_ints.push_back(this); };
+	inline operator int() const { return d_value; };
+	inline int operator =(int v) { return d_value = v; };
+	inline int operator ++() { return ++d_value; };
+	inline int operator ++(int) { return d_value++; };
+	const char *name(void) const { return d_name; };
+  protected:
+	int d_value;
+	char d_name[512];
+};
+
+class	Tclvar_int_with_button : public Tclvar_int {
+  public:
+	Tclvar_int_with_button(const char *name, const char *, int default_value = 0, Linkvar_Intcall = NULL, void * = NULL)
+		: Tclvar_int(name, default_value) {};
+	inline operator int() const { return d_value; };
+	inline int operator =(int v) { return d_value = v; };
+	inline int operator ++() { return ++d_value; };
+	inline int operator ++(int) { return d_value++; };
+};
+
+class	Tclvar_float {
+  public:
+	Tclvar_float(const char *name, float default_value = 0, Linkvar_Floatcall = NULL, void * = NULL)
+		{ d_value = default_value; strcpy(d_name, name); g_Tclvar_floats.push_back(this); };
+	inline operator float() const { return d_value; };
+	inline float operator =(float v) { return d_value = v; };
+	const char *name(void) const { return d_name; };
+  protected:
+	float d_value;
+	char d_name[512];
+};
+
+class	Tclvar_float_with_scale : public Tclvar_float {
+  public:
+	Tclvar_float_with_scale(const char *name, const char *, double = 0, double = 0, double default_value = 0, Linkvar_Floatcall = NULL, void * = NULL)
+		: Tclvar_float(name, default_value) {};
+	inline operator float() const { return d_value; };
+	inline float operator =(float v) { return d_value = v; };
+};
+
+class	Tclvar_selector {
+  public:
+	Tclvar_selector(const char *default_value = "") { strcpy(d_value, default_value); };
+	Tclvar_selector(const char *name, const char *, const char * = NULL,
+			const char *default_value = "", Linkvar_Selectcall = NULL, void * = NULL) { strcpy(d_value, default_value); strcpy(d_name, name); g_Tclvar_selectors.push_back(this); };
+	inline operator const char*() const { return d_value; };
+	char * operator =(const char *v) { strcpy(d_value, v); return d_value; };
+	void Set(const char *value) { strcpy(d_value, value); };
+	const char *name(void) const { return d_name; };
+  private:
+	char d_value[4096];
+	char d_name[512];
+};
+
+static bool parse_tcl_set_command(const char *cmd)
+{
+	// Pull out the command, looking for set and variable name and value
+	char	set[1024], varname[1024], value[1024];
+	if (sscanf(cmd, "%s%s%s", set, varname, value) != 3) {
+		fprintf(stderr,"parse_tcl_set_command(): Cannot parse line: %s\n", cmd);
+		return false;
+	}
+
+	// See if we find this in the integers.  If so, set it.
+	size_t i;
+	for (i = 0; i < g_Tclvar_ints.size(); i++) {
+		if (!strcmp(g_Tclvar_ints[i]->name(), varname)) {
+			*(g_Tclvar_ints[i]) = atoi(value);
+			return true;
+		}
+	}
+
+	// See if we find this in the floats.  If so, set it.
+	for (i = 0; i < g_Tclvar_floats.size(); i++) {
+		if (!strcmp(g_Tclvar_floats[i]->name(), varname)) {
+			*(g_Tclvar_floats[i]) = atof(value);
+			return true;
+		}
+	}
+
+	// See if we find this in the floats.  If so, set it.
+	for (i = 0; i < g_Tclvar_selectors.size(); i++) {
+		if (!strcmp(g_Tclvar_selectors[i]->name(), varname)) {
+			*(g_Tclvar_selectors[i]) = value;
+			return true;
+		}
+	}
+
+	// Not found.
+	fprintf(stderr,"parse_tcl_set_command(): No such variable: %s\n", varname);
+	return false;
+}
+
+#endif
+
 //--------------------------------------------------------------------------
 // Version string for this program
 const char *Version_string = "07.00";
@@ -98,7 +203,9 @@ typedef vector<Position_XY> Position_Vector_XY;
 // Glut wants to take over the world when it starts, so we need to make
 // global access to the objects we will be using.
 
+#ifndef VST_NO_GUI
 Tcl_Interp	    *g_tk_control_interp;
+#endif
 
 Tclvar_int          g_tcl_raw_camera_numx("raw_numx");
 Tclvar_int          g_tcl_raw_camera_numy("raw_numy");
@@ -467,6 +574,7 @@ static void  dirtyexit(void)
   g_logfilename = "";
   logfilename_changed("", NULL);
   while (g_logging_thread->running()) {
+#ifndef VST_NO_GUI
     //------------------------------------------------------------
     // This must be done in any Tcl app, to allow Tcl/Tk to handle
     // events.
@@ -479,6 +587,7 @@ static void  dirtyexit(void)
     if (Tclvar_mainloop()) {
       fprintf(stderr,"Tclvar Mainloop failed\n");
     }
+#endif
   }
   printf("logging thread done...");
 
@@ -1843,6 +1952,7 @@ void myIdleFunc(void)
   // so that the camera-capture and video-display routines are
   // using the same values for the global parameters.
 
+#ifndef VST_NO_GUI
   while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
 
   //------------------------------------------------------------
@@ -1852,6 +1962,7 @@ void myIdleFunc(void)
   if (Tclvar_mainloop()) {
     fprintf(stderr,"Tclvar Mainloop failed\n");
   }
+#endif
 
   //------------------------------------------------------------
   // If we have a video object, let the video controls operate
@@ -2737,6 +2848,7 @@ void  set_maximum_search_radius(int newvalue, void *)
 // routine is called.  Ask the user for a file to save the state to.
 void  handle_save_state_change(int newvalue, void *)
 {
+#ifndef VST_NO_GUI
   //------------------------------------------------------------
   // Create a dialog box that will ask the user
   // to either fill it in or cancel (if the file is "NONE").
@@ -2756,6 +2868,10 @@ void  handle_save_state_change(int newvalue, void *)
 	fprintf(stderr,"Tclvar Mainloop failed\n");
     }
   } while (strcmp(g_save_state_filename,"") == 0);
+#else
+  fprintf(stderr,"handle_save_state_change(): Not implemented with no GUI\n");
+  return;
+#endif
 
   //------------------------------------------------------------
   // Open the file and write a Tcl-interpretable line for each
@@ -2901,11 +3017,19 @@ bool load_state_from_file(const char *inname)
   }
   char  line[4096];
   while (fgets(line, sizeof(line)-1, f)) {
+#ifdef	VST_NO_GUI
+    if (!parse_tcl_set_command(line)) {
+      fprintf(stderr, "parse_tcl_set_command(%s) failed\n", line);
+      cleanup();
+      exit(-1);
+    }
+#else
     if (Tcl_Eval(g_tk_control_interp, line) != TCL_OK) {
       fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", line, g_tk_control_interp->result);
       cleanup();
       exit(-1);
     }
+#endif
   }
   fclose(f);
 
@@ -2916,6 +3040,11 @@ bool load_state_from_file(const char *inname)
 // routine is called.  Ask the user for a file to load the state from.
 void  handle_load_state_change(int newvalue, void *)
 {
+#ifdef	VST_NO_GUI
+  fprintf(stderr,"handle_load_state_change() not implemented without GUI\n");
+  cleanup();
+  exit(-1);
+#else
   //------------------------------------------------------------
   // Create a dialog box that will ask the user
   // to either fill it in or cancel (if the file is "NONE").
@@ -2937,6 +3066,7 @@ void  handle_load_state_change(int newvalue, void *)
   } while (strcmp(g_load_state_filename,"") == 0);
 
   load_state_from_file(g_load_state_filename);
+#endif
 }
 
 // When the check-box for "optimize Z" is changed, this
@@ -2946,6 +3076,10 @@ void  handle_load_state_change(int newvalue, void *)
 // Z tracker and set its pointer to NULL.
 void  handle_optimize_z_change(int newvalue, void *)
 {
+#ifdef VST_NO_GUI
+  fprintf(stderr,"handle_optimize_z_change() not implemented for no GUI\n");
+  exit(-1);
+#else
   list<Spot_Information *>::iterator  loop;
 
   // User is trying to start Z tracking, so ask them for
@@ -3008,6 +3142,7 @@ void  handle_optimize_z_change(int newvalue, void *)
     }
     g_psf_filename = "";
   }
+#endif
 }
 
 
@@ -3107,6 +3242,7 @@ int main(int argc, char *argv[])
   // Generic Tcl startup.  Getting and interpreter and mainwindow.
 
   char		command[256];
+#ifndef VST_NO_GUI
   Tk_Window     tk_control_window;
   g_tk_control_interp = Tcl_CreateInterp();
 
@@ -3248,6 +3384,7 @@ int main(int argc, char *argv[])
                   g_tk_control_interp->result);
           return(-1);
   }
+#endif
 
   //------------------------------------------------------------------
   // Parse the command line.  This has to be done after a bunch of the
@@ -3411,6 +3548,7 @@ int main(int argc, char *argv[])
   // calls any resulting callbacks (handles the commands set during
   // the command-line parsing).
 
+#ifndef VST_NO_GUI
   while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
   if (Tclvar_mainloop()) {
     fprintf(stderr,"Tclvar Mainloop failed\n");
@@ -3448,6 +3586,7 @@ int main(int argc, char *argv[])
       exit(0);
     }
   }
+#endif
 
   //------------------------------------------------------------------
   // If we're being asked to open a raw file and we don't have a set of
@@ -3498,6 +3637,7 @@ int main(int argc, char *argv[])
       }
     }
 
+#ifndef VST_NO_GUI
     if (!raw_camera_params_valid) {
       //------------------------------------------------------------
       // Create a callback for a variable that will tell when the
@@ -3533,6 +3673,7 @@ int main(int argc, char *argv[])
       raw_camera_headersize = g_tcl_raw_camera_headersize;
       raw_camera_frameheadersize = g_tcl_raw_camera_frameheadersize;
     }
+#endif
   }
 
   //------------------------------------------------------------------
@@ -3550,6 +3691,7 @@ int main(int argc, char *argv[])
   }
   g_exposure = exposure;
 
+#ifndef VST_NO_GUI
   if (g_video) {  // Put these in a separate control panel?
     // Start out paused at the beginning of the file.
     g_play = new Tclvar_int_with_button("play_video","",0);
@@ -3592,6 +3734,7 @@ int main(int argc, char *argv[])
 	    return(-1);
     }
   }
+#endif
 
   // Verify that the camera is working.
   if (!g_camera->working()) {
