@@ -2,8 +2,6 @@
 // due to name expansion within the string, list, and vector classes.
 #pragma warning( disable : 4786 4995 4996 )
 
-#define VST_NO_GUI
-
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
