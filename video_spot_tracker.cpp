@@ -3303,7 +3303,7 @@ int main(int argc, char *argv[])
                   g_tk_control_interp->result);
           return(-1);
   }
-#elif
+#else
   sprintf(command, "source russ_widgets.tcl");
 #endif
 
@@ -3361,7 +3361,7 @@ int main(int argc, char *argv[])
   // puts together some of the windows needed by the variables.
 #ifdef __APPLE__
   sprintf(command, "source %s/video_spot_tracker.tcl", executable_directory);
-#elif
+#else
   sprintf(command, "source video_spot_tracker.tcl");
 #endif
   if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
@@ -3448,7 +3448,7 @@ int main(int argc, char *argv[])
       sprintf(name, "%s.vrpn", argv[i]);
       g_logfilename = name;
 #ifdef VST_NO_GUI
-      logfilename_changed(g_logfilename, NULL);
+      logfilename_changed(const_cast<char *>((const char*)(g_logfilename)), NULL);
 #endif
     } else if (!strncmp(argv[i], "-rod3", strlen("-rod3"))) {
       if (++i >= argc) { Usage(argv[0]); }
