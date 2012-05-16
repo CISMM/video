@@ -129,7 +129,7 @@ class	Tclvar_selector {
 	Tclvar_selector(const char *name, const char *, const char * = NULL,
 			const char *default_value = "", Linkvar_Selectcall = NULL, void * = NULL) { strcpy(d_value, default_value); strcpy(d_name, name); g_Tclvar_selectors.push_back(this); };
 	inline operator const char*() const { return d_value; };
-	char * operator =(const char *v) { strcpy(d_value, v); return d_value; };
+	const char * operator =(const char *v) { strcpy(d_value, v); return d_value; };
 	void Set(const char *value) { strcpy(d_value, value); };
 	const char *name(void) const { return d_name; };
   private:
@@ -2914,7 +2914,7 @@ void  handle_save_state_change(int newvalue, void *)
   fprintf(f, "set predict %d\n", (int)(g_predict));
   fprintf(f, "set rod3 %d\n", (int)(g_rod));
   fprintf(f, "set length %lg\n", (double)(g_length));
-  fprintf(f, "set orientation %lg\n", (double)(g_orientation));
+  fprintf(f, "set orient %lg\n", (double)(g_orientation));
   fprintf(f, "set round_cursor %d\n", (int)(g_round_cursor));
   fprintf(f, "set show_tracker %d\n", (int)(g_mark));
   fprintf(f, "set show_video %d\n", (int)(g_show_video));
@@ -3020,8 +3020,6 @@ bool load_state_from_file(const char *inname)
 #ifdef	VST_NO_GUI
     if (!parse_tcl_set_command(line)) {
       fprintf(stderr, "parse_tcl_set_command(%s) failed\n", line);
-      cleanup();
-      exit(-1);
     }
 #else
     if (Tcl_Eval(g_tk_control_interp, line) != TCL_OK) {
@@ -3442,6 +3440,9 @@ int main(int argc, char *argv[])
       char *name = new char[strlen(argv[i])+6];
       sprintf(name, "%s.vrpn", argv[i]);
       g_logfilename = name;
+#ifdef VST_NO_GUI
+      logfilename_changed(g_logfilename, NULL);
+#endif
     } else if (!strncmp(argv[i], "-rod3", strlen("-rod3"))) {
       if (++i >= argc) { Usage(argv[0]); }
       g_length = atof(argv[i]);
