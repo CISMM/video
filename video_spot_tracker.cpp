@@ -279,7 +279,7 @@ bool                g_quit_at_end_of_video = false; //< When we reach the end of
 
 double              g_FIONA_background = 0.0;     //< Can be specified on the command line.
 
-bool                g_use_gui = true;             //< Use 3D and 2D GUI?
+bool                g_use_gui = true;             //< Use OpenGL video window?
 
 //-----------------------------------------------------------------
 // This section deals with providing a thread for logging, which runs
@@ -591,10 +591,12 @@ static void  dirtyexit(void)
   }
   printf("logging thread done...");
 
-  glutDestroyWindow(g_tracking_window);
-  glutDestroyWindow(g_beadseye_window);
-  glutDestroyWindow(g_landscape_window);
-  printf("OpenGL window deleted...");
+  if (g_use_gui) {
+    glutDestroyWindow(g_tracking_window);
+    glutDestroyWindow(g_beadseye_window);
+    glutDestroyWindow(g_landscape_window);
+    printf("OpenGL window deleted...");
+  }
 
   // Get rid of any trackers.
   g_trackers.delete_trackers();
@@ -3543,6 +3545,11 @@ int main(int argc, char *argv[])
       }
     }
   }
+
+#ifdef VST_NO_GUI
+  // Don't use the OpenGL GUI
+  g_use_gui = false;
+#endif
 
   //------------------------------------------------------------
   // This pushes changes in the C variables over to Tcl and then
