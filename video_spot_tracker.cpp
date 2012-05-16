@@ -3691,12 +3691,12 @@ int main(int argc, char *argv[])
   }
   g_exposure = exposure;
 
-#ifndef VST_NO_GUI
   if (g_video) {  // Put these in a separate control panel?
     // Start out paused at the beginning of the file.
     g_play = new Tclvar_int_with_button("play_video","",0);
     g_rewind = new Tclvar_int_with_button("rewind_video","",1);
     g_step = new Tclvar_int_with_button("single_step_video","");
+#ifndef VST_NO_GUI
     sprintf(command, "frame .frame");
     if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
 	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
@@ -3733,8 +3733,8 @@ int main(int argc, char *argv[])
 		    g_tk_control_interp->result);
 	    return(-1);
     }
-  }
 #endif
+  }
 
   // Verify that the camera is working.
   if (!g_camera->working()) {
