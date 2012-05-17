@@ -3303,7 +3303,7 @@ int main(int argc, char *argv[])
                   g_tk_control_interp->result);
           return(-1);
   }
-#elif
+#else
   sprintf(command, "source russ_widgets.tcl");
 #endif
 
@@ -3361,7 +3361,7 @@ int main(int argc, char *argv[])
   // puts together some of the windows needed by the variables.
 #ifdef __APPLE__
   sprintf(command, "source %s/video_spot_tracker.tcl", executable_directory);
-#elif
+#else
   sprintf(command, "source video_spot_tracker.tcl");
 #endif
   if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
