@@ -55,8 +55,6 @@ list(APPEND CMAKE_MODULE_PATH ${CISMM_VIDEO_SOURCE_DIR} ${CISMM_VIDEO_SOURCE_DIR
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${VIDEO_SOURCE_DIR})
 FIND_PACKAGE(quatlib REQUIRED)	# Sets QUATLIB_INCLUDE_DIR and QUATLIB_LIBRARIES
 FIND_PACKAGE(VRPN REQUIRED)
-FIND_PACKAGE(LEWOS REQUIRED)
-FIND_PACKAGE(LEWOSSIM REQUIRED)
 FIND_PACKAGE(OpenGL REQUIRED)
 
 # Try to find NSRG Buildtime (NSRGBUILD) to set all we need for ImageMagic,
@@ -187,6 +185,8 @@ OPTION(VIDEO_USE_SEM "Enable to include SEM (from nanoManipulator) camera code i
 OPTION(VIDEO_USE_VRPN_IMAGER "Enable to include VRPN_Imager camera code in build" ON)
 OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" OFF)
 
+OPTION(VIDEO_BUILD_PANOPTES "Enable to build Panopted applications" OFF)
+
 #-----------------------------------------------------------------------------
 # Set compile-time definitions for all projects based on what has been
 # selected.
@@ -270,10 +270,7 @@ if (VIDEO_BUILD_APPLICATIONS)
 	${GLUT_INCLUDE_DIR}
 endif (VIDEO_BUILD_APPLICATIONS)
 	stocc_random_number_generator/
-	PanopticNerve_LEWOS/
 	${CISMM_VIDEO_SOURCE_DIR}
-        ${LEWOSSIM_INCLUDE_DIR}
-        ${LEWOS_INCLUDE_DIR}
 )
 
 #-----------------------------------------------------------------------------
@@ -570,6 +567,13 @@ install(TARGETS stocc_random_number_generator_library
 	PUBLIC_HEADER DESTINATION include)
 
 
+if (VIDEO_BUILD_PANOPTES)
+FIND_PACKAGE(LEWOS REQUIRED)
+FIND_PACKAGE(LEWOSSIM REQUIRED)
+INCLUDE_DIRECTORIES(
+        ${LEWOSSIM_INCLUDE_DIR}
+        ${LEWOS_INCLUDE_DIR}
+)
 SET(TARGET_NAME PanopticNerve_LEWOS)
 ADD_EXECUTABLE(PanopticNerve_LEWOS
 	PanopticNerve_LEWOS/PanopticNerve.cpp
@@ -656,6 +660,7 @@ TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
     )
   endif (VIDEO_USE_IMAGEMAGICK)
 SET_TARGET_PROPERTIES(PanopticNerve_LEWOS PROPERTIES SOLUTION_FOLDER apps)
+endif(VIDEO_BUILD_PANOPTES)
 
 #-----------------------------------------------------------------------------
 # Tcl-Linkvar library (not a library in the initial project file)
