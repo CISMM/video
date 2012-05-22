@@ -362,7 +362,6 @@ Tclvar_int_with_button	g_full_area("full_area",NULL);
 Tclvar_int_with_button	g_mark("show_tracker",NULL,1);
 Tclvar_int_with_button	g_show_video("show_video","",1);
 Tclvar_int_with_button	g_opengl_video("use_texture_video","",1);
-Tclvar_int_with_button	g_use_CUDA("use_CUDA","",1);
 Tclvar_int_with_button	g_show_debug("show_debug","",0, set_debug_visibility);
 Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
 Tclvar_int_with_button	g_show_traces("show_logged_traces","",1);
