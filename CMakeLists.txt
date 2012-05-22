@@ -877,14 +877,17 @@ if (VIDEO_USE_CUDA)
     FILE(COPY video_spot_tracker.tcl russ_widgets.tcl DESTINATION video_spot_tracker_CUDA.app/Contents/MacOS)
     INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
 
-    # Need to comment out this section to create an install on Mac
-    # See Redmine in video project
-    #-------------------------------------------------------------
-    INSTALL(CODE "
-      MESSAGE(\"Fixing dependencies... Please be patient.\")	
-      include(BundleUtilities)
-      fixup_bundle( \"${CMAKE_BINARY_DIR}/${TARGET_NAME}.app\" \"\" \"\")
-      ")
+    # Comment out this section if you don't want spot_tracker in the installer
+    #--------------------------------------------------------------------------
+    # configure_files makes CMAKE variables can be seen in the script
+    INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
+    CONFIGURE_FILE(
+      ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
+      ${CMAKE_BINARY_DIR}/mac_installer.cmake 
+      @ONLY IMMEDIATE
+    )
+    INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
+
   ENDIF(NOT APPLE)
 
 endif (VIDEO_USE_CUDA)
@@ -1031,14 +1034,16 @@ if (VIDEO_USE_CUDA)
     FILE(COPY CUDA_video_filter.tcl russ_widgets.tcl DESTINATION CUDA_video_filter.app/Contents/MacOS)
     INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
 
-    # Need to comment out this section to create an install on Mac
-    # See Redmine in video project
-    #-------------------------------------------------------------
-    INSTALL(CODE "
-      MESSAGE(\"Fixing dependencies... Please be patient.\")	
-      include(BundleUtilities)
-      fixup_bundle( \"${CMAKE_BINARY_DIR}/${TARGET_NAME}.app\" \"\" \"\")
-      ")
+    # Comment out this section if you don't want spot_tracker in the installer
+    #--------------------------------------------------------------------------
+    # configure_files makes CMAKE variables can be seen in the script
+    INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
+    CONFIGURE_FILE(
+      ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
+      ${CMAKE_BINARY_DIR}/mac_installer.cmake 
+      @ONLY IMMEDIATE
+    )
+    INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
   ENDIF(NOT APPLE)
 
 endif (VIDEO_USE_CUDA)
@@ -1168,7 +1173,7 @@ ELSE(NOT APPLE)
     ${CMAKE_BINARY_DIR}/mac_installer.cmake 
     @ONLY IMMEDIATE
   )
-INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
+  INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
 #--------------------------------------------------------------------------
 ENDIF(NOT APPLE)
 
@@ -1332,7 +1337,7 @@ ENDMACRO(CPP_NOGUI_APPLICATION)
 #-----------------------------------------------------------------------------
 # Declaration of the simple applications that don't have extra files
 
-CPP_APPLICATION(add_noise_to_image apps)
+#CPP_APPLICATION(add_noise_to_image apps)
 CPP_APPLICATION(airy_maker apps)
 if (WIN32)
 	CPP_APPLICATION(argonot apps)
@@ -1345,7 +1350,7 @@ if (VIDEO_USE_EDT)
 	CAPC_APPLICATION(manual_capture apps)
 endif (VIDEO_USE_EDT)
 CPP_APPLICATION(make_moving_spot_video apps)
-CPP_APPLICATION(make_test_image apps)
+#CPP_APPLICATION(make_test_image apps)
 CPP_NOGUI_APPLICATION(video_imager_server apps)
 CPP_APPLICATION(csv_to_xml apps)
 CPP_APPLICATION(xml_tracking_compare apps)
