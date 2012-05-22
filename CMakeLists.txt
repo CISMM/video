@@ -989,6 +989,68 @@ INSTALL(CODE "
     ")
 ENDIF(NOT APPLE)
 
+if (VIDEO_USE_CUDA)
+  SET(TARGET_NAME CUDA_video_filter)
+  IF(NOT APPLE)
+	CUDA_ADD_EXECUTABLE(CUDA_video_filter CUDA_video_filter.cpp thread.cpp spot_tracker.cu)
+  ELSE(NOT APPLE)
+	CUDA_ADD_EXECUTABLE(CUDA_video_filter MACOSX_BUNDLE CUDA_video_filter.cpp thread.cpp spot_tracker.cu)
+  ENDIF(NOT APPLE)
+
+  if (VIDEO_USE_IMAGEMAGICK)
+	TARGET_LINK_LIBRARIES(CUDA_video_filter
+		file_stack_library
+		${ImageMagick_Needed_Libs}
+	)
+  endif (VIDEO_USE_IMAGEMAGICK)
+  if (VIDEO_USE_DIRECTSHOW)
+	TARGET_LINK_LIBRARIES(CUDA_video_filter
+		directx_library
+	)
+  endif (VIDEO_USE_DIRECTSHOW)  
+  if (VIDEO_USE_VRPN_IMAGER)
+	TARGET_LINK_LIBRARIES(CUDA_video_filter
+		vrpn_imager_library
+	)
+  endif (VIDEO_USE_VRPN_IMAGER)
+  if (VIDEO_USE_FFMPEG)
+	TARGET_LINK_LIBRARIES(CUDA_video_filter
+		ffmpeg_video_library
+		${FFMPEG_LIBRARIES}
+	)
+  endif (VIDEO_USE_FFMPEG)
+  TARGET_LINK_LIBRARIES(CUDA_video_filter
+	spot_tracker_library
+	base_camera_server_library
+	Tcl_Linkvar
+	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
+	${OPENGL_gl_LIBRARY}
+	${TCL_LIBRARY}
+	${TK_LIBRARY}
+	${GLUT_LIBRARIES}
+  )
+  SET_TARGET_PROPERTIES(CUDA_video_filter PROPERTIES SOLUTION_FOLDER apps)
+
+  IF(NOT APPLE)
+    install(TARGETS CUDA_video_filter RUNTIME DESTINATION bin)
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/CUDA_video_filter.tcl
+		${CMAKE_CURRENT_SOURCE_DIR}/russ_widgets.tcl DESTINATION bin)
+  ELSE(NOT APPLE)
+    FILE(COPY CUDA_video_filter.tcl russ_widgets.tcl DESTINATION CUDA_video_filter.app/Contents/MacOS)
+    INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
+
+    # Need to comment out this section to create an install on Mac
+    # See Redmine in video project
+    #-------------------------------------------------------------
+    INSTALL(CODE "
+      MESSAGE(\"Fixing dependencies... Please be patient.\")	
+      include(BundleUtilities)
+      fixup_bundle( \"${CMAKE_BINARY_DIR}/${TARGET_NAME}.app\" \"\" \"\")
+      ")
+  ENDIF(NOT APPLE)
+
+endif (VIDEO_USE_CUDA)
+
 SET(TARGET_NAME swap_ppm_lines)
 ADD_EXECUTABLE(swap_ppm_lines swap_ppm_lines.cpp ppm.C)
 TARGET_LINK_LIBRARIES(swap_ppm_lines
