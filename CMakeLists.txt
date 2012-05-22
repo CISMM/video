@@ -169,11 +169,7 @@ else (POINTGREY_FOUND)
 endif (POINTGREY_FOUND)
 
 find_package(Qt4)
-if (QT4_FOUND)
-	OPTION(VIDEO_USE_QT4 "Enable to include Qt video code in build" ON)
-else (QT4_FOUND)
-	OPTION(VIDEO_USE_QT4 "Enable to include Qt video code in build" OFF)
-endif (QT4_FOUND)
+OPTION(VIDEO_USE_QT4 "Enable to include Qt video code in build" OFF)
 
 find_package(FFMPEG)
 if (FFMPEG_FOUND)
@@ -688,22 +684,13 @@ endif (VIDEO_USE_IMAGEMAGICK)
 # Applications that need more than one file or nonstandard things.
 if (VIDEO_BUILD_APPLICATIONS)
 
-# XXX Should move the CUDA compilation into the spot-tracker library code.
-# XXX Then do we CUDA compile everything that uses spot-tracker lib?
+# Non-CUDA version of Video Spot Tracker
 SET(TARGET_NAME video_spot_tracker)
-if (VIDEO_USE_CUDA)
-	IF(NOT APPLE)
-		CUDA_ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp thread.cpp spot_tracker.cu)
-	ELSE(NOT APPLE)
-		CUDA_ADD_EXECUTABLE(video_spot_tracker MACOSX_BUNDLE video_spot_tracker.cpp thread.cpp)
-	ENDIF(NOT APPLE)
-else (VIDEO_USE_CUDA)
-	IF(NOT APPLE)
-		ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp thread.cpp)
-	ELSE(NOT APPLE)
-		ADD_EXECUTABLE(video_spot_tracker MACOSX_BUNDLE video_spot_tracker.cpp thread.cpp)
-	ENDIF(NOT APPLE)
-endif (VIDEO_USE_CUDA)
+IF(NOT APPLE)
+	ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp thread.cpp)
+ELSE(NOT APPLE)
+	ADD_EXECUTABLE(video_spot_tracker MACOSX_BUNDLE video_spot_tracker.cpp thread.cpp)
+ENDIF(NOT APPLE)
 if (VIDEO_USE_IMAGEMAGICK)
 	TARGET_LINK_LIBRARIES(video_spot_tracker
 		file_stack_library
@@ -793,6 +780,106 @@ INSTALL(CODE "
     fixup_bundle( \"${CMAKE_BINARY_DIR}/${TARGET_NAME}.app\" \"\" \"\")
     ")
 ENDIF(NOT APPLE)
+
+# XXX Should move the CUDA compilation into the spot-tracker library code.
+# XXX Then do we CUDA compile everything that uses spot-tracker lib?
+if (VIDEO_USE_CUDA)
+  SET(TARGET_NAME video_spot_tracker_CUDA)
+  IF(NOT APPLE)
+	CUDA_ADD_EXECUTABLE(video_spot_tracker_CUDA video_spot_tracker.cpp thread.cpp spot_tracker.cu)
+  ELSE(NOT APPLE)
+	CUDA_ADD_EXECUTABLE(video_spot_tracker_CUDA MACOSX_BUNDLE video_spot_tracker.cpp thread.cpp)
+  ENDIF(NOT APPLE)
+
+  if (VIDEO_USE_IMAGEMAGICK)
+	TARGET_LINK_LIBRARIES(video_spot_tracker_CUDA
+		file_stack_library
+		${ImageMagick_Needed_Libs}
+	)
+  endif (VIDEO_USE_IMAGEMAGICK)
+  if (VIDEO_USE_DIRECTSHOW)
+	TARGET_LINK_LIBRARIES(video_spot_tracker_CUDA
+		directx_library
+	)
+  endif (VIDEO_USE_DIRECTSHOW)  
+  if (VIDEO_USE_COOKE)
+	TARGET_LINK_LIBRARIES(video_spot_tracker_CUDA
+		cooke_library
+		${Cooke_LIBRARIES}
+	)
+  endif (VIDEO_USE_COOKE)
+  if (VIDEO_USE_DIAGINC)
+	TARGET_LINK_LIBRARIES(video_spot_tracker_CUDA
+		diaginc_library
+		${DiagInc_LIBRARIES}
+	)
+  endif (VIDEO_USE_DIAGINC)
+  if (VIDEO_USE_EDT)
+	TARGET_LINK_LIBRARIES(video_spot_tracker_CUDA
+		EDT_library
+		${EDT_LIBRARIES}
+	)
+  endif (VIDEO_USE_EDT)
+  if (VIDEO_USE_ROPER)
+	TARGET_LINK_LIBRARIES(video_spot_tracker_CUDA
+		Roper_library
+		${ROPER_LIBRARIES}
+	)
+  endif (VIDEO_USE_ROPER)
+  if (VIDEO_USE_POINTGREY)
+	TARGET_LINK_LIBRARIES(video_spot_tracker_CUDA
+		point_grey_library
+		${POINTGREY_LIBRARIES}
+	)
+  endif (VIDEO_USE_POINTGREY)
+  if (VIDEO_USE_VRPN_IMAGER)
+	TARGET_LINK_LIBRARIES(video_spot_tracker_CUDA
+		vrpn_imager_library
+	)
+  endif (VIDEO_USE_VRPN_IMAGER)
+  if (VIDEO_USE_QT4)
+	TARGET_LINK_LIBRARIES(video_spot_tracker_CUDA
+		qt4_video_library
+		${QT_LIBRARIES}
+	)
+  endif (VIDEO_USE_QT4)
+  if (VIDEO_USE_FFMPEG)
+	TARGET_LINK_LIBRARIES(video_spot_tracker_CUDA
+		ffmpeg_video_library
+		${FFMPEG_LIBRARIES}
+	)
+  endif (VIDEO_USE_FFMPEG)
+  TARGET_LINK_LIBRARIES(video_spot_tracker_CUDA
+	spot_tracker_library
+	base_camera_server_library
+	Tcl_Linkvar
+	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
+	${OPENGL_gl_LIBRARY}
+	${TCL_LIBRARY}
+	${TK_LIBRARY}
+	${GLUT_LIBRARIES}
+  )
+  SET_TARGET_PROPERTIES(video_spot_tracker_CUDA PROPERTIES SOLUTION_FOLDER apps)
+
+  IF(NOT APPLE)
+    install(TARGETS video_spot_tracker_CUDA RUNTIME DESTINATION bin)
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/video_spot_tracker.tcl
+		${CMAKE_CURRENT_SOURCE_DIR}/russ_widgets.tcl DESTINATION bin)
+  ELSE(NOT APPLE)
+    FILE(COPY video_spot_tracker.tcl russ_widgets.tcl DESTINATION video_spot_tracker_CUDA.app/Contents/MacOS)
+    INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
+
+    # Need to comment out this section to create an install on Mac
+    # See Redmine in video project
+    #-------------------------------------------------------------
+    INSTALL(CODE "
+      MESSAGE(\"Fixing dependencies... Please be patient.\")	
+      include(BundleUtilities)
+      fixup_bundle( \"${CMAKE_BINARY_DIR}/${TARGET_NAME}.app\" \"\" \"\")
+      ")
+  ENDIF(NOT APPLE)
+
+endif (VIDEO_USE_CUDA)
 
 # XXX Should move the CUDA compilation into the spot-tracker library code.
 # XXX Then do we CUDA compile everything that uses spot-tracker lib?
