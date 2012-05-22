@@ -1,0 +1,10 @@
+function(gp_resolved_file_type_override resolved_file type_var)
+  if(resolved_file MATCHES "^(/usr/X11/lib/)")
+        set(${type_var} "system" PARENT_SCOPE)
+  endif()
+endfunction()
+
+include(BundleUtilities)
+fixup_bundle( @CMAKE_CURRENT_BINARY_DIR@/@TARGET_NAME@.app "" "")
+
+
