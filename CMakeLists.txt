@@ -775,16 +775,18 @@ install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/video_spot_tracker.tcl
 	DESTINATION bin)
 ELSE(NOT APPLE)
 FILE(COPY video_spot_tracker.tcl russ_widgets.tcl DESTINATION video_spot_tracker.app/Contents/MacOS)
-INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
 
-# Need to comment out this section to create an install on Mac
-# See Redmine in video project
-#-------------------------------------------------------------
-INSTALL(CODE "
-    MESSAGE(\"Fixing dependencies... Please be patient.\")	
-    include(BundleUtilities)
-    fixup_bundle( \"${CMAKE_BINARY_DIR}/${TARGET_NAME}.app\" \"\" \"\")
-    ")
+# Comment out this section if you don't want spot_tracker in the installer
+#--------------------------------------------------------------------------
+# configure_files makes CMAKE variables can be seen in the script
+INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
+CONFIGURE_FILE(
+    ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
+    ${CMAKE_BINARY_DIR}/mac_installer.cmake 
+    @ONLY IMMEDIATE
+)
+INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
+#--------------------------------------------------------------------------
 ENDIF(NOT APPLE)
 
 # XXX Should move the CUDA compilation into the spot-tracker library code.
@@ -891,17 +893,9 @@ endif (VIDEO_USE_CUDA)
 # XXX Then do we CUDA compile everything that uses spot-tracker lib?
 SET(TARGET_NAME video_spot_tracker_nogui)
 if (VIDEO_USE_CUDA)
-	IF(NOT APPLE)
-		CUDA_ADD_EXECUTABLE(video_spot_tracker_nogui video_spot_tracker.cpp thread.cpp spot_tracker.cu)
-	ELSE(NOT APPLE)
-		CUDA_ADD_EXECUTABLE(video_spot_tracker_nogui MACOSX_BUNDLE video_spot_tracker.cpp thread.cpp)
-	ENDIF(NOT APPLE)
+	CUDA_ADD_EXECUTABLE(video_spot_tracker_nogui video_spot_tracker.cpp thread.cpp spot_tracker.cu)
 else (VIDEO_USE_CUDA)
-	IF(NOT APPLE)
-		ADD_EXECUTABLE(video_spot_tracker_nogui video_spot_tracker.cpp thread.cpp)
-	ELSE(NOT APPLE)
-		ADD_EXECUTABLE(video_spot_tracker_nogui MACOSX_BUNDLE video_spot_tracker.cpp thread.cpp)
-	ENDIF(NOT APPLE)
+	ADD_EXECUTABLE(video_spot_tracker_nogui video_spot_tracker.cpp thread.cpp)
 endif (VIDEO_USE_CUDA)
 if (VIDEO_USE_IMAGEMAGICK)
 	TARGET_LINK_LIBRARIES(video_spot_tracker_nogui
@@ -981,17 +975,10 @@ install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/video_spot_tracker.tcl
 		${CMAKE_CURRENT_SOURCE_DIR}/russ_widgets.tcl
 	DESTINATION bin)
 ELSE(NOT APPLE)
-FILE(COPY video_spot_tracker.tcl russ_widgets.tcl DESTINATION video_spot_tracker_nogui.app/Contents/MacOS)
-INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
-
-# Need to comment out this section to create an install on Mac
-# See Redmine in video project
-#-------------------------------------------------------------
-INSTALL(CODE "
-    MESSAGE(\"Fixing dependencies... Please be patient.\")	
-    include(BundleUtilities)
-    fixup_bundle( \"${CMAKE_BINARY_DIR}/${TARGET_NAME}.app\" \"\" \"\")
-    ")
+# Comment out this if you don't want spot_tracker_nogui in the installer
+# ------------------------------------------------------------------
+INSTALL(TARGETS ${TARGET_NAME} DESTINATION .)
+# ------------------------------------------------------------------
 ENDIF(NOT APPLE)
 
 if (VIDEO_USE_CUDA)
@@ -1171,18 +1158,20 @@ IF(NOT APPLE)
 ELSE(NOT APPLE)
   ADD_EXECUTABLE(${APPLICATION_NAME} MACOSX_BUNDLE ${APPLICATION_NAME}.cpp thread.cpp)
   FILE(COPY cismm_video_optimizer.tcl russ_widgets.tcl DESTINATION cismm_video_optimizer.app/Contents/MacOS)
-INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
 
-# Need to comment out this section to create an install on Mac
-# See Redmine in video project
-#-------------------------------------------------------------
-INSTALL(CODE "
-    MESSAGE(\"Fixing dependencies... Please be patient.\")	
-    include(BundleUtilities)
-    fixup_bundle( \"${CMAKE_BINARY_DIR}/${APPLICATION_NAME}.app\" \"\" \"\")
-    ")
-
+  # Comment out this section if you don't want spot_tracker in the installer
+  #--------------------------------------------------------------------------
+  # configure_files makes CMAKE variables can be seen in the script
+  INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
+  CONFIGURE_FILE(
+    ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
+    ${CMAKE_BINARY_DIR}/mac_installer.cmake 
+    @ONLY IMMEDIATE
+  )
+INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
+#--------------------------------------------------------------------------
 ENDIF(NOT APPLE)
+
 else()
   ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp thread.cpp)
 endif()
