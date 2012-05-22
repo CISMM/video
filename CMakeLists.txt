@@ -1337,7 +1337,7 @@ ENDMACRO(CPP_NOGUI_APPLICATION)
 #-----------------------------------------------------------------------------
 # Declaration of the simple applications that don't have extra files
 
-#CPP_APPLICATION(add_noise_to_image apps)
+CPP_APPLICATION(add_noise_to_image apps)
 CPP_APPLICATION(airy_maker apps)
 if (WIN32)
 	CPP_APPLICATION(argonot apps)
@@ -1350,7 +1350,7 @@ if (VIDEO_USE_EDT)
 	CAPC_APPLICATION(manual_capture apps)
 endif (VIDEO_USE_EDT)
 CPP_APPLICATION(make_moving_spot_video apps)
-#CPP_APPLICATION(make_test_image apps)
+CPP_APPLICATION(make_test_image apps)
 CPP_NOGUI_APPLICATION(video_imager_server apps)
 CPP_APPLICATION(csv_to_xml apps)
 CPP_APPLICATION(xml_tracking_compare apps)
