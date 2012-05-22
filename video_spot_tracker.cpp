@@ -237,7 +237,7 @@ Tclvar_int_with_button	g_window_offset_y("window_offset_y",NULL,-10);  //< Offse
 // by determining if the frame number has changed since last time.
 int                 g_last_optimized_frame_number = -1000;
 
-int		    g_tracking_window;		  //< Glut window displaying tracking
+int		    g_tracking_window = -1;	  //< Glut window displaying tracking
 unsigned char	    *g_glut_image = NULL;	  //< Pointer to the storage for the image
 
 bool		    g_ready_to_display = false;	  //< Don't unless we get an image
@@ -259,9 +259,9 @@ FILE		    *g_csv_file = NULL;		  //< File to save data in with .csv extension
 unsigned char	    *g_beadseye_image = NULL;	  //< Pointer to the storage for the beads-eye image
 unsigned char	    *g_landscape_image = NULL;	  //< Pointer to the storage for the fitness landscape image
 float		    *g_landscape_floats = NULL;	  //< Pointer to the storage for the fitness landscape raw values
-int		    g_beadseye_window;		  //< Glut window showing view from active bead
+int		    g_beadseye_window = -1;	  //< Glut window showing view from active bead
 int		    g_beadseye_size = 121;	  //< Size of beads-eye-view window XXX should be dynamic
-int		    g_landscape_window;		  //< Glut window showing local landscape of fitness func
+int		    g_landscape_window = -1;	  //< Glut window showing local landscape of fitness func
 int		    g_landscape_size = 25;	  //< Size of optimization landscape window
 int		    g_landscape_strip_width = 101;//< Additional size of the graph showing X cross section
 
@@ -269,8 +269,8 @@ int		    g_kymograph_width;		  //< Width of the kymograph window (computed at cr
 const int	    g_kymograph_height = 512;	  //< Height of the kymograph window
 unsigned char	    *g_kymograph_image = NULL;	  //< Pointer to the storage for the kymograph image
 float		    g_kymograph_centers[g_kymograph_height];  //< Where the cell-coordinate center of the spindle is.
-int		    g_kymograph_window;		  //< Glut window showing kymograph lines stacked into an image
-int		    g_kymograph_center_window;	  //< Glut window showing kymograph center-tracking
+int		    g_kymograph_window = -1;	  //< Glut window showing kymograph lines stacked into an image
+int		    g_kymograph_center_window=-1; //< Glut window showing kymograph center-tracking
 int		    g_kymograph_filled = 0;	  //< How many lines of data are in there now.
 
 bool                g_quit_at_end_of_video = false; //< When we reach the end of the video, should we quit?
@@ -362,6 +362,7 @@ Tclvar_int_with_button	g_full_area("full_area",NULL);
 Tclvar_int_with_button	g_mark("show_tracker",NULL,1);
 Tclvar_int_with_button	g_show_video("show_video","",1);
 Tclvar_int_with_button	g_opengl_video("use_texture_video","",1);
+Tclvar_int_with_button	g_use_CUDA("use_CUDA","",1);
 Tclvar_int_with_button	g_show_debug("show_debug","",0, set_debug_visibility);
 Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
 Tclvar_int_with_button	g_show_traces("show_logged_traces","",1);
@@ -594,9 +595,9 @@ static void  dirtyexit(void)
   printf("logging thread done...");
 
   if (g_use_gui) {
-    glutDestroyWindow(g_tracking_window);
-    glutDestroyWindow(g_beadseye_window);
-    glutDestroyWindow(g_landscape_window);
+    if (g_tracking_window != -1) { glutDestroyWindow(g_tracking_window); }
+    if (g_beadseye_window != -1) { glutDestroyWindow(g_beadseye_window); }
+    if (g_landscape_window != -1) { glutDestroyWindow(g_landscape_window); }
     printf("OpenGL window deleted...");
   }
 
@@ -3244,8 +3245,8 @@ int main(int argc, char *argv[])
   //------------------------------------------------------------------
   // Generic Tcl startup.  Getting and interpreter and mainwindow.
 
-  char		command[256];
 #ifndef VST_NO_GUI
+  char		command[256];
   Tk_Window     tk_control_window;
   g_tk_control_interp = Tcl_CreateInterp();
 
