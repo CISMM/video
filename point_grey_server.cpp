@@ -28,7 +28,7 @@ point_grey_server::~point_grey_server() {
 
 bool point_grey_server::write_to_opengl_texture(GLuint tex_id) {
 	// *** stub
-	return true;
+	return false;
 }
 
 bool point_grey_server::get_pixel_from_memory(unsigned int X, unsigned int Y, vrpn_uint8 &val, int RGB) const {

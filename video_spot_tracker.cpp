@@ -178,7 +178,7 @@ static bool parse_tcl_set_command(const char *cmd)
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "07.01";
+const char *Version_string = "07.02";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -2268,6 +2268,7 @@ void myIdleFunc(void)
   if (g_findThisManyBeads > g_trackers.tracker_count()) {
     // make sure we only try to auto-find once per new frame of video
     if (g_gotNewFrame) {
+        g_trackers.default_radius(g_Radius);
         if (g_trackers.find_more_brightfield_beads_in(*laf_image,
             g_slidingWindowRadius,
             g_candidateSpotThreshold,
@@ -2280,6 +2281,7 @@ void myIdleFunc(void)
   }
   if (g_findThisManyFluorescentBeads > g_trackers.tracker_count()) {
     if (g_gotNewFluorescentFrame) {
+      g_trackers.default_radius(g_Radius);
       if (g_trackers.autofind_fluorescent_beads_in(*laf_image,
               g_fluorescentSpotThreshold,
               g_intensityLossSensitivity,
@@ -2830,6 +2832,7 @@ void  rebuild_trackers(float /*newvalue*/, void *)
   g_trackers.min_border_distance(g_borderDeadZone);
   g_trackers.color_index(g_colorIndex);
   g_trackers.invert(g_invert != 0);
+  g_trackers.default_radius(g_Radius);
   g_trackers.rebuild_trackers();
 }
 

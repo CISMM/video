@@ -624,7 +624,7 @@ void maximum_image::operator+=(const image_wrapper &newimage)
       for (c = 0; c < get_num_colors(); c++) {
 	double val = read_pixel_nocheck(x, y, c);
 	double val2 = newimage.read_pixel_nocheck(x, y, c);
-	_image[index(x, y, c)] = (val > val2) ? val : val2;
+        _image[index(x, y, c)] = (val > val2) ? val : val2;
       }
     }
   }
