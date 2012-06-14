@@ -205,6 +205,7 @@ typedef vector<Position_XY> Position_Vector_XY;
 Tcl_Interp	    *g_tk_control_interp;
 #endif
 
+bool                g_logging_thread_error = false;
 Tclvar_int          g_tcl_raw_camera_numx("raw_numx");
 Tclvar_int          g_tcl_raw_camera_numy("raw_numy");
 Tclvar_int          g_tcl_raw_camera_bitdepth("raw_bitdepth");
@@ -1789,6 +1790,7 @@ void logging_thread_function(void *)
       break;
     }
     strncpy(oldvalue, newvalue, strlen(newvalue));
+    g_logging_thread_error = false;
     do {
       g_client_tracker->mainloop();
       g_client_imager->mainloop();
@@ -1796,7 +1798,13 @@ void logging_thread_function(void *)
       g_client_connection->save_log_so_far();
       vrpn_SleepMsecs(1);
       newvalue = g_logfilename;
-    } while ( (strcmp(newvalue, oldvalue) == 0) && (!g_quit) );
+      // It should not happen that we're told to quit before it has
+      // told us to stop logging.
+      if (g_quit) {
+        g_logging_thread_error = true;
+        break;
+      }
+    } while (strcmp(newvalue, oldvalue) == 0);
 
     //------------------------------------------------------------
     // Delete and make NULL the client tracker and connection object.
@@ -2479,6 +2487,10 @@ void myIdleFunc(void)
     }
 
     cleanup();
+    if (g_logging_thread_error) {
+      printf("Logging thread exited unexpectedly\n");
+      exit(-2);
+    }
     printf("Exiting with code 0 (good, clean exit)\n");
 
     exit(0);
@@ -3594,6 +3606,10 @@ int main(int argc, char *argv[])
     } while ( (g_device_name == NULL) && !g_quit);
     if (g_quit) {
       cleanup();
+      if (g_logging_thread_error) {
+        printf("Logging thread exited unexpectedly\n");
+        exit(-2);
+      }
       exit(0);
     }
   }
@@ -3686,6 +3702,10 @@ int main(int argc, char *argv[])
       } while ( (raw_params_set == 0) && !g_quit);
       if (g_quit) {
         cleanup();
+        if (g_logging_thread_error) {
+          printf("Logging thread exited unexpectedly\n");
+          exit(-2);
+        }
         exit(0);
       }
 
