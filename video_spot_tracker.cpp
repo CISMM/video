@@ -1796,7 +1796,7 @@ void logging_thread_function(void *)
       g_client_connection->save_log_so_far();
       vrpn_SleepMsecs(1);
       newvalue = g_logfilename;
-    } while (strcmp(newvalue, oldvalue) == 0);
+    } while ( (strcmp(newvalue, oldvalue) == 0) && (!g_quit) );
 
     //------------------------------------------------------------
     // Delete and make NULL the client tracker and connection object.
@@ -3643,20 +3643,20 @@ int main(int argc, char *argv[])
             raw_camera_headersize = 0;
             raw_camera_frameheadersize = 112;
             raw_camera_params_valid = true;
-          }
-        } else {
-          // Check for another camera being used at UNC
-          frame_size = 512 * 512 + 0;
-          num_frames = file_length / frame_size;
-          if ( num_frames == floor(num_frames) ) {
-            printf("Assuming file format (512x512, 0-byte frame headers)\n");
-            raw_camera_numx = 512;
-            raw_camera_numy = 512;
-            raw_camera_bitdepth = 8;
-            raw_camera_channels = 1;
-            raw_camera_headersize = 0;
-            raw_camera_frameheadersize = 0;
-            raw_camera_params_valid = true;
+          } else {
+            // Check for another camera being used at UNC
+            frame_size = 512 * 512 + 0;
+            num_frames = file_length / frame_size;
+            if ( num_frames == floor(num_frames) ) {
+              printf("Assuming file format (512x512, 0-byte frame headers)\n");
+              raw_camera_numx = 512;
+              raw_camera_numy = 512;
+              raw_camera_bitdepth = 8;
+              raw_camera_channels = 1;
+              raw_camera_headersize = 0;
+              raw_camera_frameheadersize = 0;
+              raw_camera_params_valid = true;
+            }
           }
         }
       }
