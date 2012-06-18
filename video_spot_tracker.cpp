@@ -1801,6 +1801,7 @@ void logging_thread_function(void *)
       // It should not happen that we're told to quit before it has
       // told us to stop logging.
       if (g_quit) {
+        fprintf(stderr,"Error -- g_quit was set while logging file name not empty\n");
         g_logging_thread_error = true;
         break;
       }
