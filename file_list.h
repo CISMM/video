@@ -13,6 +13,7 @@
 // class.  The changing block of numbers selected by this function is
 // the one that is nearest to the end of the file name, if there is more
 // than one set.
+//    It will only look for files in the same directory.
 //
 // It returns FALSE and clears the list if there is no such file as
 // the name passed in.  It returns TRUE and fills in at least the

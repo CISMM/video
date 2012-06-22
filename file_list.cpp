@@ -66,9 +66,12 @@ bool  file_list(const string file_name, vector <string> &file_list)
 
   // Find the start and end location of the last block of
   // changing numbers in the file name.  If there is not a block of
-  // numbers, then return with just the one sent in.
+  // numbers, then return with just the one sent in.  Stop looking at
+  // the last directory delimiter: / (for linux) or \ (for Windows) or : (for mac)
+  // in the filename, so that we don't switch to another directory.
   string::size_type first_number = file_name.size();  // Start with it at the end of the string, one past the end.
   string::size_type last_number;
+  string::size_type last_delimeter = file_name.find_last_of(":/\\", file_name.size()-1);
   unsigned num_length;
   unsigned long num_value;
   do {
@@ -78,6 +81,11 @@ bool  file_list(const string file_name, vector <string> &file_list)
     // stride at zero.
     last_number = file_name.find_last_of("0123456789", first_number-1);
     if (last_number == string::npos) {
+      // We've gotten to the start of the name, so stop looking.
+      break;
+    }
+    if (last_number <= last_delimeter) {
+      // We've gotten to the last directory delimiter, so stop looking.
       break;
     }
 
