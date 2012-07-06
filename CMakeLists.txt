@@ -692,6 +692,7 @@ endif (VIDEO_USE_IMAGEMAGICK)
 if (VIDEO_BUILD_APPLICATIONS)
 
 # Non-CUDA version of Video Spot Tracker
+if (NOT VIDEO_USE_CUDA)
 SET(TARGET_NAME video_spot_tracker)
 IF(NOT APPLE)
 	ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp thread.cpp)
@@ -789,6 +790,7 @@ CONFIGURE_FILE(
 INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
 #--------------------------------------------------------------------------
 ENDIF(NOT APPLE)
+endif (NOT VIDEO_USE_CUDA)
 
 # XXX Should move the CUDA compilation into the spot-tracker library code.
 # XXX Then do we CUDA compile everything that uses spot-tracker lib?
@@ -1344,23 +1346,31 @@ if (WIN32)
 	CPP_APPLICATION(argonot apps)
 endif (WIN32)
 CPP_APPLICATION(average_videos apps)
+if (NOT VIDEO_USE_CUDA)
 CPP_APPLICATION(cismm_video_optimizer apps)
+endif (NOT VIDEO_USE_CUDA)
 CPP_APPLICATION(compare_tracking_files apps)
 if (VIDEO_USE_EDT)
 	CPP_APPLICATION(edt_video_take apps)
 	CAPC_APPLICATION(manual_capture apps)
 endif (VIDEO_USE_EDT)
+if (NOT VIDEO_USE_CUDA)
 CPP_APPLICATION(make_moving_spot_video apps)
 CPP_APPLICATION(make_test_image apps)
+endif (NOT VIDEO_USE_CUDA)
 CPP_NOGUI_APPLICATION(video_imager_server apps)
 CPP_APPLICATION(csv_to_xml apps)
 CPP_APPLICATION(xml_tracking_compare apps)
+if (NOT VIDEO_USE_CUDA)
 CPP_APPLICATION(Panoptes_Stage_Control apps)
+endif (NOT VIDEO_USE_CUDA)
 if (VIDEO_USE_ROPER)
 	CPP_APPLICATION(roper_example apps)
 	CPP_APPLICATION(roper_spot_tracker apps)
 endif (VIDEO_USE_ROPER)
+if (NOT VIDEO_USE_CUDA)
 CPP_APPLICATION(test_spot_tracker tests)
+endif (NOT VIDEO_USE_CUDA)
 
 # XXX stocc_test_poisson
 # CPP_APPLICATION(stack_collector apps) XXX requires vrpn_Generic_Server_Object
