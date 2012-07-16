@@ -1374,6 +1374,13 @@ void myDisplayFunc(void)
 // area surrounding the tracker center looks like.
 void myBeadDisplayFunc(void)
 {
+  // Due to some sort of race condition, on Linux sometimes this
+  // window appears even though debugging is not turned on.  If that
+  // happens, hide the window.
+  if (!g_show_debug) {
+    glutHideWindow();
+  }
+
   // Clear the window and prepare to draw in the back buffer
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
@@ -1560,6 +1567,13 @@ void myBeadDisplayFunc(void)
 // the region around the current point.
 void myLandscapeDisplayFunc(void)
 {
+  // Due to some sort of race condition, on Linux sometimes this
+  // window appears even though debugging is not turned on.  If that
+  // happens, hide the window.
+  if (!g_show_debug) {
+    glutHideWindow();
+  }
+
   // Clear the window and prepare to draw in the back buffer
   glDrawBuffer(GL_BACK);
   glClearColor(0.0, 0.0, 0.0, 0.0);
@@ -1654,6 +1668,13 @@ void myLandscapeDisplayFunc(void)
 // rather stay put in the image.
 void mykymographCenterDisplayFunc(void)
 {
+  // Due to some sort of race condition, on Linux sometimes this
+  // window appears even though the kymograph is not turned on.  If that
+  // happens, hide the window.
+  if (!g_kymograph) {
+    glutHideWindow();
+  }
+
   // Clear the window and prepare to draw in the back buffer
   glDrawBuffer(GL_BACK);
   glClearColor(0.0, 0.0, 0.0, 0.0);
@@ -1714,6 +1735,13 @@ void mykymographCenterDisplayFunc(void)
 // line between the first two tracked spots looks like.
 void mykymographDisplayFunc(void)
 {
+  // Due to some sort of race condition, on Linux sometimes this
+  // window appears even though the kymograph is not turned on.  If that
+  // happens, hide the window.
+  if (!g_kymograph) {
+    glutHideWindow();
+  }
+
   // Clear the window and prepare to draw in the back buffer
   glDrawBuffer(GL_BACK);
   glClearColor(0.0, 0.0, 0.0, 0.0);
