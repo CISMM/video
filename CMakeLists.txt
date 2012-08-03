@@ -569,10 +569,10 @@ install(TARGETS stocc_random_number_generator_library
 
 if (VIDEO_BUILD_PANOPTES)
 FIND_PACKAGE(LEWOS REQUIRED)
-FIND_PACKAGE(LEWOSSIM REQUIRED)
+FIND_PACKAGE(Panoptes REQUIRED)
 INCLUDE_DIRECTORIES(
-        ${LEWOSSIM_INCLUDE_DIR}
         ${LEWOS_INCLUDE_DIR}
+        ${PANOPTES_INCLUDE_DIR}
 )
 SET(TARGET_NAME PanopticNerve_LEWOS)
 ADD_EXECUTABLE(PanopticNerve_LEWOS
@@ -581,13 +581,6 @@ ADD_EXECUTABLE(PanopticNerve_LEWOS
 	PanopticNerve_LEWOS/ImageAnalyzer.cpp
 	PanopticNerve_LEWOS/NerveTest.cpp
 	PanopticNerve_LEWOS/USBMAC6000.cpp
-	PanopticNerve_LEWOS/Panoptes.cpp
-	#PanopticNerve_LEWOS/LEWOS_Alfred_xmit.cpp
-	#PanopticNerve_LEWOS/LEWOS_Alfred_api.cpp
-	#PanopticNerve_LEWOS/LEWOS_xmit.cpp
-	#PanopticNerve_LEWOS/LEWOS_api.cpp
-	#PanopticNerve_LEWOS/LEWOS_xlate.c
-	#PanopticNerve_LEWOS/LEWOS_xlate_test.c
 )
   if (VIDEO_USE_DIRECTSHOW)
     TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
@@ -651,8 +644,8 @@ TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
 	${OPENGL_glu_LIBRARY}
 	${OPENGL_gl_LIBRARY}
-	#${LEWOSSIM_LIBRARIES}
 	${LEWOS_LIBRARIES}
+	${Panoptes_LIBRARY}
 )
   if (VIDEO_USE_IMAGEMAGICK)
 	TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
