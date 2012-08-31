@@ -287,7 +287,7 @@ install(TARGETS base_camera_server_library
 
 if (VIDEO_USE_IMAGEMAGICK)
 	set(FS_SOURCES file_stack_server.cpp file_list.cpp)
-	set(FS_PUBLIC_HEADERS file_stack_server.h)
+	set(FS_PUBLIC_HEADERS file_stack_server.h file_list.h)
 	ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
 	ADD_LIBRARY (file_stack_library
 		${FS_SOURCES} ${FS_PUBLIC_HEADERS}
