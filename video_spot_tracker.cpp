@@ -3828,10 +3828,10 @@ int main(int argc, char *argv[])
 
   //------------------------------------------------------------------
   // Set up the VRPN server connection and the tracker object that will
-  // report the position when tracking is turned on.  Reserve 30,000
+  // report the position when tracking is turned on.  Reserve 300,000
   // sensor locations (this should be an overestimate).
   g_vrpn_connection = vrpn_create_server_connection();
-  g_vrpn_tracker = new vrpn_Tracker_Server("Spot", g_vrpn_connection, 30000);
+  g_vrpn_tracker = new vrpn_Tracker_Server("Spot", g_vrpn_connection, 300000);
   g_vrpn_analog = new vrpn_Analog_Server("FrameNumber", g_vrpn_connection, 1);
   g_vrpn_imager = new vrpn_Imager_Server("TestImage", g_vrpn_connection,
     g_camera->get_num_columns(), g_camera->get_num_rows());
