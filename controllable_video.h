@@ -169,7 +169,7 @@ public:
 //  camera we're trying to open.  If it is a raw camera, then the params
 //  needed to open it are specified (one in bit_depth, the others in
 //  special params at the end).
-bool  get_camera(const char *name,
+static bool  get_camera(const char *name,
                  unsigned *bit_depth,
                  float *exposure,
                  base_camera_server **camera, Controllable_Video **video,
