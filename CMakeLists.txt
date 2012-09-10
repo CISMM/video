@@ -127,6 +127,13 @@ if (WIN32)
   OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" ON)
 endif (WIN32)
 
+find_package(MPI)
+if (MPI_FOUND)
+	OPTION(VIDEO_PANOPTES_MPI "Enable to use MPI in build" ON)
+else (MPI_FOUND)
+	OPTION(VIDEO_PANOPTES_MPI "Enable to use MPI in build" OFF)
+endif (MPI_FOUND)
+
 # Configuration options controlling what gets included in the build.
 # Look up each of the camera-driver libraries.  If they are found, then turn them
 # on by default.
@@ -185,12 +192,15 @@ OPTION(VIDEO_USE_SEM "Enable to include SEM (from nanoManipulator) camera code i
 OPTION(VIDEO_USE_VRPN_IMAGER "Enable to include VRPN_Imager camera code in build" ON)
 OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" OFF)
 
-OPTION(VIDEO_BUILD_PANOPTES "Enable to build Panopted applications" OFF)
+OPTION(VIDEO_BUILD_PANOPTES "Enable to build Panoptes applications" OFF)
 
 #-----------------------------------------------------------------------------
 # Set compile-time definitions for all projects based on what has been
 # selected.
 
+if (VIDEO_PANOPTES_MPI)
+	ADD_DEFINITIONS(-DPANOPTES_USE_MPI)
+endif (VIDEO_PANOPTES_MPI)
 if (VIDEO_USE_IMAGEMAGICK)
 	ADD_DEFINITIONS(-DVST_USE_IMAGEMAGICK)
 endif (VIDEO_USE_IMAGEMAGICK)
@@ -574,6 +584,11 @@ INCLUDE_DIRECTORIES(
         ${LEWOS_INCLUDE_DIR}
         ${PANOPTES_INCLUDE_DIR}
 )
+if (VIDEO_PANOPTES_MPI)
+INCLUDE_DIRECTORIES(
+	${MPI_INCLUDE_PATH}
+)
+endif (VIDEO_PANOPTES_MPI)
 SET(TARGET_NAME PanopticNerve_LEWOS)
 ADD_EXECUTABLE(PanopticNerve_LEWOS
 	PanopticNerve_LEWOS/PanopticNerve.cpp
@@ -582,6 +597,11 @@ ADD_EXECUTABLE(PanopticNerve_LEWOS
 	PanopticNerve_LEWOS/NerveTest.cpp
 	PanopticNerve_LEWOS/USBMAC6000.cpp
 )
+if (VIDEO_PANOPTES_MPI)
+    TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
+	${MPI_CXX_LIBRARIES}
+    )
+endif (VIDEO_PANOPTES_MPI)
   if (VIDEO_USE_DIRECTSHOW)
     TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	directx_library
