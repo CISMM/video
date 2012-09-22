@@ -3645,6 +3645,13 @@ int main(int argc, char *argv[])
 #endif
 
   //------------------------------------------------------------------
+  // If we don't have a device name, exit.  This can happen on the
+  // NO_GUI compile path.
+  if (g_device_name == NULL) {
+	Usage(argv[0]);
+  }
+
+  //------------------------------------------------------------------
   // If we're being asked to open a raw file and we don't have a set of
   // raw-file parameters, then see if we can figure them out based on the
   // file size or else throw a dialog box asking for them.
