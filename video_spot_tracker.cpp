@@ -205,7 +205,6 @@ typedef vector<Position_XY> Position_Vector_XY;
 Tcl_Interp	    *g_tk_control_interp;
 #endif
 
-bool                g_logging_thread_error = false;
 Tclvar_int          g_tcl_raw_camera_numx("raw_numx");
 Tclvar_int          g_tcl_raw_camera_numy("raw_numy");
 Tclvar_int          g_tcl_raw_camera_bitdepth("raw_bitdepth");
@@ -368,7 +367,7 @@ Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
 Tclvar_int_with_button	g_show_traces("show_logged_traces","",1);
 Tclvar_int_with_button	g_background_subtract("background_subtract","",0, reset_background_image);
 Tclvar_int_with_button	g_kymograph("kymograph","",0, set_kymograph_visibility);
-Tclvar_int_with_button	g_quit("quit",NULL);
+Tclvar_int_with_button	g_quit("quit",NULL);	// don't set directly, only by calling cleanup() or dirtyexit()
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
 Tclvar_int		g_log_relative("logging_relative");
@@ -565,10 +564,10 @@ static void  dirtyexit(void)
     did_already = true;
   }
 
-  g_quit = 1;  // Lets all the threads know that it is time to exit.
-
   // Done with the camera and other objects.
   printf("Exiting...");
+
+  g_quit = 1;  // Lets all the threads know that it is time to exit.
 
   // Make the log file name empty so that the logging thread
   // will notice and close its file.
@@ -577,6 +576,7 @@ static void  dirtyexit(void)
   g_logfilename = "";
   logfilename_changed("", NULL);
   while (g_logging_thread->running()) {
+
 #ifndef VST_NO_GUI
     //------------------------------------------------------------
     // This must be done in any Tcl app, to allow Tcl/Tk to handle
@@ -1818,7 +1818,6 @@ void logging_thread_function(void *)
       break;
     }
     strncpy(oldvalue, newvalue, strlen(newvalue));
-    g_logging_thread_error = false;
     do {
       g_client_tracker->mainloop();
       g_client_imager->mainloop();
@@ -1826,14 +1825,7 @@ void logging_thread_function(void *)
       g_client_connection->save_log_so_far();
       vrpn_SleepMsecs(1);
       newvalue = g_logfilename;
-      // It should not happen that we're told to quit before it has
-      // told us to stop logging.
-      if (g_quit) {
-        fprintf(stderr,"Error -- g_quit was set while logging file name not empty\n");
-        g_logging_thread_error = true;
-        break;
-      }
-    } while (strcmp(newvalue, oldvalue) == 0);
+    } while (!g_quit && strcmp(newvalue, oldvalue) == 0);
 
     //------------------------------------------------------------
     // Delete and make NULL the client tracker and connection object.
@@ -2147,7 +2139,8 @@ void myIdleFunc(void)
 	  // If we are supposed to quit at the end of the video, do so.
 	  if (g_quit_at_end_of_video) {
 	    printf("Exiting at the end of the video\n");
-	    g_quit = 1;
+	    cleanup();
+	    exit(0);
 	  } else {
 #ifdef	_WIN32
 #ifndef __MINGW32__
@@ -2516,10 +2509,6 @@ void myIdleFunc(void)
     }
 
     cleanup();
-    if (g_logging_thread_error) {
-      printf("Logging thread exited unexpectedly\n");
-      exit(-2);
-    }
     printf("Exiting with code 0 (good, clean exit)\n");
 
     exit(0);
@@ -2585,7 +2574,8 @@ void keyboardCallbackForGLUT(unsigned char key, int x, int y)
   switch (key) {
   case 'q':
   case 'Q':
-    g_quit = 1;
+    cleanup();
+    exit(0);
     break;
 
   case 8:   // Backspace
@@ -3635,10 +3625,6 @@ int main(int argc, char *argv[])
     } while ( (g_device_name == NULL) && !g_quit);
     if (g_quit) {
       cleanup();
-      if (g_logging_thread_error) {
-        printf("Logging thread exited unexpectedly\n");
-        exit(-2);
-      }
       exit(0);
     }
   }
@@ -3738,10 +3724,6 @@ int main(int argc, char *argv[])
       } while ( (raw_params_set == 0) && !g_quit);
       if (g_quit) {
         cleanup();
-        if (g_logging_thread_error) {
-          printf("Logging thread exited unexpectedly\n");
-          exit(-2);
-        }
         exit(0);
       }
 
