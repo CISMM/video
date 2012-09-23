@@ -178,7 +178,7 @@ static bool parse_tcl_set_command(const char *cmd)
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "07.02";
+const char *Version_string = "07.03";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -205,7 +205,6 @@ typedef vector<Position_XY> Position_Vector_XY;
 Tcl_Interp	    *g_tk_control_interp;
 #endif
 
-bool                g_logging_thread_error = false;
 Tclvar_int          g_tcl_raw_camera_numx("raw_numx");
 Tclvar_int          g_tcl_raw_camera_numy("raw_numy");
 Tclvar_int          g_tcl_raw_camera_bitdepth("raw_bitdepth");
@@ -223,6 +222,7 @@ image_wrapper	    *g_calculated_image = NULL;	  //< Image calculated from the ca
 unsigned            g_background_count = 0;       //< Number of frames we've already averaged over
 copy_of_image	    *g_last_image = NULL;	  //< Copy of the last image we had, if any
 image_wrapper       *g_blurred_image = NULL;      //< Blurred image used for autofind/delete, if any
+image_wrapper       *g_surround_image = NULL;     //< Blurred background image used for autofind/delete, if any
 
 Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
 Tclvar_int_with_button	g_frame_number("frame_number",NULL,-1);  //< Keeps track of video frame number
@@ -330,8 +330,9 @@ Tclvar_float_with_scale	g_brighten("brighten", "", 0, 8, 0);
 Tclvar_float_with_scale g_precision("precision", "", 0.005, 1.0, 0.05, rebuild_trackers);
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
 Tclvar_float_with_scale g_blurLostAndFound("blur_lost_and_found", ".lost_and_found_controls.top", 0.0, 5.0, 0.0);
-Tclvar_float_with_scale g_lossSensitivity("kernel_lost_tracking_sensitivity", ".lost_and_found_controls.top", 0.0, 1.0, 0.0);
-Tclvar_float_with_scale g_intensityLossSensitivity("intensity_lost_tracking_sensitivity", ".lost_and_found_controls.top", 0.0, 10.0, 0.0);
+Tclvar_float_with_scale g_surroundLostAndFound("center_surround", ".lost_and_found_controls.top", 0.0, 5.0, 0.0);
+Tclvar_float_with_scale g_lossSensitivity("kernel_lost_tracking_sensitivity", ".lost_and_found_controls.middle", 0.0, 1.0, 0.0);
+Tclvar_float_with_scale g_intensityLossSensitivity("intensity_lost_tracking_sensitivity", ".lost_and_found_controls.bottom", 0.0, 10.0, 0.0);
 Tclvar_float_with_scale g_borderDeadZone("dead_zone_around_border", ".lost_and_found_controls.top", 0.0, 30.0, 0.0);
 Tclvar_float_with_scale g_trackerDeadZone("dead_zone_around_trackers", ".lost_and_found_controls.top", 0.0, 3.0, 0.0);
 Tclvar_float_with_scale g_findThisManyFluorescentBeads("maintain_fluorescent_beads", ".lost_and_found_controls.bottom", 0.0, 100.0, 0.0);
@@ -368,7 +369,7 @@ Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
 Tclvar_int_with_button	g_show_traces("show_logged_traces","",1);
 Tclvar_int_with_button	g_background_subtract("background_subtract","",0, reset_background_image);
 Tclvar_int_with_button	g_kymograph("kymograph","",0, set_kymograph_visibility);
-Tclvar_int_with_button	g_quit("quit",NULL);
+Tclvar_int_with_button	g_quit("quit",NULL);	// don't set directly, only by calling cleanup() or dirtyexit()
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
 Tclvar_int		g_log_relative("logging_relative");
@@ -565,10 +566,10 @@ static void  dirtyexit(void)
     did_already = true;
   }
 
-  g_quit = 1;  // Lets all the threads know that it is time to exit.
-
   // Done with the camera and other objects.
   printf("Exiting...");
+
+  g_quit = 1;  // Lets all the threads know that it is time to exit.
 
   // Make the log file name empty so that the logging thread
   // will notice and close its file.
@@ -577,6 +578,7 @@ static void  dirtyexit(void)
   g_logfilename = "";
   logfilename_changed("", NULL);
   while (g_logging_thread->running()) {
+
 #ifndef VST_NO_GUI
     //------------------------------------------------------------
     // This must be done in any Tcl app, to allow Tcl/Tk to handle
@@ -973,13 +975,20 @@ void myDisplayFunc(void)
     int total_shift = shift_due_to_camera - g_brighten;
     if (total_shift < 0) { total_shift = 0; }
 
-    // Figure out which image to display.  If we're in debug mode and have a
+    // Figure out which image to display.  If we're in debug and have a surround-subtract
+    // image, we show it.  Otherwise, if we're in debug mode and have a
     // blurred image, then we draw it.  Otherwise, we draw the g_image.
     image_wrapper *drawn_image = g_image;
     int blurred_dim = 0;
-    if (g_blurred_image && g_show_debug) {
-      drawn_image = g_blurred_image;
-      blurred_dim = -1 * g_camera_bit_depth;  // Scale to range 0..1 for floating-point
+    if (g_show_debug) {
+      if (g_blurred_image) {
+        drawn_image = g_blurred_image;
+        blurred_dim = -1 * g_camera_bit_depth;  // Scale to range 0..1 for floating-point
+      }
+      if (g_surround_image) {
+        drawn_image = g_surround_image;
+        blurred_dim = -1 * g_camera_bit_depth;  // Scale to range 0..1 for floating-point
+      }
     }
 
     if (g_opengl_video) {
@@ -1316,9 +1325,14 @@ void myDisplayFunc(void)
   // we're intensity-based threshold autofind.
   if (g_show_debug && (g_findThisManyFluorescentBeads > 0)) {
     // Figure out which image to search for above-threshold spots.
+    // A blurred image takes precedence over the standard image, and
+    // a surround-subtracted images takes precedence over that.
     image_wrapper *img = g_image;
     if (g_blurred_image) {
       img = g_blurred_image;
+    }
+    if (g_surround_image) {
+      img = g_surround_image;
     }
 
     // first, find the max and min pixel value and scale our threshold.
@@ -1818,7 +1832,6 @@ void logging_thread_function(void *)
       break;
     }
     strncpy(oldvalue, newvalue, strlen(newvalue));
-    g_logging_thread_error = false;
     do {
       g_client_tracker->mainloop();
       g_client_imager->mainloop();
@@ -1826,14 +1839,7 @@ void logging_thread_function(void *)
       g_client_connection->save_log_so_far();
       vrpn_SleepMsecs(1);
       newvalue = g_logfilename;
-      // It should not happen that we're told to quit before it has
-      // told us to stop logging.
-      if (g_quit) {
-        fprintf(stderr,"Error -- g_quit was set while logging file name not empty\n");
-        g_logging_thread_error = true;
-        break;
-      }
-    } while (strcmp(newvalue, oldvalue) == 0);
+    } while (!g_quit && strcmp(newvalue, oldvalue) == 0);
 
     //------------------------------------------------------------
     // Delete and make NULL the client tracker and connection object.
@@ -1874,11 +1880,15 @@ void optimize_all_trackers(void)
     g_trackers.mark_all_beads_not_lost();
 
     // Determine which image we should be looking at for seeing if a tracker
-    // is lost.  If we have a blurred image, we look at that one.  Otherwise,
+    // is lost.  If we have a center-surround image, we use it.  Otherewise,
+    // if we have a blurred image, we look at that one.  Otherwise,
     // we look at the global image.
     image_wrapper *l_image = g_image;
     if (g_blurred_image) {
       l_image = g_blurred_image;
+    }
+    if (g_surround_image) {
+      l_image = g_surround_image;
     }
 
     // Check to see if any trackers are lost due to brightfield criteria, using the
@@ -2147,7 +2157,8 @@ void myIdleFunc(void)
 	  // If we are supposed to quit at the end of the video, do so.
 	  if (g_quit_at_end_of_video) {
 	    printf("Exiting at the end of the video\n");
-	    g_quit = 1;
+	    cleanup();
+	    exit(0);
 	  } else {
 #ifdef	_WIN32
 #ifndef __MINGW32__
@@ -2260,6 +2271,39 @@ void myIdleFunc(void)
   image_wrapper *laf_image = g_image;
   if (g_blurred_image) {
     laf_image = g_blurred_image;
+  }
+
+  // If we have gotten a new video frame and we're making a surround-subtract image
+  // for the lost-and-found images, then make a new one here.  Then set the
+  // lost-and-found (LAF) image to point to it.  If we change the setting
+  // for blurring, also redo surround.  We form the image as the difference
+  // between the blurred image and and image formed by blurring to the
+  // larger sum of blur and surround settings.
+  static double last_surround_setting = 0;
+  bool time_to_surround = g_video_valid;
+  if (last_surround_setting != g_surroundLostAndFound) {
+    time_to_surround = true;
+    last_surround_setting = g_surroundLostAndFound;
+  }
+  if (g_surround_image && time_to_surround) {
+    delete g_surround_image;
+    g_surround_image = NULL;
+  }
+  if ( time_to_surround && (g_blurLostAndFound > 0) && (g_surroundLostAndFound > 0) ) {
+    unsigned aperture = 1 + static_cast<unsigned>(2 * (g_blurLostAndFound+g_surroundLostAndFound) );
+    image_wrapper *large_blur = new gaussian_blurred_image(*g_image, aperture, (g_blurLostAndFound+g_surroundLostAndFound) );
+    if (large_blur == NULL) {
+      fprintf(stderr, "Could not create larger-blurred image!\n");
+    } else {
+      g_surround_image = new subtracted_image(*g_blurred_image, *large_blur, 0.5);
+      if (g_surround_image == NULL) {
+        fprintf(stderr, "Could not create surround-subtracted image!\n");
+      }
+      delete large_blur;
+    }
+  }
+  if (g_surround_image) {
+    laf_image = g_surround_image;
   }
 
   // Update the VRPN tracker position for each tracker and report it
@@ -2516,10 +2560,6 @@ void myIdleFunc(void)
     }
 
     cleanup();
-    if (g_logging_thread_error) {
-      printf("Logging thread exited unexpectedly\n");
-      exit(-2);
-    }
     printf("Exiting with code 0 (good, clean exit)\n");
 
     exit(0);
@@ -2585,7 +2625,8 @@ void keyboardCallbackForGLUT(unsigned char key, int x, int y)
   switch (key) {
   case 'q':
   case 'Q':
-    g_quit = 1;
+    cleanup();
+    exit(0);
     break;
 
   case 8:   // Backspace
@@ -3635,14 +3676,17 @@ int main(int argc, char *argv[])
     } while ( (g_device_name == NULL) && !g_quit);
     if (g_quit) {
       cleanup();
-      if (g_logging_thread_error) {
-        printf("Logging thread exited unexpectedly\n");
-        exit(-2);
-      }
       exit(0);
     }
   }
 #endif
+
+  //------------------------------------------------------------------
+  // If we don't have a device name, exit.  This can happen on the
+  // NO_GUI compile path.
+  if (g_device_name == NULL) {
+	Usage(argv[0]);
+  }
 
   //------------------------------------------------------------------
   // If we're being asked to open a raw file and we don't have a set of
@@ -3731,10 +3775,6 @@ int main(int argc, char *argv[])
       } while ( (raw_params_set == 0) && !g_quit);
       if (g_quit) {
         cleanup();
-        if (g_logging_thread_error) {
-          printf("Logging thread exited unexpectedly\n");
-          exit(-2);
-        }
         exit(0);
       }
 

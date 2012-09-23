@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v07.02</title>
+<title>Video Spot Tracker v07.03</title>
 
-<h1>Video Spot Tracker version 07.02</h1>
+<h1>Video Spot Tracker version 07.03</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots (particles) in an <a href="http://ffmpeg.org/">FFMPEG</a>-compatible 
@@ -19,7 +19,8 @@
 <h2>Downloading and installing the program</h2>
 <p>An installer for the program and manual can be downloaded from the <a href="http://www.cs.unc.edu/Research/nano/cismm/download/index.html">CISMM 
   software download page</a>. It requires <a href="http://www.microsoft.com/directx">Microsoft 
-  <i>Direct X</i></a> version 9.0a or higher.</p>
+  <i>Direct X</i></a> version 9.0a or higher to use DirectShow-compatible video 
+  cameras.</p>
 <p>To convert the VRPN output files to Matlab format requires the VRPNLogToMatlab 
   program, also available from the CISMM download page. These packages can be 
   installed in any order.</p>
@@ -192,27 +193,45 @@
 
 <h3>Checking for lost trackers and Auto-finding beads</h3>
 <h3></h3>
-<p><img src="lost_and_found.jpg" width="199" height="723" align="right">There 
+<p><img src="lost_and_found.jpg" width="333" height="591" align="right">There 
   is a <i>show_lost_and_found</i> button on the main control panel that brings 
   up the control panel shown to the right.</p>
+<p><b>Blur/Surround:</b> There are two controls that affect how the image is processed 
+  before the lost or found processing is performed on it. These do not affect 
+  the actual tracking, but do affect how beads are located or discarded. If you 
+  turn on <i>show_debug</i> on the main control panel, the image will reflect 
+  the settings to help you determine effective ones. The window will also indicate 
+  where beads would be found given the current threshold and auto-find settings. 
+  The <i>blur_lost_and_found</i> slider controls the width in pixels of a Gaussian 
+  kernel that is convolved with the image to remove noise before the lost and 
+  found processing is done to it. A setting of zero disables this feature, and 
+  higher numbers blur away larger and larger features. The <i>center_surround</i> 
+  slider subtracts the surrounding value from each point (blurring with a kernel 
+  that is the sum of the two sliders), reducing the impact of background brightness 
+  level. This slider is useful in fluorescence videos where the background is 
+  non-uniform. It only takes effect if both <i>blur_lost_and_found</i> and <i>center_surround</i> 
+  are nonzero.</p>
 <p><b>Lost:</b> Two tracking sensitivity sliders located on this control panel 
   set thresholds for detection of lost tracking. A threshold setting of zero disables 
-  each feature, and is the default. The useful value for the <i>kernel_lost_tracking_sensitivity 
-  </i>threshold depends on the type of kernel you are using to track; this slider 
-  provides a normalized &quot;how sensitive&quot; control that should be approximately 
-  the same across types (the FIONA tracker uses the whole range 0-1, but the symmetric 
-  kernel needs only a very small number). If the threshold is exceeded by one 
-  or more beads while tracking, the associated bead is marked as lost.</p>
-<p>The <i>intensity_lost_tracking_sensitivity</i> slider is independent of the 
-  kernel being used; it works based on how different the brightess at the center 
-  of the tracked bead is from the region surrounding the bead. In particular, 
-  it finds the mean and variance of pixel intensities at the edge of a box around 
-  the bead center that is 1.5 times as large as the bead diameter. It then compares 
-  the variance (squared difference from the mean) of the value at the center of 
-  the bead from the mean value of the border; if it is less than the variance 
-  times this sensitivity setting, then the bead is marked as lost. This parameter 
-  is particularly useful for fluorescence images with low backgrounds, but could 
-  also be used for dark beads on bright backgrounds.</p>
+  each feature, and is the default. The <i>kernel_lost_tracking_sensitivity</i> 
+  is most often useful for brightfield microscopy video or reflected-light videos. 
+  Useful values for the threshold depends on the type of kernel you are using 
+  to track; this slider provides a normalized &quot;how sensitive&quot; control 
+  that should be approximately the same across types (the FIONA tracker uses the 
+  whole range 0-1, but the symmetric kernel needs only a very small number). If 
+  the threshold is exceeded by one or more beads while tracking, the associated 
+  bead is marked as lost.</p>
+<p>The <i>intensity_lost_tracking_sensitivity</i> slider is most useful for fluorescence 
+  videos. Its value is independent of the kernel being used; it works based on 
+  how different the brightess at the center of the tracked bead is from the region 
+  surrounding the bead. In particular, it finds the mean and variance of pixel 
+  intensities at the edge of a box around the bead center that is 1.5 times as 
+  large as the bead diameter. It then compares the variance (squared difference 
+  from the mean) of the value at the center of the bead from the mean value of 
+  the border; if it is less than the variance times this sensitivity setting, 
+  then the bead is marked as lost. This parameter is particularly useful for fluorescence 
+  images with low backgrounds, but could also be used for dark beads on bright 
+  backgrounds.</p>
 <p><b>Strayed:</b> The <i>dead_zone_around_border</i> slider sets a boundary around 
   the edge of the clipping region (see <i>Faster display update</i> section below 
   for a description of clipping). If a bead gets within this many pixels of the 
@@ -411,6 +430,20 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 7.03:</h3>
+<ul>
+  <li>Added feature to subtract the local background illumination from the scene 
+    before running lost and found processing. This helps remove the impact of 
+    non-uniform background illumination when selecting a threshold for finding 
+    beads in fluorescence images.</li>
+  <li>Fixed a bug in the CUDA version where turning on tracker optimization stopped 
+    the blurring kernel from working.</li>
+  <li>Fixed a crash bug if you ran vrpn_spot_tracker_nogui without giving it a 
+    file name to track in.</li>
+  <li>Rearranged the lost_and_found GUI to make it clear which settings to use 
+    for fluorescence and for brightfield.</li>
+</ul>
+<h3></h3>
 <h3>Version 7.02:</h3>
 <ul>
   <li>Fixed a bug with the radius of auto-find trackers not being set correctly.</li>

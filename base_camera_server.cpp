@@ -32,6 +32,38 @@ const double M_PI = 2*asin(1.0);
   #include <magick/api.h>
 #endif
 
+// Sum all the pixels for one color (defaults to the first) in an image.
+double image_wrapper_sum(const image_wrapper &img, unsigned rgb)
+{
+	double sum = 0;
+	int minx, maxx, miny, maxy;
+	img.read_range(minx, maxx, miny, maxy);
+	int x,y;
+	for (x = minx; x <= maxx; x++) {
+		for (y = miny; y <= maxy; y++) {
+			sum += img.read_pixel_nocheck(x, y, rgb);
+		}
+	}
+	return sum;
+}
+
+// Sum all the squared values of all pixels for one color
+// (defaults to the first) in an image.
+double image_wrapper_square_sum(const image_wrapper &img, unsigned rgb)
+{
+	double sum = 0;
+	int minx, maxx, miny, maxy;
+	img.read_range(minx, maxx, miny, maxy);
+	int x,y;
+	for (x = minx; x <= maxx; x++) {
+		for (y = miny; y <= maxy; y++) {
+			double val = img.read_pixel_nocheck(x, y, rgb);
+			sum += val*val;
+		}
+	}
+	return sum;
+}
+
 // Apply the specified gain to the value, clamp to zero and the maximum
 // possible value, and return the result.  We always clamp to 65535 rather
 // than 255 because the high-order byte is used when writing an 8-bit
@@ -322,7 +354,6 @@ bool float_image::write_to_opengl_texture(GLuint tex_id)
 }
 
 
-
 copy_of_image::copy_of_image(const image_wrapper &copyfrom) :
   _minx(-1), _maxx(-1), _miny(-1), _maxy(-1),
   _numx(-1), _numy(-1), _image(NULL), _numcolors(0)
@@ -415,7 +446,7 @@ subtracted_image::subtracted_image(const image_wrapper &first, const image_wrapp
   _numx = (_maxx - _minx) + 1;
   _numy = (_maxy - _miny) + 1;
   _numcolors = first.get_num_colors();
-  _image = new double[_numx * _numy * get_num_colors()];
+  _image = new float[_numx * _numy * get_num_colors()];
   if (_image == NULL) {
     _numx = _numy = _minx = _maxx = _miny = _maxy = _numcolors = 0;
     fprintf(stderr,"subtracted_image::subtracted_image(): Out of memory\n");
@@ -458,6 +489,20 @@ double	subtracted_image::read_pixel_nocheck(int x, int y, unsigned rgb) const
   }
   return _image[index(x, y, rgb)];
 }
+
+// Write the texture, using a virtual method call appropriate to the particular
+// camera type.
+bool subtracted_image::write_to_opengl_texture(GLuint tex_id)
+{
+  const GLint   NUM_COMPONENTS = 1;
+  const GLenum  FORMAT = GL_LUMINANCE;
+  const GLenum  TYPE = GL_FLOAT;
+  const void*   BASE_BUFFER = _image;
+  const void*   SUBSET_BUFFER = &_image[NUM_COMPONENTS * ( _minx + get_num_columns()*_miny )];
+  return write_to_opengl_texture_generic(tex_id, NUM_COMPONENTS, FORMAT, TYPE,
+    BASE_BUFFER, SUBSET_BUFFER, _minx, _miny, _maxx, _maxy);
+}
+
 
 averaged_image::averaged_image(const image_wrapper &first, const image_wrapper &second) :
   _minx(-1), _maxx(-1), _miny(-1), _maxy(-1),
