@@ -222,6 +222,7 @@ image_wrapper	    *g_calculated_image = NULL;	  //< Image calculated from the ca
 unsigned            g_background_count = 0;       //< Number of frames we've already averaged over
 copy_of_image	    *g_last_image = NULL;	  //< Copy of the last image we had, if any
 image_wrapper       *g_blurred_image = NULL;      //< Blurred image used for autofind/delete, if any
+image_wrapper       *g_surround_image = NULL;     //< Blurred background image used for autofind/delete, if any
 
 Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
 Tclvar_int_with_button	g_frame_number("frame_number",NULL,-1);  //< Keeps track of video frame number
@@ -329,6 +330,7 @@ Tclvar_float_with_scale	g_brighten("brighten", "", 0, 8, 0);
 Tclvar_float_with_scale g_precision("precision", "", 0.005, 1.0, 0.05, rebuild_trackers);
 Tclvar_float_with_scale g_sampleSpacing("sample_spacing", "", 0.1, 1.0, 1.0, rebuild_trackers);
 Tclvar_float_with_scale g_blurLostAndFound("blur_lost_and_found", ".lost_and_found_controls.top", 0.0, 5.0, 0.0);
+Tclvar_float_with_scale g_surroundLostAndFound("center_surround", ".lost_and_found_controls.top", 0.0, 5.0, 0.0);
 Tclvar_float_with_scale g_lossSensitivity("kernel_lost_tracking_sensitivity", ".lost_and_found_controls.top", 0.0, 1.0, 0.0);
 Tclvar_float_with_scale g_intensityLossSensitivity("intensity_lost_tracking_sensitivity", ".lost_and_found_controls.top", 0.0, 10.0, 0.0);
 Tclvar_float_with_scale g_borderDeadZone("dead_zone_around_border", ".lost_and_found_controls.top", 0.0, 30.0, 0.0);
@@ -973,13 +975,20 @@ void myDisplayFunc(void)
     int total_shift = shift_due_to_camera - g_brighten;
     if (total_shift < 0) { total_shift = 0; }
 
-    // Figure out which image to display.  If we're in debug mode and have a
+    // Figure out which image to display.  If we're in debug and have a surround-subtract
+    // image, we show it.  Otherwise, if we're in debug mode and have a
     // blurred image, then we draw it.  Otherwise, we draw the g_image.
     image_wrapper *drawn_image = g_image;
     int blurred_dim = 0;
-    if (g_blurred_image && g_show_debug) {
-      drawn_image = g_blurred_image;
-      blurred_dim = -1 * g_camera_bit_depth;  // Scale to range 0..1 for floating-point
+    if (g_show_debug) {
+      if (g_blurred_image) {
+        drawn_image = g_blurred_image;
+        blurred_dim = -1 * g_camera_bit_depth;  // Scale to range 0..1 for floating-point
+      }
+      if (g_surround_image) {
+        drawn_image = g_surround_image;
+        blurred_dim = -1 * g_camera_bit_depth;  // Scale to range 0..1 for floating-point
+      }
     }
 
     if (g_opengl_video) {
@@ -1316,9 +1325,14 @@ void myDisplayFunc(void)
   // we're intensity-based threshold autofind.
   if (g_show_debug && (g_findThisManyFluorescentBeads > 0)) {
     // Figure out which image to search for above-threshold spots.
+    // A blurred image takes precedence over the standard image, and
+    // a surround-subtracted images takes precedence over that.
     image_wrapper *img = g_image;
     if (g_blurred_image) {
       img = g_blurred_image;
+    }
+    if (g_surround_image) {
+      img = g_surround_image;
     }
 
     // first, find the max and min pixel value and scale our threshold.
@@ -1866,11 +1880,15 @@ void optimize_all_trackers(void)
     g_trackers.mark_all_beads_not_lost();
 
     // Determine which image we should be looking at for seeing if a tracker
-    // is lost.  If we have a blurred image, we look at that one.  Otherwise,
+    // is lost.  If we have a center-surround image, we use it.  Otherewise,
+    // if we have a blurred image, we look at that one.  Otherwise,
     // we look at the global image.
     image_wrapper *l_image = g_image;
     if (g_blurred_image) {
       l_image = g_blurred_image;
+    }
+    if (g_surround_image) {
+      l_image = g_surround_image;
     }
 
     // Check to see if any trackers are lost due to brightfield criteria, using the
@@ -2253,6 +2271,39 @@ void myIdleFunc(void)
   image_wrapper *laf_image = g_image;
   if (g_blurred_image) {
     laf_image = g_blurred_image;
+  }
+
+  // If we have gotten a new video frame and we're making a surround-subtract image
+  // for the lost-and-found images, then make a new one here.  Then set the
+  // lost-and-found (LAF) image to point to it.  If we change the setting
+  // for blurring, also redo surround.  We form the image as the difference
+  // between the blurred image and and image formed by blurring to the
+  // larger sum of blur and surround settings.
+  static double last_surround_setting = 0;
+  bool time_to_surround = g_video_valid;
+  if (last_surround_setting != g_surroundLostAndFound) {
+    time_to_surround = true;
+    last_surround_setting = g_surroundLostAndFound;
+  }
+  if (g_surround_image && time_to_surround) {
+    delete g_surround_image;
+    g_surround_image = NULL;
+  }
+  if ( time_to_surround && (g_blurLostAndFound > 0) && (g_surroundLostAndFound > 0) ) {
+    unsigned aperture = 1 + static_cast<unsigned>(2 * (g_blurLostAndFound+g_surroundLostAndFound) );
+    image_wrapper *large_blur = new gaussian_blurred_image(*g_image, aperture, (g_blurLostAndFound+g_surroundLostAndFound) );
+    if (large_blur == NULL) {
+      fprintf(stderr, "Could not create larger-blurred image!\n");
+    } else {
+      g_surround_image = new subtracted_image(*g_blurred_image, *large_blur, 0.5);
+      if (g_surround_image == NULL) {
+        fprintf(stderr, "Could not create surround-subtracted image!\n");
+      }
+      delete large_blur;
+    }
+  }
+  if (g_surround_image) {
+    laf_image = g_surround_image;
   }
 
   // Update the VRPN tracker position for each tracker and report it

@@ -4,38 +4,6 @@
 
 #include  "image_wrapper.h"
 
-// Sum all the pixels for one color (defaults to the first) in an image.
-double image_wrapper_sum(const image_wrapper &img, unsigned rgb)
-{
-	double sum = 0;
-	int minx, maxx, miny, maxy;
-	img.read_range(minx, maxx, miny, maxy);
-	int x,y;
-	for (x = minx; x <= maxx; x++) {
-		for (y = miny; y <= maxy; y++) {
-			sum += img.read_pixel_nocheck(x, y, rgb);
-		}
-	}
-	return sum;
-}
-
-// Sum all the squared values of all pixels for one color
-// (defaults to the first) in an image.
-double image_wrapper_square_sum(const image_wrapper &img, unsigned rgb)
-{
-	double sum = 0;
-	int minx, maxx, miny, maxy;
-	img.read_range(minx, maxx, miny, maxy);
-	int x,y;
-	for (x = minx; x <= maxx; x++) {
-		for (y = miny; y <= maxy; y++) {
-			double val = img.read_pixel_nocheck(x, y, rgb);
-			sum += val*val;
-		}
-	}
-	return sum;
-}
-
 disc_image::disc_image(int minx, int maxx, int miny, int maxy,
 		       double background, double noise,
 		       double diskx, double disky, double diskr,

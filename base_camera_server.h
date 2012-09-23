@@ -1,11 +1,6 @@
 //XXX Need to think about how to do a single color to RGB on the writing to OpenGL, for
 // VST and optimizer we may sometimes want just one channel to be
 // displayed (the one that is being tracked).
-//XXX Switch out the double in image_wrapper and derived classes and
-// use a float buffer instead.  Push this all the way through the calls
-// in all programs.  Then we can put an OpenGL renderer in that sends
-// GLfloats down, and optimize the derived classes that already have
-// a buffer so that they use texture writes to put them to the screen.
 //XXX Add the new shifting policy and OpenGL renderer to Video Optimizer.
 
 #ifndef	BASE_CAMERA_SERVER_H
@@ -595,11 +590,15 @@ public:
   /// Read a pixel from the image into a double; Don't check boundaries.
   virtual double read_pixel_nocheck(int x, int y, unsigned rgb = 0) const;
 
+  // Write the texture, using a virtual method call appropriate to the particular
+  // camera type.
+  virtual bool write_to_opengl_texture(GLuint tex_id);
+
 protected:
   int _minx, _maxx, _miny, _maxy;   //< Coordinates for the pixels (copied from other image)
   int _numx, _numy;		    //< Calculated based on the above min/max values
   int _numcolors;		    //< How many colors do we have
-  double  *_image;		    //< Holds the values copied from the other image
+  float  *_image;		    //< Holds the values
 
   inline int index(int x, int y, unsigned rgb) const {
     int xindex = x - _minx;
