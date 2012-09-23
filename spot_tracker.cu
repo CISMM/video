@@ -103,18 +103,6 @@ static bool VST_ensure_cuda_ready(const VST_cuda_image_buffer &inbuf)
 		g_cuda_fromhost_ny = inbuf.ny;
 	}
 	
-    // Set up enough threads (and enough blocks of threads) to at least
-    // cover the size of the array.  We use a thread block size of 16x16
-    // because that's what the example matrixMul code from nVidia does.
-    // Changing them to 8 and 8 makes the Gaussian kernel slower.  Changing
-    // them to 32 and 32 also makes it slower (by not as much)
-    g_threads.x = 16;
-    g_threads.y = 16;
-    g_threads.z = 1;
-    g_grid.x = ((g_cuda_fromhost_nx-1) / g_threads.x) + 1;
-    g_grid.y = ((g_cuda_fromhost_ny-1) / g_threads.y) + 1;
-    g_grid.z = 1;	
-
     // Everything worked, so we're okay.
     okay = true;
   }
@@ -281,6 +269,18 @@ bool VST_cuda_blur_image(VST_cuda_image_buffer &buf, unsigned aperture, float st
 	  return false;
 	}
 	
+    // Set up enough threads (and enough blocks of threads) to at least
+    // cover the size of the array.  We use a thread block size of 16x16
+    // because that's what the example matrixMul code from nVidia does.
+    // Changing them to 8 and 8 makes the Gaussian kernel slower.  Changing
+    // them to 32 and 32 also makes blurring slower (by not as much)
+    g_threads.x = 16;
+    g_threads.y = 16;
+    g_threads.z = 1;
+    g_grid.x = ((g_cuda_fromhost_nx-1) / g_threads.x) + 1;
+    g_grid.y = ((g_cuda_fromhost_ny-1) / g_threads.y) + 1;
+    g_grid.z = 1;	
+
 	// Call the CUDA kernel to do the blurring on the image, reading from
 	// the global input buffer and writing to the blur buffer.
 	// Synchronize the threads when
@@ -621,6 +621,7 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 }
 
 // Optimize the passed-in list of symmetric XY trackers based on the
+// image buffer passed in.
 bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
                                                  std::list<Spot_Information *> &tkrs,
                                                  unsigned num_to_optimize)
