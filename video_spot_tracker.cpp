@@ -2276,12 +2276,12 @@ void myIdleFunc(void)
   // If we have gotten a new video frame and we're making a surround-subtract image
   // for the lost-and-found images, then make a new one here.  Then set the
   // lost-and-found (LAF) image to point to it.  If we change the setting
-  // for blurring, also redo surround.  We form the image as the difference
+  // for blurring or surround, also redo surround.  We form the image as the difference
   // between the blurred image and and image formed by blurring to the
   // larger sum of blur and surround settings.
   static double last_surround_setting = 0;
   bool time_to_surround = g_video_valid;
-  if (last_surround_setting != g_surroundLostAndFound) {
+  if ( time_to_blur || (last_surround_setting != g_surroundLostAndFound) ) {
     time_to_surround = true;
     last_surround_setting = g_surroundLostAndFound;
   }
