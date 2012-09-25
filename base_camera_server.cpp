@@ -459,7 +459,7 @@ subtracted_image::subtracted_image(const image_wrapper &first, const image_wrapp
   for (x = _minx; x <= _maxx; x++) {
     for (y = _miny; y <= _maxy; y++) {
       for (c = 0; c < get_num_colors(); c++) {
-	_image[index(x, y, c)] = first.read_pixel_nocheck(x, y, c) - second.read_pixel_nocheck(x, y, c) + offset;
+	_image[index(x, y, c)] = static_cast<float>(first.read_pixel_nocheck(x, y, c) - second.read_pixel_nocheck(x, y, c) + offset);
       }
     }
   }
