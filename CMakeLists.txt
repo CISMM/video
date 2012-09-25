@@ -596,7 +596,6 @@ ADD_EXECUTABLE(PanopticNerve_LEWOS
 	PanopticNerve_LEWOS/cameraImage.cpp
 	PanopticNerve_LEWOS/ImageAnalyzer.cpp
 	PanopticNerve_LEWOS/NerveTest.cpp
-	PanopticNerve_LEWOS/USBMAC6000.cpp
 )
 if (VIDEO_PANOPTES_MPI)
     TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
