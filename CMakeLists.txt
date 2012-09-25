@@ -597,6 +597,14 @@ ADD_EXECUTABLE(PanopticNerve_LEWOS
 	PanopticNerve_LEWOS/ImageAnalyzer.cpp
 	PanopticNerve_LEWOS/NerveTest.cpp
 )
+TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
+	base_camera_server_library
+	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
+	${OPENGL_glu_LIBRARY}
+	${OPENGL_gl_LIBRARY}
+	${LEWOS_LIBRARIES}
+	${Panoptes_LIBRARY}
+)
 if (VIDEO_PANOPTES_MPI)
     TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	${MPI_CXX_LIBRARIES}
@@ -659,14 +667,6 @@ endif (VIDEO_PANOPTES_MPI)
 		${LEWOS_LIBRARIES}
 	)
   endif (UNIX)
-TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
-	base_camera_server_library
-	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
-	${OPENGL_glu_LIBRARY}
-	${OPENGL_gl_LIBRARY}
-	${LEWOS_LIBRARIES}
-	${Panoptes_LIBRARY}
-)
   if (VIDEO_USE_IMAGEMAGICK)
 	TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 		file_stack_library
