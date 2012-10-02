@@ -3612,7 +3612,7 @@ int main(int argc, char *argv[])
     } else if (!strncmp(argv[i], "-continue_from", strlen("-continue_from"))) {
       if (++i >= argc) { Usage(argv[0]); }
       if (!load_trackers_from_file(argv[i])) {
-        fprintf(stderr,"-contintue_from: Could not load trackers from %s\n", argv[i]);
+        fprintf(stderr,"-continue_from: Could not load trackers from %s\n", argv[i]);
         exit(-1);
       }
 // argv[1] will be -psn103_xxx when launched in a bundle
