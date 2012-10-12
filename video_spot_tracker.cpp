@@ -178,7 +178,7 @@ static bool parse_tcl_set_command(const char *cmd)
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "07.03";
+const char *Version_string = "07.04";
 
 //--------------------------------------------------------------------------
 // Global constants
