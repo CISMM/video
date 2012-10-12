@@ -2982,6 +2982,7 @@ void  handle_save_state_change(int newvalue, void *)
   fprintf(f, "set precision %lg\n", (double)(g_precision));
   fprintf(f, "set sample_spacing %lg\n", (double)(g_sampleSpacing));
   fprintf(f, "set blur_lost_and_found %lg\n", (double)(g_blurLostAndFound));
+  fprintf(f, "set center_surround %lg\n", (double)(g_surroundLostAndFound));
   fprintf(f, "set kernel_lost_tracking_sensitivity %lg\n", (double)(g_lossSensitivity));
   fprintf(f, "set intensity_lost_tracking_sensitivity %lg\n", (double)(g_intensityLossSensitivity));
   fprintf(f, "set dead_zone_around_border %lg\n", (double)(g_borderDeadZone));
@@ -3241,6 +3242,7 @@ void Usage(const char *progname)
     fprintf(stderr, "           [-dark_spot] [-follow_jumps] [-rod3 LENGTH ORIENT] [-outfile NAME]\n");
     fprintf(stderr, "           [-precision P] [-sample_spacing S] [-show_lost_and_found]\n");
     fprintf(stderr, "           [-lost_behavior B] [-lost_tracking_sensitivity L] [-blur_lost_and_found B]\n");
+    fprintf(stderr, "           [-center_surround R]\n");
     fprintf(stderr, "           [-intensity_lost_sensitivity IL] [-dead_zone_around_border DB]\n");
     fprintf(stderr, "           [-maintain_fluorescent_beads M] [-fluorescent_spot_threshold FT]\n");
     fprintf(stderr, "           [-fluorescent_max_regions FR]\n");
@@ -3262,7 +3264,8 @@ void Usage(const char *progname)
     fprintf(stderr, "       -sample_spacing: Set the sample spacing for trackers to S (default 1)\n");
     fprintf(stderr, "       -show_lost_and_found: Show the lost_and_found window on startup\n");
     fprintf(stderr, "       -lost_behavior: Set lost tracker behavior: 0:stop; 1:delete; 2:hover\n");
-    fprintf(stderr, "       -blur_lost_and_found:Set blur_lost_and_found to B\n");
+    fprintf(stderr, "       -blur_lost_and_found: Set blur_lost_and_found to B (default 0, which is off)\n");
+    fprintf(stderr, "       -center_surround: Set center_surround behavior radius for lost and found to R (default 0, which is off)\n");
     fprintf(stderr, "       -lost_tracking_sensitivity: Set lost_tracking_sensitivity to L\n");
     fprintf(stderr, "       -intensity_lost_sensitivity:Set intensity_lost_tracking_sensitivity to L\n");
     fprintf(stderr, "       -dead_zone_around_border: Set a dead zone around the region of interest\n");
@@ -3564,6 +3567,9 @@ int main(int argc, char *argv[])
     } else if (!strncmp(argv[i], "-blur_lost_and_found", strlen("-blur_lost_and_found"))) {
 	if (++i >= argc) { Usage(argv[0]); }
 	g_blurLostAndFound = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-center_surround", strlen("-center_surround"))) {
+	if (++i >= argc) { Usage(argv[0]); }
+	g_surroundLostAndFound = atof(argv[i]);
     } else if (!strncmp(argv[i], "-intensity_lost_sensitivity", strlen("-intensity_lost_sensitivity"))) {
 	if (++i >= argc) { Usage(argv[0]); }
 	g_intensityLossSensitivity = atof(argv[i]);	
