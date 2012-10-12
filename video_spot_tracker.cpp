@@ -445,6 +445,7 @@ double	flip_y(double y)
 spot_tracker_XY  *create_appropriate_xytracker(double x, double y, double r)
 {
   spot_tracker_XY *tracker = NULL;
+
   // If we are using the oriented-rod kernel, we create a new one depending on the type
   // of subordinate spot tracker that is being used.
   if (g_rod) {
