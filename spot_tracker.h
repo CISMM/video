@@ -745,7 +745,7 @@ public:
         , d_active_tracker(-1)
         , d_xy_tracker_creator(xycreator)
         , d_z_tracker_creator(zcreator)
-    {};
+    { };
 
     // Clean up (delete trackers in our vector, etc.)
     ~Tracker_Collection_Manager();

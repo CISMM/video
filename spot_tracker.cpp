@@ -2235,7 +2235,7 @@ bool Tracker_Collection_Manager::find_more_brightfield_beads_in(
 			++newTrackers;
 
 			// last argument = true tells Spot_Information that this isn't an official, logged tracker
-			potentialTrackers.push_back(new Spot_Information(default_xy_tracker_creator(candidateSpotsX[i],candidateSpotsY[i],d_default_radius),default_z_tracker_creator(), true));
+			potentialTrackers.push_back(new Spot_Information(d_xy_tracker_creator(candidateSpotsX[i],candidateSpotsY[i],d_default_radius),default_z_tracker_creator(), true));
 
 		}
 	}
@@ -2253,7 +2253,7 @@ bool Tracker_Collection_Manager::find_more_brightfield_beads_in(
                 mark_tracker_if_lost_in_fluorescence(*loop, s_image, d_default_fluorescence_lost_threshold);
 		if (!(*loop)->lost()) {
 			++numnotlost;
-                        d_trackers.push_back(new Spot_Information(default_xy_tracker_creator((*loop)->xytracker()->get_x(),(*loop)->xytracker()->get_y(),d_default_radius),default_z_tracker_creator()));
+                        d_trackers.push_back(new Spot_Information(d_xy_tracker_creator((*loop)->xytracker()->get_x(),(*loop)->xytracker()->get_y(),d_default_radius),default_z_tracker_creator()));
                 } else {
 			++numlost;
                 }
@@ -2397,7 +2397,7 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
         safe = false;
       }
       if (safe) {
-        spot_tracker_XY *xy = default_xy_tracker_creator(cx, cy, d_default_radius);
+        spot_tracker_XY *xy = d_xy_tracker_creator(cx, cy, d_default_radius);
         if (xy == NULL) {
           fprintf(stderr,"Tracker_Collection_Manager::autofind_fluorescent_beads_in(): Can't make XY tracker\n");
           break;
