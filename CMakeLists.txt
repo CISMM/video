@@ -34,6 +34,10 @@ elseif(APPLE) # Apple
   INCLUDE_DIRECTORIES(
 	${/usr/X11/include}
   )
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.5 -arch x86_64 -arch i386")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmacosx-version-min=10.5 -arch x86_64 -arch i386")
+SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -headerpad_max_install_names -mmacosx-version-min=10.5 -arch x86_64 -arch i386")
+
 #  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall")
 #  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 #  set(CMAKE_VERBOSE_MAKEFILE ON)
@@ -1181,7 +1185,7 @@ ELSE(NOT APPLE)
   ADD_EXECUTABLE(${APPLICATION_NAME} MACOSX_BUNDLE ${APPLICATION_NAME}.cpp thread.cpp)
   FILE(COPY cismm_video_optimizer.tcl russ_widgets.tcl DESTINATION cismm_video_optimizer.app/Contents/MacOS)
 
-  # Comment out this section if you don't want spot_tracker in the installer
+  # Comment out this section if you don't want video_optimizer in the installer
   #--------------------------------------------------------------------------
   # configure_files makes CMAKE variables can be seen in the script
   INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
@@ -1376,7 +1380,7 @@ CPP_NOGUI_APPLICATION(video_imager_server apps)
 CPP_APPLICATION(csv_to_xml apps)
 CPP_APPLICATION(xml_tracking_compare apps)
 if (NOT VIDEO_USE_CUDA)
-CPP_APPLICATION(Panoptes_Stage_Control apps)
+#CPP_APPLICATION(Panoptes_Stage_Control apps)
 endif (NOT VIDEO_USE_CUDA)
 if (VIDEO_USE_ROPER)
 	CPP_APPLICATION(roper_example apps)
