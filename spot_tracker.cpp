@@ -2,6 +2,11 @@
 #include  <stdio.h>
 #include  "spot_tracker.h"
 
+// For PlaySound()
+#ifdef _WIN32
+#include <MMSystem.h>
+#endif
+
 //#define DEBUG
 #ifndef	M_PI
 #ifndef M_PI_DEFINED
