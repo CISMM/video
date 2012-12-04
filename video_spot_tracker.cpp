@@ -926,8 +926,8 @@ static	bool  save_log_frame(int frame_number)
     }
   }
 
-  // Forward the full region-of-interest image if our frame number is
-  // oone of the lucky ones.
+  // Forward the full region-of-interest image if our frame number matches
+  // the interval of full-frames being asked for.
   if ( g_log_video && (frame_number % g_video_full_frame_every == 0) ) {
     // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION).
     if (!fill_and_send_video_region(*g_minX, *g_minY, *g_maxX, *g_maxY)) {
@@ -939,6 +939,7 @@ static	bool  save_log_frame(int frame_number)
   // If we're logging video, send an end-of-frame event.
   // XXX Figure out timestamp
   if (g_log_video) {
+//    printf("XXX Sending end-of-frame for frame %d\n", frame_number);
     g_vrpn_imager->send_end_frame(0, g_camera->get_num_columns()-1,
       0, g_camera->get_num_rows()-1);
     g_vrpn_imager->mainloop();
@@ -1783,7 +1784,7 @@ void mykymographDisplayFunc(void)
 
 // The logging on the VRPN connection is done by a separate thread so that
 // the network buffer won't get filled up while writing video data, causing
-// the porgram to hang while trying to pack more.  The CSV file writing is
+// the program to hang while trying to pack more.  The CSV file writing is
 // handled in the main thread, so don't be confused by that.
 //   This thread watches the logging file name and starts up a new logging
 // connection when it has a new, non-empty value.
@@ -1818,6 +1819,7 @@ void logging_thread_function(void *)
       }
     }
 
+    printf("Logging thread writing to %s\n", newvalue);
     g_client_connection = vrpn_get_connection_by_name("Spot@localhost", newvalue);
     g_client_tracker = new vrpn_Tracker_Remote("Spot@localhost");
     g_client_imager = new vrpn_Imager_Remote("TestImage@localhost");
@@ -1832,7 +1834,7 @@ void logging_thread_function(void *)
       fprintf(stderr,"logging_thread_function(): Out of memory\n");
       break;
     }
-    strncpy(oldvalue, newvalue, strlen(newvalue));
+    strncpy(oldvalue, newvalue, strlen(newvalue)+1);
     do {
       g_client_tracker->mainloop();
       g_client_imager->mainloop();
@@ -1841,6 +1843,7 @@ void logging_thread_function(void *)
       vrpn_SleepMsecs(1);
       newvalue = g_logfilename;
     } while (!g_quit && strcmp(newvalue, oldvalue) == 0);
+    printf("Logging thread done writing to %s\n", oldvalue);
 
     //------------------------------------------------------------
     // Delete and make NULL the client tracker and connection object.

@@ -161,8 +161,6 @@ bool  VRPN_Imager_camera_server::read_one_frame(unsigned short minX, unsigned sh
 
 bool VRPN_Imager_camera_server::open_and_find_parameters(const char *name)
 {
-  int i;
-
   _imager = new vrpn_Imager_Remote(name);
 
   // Register the change handler and call mainloop() until we hear
@@ -197,14 +195,21 @@ bool VRPN_Imager_camera_server::open_and_find_parameters(const char *name)
 
   // Try to read the first frame from the imager.  If we have a file controller,
   // then speed up the replay rate until we get done with the first frame.
-  // If the reading times out, try again a bunch of times.
+  // If the reading times out, try again a bunch of times.  If we end up waiting
+  // more than ten seconds total, then we're really timed out.
   if (_fileCon) {
     _fileCon->set_replay_rate(100.0);
     _paused = false;
     _pause_after_one_frame = true;
   }
-  for (i = 0; i < 1000; i++) {
+  gettimeofday(&start, NULL);
+  while (true) {
     if (read_one_frame(0, _num_columns-1, 0, _num_rows-1, 0)) { break; }
+    gettimeofday(&now, NULL);
+    if (duration(now, start) > 10000000L) {
+      fprintf(stderr,"VRPN_Imager_camera_server::open_and_find_parameters(): Timeout trying to read first frame\n");
+      return false;
+    }
   }
   if (_fileCon) {
     _fileCon->set_replay_rate(0.0);
