@@ -610,6 +610,10 @@ TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	${LEWOS_LIBRARIES}
 	${Panoptes_LIBRARY}
 )
+if(UNIX)
+include_directories("/usr/include/libusb-1.0")
+endif(UNIX)
+
 if (VIDEO_PANOPTES_MPI)
     TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	${MPI_CXX_LIBRARIES}
