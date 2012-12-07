@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v07.04</title>
+<title>Video Spot Tracker v07.05</title>
 
-<h1>Video Spot Tracker version 07.04</h1>
+<h1>Video Spot Tracker version 07.05</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots (particles) in an <a href="http://ffmpeg.org/">FFMPEG</a>-compatible 
@@ -428,6 +428,17 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 7.05:</h3>
+<ul>
+  <li>Fixed a bug where the brightfield autofind code was not using the brightfield 
+    lost detection, making it not find all of the beads it should have found. 
+    This bug was probably introduced in version 07.00.</li>
+  <li>Fixed several bugs in the VRPN-file logging. This includes perhaps a large 
+    number of lost frames of data at the beginning of a log, and one frame of 
+    lost data at the end of the log. It also includes storing the video frames 
+    off-by-one. These bugs were probably introduced in version 6.00.</li>
+</ul>
+<h3></h3>
 <h3>Version 7.04:</h3>
 <ul>
   <li>Fixed a bug where the autofind code was not using the parameters set in 
