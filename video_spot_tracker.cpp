@@ -3755,6 +3755,19 @@ int main(int argc, char *argv[])
               raw_camera_headersize = 0;
               raw_camera_frameheadersize = 0;
               raw_camera_params_valid = true;
+          } else {
+            // Check for another camera being used at UNC
+            frame_size = 656 * 494 + 0;
+            num_frames = file_length / frame_size;
+            if ( num_frames == floor(num_frames) ) {
+              printf("Assuming file format (565x494, 0-byte frame headers)\n");
+              raw_camera_numx = 656;
+              raw_camera_numy = 494;
+              raw_camera_bitdepth = 8;
+              raw_camera_channels = 1;
+              raw_camera_headersize = 0;
+              raw_camera_frameheadersize = 0;
+              raw_camera_params_valid = true;
             }
           }
         }
