@@ -902,7 +902,7 @@ if (VIDEO_USE_CUDA)
     FILE(COPY video_spot_tracker.tcl russ_widgets.tcl DESTINATION video_spot_tracker_CUDA.app/Contents/MacOS)
     INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
 
-    # Comment out this section if you don't want spot_tracker in the installer
+    # Comment out this section if you don't want spot_tracker_CUDA in the installer
     #--------------------------------------------------------------------------
     # configure_files makes CMAKE variables can be seen in the script
     INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
@@ -912,7 +912,7 @@ if (VIDEO_USE_CUDA)
       @ONLY IMMEDIATE
     )
     INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
-
+    #--------------------------------------------------------------------------
   ENDIF(NOT APPLE)
 
 endif (VIDEO_USE_CUDA)
@@ -1199,7 +1199,7 @@ ELSE(NOT APPLE)
     @ONLY IMMEDIATE
   )
   INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
-#--------------------------------------------------------------------------
+  #--------------------------------------------------------------------------
 ENDIF(NOT APPLE)
 
 else()
@@ -1384,7 +1384,7 @@ CPP_NOGUI_APPLICATION(video_imager_server apps)
 CPP_APPLICATION(csv_to_xml apps)
 CPP_APPLICATION(xml_tracking_compare apps)
 if (NOT VIDEO_USE_CUDA)
-#CPP_APPLICATION(Panoptes_Stage_Control apps)
+CPP_APPLICATION(Panoptes_Stage_Control apps)
 endif (NOT VIDEO_USE_CUDA)
 if (VIDEO_USE_ROPER)
 	CPP_APPLICATION(roper_example apps)
