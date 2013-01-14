@@ -295,10 +295,13 @@ ADD_LIBRARY (base_camera_server_library
 	${BCS_SOURCES} ${BCS_PUBLIC_HEADERS}
 )
 set_property(TARGET base_camera_server_library PROPERTY PUBLIC_HEADER ${BCS_PUBLIC_HEADERS})
+
+if(NOT VIDEO_BUILD_PANOPTES)
 install(TARGETS base_camera_server_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
 
+endif(NOT VIDEO_BUILD_PANOPTES)
 if (VIDEO_USE_IMAGEMAGICK)
 	set(FS_SOURCES file_stack_server.cpp file_list.cpp)
 	set(FS_PUBLIC_HEADERS file_stack_server.h file_list.h)
@@ -307,9 +310,11 @@ if (VIDEO_USE_IMAGEMAGICK)
 		${FS_SOURCES} ${FS_PUBLIC_HEADERS}
 	)
 	set_property(TARGET file_stack_library PROPERTY PUBLIC_HEADER ${FS_PUBLIC_HEADERS})
+        if(NOT VIDEO_BUILD_PANOPTES)
 	install(TARGETS file_stack_library
 		ARCHIVE DESTINATION lib
 		PUBLIC_HEADER DESTINATION include)
+        endif(NOT VIDEO_BUILD_PANOPTES)
 endif (VIDEO_USE_IMAGEMAGICK)
 
 if (VIDEO_USE_COOKE)
@@ -367,9 +372,11 @@ if (VIDEO_USE_POINTGREY)
 		${POINTGREY_SOURCES} ${POINTGREY_PUBLIC_HEADERS}
 	)
 	set_property(TARGET point_grey_library PROPERTY PUBLIC_HEADER ${POINTGREY_PUBLIC_HEADERS})
+        if(NOT VIDEO_BUILD_PANOPTES)
 	install(TARGETS point_grey_library
 		ARCHIVE DESTINATION lib
 		PUBLIC_HEADER DESTINATION include)
+        endif(NOT VIDEO_BUILD_PANOPTES)
 endif (VIDEO_USE_POINTGREY)
 
 if (VIDEO_USE_VRPN_IMAGER)
@@ -561,10 +568,14 @@ ADD_LIBRARY (spot_tracker_library
 	${STL_SOURCES} ${STL_PUBLIC_HEADERS}
 )
 set_property(TARGET spot_tracker_library PROPERTY PUBLIC_HEADER ${STL_PUBLIC_HEADERS})
+
+if(NOT VIDEO_BUILD_PANOPTES)
+
 install(TARGETS spot_tracker_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
 
+endif(NOT VIDEO_BUILD_PANOPTES)
 #-----------------------------------------------------------------------------
 # STOCC random-number library
 set(STC_SOURCES stocc_random_number_generator/mersenne.cpp
@@ -576,9 +587,11 @@ ADD_LIBRARY (stocc_random_number_generator_library
 )
 set_property(TARGET stocc_random_number_generator_library
 			PROPERTY PUBLIC_HEADER ${STC_PUBLIC_HEADERS})
+if(NOT VIDEO_BUILD_PANOPTES)
 install(TARGETS stocc_random_number_generator_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
+endif(NOT VIDEO_BUILD_PANOPTES)
 
 
 if (VIDEO_BUILD_PANOPTES)
@@ -610,6 +623,16 @@ TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	${LEWOS_LIBRARIES}
 	${Panoptes_LIBRARY}
 )
+set(CMAKE_INSTALL_PREFIX "/common1/nanowork/latest_release" CACHE PATH
+                    "Install path prefix, prepended onto install directories"
+                    FORCE)
+INSTALL(TARGETS PanopticNerve_LEWOS DESTINATION . )
+if (EXISTS "${CMAKE_CURRENT_BINARY_DIR}/video_spot_tracker")
+  INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/video_spot_tracker ${CMAKE_CURRENT_SOURCE_DIR}/video_spot_tracker.tcl ${CMAKE_CURRENT_SOURCE_DIR}/russ_widgets.tcl PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ DESTINATION . )
+else()
+  message("video_spot_tracker hasn'n been build")
+endif()
+
 if(UNIX)
 include_directories("/usr/include/libusb-1.0")
 endif(UNIX)
