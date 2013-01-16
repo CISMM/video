@@ -626,12 +626,117 @@ TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 set(CMAKE_INSTALL_PREFIX "/common1/nanowork/latest_release" CACHE PATH
                     "Install path prefix, prepended onto install directories"
                     FORCE)
+# Install PanotpicNerve
 INSTALL(TARGETS PanopticNerve_LEWOS DESTINATION . )
-if (EXISTS "${CMAKE_CURRENT_BINARY_DIR}/video_spot_tracker")
-  INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/video_spot_tracker ${CMAKE_CURRENT_SOURCE_DIR}/video_spot_tracker.tcl ${CMAKE_CURRENT_SOURCE_DIR}/russ_widgets.tcl PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ DESTINATION . )
+# Install video_spot_tracker
+if (EXISTS "${CMAKE_CURRENT_BINARY_DIR}/video_spot_tracker_nogui")
+  INSTALL (PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/video_spot_tracker_nogui DESTINATION .)
+  INSTALL (FILES ${CMAKE_CURRENT_SOURCE_DIR}/video_spot_tracker.tcl DESTINATION .) 
 else()
   message("video_spot_tracker hasn'n been build")
 endif()
+# Install VRPN
+install (PROGRAMS "/usr/local/bin/vrpn_server" DESTINATION .)
+install (CODE "
+file (WRITE ${CMAKE_INSTALL_PREFIX}/vrpn.cfg \"vrpn_Tracker_AnalogFly stage 60.0 absolute\nX       *Ludl_analog  0 0 0.0 5e-8 1.0\nY       *Ludl_analog  1 0 0.0 5e-8 1.0\nZ       NULL          2 0.0 0.0 1.0 1.0\nRX      NULL          3 0.0 0.0 1.0 1.0\nRY      NULL          4 0.0 0.0 1.0 1.0\nRZ      NULL          5 0.0 0.0 1.0 1.0\nRESET   NULL          0\nCLUTCH  NULL          0\n\nvrpn_Poser_Analog       stage   0\nX       *Ludl_analog    0       0.0     20e6    -10     10\nY       *Ludl_analog    1       0.0     20e6    -10     10\nZ       NULL    2       0.0     1.0     -10     10\nRX      NULL    3       0.0     1.0     -10     10\nRY      NULL    4       0.0     1.0     -10     10\nRZ      NULL    5       0.0     1.0     -10     10\n\nvrpn_LUDL_USBMAC6000 Ludl_analog 1\n\"
+)")
+# Install vrpnLogToMatalb
+install (PROGRAMS "/common1/nanowork/build/3DFM/toMatlab/pc_linux64/vrpnLogToMatlab" DESTINATION .)
+# Intsll Well_Layout
+install (PROGRAMS "/common1/nanowork/build/Panoptes/Well_Layout_GUI/Well_Layout" DESTINATION .) 
+# Install ludle_server script
+install (CODE "
+file(WRITE ${CMAKE_INSTALL_PREFIX}/ludl_server
+\"#!/bin/bash\n\ngnome-terminal -e \\\"sudo ./vrpn_server 3884\\\"\n\")
+execute_process(COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/ludl_server)
+")
+# Install mpi_hosts
+install (CODE "
+file(WRITE ${CMAKE_INSTALL_PREFIX}/mpi_hosts \"monoptes\")")
+# Install mpirun_panopticnerve.bash
+install (CODE "
+file(WRITE ${CMAKE_INSTALL_PREFIX}/mpirun_panopticnerve.bash 
+\"#!/bin/bash\n\nmpirun -hostfile $(pwd)/mpi_hosts --output-filename $(pwd)/outfile $(pwd)/PanopticNerve_LEWOS\n\")
+execute_process(COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/mpirun_panopticnerve.bash)
+")
+# Install 3dfm scripts
+install (CODE "
+message(\"Retrieving CVS repository\")
+set(ENV{CVSROOT} \":ext:nanowork@cvs.cs.unc.edu:/afs/cs.unc.edu/project/stm/src/CVS_repository\")
+set(ENV{CVS_RSH} ssh)
+execute_process(COMMAND cvs checkout 3dfmAnalysis)
+execute_process(COMMAND mkdir -p ${CMAKE_INSTALL_PREFIX}/scripts)
+execute_process(COMMAND cp -R 3dfmAnalysis ${CMAKE_INSTALL_PREFIX}/scripts)
+execute_process(COMMAND rm -rf 3dfmAnalysis)")
+# Install wells.txt
+install (CODE "
+file(WRITE ${CMAKE_INSTALL_PREFIX}/wells.txt \"// specify the experiment name \(no blank spaces\)
+experiment  melanoma
+
+// specify the data logging directory \(no blank spaces\)
+logging_directory /common1/nanowork/temp/112812_melanoma
+
+// video collection mode; fluorescent burst + brightfield = 0, fluorescence = 1
+video_mode 0
+
+collect_video 1  // collect video data; yes = 1, no = 0
+video_cycles 1   // number of times to visit each location 
+run_vst 1        // run VideoSpotTracker to locate and track beads; yes = 1, no = 0   
+run_vrpnlogtomatlab 1  // run vrpnLogToMatlab
+run_matlab 0     // run Matlab analysis script \(CellProcessingScript.m\) on tracked data; yes = 1, no = 0
+
+default_focus 25000 // Varioptic position if auto-focus is not being used
+manual_focus 0      // pause for manual focus adjustment; yes = 1, no = 0
+auto_focus 1        // run autofocus; yes = 1, no = 0
+
+fluo_type blue
+OnTime_bright 1000  // brightfield exposure time \(us\)
+OnTime_fluo  5000   // fluorescence exposure time \(us\)
+OffTime 18500       // readout time for both brightfield and fluorescence \(us\)
+seconds  60         // video duration \(sec\)
+
+// well offsets at which video data will be collected
+offset 075000 145000
+
+wells // wells in which data will be collected at the above offsets
+14
+EOF\")")
+# Install script of starting firefox
+install (CODE "
+file(WRITE ${CMAKE_INSTALL_PREFIX}/scripts/Display_Results 
+\"#!/bin/bash\n\nfirefox --new-window file:$1\n\")
+execute_process(COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/scripts/Display_Results)
+")
+# Install script for launching Matlab on Monoptes
+install (CODE "
+file(WRITE ${CMAKE_INSTALL_PREFIX}/scripts/Run_Matlab_monoptes
+\"#!/bin/bash\n\nexport LD_LIBRARY_PATH=/usr/matlab-R2012a/bin/glnxa64:/usr/lib:/usr/lib/xulrunner-1.9.2.28\necho \\\"addpath\(genpath\('$PWD/scripts/3dfmAnalysis'\)\)\\\" > \\\"$1\\\"/run_matlab_analysis_temp.m\necho \\\"pan_process_PMExpt\('$1','monoptes','y'\)\\\" >> \\\"$1\\\"/run_matlab_analysis_temp.m\ncd $1\nmatlab -nosplash -nodesktop -r run_matlab_analysis_temp\nrm \\\"$1\\\"/run_matlab_analysis_temp.m\n\nunset LD_LIBRARY_PATH\")
+execute_process(COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/scripts/Run_Matlab_monoptes)
+")
+# Install script for launching Matlab on Ponoptes
+install (CODE "
+file(WRITE ${CMAKE_INSTALL_PREFIX}/scripts/Run_Matlab_panoptes
+\"#!/bin/bash\n\nexport LD_LIBRARY_PATH=/usr/matlab-R2012a/bin/glnxa64:/usr/lib:/usr/lib/xulrunner-1.9.2.28\n\necho \\\"addpath\(genpath\('$PWD/scripts/3dfmAnalysis'\)\)\\\" > \\\"$1\\\"/run_matlab_analysis_temp.m\necho \\\"dbstop if error\\\" >> \\\"$1\\\"/run_matlab_analysis_temp.m\necho \\\"pan_process_PMExpt\('$1', 'panoptes', 'y'\)\\\" >> \\\"$1\\\"/run_matlab_analysis_temp.m\n\ncd $1\nmatlab -nosplash -nodesktop -r run_matlab_analysis_temp\nrm \\\"$1\\\"/run_matlab_analysis_temp.m\n\nunset LD_LIBRARY_PATH\")
+execute_process(COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/scripts/Run_Matlab_panoptes)
+")
+# Install script for combining MCU parameters
+install (CODE "
+file(WRITE ${CMAKE_INSTALL_PREFIX}/scripts/Run_MCUCombine
+\"#!/bin/tcsh\n\n# Usage: <programname> <directory> <output_file_name>\n\n# We need to copy the contents of all of the MCU files in this directory into a single\n# file with all of the info for the Matlab code to be able to handle it.  That file\n# needs to have a single header, which comes from one of the files.  So we copy the\n# first file we find over and then we catenate the non-header lines from the other\n# files onto it.  We then get rid of the original files and rename the new file.\n\n# This program should be idempotent.\n\ncd \\\"$1\\\"\n@ filenum = 0\n\nforeach f \(`ls *MCU*`\)\n   if \($filenum == 0\) then\n        cp $f temp\n   else\n        grep -v well $f >> temp\n   endif\n   @ filenum ++\nend\n\nrm *MCU*\nmv temp $2\")\n
+execute_process(COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/scripts/Run_MCUCombine)
+")
+# Install script running vrpnLogToMatlab
+install (CODE "
+file(WRITE ${CMAKE_INSTALL_PREFIX}/scripts/Run_VrpnLogToMatlab
+\"#!/bin/bash\n\nexport LD_LIBRARY_PATH=/usr/matlab-R2012a/bin/glnxa64:/usr/lib:/usr/lib/xulrunner-1.9.2.28\n\n./vrpnLogToMatlab -yes -split $1\nunset LD_LIBRARY_PATH\")
+execute_process(COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/scripts/Run_VrpnLogToMatlab)
+")
+# Install script running video_spot_tracker
+install (CODE "
+file(WRITE ${CMAKE_INSTALL_PREFIX}/scripts/Run_VST 
+\"#!/bin/bash\n\necho \\\"Run_VST with parameters $0 $1 $2 $3\\\"\n\n# Delete temporary files from before\nrm -f /tmp/lottanerve_tmp.csv\nrm -f /tmp/lottanerve_tmp.vrpn\n\n# Set Parameters to be used for tracking and autofind\nexport r=15\nexport precision=0.01\nexport sample_spacing=0.3333\nexport border_zone=3\nexport tracker_zone=1\n# Autofind for brightfield beads\nexport maintain=0\nexport threshold=0\nexport window=10\nexport lost_sens=0\n# Autofind for fluorescent beads\nexport maintain_fluorescent=50\nexport fluorescent_spot_threshold=0.5\nexport fluorescent_max_regions=2000\nexport intens_lost_sens=0.075\n# Set return value to 254(-2 in C code)\nexport RET=254\n\necho \\\"Finding beads in first video ($1)...\\\"\nwhile [ $RET -eq 254 ]\ndo\n  ./video_spot_tracker_nogui -nogui -radius $r -precision $precision -sample_spacing $sample_spacing -dead_zone_around_border $border_zone -dead_zone_around_trackers $tracker_zone -maintain_this_many_beads $maintain -candidate_spot_threshold $threshold -sliding_window_radius $window -maintain_fluorescent_beads $maintain_fluorescent -fluorescent_spot_threshold $fluorescent_spot_threshold -fluorescent_max_regions $fluorescent_max_regions -lost_behavior 1 -intensity_lost_sensitivity $intens_lost_sens -lost_tracking_sensitivity $lost_sens -tracker 0 0 $r -outfile /tmp/lottanerve_tmp \\\"$1\\\"\n  let \\\"RET=$?\\\"\ndone\n\necho \\\"Tracking resulting beads in second video \($2\)...\\\"\nexport r=15\nexport precision=0.01\nexport sample_spacing=0.3333\nexport border_zone=3\nexport tracker_zone=1\nexport maintain=50\n#export threshold=0.8\nexport window=10\n#export intens_lost_sens=1.5\nexport lost_sens=0.03\n\n./video_spot_tracker_nogui -nogui -lost_behavior 1 -precision $precision -sample_spacing $sample_spacing -dead_zone_around_border $border_zone -dead_zone_around_trackers $tracker_zone -lost_tracking_sensitivity $lost_sens -tracker 0 0 $r -continue_from /tmp/lottanerve_tmp.csv -outfile \\\"$3\\\" \\\"$2\\\"\n\necho \\\"Done tracking!\\\"\")\n
+execute_process(COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/scripts/Run_VST)
+")
 
 if(UNIX)
 include_directories("/usr/include/libusb-1.0")
