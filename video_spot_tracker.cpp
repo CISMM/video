@@ -392,12 +392,22 @@ int		        g_log_frame_number_last_logged = -1;
 //--------------------------------------------------------------------------
 spot_tracker_XY  *create_appropriate_xytracker(double x, double y, double r);
 spot_tracker_Z  *create_appropriate_ztracker(void);
+//< List of trackers that are being used.
 Tracker_Collection_Manager  g_trackers(g_Radius,g_trackerDeadZone,g_borderDeadZone,
                                        g_intensityLossSensitivity,
                                        g_colorIndex,
                                        g_invert != 0,
                                        create_appropriate_xytracker,
-                                       create_appropriate_ztracker); //< List of trackers.
+                                       create_appropriate_ztracker);
+
+// List of trackers that were deleted this frame (for use in logging video)
+Tracker_Collection_Manager  g_deleted_trackers(g_Radius,
+				       g_trackerDeadZone,g_borderDeadZone,
+                                       g_intensityLossSensitivity,
+                                       g_colorIndex,
+                                       g_invert != 0,
+                                       create_appropriate_xytracker,
+                                       create_appropriate_ztracker);
 
 //--------------------------------------------------------------------------
 // Return the length of the named file.  Used to help figure out what
@@ -953,11 +963,36 @@ static	bool  save_log_frame(int frame_number)
       return false;
     }
   }
-  
+ 
+  // If we're logging video, store information for all of the trackers that
+  // were deleted this frame. 
+  if (g_log_video) {
+    for (loopi = 0; loopi < g_deleted_trackers.tracker_count(); loopi++) {
+      Spot_Information *tracker = g_deleted_trackers.tracker(loopi);
+      int x = tracker->xytracker()->get_x();
+      int y = tracker->xytracker()->get_y();
+      int halfwidth = tracker->xytracker()->get_radius() * 2;
+      int minX = x - halfwidth;
+      int minY = y - halfwidth;
+      int maxX = x + halfwidth;
+      int maxY = y + halfwidth;
+      if (minX < *g_minX) { minX = *g_minX; }
+      if (minY < *g_minY) { minY = *g_minY; }
+      if (static_cast<unsigned>(maxX) > *g_maxX) { maxX = *g_maxX; }
+      if (static_cast<unsigned>(maxY) > *g_maxY) { maxY = *g_maxY; }
+      if (!fill_and_send_video_region(minX, minY, maxX, maxY)) {
+        fprintf(stderr, "Could not fill and send video for tracker\n");
+        return false;
+      }
+    }
+    // Don't remember the ones from previous frames.
+    g_deleted_trackers.delete_trackers();
+  }
+
   // If we're logging video, send an end-of-frame event.
   // XXX Figure out timestamp
   if (g_log_video) {
-    printf("XXX Sending end-of-frame for frame %d\n", frame_number);
+    //printf("XXX Sending end-of-frame for frame %d\n", frame_number);
     g_vrpn_imager->send_end_frame(0, g_camera->get_num_columns()-1,
       0, g_camera->get_num_rows()-1);
     g_vrpn_imager->mainloop();
@@ -1962,6 +1997,20 @@ void optimize_all_trackers(void)
         // Set me to be the active tracker.
         g_trackers.set_active_tracker_index(i);
         if (g_lostBehavior == LOST_DELETE) {
+
+	  // Make a new tracker on the deleted list that matches the
+	  // location and radius of this one, so we can store video
+	  // around it this one last time.  This will make it so that
+	  // a second batch-run tracker script on the stored video info
+	  // will behave the same as one run on the original data.
+	  // Without this, trackers don't get lost because the frame
+	  // that caused them to be lost never shows up.
+	  // All of the possible loss-reasons were marked above, so
+	  // we won't miss edge-deleted trackers (for example).
+	  g_deleted_trackers.add_tracker(tracker->xytracker()->get_x(),
+		tracker->xytracker()->get_y(),
+		tracker->xytracker()->get_radius());
+
           // Delete this tracker from the list (it was made active above)
           g_trackers.delete_active_tracker();
 
@@ -2875,6 +2924,9 @@ void  logfilename_changed(char *newvalue, void *)
   // function, so we don't log things before we have a place to store
   // them.
   if (strlen(newvalue) > 0) {
+    if (!g_vrpn_connection) {
+      fprintf(stderr,"Logging server is not running when asked to log!\n");
+    }
     while (g_vrpn_connection && !g_vrpn_connection->connected()) {
       if (g_vrpn_analog) { g_vrpn_analog->mainloop(); }
       if (g_vrpn_tracker) { g_vrpn_tracker->mainloop(); }
@@ -3603,9 +3655,6 @@ int main(int argc, char *argv[])
       char *name = new char[strlen(argv[i])+6];
       sprintf(name, "%s.vrpn", argv[i]);
       g_logfilename = name;
-#ifdef VST_NO_GUI
-      logfilename_changed(const_cast<char *>((const char*)(g_logfilename)), NULL);
-#endif
     } else if (!strncmp(argv[i], "-rod3", strlen("-rod3"))) {
       if (++i >= argc) { Usage(argv[0]); }
       g_length = atof(argv[i]);
@@ -3973,6 +4022,16 @@ int main(int argc, char *argv[])
     cleanup();
     exit(-1);
   }
+
+  //------------------------------------------------------------------
+  // If we asked for logging on the command line, start it here --
+  // after we have started the logging server above.
+#ifdef VST_NO_GUI
+  const char *logname = g_logfilename;
+  if (strlen(logname) > 0) {
+    logfilename_changed(const_cast<char *>((const char*)(g_logfilename)), NULL);
+  }
+#endif
 
   //------------------------------------------------------------------
   // Horrible hack to deal with the swapping of the Y axis in all of this
