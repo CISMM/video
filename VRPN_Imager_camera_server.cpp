@@ -198,6 +198,7 @@ bool VRPN_Imager_camera_server::open_and_find_parameters(const char *name)
   // If the reading times out, try again a bunch of times.  If we end up waiting
   // more than ten seconds total, then we're really timed out.
   if (_fileCon) {
+    _fileCon->reset();  // Make sure we don't skip frames at the beginning.
     _fileCon->set_replay_rate(100.0);
     _paused = false;
     _pause_after_one_frame = true;
@@ -239,8 +240,10 @@ VRPN_Imager_camera_server::VRPN_Imager_camera_server(const char *name, bool clea
   }
 
   //---------------------------------------------------------------------
-  // No image in memory yet.
-  _minX = _minY = _maxX = _maxY = 0;
+  // The above had the side-effect of loading an image.  Record the
+  // fact that we have an image so the read routine doesn't read
+  // a second one.
+  _justStepped = true;
 }
 
 //---------------------------------------------------------------------

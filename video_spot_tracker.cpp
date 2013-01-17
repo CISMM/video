@@ -178,7 +178,7 @@ static bool parse_tcl_set_command(const char *cmd)
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "07.04";
+const char *Version_string = "07.05";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -301,6 +301,13 @@ vector<int> vertCandidates;
 vector<int> horiCandidates;
 bool g_gotNewFrame = false;             // Used by autofind.
 bool g_gotNewFluorescentFrame = false;  // Used by autofind.
+
+// Variable used by logging server-side code to tell the other
+// thread (client side) that it is time to stop logging.  This lets
+// it flush everything to the client side before telling it to
+// quit.  Also a variable that asks the logging thread to quit.
+bool g_stop_logging = false;
+bool g_quit_logging_thread = false;
 
 //--------------------------------------------------------------------------
 // Tcl controls and displays
@@ -570,14 +577,17 @@ static void  dirtyexit(void)
   // Done with the camera and other objects.
   printf("Exiting...");
 
-  g_quit = 1;  // Lets all the threads know that it is time to exit.
-
   // Make the log file name empty so that the logging thread
   // will notice and close its file.
   // Wait until the logging thread exits.  Also, we need to call
   // the Tcl callback here to make sure it notices the change.
   g_logfilename = "";
   logfilename_changed("", NULL);
+
+  // Set quit after letting the logging thread disconnect and then
+  // wait until it quits.
+  g_quit = 1;  // Lets all the threads know that it is time to exit.
+  g_quit_logging_thread = true; // Tell logging thread to quit.
   while (g_logging_thread->running()) {
 
 #ifndef VST_NO_GUI
@@ -648,6 +658,8 @@ static	double	timediff(struct timeval t1, struct timeval t2)
 	       (t1.tv_sec - t2.tv_sec);
 }
 
+// We send info on the previous frame, because we've just pulled a new frame
+// into memory to start tracking on before we do this logging.
 static bool fill_and_send_video_region(unsigned minX, unsigned minY, unsigned maxX, unsigned maxY)
 {
   // Flip the Y values around the center axis; the image coordinates are upside
@@ -682,6 +694,7 @@ static bool fill_and_send_video_region(unsigned minX, unsigned minY, unsigned ma
     // to flip the row we're reading from and writing to to make things in the
     // output buffer line up correctly and to read from the correct location in
     // the input buffer.
+    // REMEMBER to read from the last frame rather than from the current frame.
     unsigned r,c;
     vrpn_uint8  uns_pix;
     for (r = minY; r <= maxY; r++) {
@@ -689,7 +702,7 @@ static bool fill_and_send_video_region(unsigned minX, unsigned minY, unsigned ma
       unsigned lowc = minX, hic = maxX; //< Speeds things up compared to index arithmetic
       vrpn_uint8 *pixel_base = &image_8bit[(lowc + g_image->get_num_columns() * flip_r) ]; //< Speeds things up
       for (c = lowc; c <= hic; c++) {
-	if (!g_image->read_pixel(c, flip_r, uns_pix, g_colorIndex)) {
+        if (!g_last_image->image_wrapper::read_pixel(c, flip_r, uns_pix, g_colorIndex)) {
 	    fprintf(stderr, "fill_and_send_video_region(): Cannot read pixel (%d,%d) from region\n", c, flip_r);
             return false;
 	}
@@ -735,6 +748,7 @@ static bool fill_and_send_video_region(unsigned minX, unsigned minY, unsigned ma
     // to flip the row we're reading from and writing to to make things in the
     // output buffer line up correctly and to read from the correct location in
     // the input buffer.
+    // REMEMBER to read from the last frame rather than from the current frame.
     unsigned r,c;
     vrpn_uint16  uns_pix;
     for (r = minY; r <= maxY; r++) {
@@ -742,7 +756,7 @@ static bool fill_and_send_video_region(unsigned minX, unsigned minY, unsigned ma
       unsigned lowc = minX, hic = maxX; //< Speeds things up compared to index arithmetic
       vrpn_uint16 *pixel_base = &image_16bit[(lowc + g_image->get_num_columns() * flip_r) ]; //< Speeds things up
       for (c = lowc; c <= hic; c++) {
-	if (!g_image->read_pixel(c, flip_r, uns_pix, g_colorIndex)) {
+        if (!g_last_image->image_wrapper::read_pixel(c, flip_r, uns_pix, g_colorIndex)) {
 	    fprintf(stderr, "fill_and_send_video_region(): Cannot read pixel (%d,%d) from region\n", c, flip_r);
             return false;
 	}
@@ -873,7 +887,9 @@ static	bool  save_log_frame(int frame_number)
     }
 
     // If we're sending video, then send a little snippet of video
-    // around each tracker every frame.
+    // around each tracker every frame.  We send info on the previous
+    // frame, because we've just pulled a new frame into memory to
+    // start tracking on before we do this logging.
     if (g_log_video) {
       int x = tracker->xytracker()->get_x();
       int y = tracker->xytracker()->get_y();
@@ -927,7 +943,9 @@ static	bool  save_log_frame(int frame_number)
   }
 
   // Forward the full region-of-interest image if our frame number matches
-  // the interval of full-frames being asked for.
+  // the interval of full-frames being asked for.  We send info on the previous
+  // frame, because we've just pulled a new frame into memory to
+  // start tracking on before we do this logging.
   if ( g_log_video && (frame_number % g_video_full_frame_every == 0) ) {
     // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION).
     if (!fill_and_send_video_region(*g_minX, *g_minY, *g_maxX, *g_maxY)) {
@@ -939,7 +957,7 @@ static	bool  save_log_frame(int frame_number)
   // If we're logging video, send an end-of-frame event.
   // XXX Figure out timestamp
   if (g_log_video) {
-//    printf("XXX Sending end-of-frame for frame %d\n", frame_number);
+    printf("XXX Sending end-of-frame for frame %d\n", frame_number);
     g_vrpn_imager->send_end_frame(0, g_camera->get_num_columns()-1,
       0, g_camera->get_num_rows()-1);
     g_vrpn_imager->mainloop();
@@ -1792,7 +1810,7 @@ void mykymographDisplayFunc(void)
 void logging_thread_function(void *)
 {
   printf("Starting VRPN logging thread\n");
-  while (!g_quit) {
+  while (!g_quit_logging_thread) {
     //------------------------------------------------------------
     // Watch the log file name and see if it becomes non-empty.
     // Open a new connection and ask it to log, then open a new
@@ -1801,8 +1819,8 @@ void logging_thread_function(void *)
     do {
       vrpn_SleepMsecs(10);
       newvalue = g_logfilename;
-    } while ((strlen(newvalue) == 0) && !g_quit);
-    if (g_quit) { break; }
+    } while ((strlen(newvalue) == 0) && !g_quit_logging_thread);
+    if (g_quit_logging_thread) { break; }
 
     // Make sure that the file does not exist by deleting it if it does.
     // The Tcl code had a dialog box that asked the user if they wanted
@@ -1826,24 +1844,17 @@ void logging_thread_function(void *)
 
     //------------------------------------------------------------
     // Let the logging connection do its thing, sleeping only briefly
-    // to avoid eating the processor.  If the logging file name changes,
+    // to avoid eating the processor.  If we're told to stop logging,
     // then we close the existing log file and go back to waiting for a
     // non-empty name in the next iteration.
-    char  *oldvalue = new char[strlen(newvalue) + 1];
-    if (oldvalue == NULL) {
-      fprintf(stderr,"logging_thread_function(): Out of memory\n");
-      break;
-    }
-    strncpy(oldvalue, newvalue, strlen(newvalue)+1);
     do {
       g_client_tracker->mainloop();
       g_client_imager->mainloop();
       g_client_connection->mainloop();
       g_client_connection->save_log_so_far();
       vrpn_SleepMsecs(1);
-      newvalue = g_logfilename;
-    } while (!g_quit && strcmp(newvalue, oldvalue) == 0);
-    printf("Logging thread done writing to %s\n", oldvalue);
+    } while (!g_quit_logging_thread && !g_stop_logging);
+    printf("Logging thread done writing to %s\n", newvalue);
 
     //------------------------------------------------------------
     // Delete and make NULL the client tracker and connection object.
@@ -1853,7 +1864,6 @@ void logging_thread_function(void *)
     if (g_client_tracker) { delete g_client_tracker; g_client_tracker = NULL; };
     if (g_client_imager) { delete g_client_imager; g_client_imager = NULL; };
     if (g_client_connection) { g_client_connection->removeReference(); g_client_connection = NULL; };
-    delete [] oldvalue;
   }
   printf("Exiting VRPN logging thread\n");
 }
@@ -2117,10 +2127,11 @@ void myIdleFunc(void)
     if ((*g_maxY) >= g_image->get_num_rows()) { (*g_maxY) = g_image->get_num_rows() - 1; }
   }
 
-  // If we're doing a search for local maximum during optimization, then make a
-  // copy of the previous image before reading a new one.
+  // If we're doing a search for local maximum during optimization, or if we
+  // are logging video, then make a copy of the previous image before reading
+  // a new one.
 
-  if ((double)(g_search_radius) > 0) {
+  if ( ((double)(g_search_radius) > 0) || ((int)g_log_video > 0) ) {
     if (g_last_image == NULL) {
       g_last_image = new copy_of_image(*g_image);
     } else {
@@ -2768,11 +2779,35 @@ void  logfilename_changed(char *newvalue, void *)
 {
   // If we have been logging, then see if we have saved the
   // current frame's image.  If not, go ahead and do it now.
-  if (g_vrpn_tracker && (g_log_frame_number_last_logged != g_frame_number)) {
+  // We use the g_csv_file not being NULL to check to see if we
+  // were already logging.  If we don't check this, it tries to
+  // write the frame even though we don't have logging going the
+  // very first time we start logging.
+  if (g_csv_file && g_vrpn_tracker && (g_log_frame_number_last_logged != g_frame_number)) {
     if (!save_log_frame(g_frame_number)) {
       fprintf(stderr, "logfile_changed: Could not save log frame\n");
       cleanup();
       exit(-1);
+    }
+  }
+
+  // If we are turning off logging, then flush all values from
+  // the server, mainloop for a while, then tell the client to
+  // stop logging and wait until the client disconnects before
+  // going on.
+  if (strlen(newvalue) == 0) {
+    g_vrpn_connection->send_pending_reports();
+    int i;
+    for (i = 0; i < 100; i++) {
+      g_vrpn_connection->mainloop();
+      vrpn_SleepMsecs(1);
+    }
+    g_stop_logging = true;
+    while (g_vrpn_connection && g_vrpn_connection->connected()) {
+      if (g_vrpn_analog) { g_vrpn_analog->mainloop(); }
+      if (g_vrpn_tracker) { g_vrpn_tracker->mainloop(); }
+      if (g_vrpn_imager) { g_vrpn_imager->mainloop(); }
+      if (g_vrpn_connection) { g_vrpn_connection->mainloop(); }
     }
   }
 
@@ -2785,7 +2820,7 @@ void  logfilename_changed(char *newvalue, void *)
     g_csv_file = NULL;
   }
 
-  // Open a new connection and .csv file, if we have a non-empty name.
+  // Open a new .csv file, if we have a non-empty name.
   if (strlen(newvalue) > 0) {
 
     // Open the CSV file and put the titles on.
@@ -2817,6 +2852,18 @@ void  logfilename_changed(char *newvalue, void *)
       fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius,Orientation (if meaningful),Length (if meaningful), Fit Background (for FIONA), Gaussian Summed Value (for FIONA), Mean Background (FIONA), Summed Value (for FIONA)\n");
     }
     delete [] csvname;
+  }
+
+  // Wait until the logging server is connected before leaving this
+  // function, so we don't log things before we have a place to store
+  // them.
+  if (strlen(newvalue) > 0) {
+    while (g_vrpn_connection && !g_vrpn_connection->connected()) {
+      if (g_vrpn_analog) { g_vrpn_analog->mainloop(); }
+      if (g_vrpn_tracker) { g_vrpn_tracker->mainloop(); }
+      if (g_vrpn_imager) { g_vrpn_imager->mainloop(); }
+      if (g_vrpn_connection) { g_vrpn_connection->mainloop(); }
+    }
   }
 
   // Set the offsets to use when logging.  If we are not doing relative logging,
@@ -3755,6 +3802,20 @@ int main(int argc, char *argv[])
               raw_camera_headersize = 0;
               raw_camera_frameheadersize = 0;
               raw_camera_params_valid = true;
+            } else {
+              // Check for another camera being used at UNC
+              frame_size = 656 * 494 + 0;
+              num_frames = file_length / frame_size;
+              if ( num_frames == floor(num_frames) ) {
+                printf("Assuming file format (565x494, 0-byte frame headers)\n");
+                raw_camera_numx = 656;
+                raw_camera_numy = 494;
+                raw_camera_bitdepth = 8;
+                raw_camera_channels = 1;
+                raw_camera_headersize = 0;
+                raw_camera_frameheadersize = 0;
+                raw_camera_params_valid = true;
+              }
             }
           }
         }
