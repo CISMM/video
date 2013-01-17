@@ -992,7 +992,7 @@ static	bool  save_log_frame(int frame_number)
   // If we're logging video, send an end-of-frame event.
   // XXX Figure out timestamp
   if (g_log_video) {
-    printf("XXX Sending end-of-frame for frame %d\n", frame_number);
+    //printf("XXX Sending end-of-frame for frame %d\n", frame_number);
     g_vrpn_imager->send_end_frame(0, g_camera->get_num_columns()-1,
       0, g_camera->get_num_rows()-1);
     g_vrpn_imager->mainloop();
