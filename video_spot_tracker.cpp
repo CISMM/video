@@ -2858,6 +2858,9 @@ void  logfilename_changed(char *newvalue, void *)
   // function, so we don't log things before we have a place to store
   // them.
   if (strlen(newvalue) > 0) {
+    if (!g_vrpn_connection) {
+      fprintf(stderr,"Logging server is not running when asked to log!\n");
+    }
     while (g_vrpn_connection && !g_vrpn_connection->connected()) {
       if (g_vrpn_analog) { g_vrpn_analog->mainloop(); }
       if (g_vrpn_tracker) { g_vrpn_tracker->mainloop(); }
@@ -3586,9 +3589,6 @@ int main(int argc, char *argv[])
       char *name = new char[strlen(argv[i])+6];
       sprintf(name, "%s.vrpn", argv[i]);
       g_logfilename = name;
-#ifdef VST_NO_GUI
-      logfilename_changed(const_cast<char *>((const char*)(g_logfilename)), NULL);
-#endif
     } else if (!strncmp(argv[i], "-rod3", strlen("-rod3"))) {
       if (++i >= argc) { Usage(argv[0]); }
       g_length = atof(argv[i]);
@@ -3956,6 +3956,16 @@ int main(int argc, char *argv[])
     cleanup();
     exit(-1);
   }
+
+  //------------------------------------------------------------------
+  // If we asked for logging on the command line, start it here --
+  // after we have started the logging server above.
+#ifdef VST_NO_GUI
+  const char *logname = g_logfilename;
+  if (strlen(logname) > 0) {
+    logfilename_changed(const_cast<char *>((const char*)(g_logfilename)), NULL);
+  }
+#endif
 
   //------------------------------------------------------------------
   // Horrible hack to deal with the swapping of the Y axis in all of this
