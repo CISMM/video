@@ -774,8 +774,20 @@ install (CODE "
 file(WRITE ${CMAKE_INSTALL_PREFIX}/scripts/Run_VST 
 \"#!/bin/bash\n\necho \\\"Run_VST with parameters $0 $1 $2 $3\\\"\n\n# Delete temporary files from before\nrm -f /tmp/lottanerve_tmp.csv\nrm -f /tmp/lottanerve_tmp.vrpn\n\n# Set Parameters to be used for tracking and autofind\nexport r=15\nexport precision=0.01\nexport sample_spacing=0.3333\nexport border_zone=3\nexport tracker_zone=1\n# Autofind for brightfield beads\nexport maintain=0\nexport threshold=0\nexport window=10\nexport lost_sens=0\n# Autofind for fluorescent beads\nexport maintain_fluorescent=50\nexport fluorescent_spot_threshold=0.5\nexport fluorescent_max_regions=2000\nexport intens_lost_sens=0.075\n# Set return value to 254(-2 in C code)\nexport RET=254\n\necho \\\"Finding beads in first video ($1)...\\\"\nwhile [ $RET -eq 254 ]\ndo\n  ./video_spot_tracker_nogui -nogui -radius $r -precision $precision -sample_spacing $sample_spacing -dead_zone_around_border $border_zone -dead_zone_around_trackers $tracker_zone -maintain_this_many_beads $maintain -candidate_spot_threshold $threshold -sliding_window_radius $window -maintain_fluorescent_beads $maintain_fluorescent -fluorescent_spot_threshold $fluorescent_spot_threshold -fluorescent_max_regions $fluorescent_max_regions -lost_behavior 1 -intensity_lost_sensitivity $intens_lost_sens -lost_tracking_sensitivity $lost_sens -tracker 0 0 $r -outfile /tmp/lottanerve_tmp \\\"$1\\\"\n  let \\\"RET=$?\\\"\ndone\n\necho \\\"Tracking resulting beads in second video \($2\)...\\\"\nexport r=15\nexport precision=0.01\nexport sample_spacing=0.3333\nexport border_zone=3\nexport tracker_zone=1\nexport maintain=50\n#export threshold=0.8\nexport window=10\n#export intens_lost_sens=1.5\nexport lost_sens=0.03\n\n./video_spot_tracker_nogui -nogui -lost_behavior 1 -precision $precision -sample_spacing $sample_spacing -dead_zone_around_border $border_zone -dead_zone_around_trackers $tracker_zone -lost_tracking_sensitivity $lost_sens -tracker 0 0 $r -continue_from /tmp/lottanerve_tmp.csv -outfile \\\"$3\\\" \\\"$2\\\"\n\necho \\\"Done tracking!\\\"\")\n
 execute_process (COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/scripts/Run_VST)
-execute_process (COMMAND tar -zcvf ${CMAKE_INSTALL_PREFIX}/../PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}.tar.gz -C ${CMAKE_INSTALL_PREFIX}/.. PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION} ) 
 ")
+# Create a terminal shortcut
+if (${is_osmium} EQUAL "-1")
+install (CODE "
+file (WRITE ${CMAKE_INSTALL_PREFIX}/gnome-terminal.desktop
+\"[Desktop Entry]\nName=Terminal\nComment=Use the command line\nTryExec=gnome-terminal\nExec=gnome-terminal --working-directory=/common1/nanowork/release/PanopticNerve-\\${PNERVE_MAJOR_VERSION}.\\${PNERVE_MINOR_VERSION}.\\${PNERVE_PATCH_VERSION}\nIcon=utilities-terminal\nType=Application\nX-GNOME-DocPath=gnome-terminal/index.html\nX-GNOME-Bugzilla-Bugzilla=GNOME\nX-GNOME-Bugzilla-Product=gnome-terminal\nX-GNOME-Bugzilla-Component=BugBuddyBugs\nX-GNOME-Bugzilla-Version=2.30.2\nCategories=GNOME;GTK;Utility;TerminalEmulator;\nStartupNotify=true\nOnlyShowIn=GNOME;\nX-Ubuntu-Gettext-Domain=gnome-terminal\")
+execute_process (COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/gnome-terminal.desktop)
+")
+endif ()
+# Create a .tar.gz installer
+install (CODE "
+execute_process (COMMAND tar -zcvf ${CMAKE_INSTALL_PREFIX}/../PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}.tar.gz -C ${CMAKE_INSTALL_PREFIX}/.. PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}) 
+")
+
 endif(VIDEO_BUILD_PANOPTES)
 
 if(UNIX)
