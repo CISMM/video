@@ -623,9 +623,15 @@ TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	${LEWOS_LIBRARIES}
 	${Panoptes_LIBRARY}
 )
-set(CMAKE_INSTALL_PREFIX "/common1/nanowork/latest_release" CACHE PATH
+if (VIDEO_BUILD_PANOPTES)
+set (PNERVE_MAJOR_VERSION 1)
+set (PNERVE_MINOR_VERSION 2)
+set (PNERVE_PATCH_VERSION 1)
+
+set (CMAKE_INSTALL_PREFIX "/common1/nanowork/release/PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}" CACHE PATH
                     "Install path prefix, prepended onto install directories"
                     FORCE)
+
 # Install PanotpicNerve
 INSTALL(TARGETS PanopticNerve_LEWOS DESTINATION . )
 # Install video_spot_tracker
@@ -638,8 +644,11 @@ endif()
 # Install VRPN
 install (PROGRAMS "/usr/local/bin/vrpn_server" DESTINATION .)
 install (CODE "
-file (WRITE ${CMAKE_INSTALL_PREFIX}/vrpn.cfg \"vrpn_Tracker_AnalogFly stage 60.0 absolute\nX       *Ludl_analog  0 0 0.0 5e-8 1.0\nY       *Ludl_analog  1 0 0.0 5e-8 1.0\nZ       NULL          2 0.0 0.0 1.0 1.0\nRX      NULL          3 0.0 0.0 1.0 1.0\nRY      NULL          4 0.0 0.0 1.0 1.0\nRZ      NULL          5 0.0 0.0 1.0 1.0\nRESET   NULL          0\nCLUTCH  NULL          0\n\nvrpn_Poser_Analog       stage   0\nX       *Ludl_analog    0       0.0     20e6    -10     10\nY       *Ludl_analog    1       0.0     20e6    -10     10\nZ       NULL    2       0.0     1.0     -10     10\nRX      NULL    3       0.0     1.0     -10     10\nRY      NULL    4       0.0     1.0     -10     10\nRZ      NULL    5       0.0     1.0     -10     10\n\nvrpn_LUDL_USBMAC6000 Ludl_analog 1\n\"
-)")
+file (WRITE ${CMAKE_INSTALL_PREFIX}/vrpn.cfg
+\"vrpn_Tracker_AnalogFly stage 60.0 absolute\nX       *Ludl_analog  0 0 0.0 5e-8 1.0\nY       *Ludl_analog  1 0 0.0 5e-8 1.0\nZ       NULL          2 0.0 0.0 1.0 1.0\nRX      NULL          3 0.0 0.0 1.0 1.0\nRY      NULL          4 0.0 0.0 1.0 1.0\nRZ      NULL          5 0.0 0.0 1.0 1.0\nRESET   NULL          0\nCLUTCH  NULL          0\n\nvrpn_Poser_Analog       stage   0\nX       *Ludl_analog    0       0.0     20e6    -10     10\nY       *Ludl_analog    1       0.0     20e6    -10     10\nZ       NULL    2       0.0     1.0     -10     10\nRX      NULL    3       0.0     1.0     -10     10\nRY      NULL    4       0.0     1.0     -10     10\nRZ      NULL    5       0.0     1.0     -10     10\n\nvrpn_LUDL_USBMAC6000 Ludl_analog 1\n\")
+execute_process (COMMAND sudo chown root ${CMAKE_INSTALL_PREFIX}/vrpn_server)
+execute_process (COMMAND sudo chmod 4755 ${CMAKE_INSTALL_PREFIX}/vrpn_server)
+")
 # Install vrpnLogToMatalb
 install (PROGRAMS "/common1/nanowork/build/3DFM/toMatlab/pc_linux64/vrpnLogToMatlab" DESTINATION .)
 # Intsll Well_Layout
@@ -647,12 +656,41 @@ install (PROGRAMS "/common1/nanowork/build/Panoptes/Well_Layout_GUI/Well_Layout"
 # Install ludle_server script
 install (CODE "
 file(WRITE ${CMAKE_INSTALL_PREFIX}/ludl_server
-\"#!/bin/bash\n\ngnome-terminal -e \\\"sudo ./vrpn_server 3884\\\"\n\")
+\"#!/bin/bash\n\ngnome-terminal -e \\\"./vrpn_server 3884\\\"\n\")
 execute_process(COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/ludl_server)
 ")
 # Install mpi_hosts
+execute_process (COMMAND hostname OUTPUT_VARIABLE myhostname)
+string (FIND ${myhostname} "osmium" is_osmium)
+if (${is_osmium} GREATER "-1")
 install (CODE "
-file(WRITE ${CMAKE_INSTALL_PREFIX}/mpi_hosts \"monoptes\")")
+file(WRITE ${CMAKE_INSTALL_PREFIX}/mpi_hosts 
+\"panoptes\npanoptes01\npanoptes02\npanoptes03\npanoptes04\npanoptes05\npanoptes06\npanoptes07\npanoptes08\npanoptes09\npanoptes10\npanoptes11\npanoptes12\n\")")
+else()
+install (CODE "
+file(WRITE ${CMAKE_INSTALL_PREFIX}/mpi_hosts \"monoptes\n\")")
+endif()
+# If on osmium
+if (${is_osmium} GREATER "-1")
+# Install start_server.bash and stop_server.bash
+install (CODE "
+file(WRITE ${CMAKE_INSTALL_PREFIX}/start_server.bash
+\"#!/bin/bash -x\n\n# Run the LEWOS server in the background.  Run the other in the foreground\n# (because this needs to be killed directly; it is SUID root).\n\n./LEWOS_xmit_VRPN_from_serial -vrpn_port 3884 -serial_port /dev/LEWOS &\n./vrpn_server -f vrpn_LUDL_and_tilt.cfg\n\")
+execute_process(COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/start_server.bash)
+
+file(WRITE ${CMAKE_INSTALL_PREFIX}/stop_server.bash
+\"#!/bin/bash\n\n# Kill the LEWOS server, which was run in the background.\nkill `ps -edalf | grep LEWOS_xmit_VRPN_from_serial | grep -v grep | awk '{print $4}'`\n\")
+execute_process(COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/stop_server.bash)
+")
+# Install LEWOS_xmit_VRPN_from_serial
+install (PROGRAMS "/common1/nanowork/build/LEWOS/LEWOS_xmit_VRPN_from_serial" DESTINATION .)
+# install vrpn_LUDL_and_tilt.cfg
+install (CODE "
+file (WRITE ${CMAKE_INSTALL_PREFIX}/vrpn_LUDL_and_tilt.cfg
+\"################################################################################\n# IDEA-drive linear positioning element analog that attaches\n# to a serial port on this machine.\n#\n# Note that if you want to use the IDEA as a tracking device, you will\n# need to run a vrpn_Tracker_AnalogFly device (of the absolute variety)\n# that listens to its analog outputs and converts them into tracker reports.\n#\n# Arguments:\n#       char    name_of_this_device[]\n#       char    name_of_serial_port[]\n#       int             run_speed_tics_sec\n#       int             start_speed_tics_sec\n#       int             end_speed_tics_sec\n#       int             accel_rate_tics_sec_sec\n#       int             decel_rate_tics_sec_sec\n#       int             run_current\n#       int             hold_current\n#       int             accel_current\n#       int             decel_current\n#       int             delay\n#       int             step\n#       int             high_limit_index                (-1 for none)\n#       int             low_limit_index                 (-1 for none)\n#       int             output_1_value                  (0 for off, 1 for on, -1 for don't change)\n#       int             output_2_value                  (0 for off, 1 for on, -1 for don't change)\n#       int             output_3_value                  (0 for off, 1 for on, -1 for don't change)\n#       int             output_4_value                  (0 for off, 1 for on, -1 for don't change)\n\nvrpn_IDEA       Tilt0 /dev/ztilt1 3200 1200 2000 40000 100000 290 0 290 290 50 8 -1 -1 1 0 0 0 10000 0.3\nvrpn_IDEA       Tilt1 /dev/ztilt2 3200 1200 2000 40000 100000 290 0 290 290 50 8 -1 -1 1 0 0 0 10000 0.3\nvrpn_IDEA       Tilt2 /dev/ztilt3 3200 1200 2000 40000 100000 290 0 290 290 50 8 -1 -1 1 0 0 0 10000 0.3\n\n################################################################################\n# LUDL USBMAC6000 device.  This is a vrpn_Analog and a vrpn_Analog_Output device\n# that lets you both move the stage by command and get a response when it has\n# finished moving.\n#\n# Arguments:\n#	char	name_of_this_device[]\n#	int	Perform recentering on device (0 = no, 1 = yes)\n\nvrpn_LUDL_USBMAC6000 Ludl_analog 1\n\n################################################################################\n# AnalogFly Tracker. This is a tracker that is intended to be used on top of\n# a joystick or motion tracker of some kind to turn it into a moving or flying\n# device. It could be used on top of any analog device, in fact.\n#   This device basically takes in analog signals and puts out transformation\n# matrices. It should supercede the JoyFly tracker, since it is more general.\n#   There are two kinds of JoyFly's: absolute ones and differential ones.  For\n# absolute ones, the analog value is mapped directly to position or orientation\n# on each axis.  For differential ones, the values are used to create a\n# \\\"change\\\" matrix that is applied once per interval, accumulating changes as\n# it goes; this enables the user to \\\"fly\\\" along by holding a joystick forward,\n# for example.\n#   One analog channel is associated with each axis (X, Y, Z) and rotation about\n# each axis (RX, RY, RZ). For each axis, the value is converted to a position\n# (meters) or speed (meters/second) for absolute trackers; or into an\n# orientation (revolutions) or angular velocity (revolutions/second) by first\n# subtracting an offset, then thresholding it to see if it is far enough from\n# zero, then (if it is) scaling it and taking it to a power (to allow nonlinear\n# speedup as the stick is pushed far from center).\n#   A button can be associated with a reset function, which will take the\n# device back to center (identity transformation). The device will also recenter\n# when the first connection is made to the server it is running on. (Centering\n# has no effect on absolute AnalogFlys).\n#   A button can be associated with a clutch function, which will mean that\n# the device will not move unless the clutch is pressed, so you can use it\n# like a mouse and continue to move by pulling to the right with the button\n# down and then to the left with the button up.  For differential analogflys,\n# clutching makes the tracker not move unless the button is pressed.  For\n# absolute ones, it only moves when the button is pressed and the mouse is\n# moving; it offsets to enable long-range motions in a finite tracking area,\n# as with a mouse.\n#   Any axis or the reset button can be disabled by setting the name of its\n# associated device to the string \\\"NULL\\\".\n#   Note that you could have multiple of these devices running simultaneously,\n# each with a different name and interaction metaphor. The user could then\n# connect to their favorite one. Arguments:\n#	char  name_of_this_device[]\n#	float update_rate_to_send_tracker_reports\n#	char  type[] = \\\"absolute\\\" or \\\"differential\\\"\n#	[six lines follow, one for X Y Z RX RY RZ, each with:\n#		char	axis_name[]			(X Y Z RX RY RZ in that order)\n#		char	name_of_analog_device[]		(start with * for local)\n#		int	channel_of_analog_device\n#		float offset\n#		float	threshold\n#		float	scale\n#		float	power\n#	]\n#	[New line to describe reset button, with:\n#		char	\\\"RESET\\\"\n#		char	name_of_button_device[]		(start with * for local)\n#		int	which_button_to_use\n#	]\n#	[New line to describe clutch button, with:\n#		char	\\\"CLUTCH\\\"\n#		char	name_of_button_device[]		(start with * for local)\n#		int	which_button_to_use\n#	]\n#   [New line to indicate use of world frame for translation and rotation,\n#   instead of local frame. Useful for a simulated wand when doing desktop\n#   testing of immersive apps - easier to keep under control.\n#		char	\\\"WORLDFRAME\\\"\n#	]\n\n# One tick is 50e-9 meter. There are 20e6 ticks per meter.\n# The inverse of this is 5s-8\nvrpn_Tracker_AnalogFly stage 60.0 absolute\n#X       *Ludl_analog  0 0 0.0 20e6 1.0\n#Y       *Ludl_analog  1 0 0.0 20e6 1.0\nX       *Ludl_analog  0 0 0.0 5e-8 1.0\nY       *Ludl_analog  1 0 0.0 5e-8 1.0\nZ       NULL          2 0.0 0.0 1.0 1.0\nRX      NULL          3 0.0 0.0 1.0 1.0\nRY      NULL          4 0.0 0.0 1.0 1.0\nRZ      NULL          5 0.0 0.0 1.0 1.0\nRESET   NULL          0 \nCLUTCH  NULL          0 \n\n\n################################################################################\n# Analog Poser. This is a poser that is intended to be used on top of\n# an analog output (perhaps a National Instruments board), whose outputs\n# directly drive the position of some actuated stage.  It could be used on top\n# of any analog output device, in fact.  This device basically takes in poses\n# and puts out analog outputs.\n#   One analog channel is associated with each axis (X, Y, Z) and rotation about\n# each axis (RX, RY, RZ). For each axis, the position (meters) is converted into\n# a voltage; the orientation is mapped from a quaternion into Euler angles and\n# each of the Euler angles is converted into a voltage (XXX Orientation is not yet\n# implemented; the RX,RY, and RZ values must be specified but they are not used).\n# XXX Velocity and orientation velocity are not yet supported.\n#   Any axis can be disabled by setting the name of its associated device to the\n# string \\\"NULL\\\".\n#\n# Arguments:\n#	char  vrpn_name_for_this_device[]\n#	int	send_tracker_reports\n#	[six lines follow, one for X Y Z RX RY RZ, each with:\n#		char	axis_name[]			(X Y Z RX RY RZ in that order)\n#		char  vrpn_name_of_the_analog_output_to_use[]\n#			(Preface with a * if it uses the same connection)\n#		int	channel_of_analog_output_device (First channel is channel 0)\n#		float offset\n#		float	scale\n#		float min_value of workspace\n#		float max_value of workspace\n#	]\n\n# 20e6 ticks per meter.\nvrpn_Poser_Analog	stage	0\nX	*Ludl_analog 	0	0.0	20e6	-10	10\nY	*Ludl_analog 	1	0.0	20e6	-10	10\nZ	NULL	2	0.0	1.0	-10	10\nRX	NULL	3	0.0	1.0	-10	10\nRY	NULL	4	0.0	1.0	-10	10\nRZ	NULL	5	0.0	1.0	-10	10\n\")
+")
+
+endif()
 # Install mpirun_panopticnerve.bash
 install (CODE "
 file(WRITE ${CMAKE_INSTALL_PREFIX}/mpirun_panopticnerve.bash 
@@ -735,8 +773,22 @@ execute_process(COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/scripts/Run_VrpnLogToMa
 install (CODE "
 file(WRITE ${CMAKE_INSTALL_PREFIX}/scripts/Run_VST 
 \"#!/bin/bash\n\necho \\\"Run_VST with parameters $0 $1 $2 $3\\\"\n\n# Delete temporary files from before\nrm -f /tmp/lottanerve_tmp.csv\nrm -f /tmp/lottanerve_tmp.vrpn\n\n# Set Parameters to be used for tracking and autofind\nexport r=15\nexport precision=0.01\nexport sample_spacing=0.3333\nexport border_zone=3\nexport tracker_zone=1\n# Autofind for brightfield beads\nexport maintain=0\nexport threshold=0\nexport window=10\nexport lost_sens=0\n# Autofind for fluorescent beads\nexport maintain_fluorescent=50\nexport fluorescent_spot_threshold=0.5\nexport fluorescent_max_regions=2000\nexport intens_lost_sens=0.075\n# Set return value to 254(-2 in C code)\nexport RET=254\n\necho \\\"Finding beads in first video ($1)...\\\"\nwhile [ $RET -eq 254 ]\ndo\n  ./video_spot_tracker_nogui -nogui -radius $r -precision $precision -sample_spacing $sample_spacing -dead_zone_around_border $border_zone -dead_zone_around_trackers $tracker_zone -maintain_this_many_beads $maintain -candidate_spot_threshold $threshold -sliding_window_radius $window -maintain_fluorescent_beads $maintain_fluorescent -fluorescent_spot_threshold $fluorescent_spot_threshold -fluorescent_max_regions $fluorescent_max_regions -lost_behavior 1 -intensity_lost_sensitivity $intens_lost_sens -lost_tracking_sensitivity $lost_sens -tracker 0 0 $r -outfile /tmp/lottanerve_tmp \\\"$1\\\"\n  let \\\"RET=$?\\\"\ndone\n\necho \\\"Tracking resulting beads in second video \($2\)...\\\"\nexport r=15\nexport precision=0.01\nexport sample_spacing=0.3333\nexport border_zone=3\nexport tracker_zone=1\nexport maintain=50\n#export threshold=0.8\nexport window=10\n#export intens_lost_sens=1.5\nexport lost_sens=0.03\n\n./video_spot_tracker_nogui -nogui -lost_behavior 1 -precision $precision -sample_spacing $sample_spacing -dead_zone_around_border $border_zone -dead_zone_around_trackers $tracker_zone -lost_tracking_sensitivity $lost_sens -tracker 0 0 $r -continue_from /tmp/lottanerve_tmp.csv -outfile \\\"$3\\\" \\\"$2\\\"\n\necho \\\"Done tracking!\\\"\")\n
-execute_process(COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/scripts/Run_VST)
+execute_process (COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/scripts/Run_VST)
 ")
+# Create a terminal shortcut
+if (${is_osmium} EQUAL "-1")
+install (CODE "
+file (WRITE ${CMAKE_INSTALL_PREFIX}/gnome-terminal.desktop
+\"[Desktop Entry]\nName=Terminal\nComment=Use the command line\nTryExec=gnome-terminal\nExec=gnome-terminal --working-directory=/common1/nanowork/release/PanopticNerve-\\${PNERVE_MAJOR_VERSION}.\\${PNERVE_MINOR_VERSION}.\\${PNERVE_PATCH_VERSION}\nIcon=utilities-terminal\nType=Application\nX-GNOME-DocPath=gnome-terminal/index.html\nX-GNOME-Bugzilla-Bugzilla=GNOME\nX-GNOME-Bugzilla-Product=gnome-terminal\nX-GNOME-Bugzilla-Component=BugBuddyBugs\nX-GNOME-Bugzilla-Version=2.30.2\nCategories=GNOME;GTK;Utility;TerminalEmulator;\nStartupNotify=true\nOnlyShowIn=GNOME;\nX-Ubuntu-Gettext-Domain=gnome-terminal\")
+execute_process (COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/gnome-terminal.desktop)
+")
+endif ()
+# Create a .tar.gz installer
+install (CODE "
+execute_process (COMMAND tar -zcvf ${CMAKE_INSTALL_PREFIX}/../PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}.tar.gz -C ${CMAKE_INSTALL_PREFIX}/.. PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}) 
+")
+
+endif(VIDEO_BUILD_PANOPTES)
 
 if(UNIX)
 include_directories("/usr/include/libusb-1.0")
