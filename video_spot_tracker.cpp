@@ -2695,7 +2695,24 @@ void keyboardCallbackForGLUT(unsigned char key, int x, int y)
 
   case 8:   // Backspace
   case 127: // Delete on Windows
+    // Delete the active tracker.
     g_trackers.delete_active_tracker();
+
+    // Make the GUI respect the new active tracker's settings.
+    if (g_trackers.active_tracker()) {
+      g_X = (float)g_trackers.active_tracker()->xytracker()->get_x();
+      g_Y = (float)flip_y(g_trackers.active_tracker()->xytracker()->get_y());
+      if (g_trackers.active_tracker()->ztracker()) {
+        g_Z = g_trackers.active_tracker()->ztracker()->get_z();
+      }
+      g_Radius = (float)g_trackers.active_tracker()->xytracker()->get_radius();
+      g_Error = (float)g_trackers.active_tracker()->xytracker()->get_fitness();
+      if (g_rod) {
+        // Horrible hack to make this work with rod type
+        g_orientation = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
+        g_length = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_length();
+      }
+    }
   }
 }
 

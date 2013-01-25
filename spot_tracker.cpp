@@ -1807,13 +1807,13 @@ bool Tracker_Collection_Manager::delete_tracker(unsigned which)
       d_trackers.erase(loop);
 
       // If this was the active tracker, set the active tracker
-      // to be the first tracker (or to none if there are no more
+      // to be the last tracker (or to none if there are no more
       // trackers).
       if (which == d_active_tracker) {
         if (d_trackers.size() == 0) {
           d_active_tracker = -1;
         } else {
-          d_active_tracker = 0;
+          d_active_tracker = d_trackers.size() - 1;
         }
       }
 
@@ -2254,8 +2254,7 @@ bool Tracker_Collection_Manager::find_more_brightfield_beads_in(
                 double x,y;
                 (*loop)->xytracker()->optimize_xy(s_image, d_color_index, x, y,
                     (*loop)->xytracker()->get_x(), (*loop)->xytracker()->get_y());
-                // XXX This should also check for lost in non-fluorescence...
-                mark_tracker_if_lost_in_fluorescence(*loop, s_image, d_default_fluorescence_lost_threshold);
+                mark_tracker_if_lost_in_brightfield(*loop, s_image, d_default_fluorescence_lost_threshold);
 		if (!(*loop)->lost()) {
 			++numnotlost;
                         d_trackers.push_back(new Spot_Information(d_xy_tracker_creator((*loop)->xytracker()->get_x(),(*loop)->xytracker()->get_y(),d_default_radius),default_z_tracker_creator()));
