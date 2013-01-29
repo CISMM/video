@@ -963,28 +963,17 @@ static	bool  save_log_frame(int frame_number)
       return false;
     }
   }
- 
-  // If we're logging video, store information for all of the trackers that
-  // were deleted this frame. 
-  if (g_log_video) {
-    for (loopi = 0; loopi < g_deleted_trackers.tracker_count(); loopi++) {
-      Spot_Information *tracker = g_deleted_trackers.tracker(loopi);
-      int x = tracker->xytracker()->get_x();
-      int y = tracker->xytracker()->get_y();
-      int halfwidth = tracker->xytracker()->get_radius() * 2;
-      int minX = x - halfwidth;
-      int minY = y - halfwidth;
-      int maxX = x + halfwidth;
-      int maxY = y + halfwidth;
-      if (minX < *g_minX) { minX = *g_minX; }
-      if (minY < *g_minY) { minY = *g_minY; }
-      if (static_cast<unsigned>(maxX) > *g_maxX) { maxX = *g_maxX; }
-      if (static_cast<unsigned>(maxY) > *g_maxY) { maxY = *g_maxY; }
-      if (!fill_and_send_video_region(minX, minY, maxX, maxY)) {
-        fprintf(stderr, "Could not fill and send video for tracker\n");
-        return false;
-      }
+
+  // If we're logging video, and if we've lost any trackers during this
+  // frame, store the entire frame.  We used to just store the video around
+  // where the trackers were when they got lost but sometimes they wander
+  // far off (sometimes even off screen), so we need to save the whole frame. 
+  if (g_log_video && (g_deleted_trackers.tracker_count() > 0)) {
+    if (!fill_and_send_video_region(*g_minX, *g_minY, *g_maxX, *g_maxY)) {
+      fprintf(stderr, "Could not fill and send region of interest\n");
+      return false;
     }
+
     // Don't remember the ones from previous frames.
     g_deleted_trackers.delete_trackers();
   }
