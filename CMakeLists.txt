@@ -614,9 +614,12 @@ ADD_EXECUTABLE(PanopticNerve_LEWOS
 	PanopticNerve_LEWOS/ImageAnalyzer.cpp
 	PanopticNerve_LEWOS/NerveTest.cpp
 	PanopticNerve_LEWOS/vector3.cpp
+	PanopticNerve_LEWOS/ZChaser.cpp
+	thread.cpp
 )
 TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	base_camera_server_library
+	spot_tracker_library
 	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
 	${OPENGL_glu_LIBRARY}
 	${OPENGL_gl_LIBRARY}
