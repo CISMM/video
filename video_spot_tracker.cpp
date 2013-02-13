@@ -2658,7 +2658,7 @@ void  activate_and_drag_nearest_tracker_to(double x, double y)
     g_trackers.set_active_tracker_index(minTracker);
     g_trackers.active_tracker()->xytracker()->set_location(x, y);
     g_X = g_trackers.active_tracker()->xytracker()->get_x();
-    g_Y = flip_y(g_trackers.active_tracker()->xytracker()->get_y());
+    g_Y = g_trackers.active_tracker()->xytracker()->get_y();
     if (g_trackers.active_tracker()->ztracker()) {
       g_Z = g_trackers.active_tracker()->ztracker()->get_z();
     }
