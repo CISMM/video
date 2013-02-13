@@ -900,14 +900,25 @@ static	bool  save_log_frame(int frame_number)
     // around each tracker every frame.  We send info on the previous
     // frame, because we've just pulled a new frame into memory to
     // start tracking on before we do this logging.
+    // We take the entire range around the previous position and the new
+    // position of the tracker to try and grab all parts of the image
+    // that the tracker may have wandered in to get to its new location.
     if (g_log_video) {
-      int x = tracker->xytracker()->get_x();
-      int y = tracker->xytracker()->get_y();
+      int minX = tracker->xytracker()->get_x();
+      int minY = tracker->xytracker()->get_y();
+      int maxX = minX;
+      int maxY = minY;
+      double  last_pos[2];
+      tracker->get_last_position(last_pos);
+      if (last_pos[0] < minX) { minX = last_pos[0]; }
+      if (last_pos[0] > maxX) { maxX = last_pos[0]; }
+      if (last_pos[1] < minY) { minY = last_pos[1]; }
+      if (last_pos[1] > maxY) { maxY = last_pos[1]; }
       int halfwidth = tracker->xytracker()->get_radius() * 2;
-      int minX = x - halfwidth;
-      int minY = y - halfwidth;
-      int maxX = x + halfwidth;
-      int maxY = y + halfwidth;
+      minX = minX - halfwidth;
+      minY = minY - halfwidth;
+      maxX = maxX + halfwidth;
+      maxY = maxY + halfwidth;
       if (minX < *g_minX) { minX = *g_minX; }
       if (minY < *g_minY) { minY = *g_minY; }
       if (static_cast<unsigned>(maxX) > *g_maxX) { maxX = *g_maxX; }
@@ -956,19 +967,13 @@ static	bool  save_log_frame(int frame_number)
   // the interval of full-frames being asked for.  We send info on the previous
   // frame, because we've just pulled a new frame into memory to
   // start tracking on before we do this logging.
-  if ( g_log_video && (frame_number % g_video_full_frame_every == 0) ) {
-    // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION).
-    if (!fill_and_send_video_region(*g_minX, *g_minY, *g_maxX, *g_maxY)) {
-      fprintf(stderr, "Could not fill and send region of interest\n");
-      return false;
-    }
-  }
-
   // If we're logging video, and if we've lost any trackers during this
   // frame, store the entire frame.  We used to just store the video around
   // where the trackers were when they got lost but sometimes they wander
   // far off (sometimes even off screen), so we need to save the whole frame. 
-  if (g_log_video && (g_deleted_trackers.tracker_count() > 0)) {
+  if ( g_log_video &&
+       ((frame_number % g_video_full_frame_every == 0) || (g_deleted_trackers.tracker_count() > 0)) ) {
+    // Send the current frame over to the client in chunks as big as possible (limited by vrpn_IMAGER_MAX_REGION).
     if (!fill_and_send_video_region(*g_minX, *g_minY, *g_maxX, *g_maxY)) {
       fprintf(stderr, "Could not fill and send region of interest\n");
       return false;
