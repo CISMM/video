@@ -2532,6 +2532,20 @@ unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_im
   // Nothing to do if no trackers.
   if (d_trackers.size() == 0) { return 0; }
 
+  // Record the last optimized position, in case we're doing either prediction
+  // or a local image-matched search.
+  int i;
+  for (i = 0; i < (int)(d_trackers.size()); i++) {
+    if ( (max_tracker_to_optimize < 0) || (i <= max_tracker_to_optimize) ) {
+      Spot_Information *tracker = Tracker_Collection_Manager::tracker(i);
+      spot_tracker_XY *tkr = tracker->xytracker();
+      double last_position[2];
+      last_position[0] = tkr->get_x();
+      last_position[1] = tkr->get_y();
+      tracker->set_last_position(last_position);
+    }
+  }
+
 #ifdef  VST_USE_CUDA
   // Figure out if we're using a symmetric kernel by dynamic casting the first
   // tracker to a symmetric kernel and seeing if we get a NULL pointer.
@@ -2591,19 +2605,6 @@ unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_im
       copy_of_image.buf = NULL;
     }
 
-    // Record the last optimized position, in case we're doing either prediction
-    // or a local image-matched search.
-    int i;
-    for (i = 0; i < (int)(d_trackers.size()); i++) {
-      if ( (max_tracker_to_optimize < 0) || (i <= max_tracker_to_optimize) ) {
-        Spot_Information *tracker = Tracker_Collection_Manager::tracker(i);
-        spot_tracker_XY *tkr = tracker->xytracker();
-        double last_position[2];
-        last_position[0] = tkr->get_x();
-        last_position[1] = tkr->get_y();
-        tracker->set_last_position(last_position);
-      }
-    }
   } else {
 
     // Free the buffer, if it is not NULL
@@ -2626,13 +2627,6 @@ unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_im
         } else {
           tkr->optimize_xy(s_image, color_index, x, y, tkr->get_x(),tkr->get_y() );
         }
-
-        // Record the last optimized position, in case we're doing either prediction
-        // or a local image-matched search.
-        double last_position[2];
-        last_position[0] = tkr->get_x();
-        last_position[1] = tkr->get_y();
-        tracker->set_last_position(last_position);
       }
     }
   }
