@@ -975,6 +975,10 @@ protected:
 extern bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
                                                  std::list<Spot_Information *> &tkrs,
                                                  unsigned num_to_optimize);
+
+extern bool VST_cuda_check_bright_lost_symmetric_trackers(const VST_cuda_image_buffer &buf,
+                                                 std::list<Spot_Information *> &tkrs,
+                                                 unsigned num_to_optimize);
 #endif
 
 #endif

@@ -2594,9 +2594,9 @@ unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_im
   }
   unsigned num_to_opt = d_trackers.size();
   if (max_tracker_to_optimize >= 0) {
-    num_to_opt = static_cast<unsigned>(max_tracker_to_optimize);
+    num_to_opt = static_cast<unsigned>(max_tracker_to_optimize+1);
   }
-  if ( appropriate && (copy_of_image.buf != NULL) &&
+  if (appropriate && (copy_of_image.buf != NULL) &&
        VST_cuda_optimize_symmetric_trackers(copy_of_image, d_trackers, num_to_opt) ) {
 
     // Free the buffer
@@ -2918,12 +2918,62 @@ void Tracker_Collection_Manager::mark_lost_brightfield_beads_in(const image_wrap
                                                             float var_thresh,
                                                             KERNEL_TYPE kernel_type)
 {
+#ifdef  VST_USE_CUDA
+  // Only try to run CUDA if we're using the symmetric kernel.  Otherwise, or
+  // if the CUDA code fails, then fall back to the OpenMP version.
+  bool appropriate = true;
+  if (kernel_type != KT_SYMMETRIC) {
+    appropriate = false;
+  }
+
+  // Make a buffer to hold a copy of the input image that will be
+  // passed down to the GPU and back.  Fill it with the image we
+  // got passed in.
+  // XXX See if we can cast into a floating-point buffer and ask it
+  // for its buffer directly to save another round of copying here;
+  // this will violate information hiding but make things faster.
+  VST_cuda_image_buffer copy_of_image;
+  copy_of_image.buf = NULL;
+  if (appropriate) {
+    copy_of_image.nx = s_image.get_num_columns();
+    copy_of_image.ny = s_image.get_num_rows();
+    copy_of_image.buf = new float[copy_of_image.nx*copy_of_image.ny];
+    if (copy_of_image.buf != NULL) {
+      int x;
+      #pragma omp parallel for
+      for (x = 0; x < copy_of_image.nx; x++) {
+        int y;
+        for (y = 0; y < copy_of_image.ny; y++) {
+          copy_of_image.buf[x + y*copy_of_image.nx] =
+            static_cast<float>(s_image.read_pixel_nocheck(x,y) );
+        }
+      }
+    }
+  }
+
+  if ( appropriate && (copy_of_image.buf != NULL) &&
+       VST_cuda_check_bright_lost_symmetric_trackers(copy_of_image, d_trackers, d_trackers.size()) ) {
+
+    // Free the buffer
+    if (copy_of_image.buf) {
+      delete [] copy_of_image.buf;
+      copy_of_image.buf = NULL;
+    }
+
+  } else {
+    // Free the buffer, if it is not NULL
+    if (copy_of_image.buf) { delete [] copy_of_image.buf; }
+
+#else
+  {
+#endif
     int i;
     #pragma omp parallel for
     for (i = 0; i < (int)(d_trackers.size()); i++) {
         mark_tracker_if_lost_in_brightfield(tracker(i), s_image, var_thresh,
           kernel_type);
     }
+  }
 }
 
 // Auto-deletes trackers that have wandered off of brightfield beads.
