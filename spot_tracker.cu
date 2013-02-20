@@ -772,18 +772,18 @@ static __global__ void VST_cuda_symmetric_bright_lost_kernel(const float *img, i
   // on the host, but it seems likely to be faster to recompute it here than to
   // try and fill in all the info we need and pass it down.
   unsigned r;					// Goes through the indices of radii
-  unsigned pixel_count;			// How many pixels found for this radius
-  unsigned total_count = 0;		// How many total pixels found so far
+  unsigned point_count;			// How many points found for this radius
+  unsigned total_count = 0;		// How many total points found so far
   float my_radius = -1;			// Pixel distance from tracker center
   int my_theta_index = -1;		// Index of my location around the circumference
   for (r = 0; r < num_radii; r++) {
 	float radius = 2*r + 3;		// Actual radius we're checking.
-	pixel_count = static_cast<unsigned>( 2 * CUDART_PI_F * radius );
-	if (total_count + pixel_count > spot_id) {
+	point_count = static_cast<unsigned>( 2 * CUDART_PI_F * radius );
+	if (total_count + point_count > spot_id) {
 		my_radius = r;
 		my_theta_index = spot_id - total_count;
 	}
-	total_count += pixel_count;
+	total_count += point_count;
   }
   // Figure out where I should put my answer.
   unsigned my_fitness_index = tkr_id * total_count + spot_id;
@@ -895,30 +895,30 @@ bool VST_cuda_check_bright_lost_symmetric_trackers(const VST_cuda_image_buffer &
 		}
 	}
 	int num_radii = static_cast<int>( (max_radius - 3)/2 + 1 );
-	unsigned *pixel_counts = new unsigned[num_radii];
+	unsigned *point_counts = new unsigned[num_radii];
 	unsigned *start_index = new unsigned[num_radii];
-	if (!pixel_counts || !start_index) {
+	if (!point_counts || !start_index) {
 	  fprintf(stderr,"VST_cuda_check_bright_lost_symmetric_trackers(): Could not allocate index memory.\n");
 	  delete [] ti;
 	  return false;
 	}
-	unsigned total_pixels = 0;
+	unsigned total_points = 0;
 	for (i = 0; i < num_radii; i++) {
 		double radius = 2*i + 3;
-		pixel_counts[i] = static_cast<unsigned>( 2 * M_PI * radius );
-		total_pixels += pixel_counts[i];
-		start_index[i] = total_pixels - pixel_counts[i];
+		point_counts[i] = static_cast<unsigned>( 2 * M_PI * radius );
+		total_points += point_counts[i];
+		start_index[i] = total_points - point_counts[i];
 	}
 	
 	// Allocate the array of fitness values with as many points per
 	// tracker as there are in the maximum tracker.  We don't fill
 	// these in here -- they will be filled in on the GPU.
 	float *gpu_fitness;
-	size_t fitness_size = num_to_optimize * total_pixels;
+	size_t fitness_size = num_to_optimize * total_points * sizeof(float);
 	if (cudaMalloc((void**)&gpu_fitness, fitness_size) != cudaSuccess) {
 	  fprintf(stderr,"VST_cuda_check_bright_lost_symmetric_trackers(): Could not allocate fitness memory.\n");
 	  delete [] start_index;
-	  delete [] pixel_counts;
+	  delete [] point_counts;
 	  delete [] ti;
 	  return false;
 	}
@@ -932,7 +932,7 @@ bool VST_cuda_check_bright_lost_symmetric_trackers(const VST_cuda_image_buffer &
     g_threads.y = 512;
     g_threads.z = 1;
     g_grid.x = num_to_optimize;
-    g_grid.y = (total_pixels / 512) + 1;
+    g_grid.y = (total_points / 512) + 1;
 	
 	// Call the CUDA kernel to compute the fitness values at.
 	// the proper locations around the start for each tracker.
@@ -962,7 +962,7 @@ bool VST_cuda_check_bright_lost_symmetric_trackers(const VST_cuda_image_buffer &
 		cudaFree(gpu_fitness);
 		cudaFree(gpu_ti);
 		delete [] start_index;
-		delete [] pixel_counts;
+		delete [] point_counts;
 		delete [] ti;
 		return false;
 	}
@@ -971,7 +971,7 @@ bool VST_cuda_check_bright_lost_symmetric_trackers(const VST_cuda_image_buffer &
 		cudaFree(gpu_fitness);
 		cudaFree(gpu_ti);
 		delete [] start_index;
-		delete [] pixel_counts;
+		delete [] point_counts;
 		delete [] ti;
 		return false;
 	}
@@ -979,14 +979,16 @@ bool VST_cuda_check_bright_lost_symmetric_trackers(const VST_cuda_image_buffer &
 	// Determine whether each tracker is lost by looking at the minimum of
 	// the maxima around the rings and comparing it to the lost-tracking
 	// parameter.
+	//printf("XXX Checking %d tkrs, %d radii, %d points for lost\n", (int)(num_to_optimize),
+	//			num_radii, total_points);
 	for (loop = tkrs.begin(), i = 0; i < (int)(num_to_optimize); loop++, i++) {
-		float min_val = 1e10;
+		float min_val = 1e20f;
 		int r;
 		for (r = 0; r < num_radii; r++) {
-			float max_val = -1e10;
+			float max_val = -1e20f;
 			unsigned j;
-			for (j = 0; j < pixel_counts[r]; j++) {
-				float val = fitness[ i*total_pixels + start_index[r] + j ];
+			for (j = 0; j < point_counts[r]; j++) {
+				float val = fitness[ i*total_points + start_index[r] + j ];
 				if (val > max_val) {
 					max_val = val;
 				}
@@ -999,6 +1001,7 @@ bool VST_cuda_check_bright_lost_symmetric_trackers(const VST_cuda_image_buffer &
 		bool am_lost = false;
         if ((*loop)->xytracker()->get_fitness() * scale_factor < min_val) {
 			am_lost = true;
+			//printf("XXX Lost with min_val = %g\n", min_val);
 		}
 		(*loop)->lost(am_lost);
 	}
@@ -1007,7 +1010,7 @@ bool VST_cuda_check_bright_lost_symmetric_trackers(const VST_cuda_image_buffer &
 	cudaFree(gpu_fitness); gpu_fitness = NULL;
 	cudaFree(gpu_ti); gpu_ti = NULL;
 	delete [] start_index;
-	delete [] pixel_counts;
+	delete [] point_counts;
 	delete [] ti; ti = NULL;
 
 	// Done!
