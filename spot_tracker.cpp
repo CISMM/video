@@ -2802,7 +2802,13 @@ bool Tracker_Collection_Manager::mark_tracker_if_lost_in_brightfield(Spot_Inform
        double start_x = tracker->xytracker()->get_x();
        double start_y = tracker->xytracker()->get_y();
        double x, y;
-       for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
+       // The circumference at radius r = 2 * M_PI * r;
+       // We therefore want 2 * M_PI * r 1-pixel steps around the circle
+       // Since the maximum we're headed towards is 2 * M_PI radians,
+       // this means the step size (1 / (2 * M_PI * r)), which would go
+       // from 0 to 1, should be scaled by 2 * M_PI -- therefore the step
+       // size is 1/r to get single-pixel steps around the circle.
+       for (theta = 0; theta < 2*M_PI; theta += 1/r ) {
          x = start_x + r * cos(theta);
          y = start_y + r * sin(theta);
          if (image.read_pixel_bilerp(x, y, value, d_color_index)) {
@@ -2817,7 +2823,13 @@ bool Tracker_Collection_Manager::mark_tracker_if_lost_in_brightfield(Spot_Inform
        // Compute the standard deviation of the values
        double std_dev = 0.0;
        count = 0;
-       for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
+       // The circumference at radius r = 2 * M_PI * r;
+       // We therefore want 2 * M_PI * r 1-pixel steps around the circle
+       // Since the maximum we're headed towards is 2 * M_PI radians,
+       // this means the step size (1 / (2 * M_PI * r)), which would go
+       // from 0 to 1, should be scaled by 2 * M_PI -- therefore the step
+       // size is 1/r to get single-pixel steps around the circle.
+       for (theta = 0; theta < 2*M_PI; theta += 1/r ) {
          x = start_x + r * cos(theta);
          y = start_y + r * sin(theta);
          if (image.read_pixel_bilerp(x, y, value, d_color_index)) {
@@ -2854,7 +2866,13 @@ bool Tracker_Collection_Manager::mark_tracker_if_lost_in_brightfield(Spot_Inform
       for (r = 3; r <= tracker->xytracker()->get_radius(); r += 2) {
         double max_val = -1e100;  //< Max over this particular circle
         // Look at every pixel around the circle.
-        for (theta = 0; theta < 2*M_PI; theta += r / (2 * M_PI) ) {
+        // The circumference at radius r = 2 * M_PI * r;
+        // We therefore want 2 * M_PI * r 1-pixel steps around the circle
+        // Since the maximum we're headed towards is 2 * M_PI radians,
+        // this means the step size (1 / (2 * M_PI * r)), which would go
+        // from 0 to 1, should be scaled by 2 * M_PI -- therefore the step
+        // size is 1/r to get single-pixel steps around the circle.
+        for (theta = 0; theta < 2*M_PI; theta += 1/r ) {
           x = r * cos(theta);
           y = r * sin(theta);
 	  tracker->xytracker()->set_location(x + start_x, y + start_y);
