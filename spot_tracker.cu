@@ -745,140 +745,65 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
 	return true;
 }
 
-// CUDA kernel to check the passed-in list of trackers based on the
-// passed-in image.  Sets the "lost" value of any trackers to true
-// if they become lost.
-// Assumes a 2D array of threads.
-// Assumes that we have at least as many threads in X as we have trackers.
-// Assumes 32 threads per tracker, which are laid out in Y.
+// CUDA kernel to check the fitness values in rings around the passed-in
+// set of trackers, filling in the values around the ring.
+// We have 1 thread in X and 512 threads in Y.
+// We have as many blocks in X as we have trackers.
+// We have as many blocks in Y as we have points to sample around
+// the maximum-radius tracker location divided by 512 (the number of
+// threads).
+
 #ifdef	USE_TEXTURE
 static __global__ void VST_cuda_symmetric_bright_lost_kernel(const cudaArray *img, int nx, int ny,
-							CUDA_Tracker_Info *tkrs, int nt)
+							CUDA_Tracker_Info *tkrs, int nt,
+							float *fitness, unsigned num_radii)
 #else
 static __global__ void VST_cuda_symmetric_bright_lost_kernel(const float *img, int nx, int ny,
-							CUDA_Tracker_Info *tkrs, int nt)
+							CUDA_Tracker_Info *tkrs, int nt,
+							float *fitness, unsigned num_radii)
 #endif
 {
-XXX;
-  // All of the threads within one block access the same tracker.
-  // There is only one block in Y; there are as many blocks in X as there
-  // are trackers.  We ensure that the block is square and we sample on
-  // a lattice with that many points on it.
+  // Figure out which tracker and which spot within that tracker we're doing.
   int tkr_id = blockIdx.x;
-  int my_x = threadIdx.x;
-  int my_y = threadIdx.y;
-  const int MAX_LATTICE = 32;
-  int lattice = blockDim.x;
-  if (blockDim.y < blockDim.x) { lattice = blockDim.y; }
-  if (lattice > MAX_LATTICE) { lattice = MAX_LATTICE; }
+  int spot_id = blockIdx.y * blockDim.y + threadIdx.y;
   
-  // This is shared memory among the threads in a block that stores the
-  // position offset for each group member and the fitness that was
-  // found by that group member at its position.  We fill in the offsets
-  // here, each member doing its own; they make a lattice from (-,-) to
-  // (+,+) where the corners are normalized from -1 to 1, and are later
-  // scaled by the current step size so that the last one is at the
-  // step location.  Need to subtract 1.0f rather than 1 from lattice to
-  // make sure we're using floating-point division.
-  // This storage must be as large as the lattice.
-  __shared__ float	dx[MAX_LATTICE][MAX_LATTICE], dy[MAX_LATTICE][MAX_LATTICE];
-  __shared__ float	fitnesses[MAX_LATTICE][MAX_LATTICE];
-  __shared__ bool	done;
-  dx[my_x][my_y] = (2.0f * my_x/(lattice - 1.0f) - 1.0f);
-  dy[my_x][my_y] = (2.0f * my_y/(lattice - 1.0f) - 1.0f);
-
-  // Do the whole optimization here, checking with smaller and smaller
-  // steps until we reach the accuracy requested.
-  if (tkr_id < nt) {
-  
-	// Get local aliases for the passed-in variables we need to use.    
-	CUDA_Tracker_Info &t = tkrs[tkr_id];
-	const float &accuracy = t.pixel_accuracy;
-	float &pixelstep = t.pixelstep;
-
-	// Compute the fitness for all offsets and then figure out which
-	// is the best.  If the best location is not found on the outside
-	// of the lattice, then we go ahead and divide by the lattice size
-	// before doing the next step.
-	if ( (my_x == 0) && (my_y == 0) ) {
-		pixelstep = 2.0f;	// Start with a large value.
-		t.fitness = cuda_check_fitness_symmetric(img, nx, ny, t);
-		done = false;
+  // Figure out our offset from our tracker base, and where we should store our
+  // result in the fitness array.  This calculation is redundant with that done
+  // on the host, but it seems likely to be faster to recompute it here than to
+  // try and fill in all the info we need and pass it down.
+  unsigned r;					// Goes through the indices of radii
+  unsigned pixel_count;			// How many pixels found for this radius
+  unsigned total_count = 0;		// How many total pixels found so far
+  float my_radius = -1;			// Pixel distance from tracker center
+  int my_theta_index = -1;		// Index of my location around the circumference
+  for (r = 0; r < num_radii; r++) {
+	float radius = 2*r + 3;		// Actual radius we're checking.
+	pixel_count = static_cast<unsigned>( 2 * CUDART_PI_F * radius );
+	if (total_count + pixel_count > spot_id) {
+		my_radius = r;
+		my_theta_index = spot_id - total_count;
 	}
-
-	// Synchronize all of the threads in the block.
-	syncthreads();
-		
+	total_count += pixel_count;
+  }
+  // Figure out where I should put my answer.
+  unsigned my_fitness_index = tkr_id * total_count + spot_id;
+  
+  // If we're a valid tracker and a valid spot_id, then compute the fitness for
+  // our tracker at the specified offset and store it into the fitness array.
+  if ( (tkr_id < nt) && (my_radius > 0) ) {
 	// Make my own tracker with its information copied from the original
 	// passed-in tracker I'm associated with.
-	CUDA_Tracker_Info member_t = t;
+	CUDA_Tracker_Info member_t = tkrs[tkr_id];
+
+	// Compute the offset from the original location, then set it to that
+	// offset.
+	float theta = (1.0f/my_radius) * my_theta_index;
+	float x = member_t.x + my_radius * cos(theta);
+	float y = member_t.y + my_radius * sin(theta);
+	member_t.x = x;
+	member_t.y = y;
 	
-	do {	
-		// Check all offsets and compute their fitness.
-		member_t.x = t.x + dx[my_x][my_y] * pixelstep;
-		member_t.y = t.y + dy[my_x][my_y] * pixelstep;
-		fitnesses[my_x][my_y] = cuda_check_fitness_symmetric(img, nx, ny, member_t);
-		
-		// Synchronize all of the threads in the block.
-		syncthreads();
-		
-		// In the first thread, find the highest fitness and its index.
-		// Compare this with the original fitness.  If one is better, set
-		// its value as our next start and try again.  If none are better,
-		// divide the pixelstep and try again until we have a step that is
-		// below our requested accuracy.  If we found a better one at the
-		// edge, then we repeat our test with the same step size.
-		// XXX As we have larger numbers of threads, maybe do a faster
-		// parallel reduction on these values.
-		if ( (my_x == 0) && (my_y == 0) ) {
-			int x, best_x = -1;
-			int best_y = -1;
-			float best_fitness = t.fitness;
-			for (x = 0; x < lattice; x++) {
-			  int y;
-			  for (y = 0; y < lattice; y++) {
-				if (fitnesses[x][y] > best_fitness) {
-					best_x = x;
-					best_y = y;
-					best_fitness = fitnesses[x][y];
-				}
-			  }
-			}
-			// If we found a better place, move there.
-			if (best_x >= 0) {
-				t.x += dx[best_x][best_y] * pixelstep;
-				t.y += dy[best_x][best_y] * pixelstep;
-				t.fitness = best_fitness;
-			}
-			
-			// If we didn't find a better place at the edge of the
-			// lattice (including not finding one at all), then go ahead
-			// and divide the pixel step by the lattice size, so we
-			// confine our search around the best point on this lattice
-			// the next time around.
-			if ( (best_x != 0) && (best_x != (lattice-1)) &&
-				 (best_y != 0) && (best_y != (lattice-1)) ) {
-
-				// If our just-checked size (including the lattice) is
-				// below the required accuracy, we're done.
-				// XXX We need to be careful here -- the interval size
-				// is not always the lattice -- it is for 2 but not for
-				// higher ones (there are N-1 gaps, not N).  This code will
-				// fail for a 2x2 lattice, but works for the others.
-				if (pixelstep / (lattice-1) <= accuracy/2) {
-					done = true;
-				}
-				
-				// Try a smaller step size and see if that finds a better
-				// solution.
-				pixelstep /= (lattice-1);			
-			}
-		}
-
-		// Synchronize all of the threads in the block.
-		syncthreads();
-		
-	} while (!done);	  
+	fitness[my_fitness_index] = cuda_check_fitness_symmetric(img, nx, ny, member_t); 
   }
 }
 
@@ -886,7 +811,8 @@ XXX;
 // image buffer passed in.
 bool VST_cuda_check_bright_lost_symmetric_trackers(const VST_cuda_image_buffer &buf,
                                                  std::list<Spot_Information *> &tkrs,
-                                                 unsigned num_to_optimize)
+                                                 unsigned num_to_optimize,
+                                                 float var_thresh)
 {
 	// Make sure we can initialize CUDA.  This also allocates the global
 	// input buffer that we'll use to copy data from the host into.
@@ -955,50 +881,133 @@ bool VST_cuda_check_bright_lost_symmetric_trackers(const VST_cuda_image_buffer &
 		return false;
 	}
 	
-    // We have as many blocks in X as we have trackers.  We have one block
-    // in Y.  We have a lattice of threads within a block that should be the
-    // same number in X and Y; we test on points on that lattice and then
-    // divide by that size to set a smaller lattice to check.
-    XXX;
-    g_threads.x = 8;
-    g_threads.y = 8;
+	// Figure out how many samples we need to take in the worst case for
+	// any tracker in our set.  This depends on the maximum radius among
+	// the trackers -- we take a sample every pixel around rings, and the
+	// rings go in steps of 2 pixels out from the center, starting at
+	// a radius of 3 pixels.  Also figure out the start index into an
+	// array of values for each ring.
+	double max_radius = 0;
+	for (loop = tkrs.begin(), i = 0; i < (int)(num_to_optimize); loop++, i++) {
+		double radius = ti[i].radius;
+		if (radius > max_radius) {
+			max_radius = radius;
+		}
+	}
+	int num_radii = static_cast<int>( (max_radius - 3)/2 + 1 );
+	unsigned *pixel_counts = new unsigned[num_radii];
+	unsigned *start_index = new unsigned[num_radii];
+	if (!pixel_counts || !start_index) {
+	  fprintf(stderr,"VST_cuda_check_bright_lost_symmetric_trackers(): Could not allocate index memory.\n");
+	  delete [] ti;
+	  return false;
+	}
+	unsigned total_pixels = 0;
+	for (i = 0; i < num_radii; i++) {
+		double radius = 2*i + 3;
+		pixel_counts[i] = static_cast<unsigned>( 2 * M_PI * radius );
+		total_pixels += pixel_counts[i];
+		start_index[i] = total_pixels - pixel_counts[i];
+	}
+	
+	// Allocate the array of fitness values with as many points per
+	// tracker as there are in the maximum tracker.  We don't fill
+	// these in here -- they will be filled in on the GPU.
+	float *gpu_fitness;
+	size_t fitness_size = num_to_optimize * total_pixels;
+	if (cudaMalloc((void**)&gpu_fitness, fitness_size) != cudaSuccess) {
+	  fprintf(stderr,"VST_cuda_check_bright_lost_symmetric_trackers(): Could not allocate fitness memory.\n");
+	  delete [] start_index;
+	  delete [] pixel_counts;
+	  delete [] ti;
+	  return false;
+	}
+	
+    // We have 1 thread in X and 512 threads in Y.
+    // We have as many blocks in X as we have trackers.
+    // We have as many blocks in Y as we have points to sample around
+    // the maximum-radius tracker location divided by 512 (the number of
+    // threads).
+    g_threads.x = 1;
+    g_threads.y = 512;
     g_threads.z = 1;
     g_grid.x = num_to_optimize;
-    g_grid.y = 1;
+    g_grid.y = (total_pixels / 512) + 1;
 	
-	// Call the CUDA kernel to do the tracking, reading from
-	// the input buffer and editing the positions in place.
+	// Call the CUDA kernel to compute the fitness values at.
+	// the proper locations around the start for each tracker.
 	// Synchronize the threads when we are done so we know that 
 	// they finish before we copy the memory back.
 #ifdef	USE_TEXTURE
 	VST_cuda_symmetric_bright_lost_kernel<<< g_grid, g_threads >>>(g_cuda_fromhost_array,
 					buf.nx, buf.ny,
-					gpu_ti, num_to_optimize);
+					gpu_ti, num_to_optimize,
+					gpu_fitness, num_radii);
 #else
 	VST_cuda_symmetric_bright_lost_kernel<<< g_grid, g_threads >>>(g_cuda_fromhost_buffer,
 					buf.nx, buf.ny,
-					gpu_ti, num_to_optimize);
+					gpu_ti, num_to_optimize,
+					gpu_fitness, num_radii);
 #endif
 	if (cudaThreadSynchronize() != cudaSuccess) {
 		fprintf(stderr, "VST_cuda_check_bright_lost_symmetric_trackers(): Could not synchronize threads\n");
 		return false;
 	}
 
-	// Copy the tracker info back from the GPU to the host memory.
-	if (cudaMemcpy(ti, gpu_ti, tkrsize, cudaMemcpyDeviceToHost) != cudaSuccess) {
-		fprintf(stderr, "VST_cuda_check_bright_lost_symmetric_trackers(): Could not copy memory back to host\n");
+	// Allocate a buffer to store the host-side fitness values.
+	// Copy the fitness info back from the GPU to the host memory.
+	float *fitness = new float[fitness_size];
+	if (!fitness) {
+		fprintf(stderr, "VST_cuda_check_bright_lost_symmetric_trackers(): Could not allocate host fitness memory\n");
+		cudaFree(gpu_fitness);
 		cudaFree(gpu_ti);
+		delete [] start_index;
+		delete [] pixel_counts;
+		delete [] ti;
+		return false;
+	}
+	if (cudaMemcpy(fitness, gpu_fitness, fitness_size, cudaMemcpyDeviceToHost) != cudaSuccess) {
+		fprintf(stderr, "VST_cuda_check_bright_lost_symmetric_trackers(): Could not copy memory back to host\n");
+		cudaFree(gpu_fitness);
+		cudaFree(gpu_ti);
+		delete [] start_index;
+		delete [] pixel_counts;
 		delete [] ti;
 		return false;
 	}
 	
-	// Copy the lost values back into the trackers.
+	// Determine whether each tracker is lost by looking at the minimum of
+	// the maxima around the rings and comparing it to the lost-tracking
+	// parameter.
 	for (loop = tkrs.begin(), i = 0; i < (int)(num_to_optimize); loop++, i++) {
-		(*loop)->lost(ti[i].lost);
+		float min_val = 1e10;
+		int r;
+		for (r = 0; r < num_radii; r++) {
+			float max_val = -1e10;
+			unsigned j;
+			for (j = 0; j < pixel_counts[r]; j++) {
+				float val = fitness[ i*total_pixels + start_index[r] + j ];
+				if (val > max_val) {
+					max_val = val;
+				}
+			}
+			if (max_val < min_val) {
+				min_val = max_val;
+			}
+		}
+		double scale_factor = 1 + 9*var_thresh;
+		bool am_lost = false;
+        if ((*loop)->xytracker()->get_fitness() * scale_factor < min_val) {
+			am_lost = true;
+		}
+		(*loop)->lost(am_lost);
 	}
 		
 	// Free the array of tracker info on the GPU and host sides.
+	cudaFree(gpu_fitness); gpu_fitness = NULL;
 	cudaFree(gpu_ti); gpu_ti = NULL;
+	delete [] start_index;
+	delete [] pixel_counts;
 	delete [] ti; ti = NULL;
 
 	// Done!

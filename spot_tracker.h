@@ -978,7 +978,7 @@ extern bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &bu
 
 extern bool VST_cuda_check_bright_lost_symmetric_trackers(const VST_cuda_image_buffer &buf,
                                                  std::list<Spot_Information *> &tkrs,
-                                                 unsigned num_to_optimize);
+                                                 unsigned num_to_optimize, float var_thresh);
 #endif
 
 #endif

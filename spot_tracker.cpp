@@ -2970,7 +2970,8 @@ void Tracker_Collection_Manager::mark_lost_brightfield_beads_in(const image_wrap
   }
 
   if ( appropriate && (copy_of_image.buf != NULL) &&
-       VST_cuda_check_bright_lost_symmetric_trackers(copy_of_image, d_trackers, d_trackers.size()) ) {
+       VST_cuda_check_bright_lost_symmetric_trackers(
+          copy_of_image, d_trackers, d_trackers.size(), var_thresh) ) {
 
     // Free the buffer
     if (copy_of_image.buf) {
