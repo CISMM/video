@@ -956,7 +956,7 @@ bool VST_cuda_check_bright_lost_symmetric_trackers(const VST_cuda_image_buffer &
 
 	// Allocate a buffer to store the host-side fitness values.
 	// Copy the fitness info back from the GPU to the host memory.
-	float *fitness = new float[fitness_size];
+	float *fitness = new float[fitness_size / sizeof(float)];
 	if (!fitness) {
 		fprintf(stderr, "VST_cuda_check_bright_lost_symmetric_trackers(): Could not allocate host fitness memory\n");
 		cudaFree(gpu_fitness);
@@ -970,6 +970,7 @@ bool VST_cuda_check_bright_lost_symmetric_trackers(const VST_cuda_image_buffer &
 		fprintf(stderr, "VST_cuda_check_bright_lost_symmetric_trackers(): Could not copy memory back to host\n");
 		cudaFree(gpu_fitness);
 		cudaFree(gpu_ti);
+		delete [] fitness;
 		delete [] start_index;
 		delete [] point_counts;
 		delete [] ti;
@@ -984,6 +985,7 @@ bool VST_cuda_check_bright_lost_symmetric_trackers(const VST_cuda_image_buffer &
 	for (loop = tkrs.begin(), i = 0; i < (int)(num_to_optimize); loop++, i++) {
 		float min_val = 1e20f;
 		int r;
+		num_radii = static_cast<int>( ((*loop)->xytracker()->get_radius() - 3)/2 + 1 );
 		for (r = 0; r < num_radii; r++) {
 			float max_val = -1e20f;
 			unsigned j;
@@ -1009,6 +1011,7 @@ bool VST_cuda_check_bright_lost_symmetric_trackers(const VST_cuda_image_buffer &
 	// Free the array of tracker info on the GPU and host sides.
 	cudaFree(gpu_fitness); gpu_fitness = NULL;
 	cudaFree(gpu_ti); gpu_ti = NULL;
+	delete [] fitness;
 	delete [] start_index;
 	delete [] point_counts;
 	delete [] ti; ti = NULL;
