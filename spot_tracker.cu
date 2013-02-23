@@ -509,7 +509,7 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
   int lattice = blockDim.x;
   if (blockDim.y > blockDim.x) { lattice = blockDim.y; }
   if (lattice > MAX_LATTICE) { lattice = MAX_LATTICE; }
-  
+
   // This is shared memory among the threads in a block that stores the
   // position offset for each group member and the fitness that was
   // found by that group member at its position.  We fill in the offsets
@@ -523,8 +523,12 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
   __shared__ float	fitnesses[MAX_LATTICE][MAX_LATTICE];
   __shared__ float	pixelstep;
   __shared__ bool	done;
+
   dx[my_x][my_y] = (2.0f * my_x/(lattice - 1.0f) - 1.0f);
   dy[my_x][my_y] = (2.0f * my_y/(lattice - 1.0f) - 1.0f);
+
+  // Synchronize all of the threads in the block.
+  syncthreads();
 
   // Do the whole optimization here, checking with smaller and smaller
   // steps until we reach the accuracy requested.
@@ -545,7 +549,7 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 
 	// Synchronize all of the threads in the block.
 	syncthreads();
-		
+
 	// Make my own tracker with its information copied from the original
 	// passed-in tracker I'm associated with.
 	CUDA_Tracker_Info member_t = t;
@@ -562,7 +566,7 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 		
 		// Synchronize all of the threads in the block.
 		syncthreads();
-		
+
 		// In the first thread, find the highest fitness and its index.
 		// Compare this with the original fitness.  If one is better, set
 		// its value as our next start and try again.  If none are better,
@@ -578,11 +582,16 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 			float best_fitness = t.fitness;
 			for (x = 0; x < lattice; x++) {
 			  for (y = 0; y < lattice; y++) {
+//if ( (x < 0) || (y < 0) ) { done = true; } //XXXXX Does not set done
 				if (fitnesses[x][y] > best_fitness) {
+//if ( (x < 0) || (y < 0) ) { done = true; } //XXXXX Sets done to true
 					best_x = x;
 					best_y = y;
 					best_fitness = fitnesses[x][y];
+//if ( (dx[best_x][best_y] == 0.0) && (dy[best_x][best_y] == 0.0) ) { done = true; } //XXXXX
+//if ( (best_x < 0) || (best_y < 0) ) { done = true; } //XXXXX
 				}
+//if ( (x < 0) || (y < 0) ) { done = true; } //XXXXX Does not set done
 			  }
 			}
 			// If we found a better place, move there.
@@ -592,8 +601,6 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 				t.fitness = best_fitness;
 			}
 
-//if (best_x == 7) { done = true; } //XXXXX
-			
 			// If we didn't find a better place at the edge of the
 			// lattice (including not finding one at all), then go ahead
 			// and divide the pixel step by the lattice size, so we
@@ -616,6 +623,18 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 				// solution.
 				pixelstep /= (lattice-1);			
 			}
+
+  //XXXXX remove this whole check
+/*
+  int a,b;
+  if ( (my_x == 0) && (my_y == 0) ) {
+    for (a = 0; a < lattice; a++) {
+      for (b = 0; b < lattice; b++) {
+	if ( (dx[a][b] == 0.0) && (dy[a][b] == 0.0) ) { done = true; } //XXXXX
+      }
+    }
+  }
+*/
 		}
 
 		// Synchronize all of the threads in the block.
