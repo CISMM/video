@@ -16,6 +16,8 @@ so that we only initialize the device once.
 // Definitions and routines needed by all functions below.
 //----------------------------------------------------------------------
 
+const int MAX_LATTICE = 8;	// Maximum lattice size for tracker optimization
+
 static CUdevice     g_cuDevice;     // CUDA device
 static CUcontext    g_cuContext;    // CUDA context on the device
 
@@ -488,7 +490,7 @@ inline __device__ float	cuda_check_fitness_symmetric(
 // final optimum location.
 // Assumes a 2D array of threads.
 // Assumes that we have EXACTLY as many blocks in X as we have trackers.
-// Assumes 32 threads per tracker, which are laid out in Y.
+// Assumes a lattice of threads in X and Y that is square.
 #ifdef	USE_TEXTURE
 static __global__ void VST_cuda_symmetric_opt_kernel(const cudaArray *img, int nx, int ny,
 							CUDA_Tracker_Info *tkrs, int nt)
@@ -500,15 +502,13 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
   // All of the threads within one block access the same tracker.
   // There is only one block in Y; there are as many blocks in X as there
   // are trackers.  We ensure that the block is square and we sample on
-  // a lattice with that many points on it.  We pick the larger of the two
-  // dimensions if there is a difference (there should not be).
+  // a lattice with that many points on it.
   int tkr_id = blockIdx.x;
   int my_x = threadIdx.x;
   int my_y = threadIdx.y;
-  const int MAX_LATTICE = 32;
   int lattice = blockDim.x;
-  if (blockDim.y > blockDim.x) { lattice = blockDim.y; }
-  if (lattice > MAX_LATTICE) { lattice = MAX_LATTICE; }
+  if (blockDim.y != blockDim.x) { return; }
+  if (lattice > MAX_LATTICE) { return; }
 
   // This is shared memory among the threads in a block that stores the
   // position offset for each group member and the fitness that was
@@ -553,7 +553,10 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 	// Make my own tracker with its information copied from the original
 	// passed-in tracker I'm associated with.
 	CUDA_Tracker_Info member_t = t;
-	
+
+	// Synchronize all of the threads in the block.
+	syncthreads();
+
 	// Compute the fitness for all offsets and then figure out which
 	// is the best.  If the best location is not found on the outside
 	// of the lattice, then we go ahead and divide by the lattice size
@@ -584,7 +587,9 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 			  for (y = 0; y < lattice; y++) {
 //if ( (x < 0) || (y < 0) ) { done = true; } //XXXXX Does not set done
 				if (fitnesses[x][y] > best_fitness) {
-//if ( (x < 0) || (y < 0) ) { done = true; } //XXXXX Sets done to true
+//if ( (x < 0) || (y < 0) ) { done = true; } //XXXXX Sets done to true!!!!
+//if ( (x < 0) ) { done = true; } //XXXXX Sets done to true!!!!
+//if ( (y < 0) ) { done = true; } //XXXXX does not set done.
 					best_x = x;
 					best_y = y;
 					best_fitness = fitnesses[x][y];
@@ -596,6 +601,7 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 			}
 			// If we found a better place, move there.
 			if (best_x >= 0) {
+//if ( (best_y < 0) ) { done = true; } //XXXXX Sets done to true!!!!
 				t.x += dx[best_x][best_y] * pixelstep;
 				t.y += dy[best_x][best_y] * pixelstep;
 				t.fitness = best_fitness;
@@ -729,6 +735,16 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
 	g_grid.x = num_to_optimize;
 	g_grid.y = 1;
 
+	// Make sure we're not asking for too many threads, or a non-square lattice.
+	if ( (g_threads.x > MAX_LATTICE) || (g_threads.y > MAX_LATTICE) ) {
+		fprintf(stderr, "VST_cuda_optimize_symmetric_trackers(): Lattice to large\n");
+		return false;
+	}
+	if ( g_threads.x != g_threads.y ) {
+		fprintf(stderr, "VST_cuda_optimize_symmetric_trackers(): Lattice not square\n");
+		return false;
+	}
+
 	// Call the CUDA kernel to do the tracking, reading from
 	// the input buffer and editing the positions in place.
 	// Synchronize the threads when we are done so we know that 
@@ -745,7 +761,7 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
 #endif
 	printf("XXX VST_cuda_optimize_symmetric_trackers(): Synchronizing threads\n");	
 	if (cudaThreadSynchronize() != cudaSuccess) {
-		fprintf(stderr, "VST_cuda_blur_image(): Could not synchronize threads\n");
+		fprintf(stderr, "VST_cuda_optimize_symmetric_trackers(): Could not synchronize threads\n");
 		return false;
 	}
 
