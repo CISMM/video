@@ -509,7 +509,6 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
   int lattice = blockDim.x;
   if (blockDim.y != blockDim.x) { return; }
   if (lattice > MAX_LATTICE) { return; }
-  //if ( (my_x >= lattice) || (my_y >= lattice) ) { return; } // XXXXX
 
   // This is shared memory among the threads in a block that stores the
   // position offset for each group member and the fitness that was
@@ -585,23 +584,15 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 			float best_fitness = t.fitness;
 			for (x = 0; x < lattice; x++) {
 			  for (y = 0; y < lattice; y++) {
-//if ( (x < 0) || (y < 0) ) { done = true; } //XXXXX Does not set done
 				if (fitnesses[x][y] > best_fitness) {
-//if ( (x < 0) || (y < 0) ) { done = true; } //XXXXX Sets done to true!!!!
-//if ( (x < 0) ) { done = true; } //XXXXX Sets done to true!!!!
-//if ( (y < 0) ) { done = true; } //XXXXX does not set done.
 					best_x = x;
 					best_y = y;
 					best_fitness = fitnesses[x][y];
-//if ( (dx[best_x][best_y] == 0.0) && (dy[best_x][best_y] == 0.0) ) { done = true; } //XXXXX
-//if ( (best_x < 0) || (best_y < 0) ) { done = true; } //XXXXX
 				}
-//if ( (x < 0) || (y < 0) ) { done = true; } //XXXXX Does not set done
 			  }
 			}
 			// If we found a better place, move there.
 			if (best_x >= 0) {
-//if ( (best_y < 0) ) { done = true; } //XXXXX Sets done to true!!!!
 				t.x += dx[best_x][best_y] * pixelstep;
 				t.y += dy[best_x][best_y] * pixelstep;
 				t.fitness = best_fitness;
@@ -630,17 +621,6 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 				pixelstep /= (lattice-1);			
 			}
 
-  //XXXXX remove this whole check
-/*
-  int a,b;
-  if ( (my_x == 0) && (my_y == 0) ) {
-    for (a = 0; a < lattice; a++) {
-      for (b = 0; b < lattice; b++) {
-	if ( (dx[a][b] == 0.0) && (dy[a][b] == 0.0) ) { done = true; } //XXXXX
-      }
-    }
-  }
-*/
 		}
 
 		// Synchronize all of the threads in the block.
@@ -658,7 +638,6 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
 	// Make sure we can initialize CUDA.  This also allocates the global
 	// input buffer that we'll use to copy data from the host into.
 	if (!VST_ensure_cuda_ready(buf)) { return false; }
-	printf("XXX VST_cuda_optimize_symmetric_trackers(): Entered\n");	
 	
 	// Copy the input image from host memory into the GPU buffer.
 	size_t imgsize = buf.nx * buf.ny * sizeof(float);
@@ -751,7 +730,6 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
 	// the input buffer and editing the positions in place.
 	// Synchronize the threads when we are done so we know that 
 	// they finish before we copy the memory back.
-	printf("XXX VST_cuda_optimize_symmetric_trackers(): Calling kernel\n");	
 #ifdef	USE_TEXTURE
 	VST_cuda_symmetric_opt_kernel<<< g_grid, g_threads >>>(g_cuda_fromhost_array,
 					buf.nx, buf.ny,
@@ -761,14 +739,12 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
 					buf.nx, buf.ny,
 					gpu_ti, num_to_optimize);
 #endif
-	printf("XXX VST_cuda_optimize_symmetric_trackers(): Synchronizing threads\n");	
 	if (cudaThreadSynchronize() != cudaSuccess) {
 		fprintf(stderr, "VST_cuda_optimize_symmetric_trackers(): Could not synchronize threads\n");
 		return false;
 	}
 
 	// Copy the tracker info back from the GPU to the host memory.
-	printf("XXX VST_cuda_optimize_symmetric_trackers(): Copying memory back\n");	
 	if (cudaMemcpy(ti, gpu_ti, tkrsize, cudaMemcpyDeviceToHost) != cudaSuccess) {
 		fprintf(stderr, "VST_cuda_optimize_symmetric_trackers(): Could not copy memory back to host\n");
 		cudaFree(gpu_ti);
@@ -777,7 +753,6 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
 	}
 	
 	// Copy the positions and fitnesses back into the trackers.
-	printf("XXX VST_cuda_optimize_symmetric_trackers(): Filling in tracker info\n");	
 	for (loop = tkrs.begin(), i = 0; i < (int)(num_to_optimize); loop++, i++) {
 		spot_tracker_XY *t = (*loop)->xytracker();
 		t->set_location(ti[i].x, ti[i].y);
@@ -785,12 +760,10 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
 	}
 		
 	// Free the array of tracker info on the GPU and host sides.
-	printf("XXX VST_cuda_optimize_symmetric_trackers(): Deleting memory\n");	
 	cudaFree(gpu_ti); gpu_ti = NULL;
 	delete [] ti; ti = NULL;
 
 	// Done!
-	printf("XXX VST_cuda_optimize_symmetric_trackers(): Finished\n");	
 	return true;
 }
 
@@ -1029,8 +1002,6 @@ bool VST_cuda_check_bright_lost_symmetric_trackers(const VST_cuda_image_buffer &
 	// Determine whether each tracker is lost by looking at the minimum of
 	// the maxima around the rings and comparing it to the lost-tracking
 	// parameter.
-	//printf("XXX Checking %d tkrs, %d radii, %d points for lost\n", (int)(num_to_optimize),
-	//			num_radii, total_points);
 	for (loop = tkrs.begin(), i = 0; i < (int)(num_to_optimize); loop++, i++) {
 		float min_val = 1e20f;
 		int r;
@@ -1052,7 +1023,6 @@ bool VST_cuda_check_bright_lost_symmetric_trackers(const VST_cuda_image_buffer &
 		bool am_lost = false;
         if ((*loop)->xytracker()->get_fitness() * scale_factor < min_val) {
 			am_lost = true;
-			//printf("XXX Lost with min_val = %g\n", min_val);
 		}
 		(*loop)->lost(am_lost);
 	}
