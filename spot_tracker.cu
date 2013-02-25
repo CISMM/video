@@ -47,7 +47,7 @@ static dim3         g_grid;         // Computed to cover array (slightly larger 
 static bool VST_ensure_cuda_ready(const VST_cuda_image_buffer &inbuf)
 {
   static bool initialized = false;	// Have we initialized yet?
-  static bool okay = false;			// Did the initialization work?
+  static bool okay = false;		// Did the initialization work?
   if (!initialized) {
     // Whether this works or not, we'll be initialized.
     initialized = true;
@@ -509,6 +509,7 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
   int lattice = blockDim.x;
   if (blockDim.y != blockDim.x) { return; }
   if (lattice > MAX_LATTICE) { return; }
+  //if ( (my_x >= lattice) || (my_y >= lattice) ) { return; } // XXXXX
 
   // This is shared memory among the threads in a block that stores the
   // position offset for each group member and the fitness that was
@@ -532,7 +533,6 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 
   // Do the whole optimization here, checking with smaller and smaller
   // steps until we reach the accuracy requested.
-  {
 	// Get local aliases for the passed-in variables we need to use.    
 	CUDA_Tracker_Info &t = tkrs[tkr_id];
 	const float &accuracy = t.pixel_accuracy;
@@ -647,7 +647,6 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 		syncthreads();
 
 	} while (!done);	  
-  }
 }
 
 // Optimize the passed-in list of symmetric XY trackers based on the
@@ -692,6 +691,10 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
 	// parameters associated with each tracker along with its X and Y positions;
 	// the kernel will replace the X and Y locations, which are then copied back
 	// into the trackers.
+	if (num_to_optimize > tkrs.size()) {
+		fprintf(stderr, "VST_cuda_optimize_symmetric_trackers(): Not enough tracker for request\n");
+		return false;
+	}
 	CUDA_Tracker_Info *ti = new CUDA_Tracker_Info[tkrs.size()];
 	if (ti == NULL) {
 		fprintf(stderr, "VST_cuda_optimize_symmetric_trackers(): Out of memory\n");
@@ -700,11 +703,10 @@ bool VST_cuda_optimize_symmetric_trackers(const VST_cuda_image_buffer &buf,
 	int i;
 	std::list<Spot_Information *>::iterator  loop;
 	for (loop = tkrs.begin(), i = 0; i < (int)(num_to_optimize); loop++, i++) {
-		spot_tracker_XY *t = (*loop)->xytracker();
+		const spot_tracker_XY *t = (*loop)->xytracker();
 		ti[i].radius = static_cast<float>(t->get_radius());
 		ti[i].sample_separation = static_cast<float>(t->get_sample_separation());
 		ti[i].pixel_accuracy = static_cast<float>(t->get_pixel_accuracy());
-		printf(" XXX Pixel accuracy = %g\n", ti[i].pixel_accuracy);
 		ti[i].x = static_cast<float>(t->get_x());
 		ti[i].y = static_cast<float>(t->get_y());
 		ti[i].lost = (*loop)->lost();
