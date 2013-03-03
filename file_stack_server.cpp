@@ -11,7 +11,7 @@
   #define QuantumLeap
   // When statically linking with ImageMagick, you need to define _LIB here or
   // in the preprocessor so it knows to link correctly.
-  // Then you also need to link with wsock32.lib.
+  // Then you also need to link with wsock32.lib on Windows.
   #define _LIB
   #include <magick/api.h>
 #endif
@@ -27,6 +27,51 @@ using namespace std;
 
 // This is to ensure that we only call InitializeMagick once.
 bool file_stack_server::ds_majickInitialized = false;
+
+// This routine will open, read, and discard the image from the file
+// whose name is passed in.  Its purpose is to pull the file into the
+// operating system's memory cache so that when it is actually needed
+// it will be immediately available.
+// This routine operates in a separate thread and in a non-blocking
+// manner so that it does not slow down the main process (unless it
+// competes for disk bandwidth).
+// To make this thread prefetch a file, change the string pointed to
+// in its userdata to a new name.
+static void prefetch_thread_func(vrpn_ThreadData &threadData)
+{
+  string *fileName = static_cast<string *>(threadData.pvUD);
+
+  // Record the original file name.
+  string oldFileName = *fileName;
+
+  // Whenever the new name becomes not the same as the last name,
+  // prefetch the file.  Sleep a little between tests to avoid
+  // eating an entire CPU in busy-wait.
+  do {
+    if (oldFileName != *fileName) {
+      oldFileName = *fileName;
+#if !defined(VIDEO_NO_IMAGEMAGICK)
+      ExceptionInfo   exception;
+      Image           *image;
+      ImageInfo       *image_info;
+
+      //Initialize the image info structure and read an image.
+      GetExceptionInfo(&exception);
+      image_info=CloneImageInfo((ImageInfo *) NULL);
+      (void) strcpy(image_info->filename,oldFileName.c_str());
+
+      image=ReadImage(image_info,&exception);
+      if (image != (Image *) NULL) {
+        DestroyImageInfo(image_info);
+        DestroyImageList(image);
+      }
+
+#endif
+    } else {
+      vrpn_SleepMsecs(1);
+    }
+  } while (true);
+}
 
 file_stack_server::file_stack_server(const char *filename, const char *magickfilesdir) :
 d_buffer(NULL),
@@ -64,6 +109,19 @@ d_listOfImages(NULL)
     return;
   }
 
+  // Start the prefetch thread
+  vrpn_ThreadData td;
+  td.pvUD = &d_prefetchName;
+  d_prefetchThread = new vrpn_Thread(prefetch_thread_func, td);
+  if (d_prefetchThread == NULL) {
+    fprintf(stderr,"file_stack_server::file_stack_server(): Can't create prefetch thread\n");
+    return;
+  }
+  if (!d_prefetchThread->go()) {
+    fprintf(stderr,"file_stack_server::file_stack_server(): Can't run prefetch thread\n");
+    return;
+  }
+
   // Everything opened okay.
   _minX = _minY = 0;
   _maxX = d_xFileSize-1;
@@ -77,6 +135,11 @@ d_listOfImages(NULL)
 
 file_stack_server::~file_stack_server(void)
 {
+  // Stop the prefetch thread, if there is one
+  if (d_prefetchThread) {
+    d_prefetchThread->kill();
+  }
+
   // Free the space taken by the in-memory image copy (if allocated)
   if (d_buffer) {
     delete [] d_buffer;
@@ -84,7 +147,6 @@ file_stack_server::~file_stack_server(void)
   }
 
 #if !defined(VIDEO_NO_IMAGEMAGICK)
-
   // If we have a multi-layer image open, then destroy it.
   Image *image = static_cast<Image *>(d_listOfImages);
   if (image != NULL) {
@@ -242,12 +304,26 @@ bool  file_stack_server::read_image_from_file(const string filename)
 #endif
 }
 
+// Tell the prefetch thread that it is time to grab another image.
+// If told the same image twice, won't re-read.
+void  file_stack_server::prefetch_image_from_file(const string filename)
+{
+#if !defined(VIDEO_NO_IMAGEMAGICK)
+  d_prefetchName = filename;
+#else
+  fprintf(stderr, "file_stack_server::prefetch_image_from_file(): ImageMagick not compiled in\n");
+#endif
+}
+
 //*** Note: This routine is complicated by the fact that some images (TIFF files
 // in particular) can have more than one actual image in them.  In this case, there
 // is an additional side effect that the d_listOfImages variable holds a pointer
 // to an already-opened image when we're not at the end of the stack in that
 // one image.  In this case, we step forward in the stack for that image rather
 // than going to the next image in the file list.
+// It is made a little more complicated because we attempt to prefetch the next
+// file in the series each time, so it will be in an in-memory buffer when it
+// is needed.
 bool  file_stack_server::read_image_to_memory(unsigned minX, unsigned maxX,
 							unsigned minY, unsigned maxY,
 							double exposure_time_millisecs)
@@ -304,6 +380,11 @@ bool  file_stack_server::read_image_to_memory(unsigned minX, unsigned maxX,
   // next file name.  Otherwise, go to the next file name.
   if (d_listOfImages == NULL) {
     d_whichFile++;
+  }
+
+  // Try and prefetch the new file
+  if (d_whichFile != d_fileNames.end()) {
+    prefetch_image_from_file(*d_whichFile);
   }
 
   // Okay, we got a new frame!
