@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v07.05</title>
+<title>Video Spot Tracker v07.07</title>
 
-<h1>Video Spot Tracker version 07.05</h1>
+<h1>Video Spot Tracker version 07.07</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots (particles) in an <a href="http://ffmpeg.org/">FFMPEG</a>-compatible 
@@ -428,6 +428,25 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 7.07:</h3>
+<ul>
+  <li>Added CUDA acceleration to the lost-tracking detection for brightfield tracking 
+    with symmetric trackers. This speeds up the tracking considerably when you 
+    are looking for lost trackers.</li>
+  <li>Fixed a bug in lost-tracking code where the wrong equation was being used 
+    to determine how many samples to do around a circle. The bug seems to have 
+    been introduced after version 07.03. If you're using lost-tracking detection, 
+    you'll want to upgrade. It will be slower than the old version (if not using 
+    CUDA), but it will be testing all directions rather than only a few of them.</li>
+  <li>Fixed a bug with how prediction was implemented.</li>
+  <li>Fixed several bugs with storing compressed video while doing tracking. Picking 
+    and moving trackers now works correctly. The whole region around the motion 
+    of a bead is now wtored, rather than just a region around the final position. 
+    Now stores an entire frame whenever a bead becomes lost, so the replay will 
+    still find that it is lost. Fixed replay from stored files so that it does 
+    not skip the first frame.</li>
+</ul>
+<h3></h3>
 <h3>Version 7.05:</h3>
 <ul>
   <li>Fixed a bug where the brightfield autofind code was not using the brightfield 
