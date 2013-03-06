@@ -644,8 +644,9 @@ endif()
 # Install VRPN
 install (PROGRAMS "/usr/local/bin/vrpn_server" DESTINATION .)
 install (FILES "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/vrpn.cfg" DESTINATION .)
-execute_process (COMMAND sudo chown root ${CMAKE_INSTALL_PREFIX}/vrpn_server)
-execute_process (COMMAND sudo chmod 4755 ${CMAKE_INSTALL_PREFIX}/vrpn_server)
+# Grant root permission to vrpn_server, so no need to 'sudo' to launch ludl stage. But it conflicts with flycap.
+#execute_process (COMMAND sudo chown root ${CMAKE_INSTALL_PREFIX}/vrpn_server)
+#execute_process (COMMAND sudo chmod 4755 ${CMAKE_INSTALL_PREFIX}/vrpn_server)
 # Install vrpnLogToMatalb
 install (PROGRAMS "/common1/nanowork/build/3DFM/toMatlab/pc_linux64/vrpnLogToMatlab" DESTINATION .)
 # Intsll Well_Layout
