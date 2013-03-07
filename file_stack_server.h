@@ -68,7 +68,10 @@ protected:
   unsigned		      d_yFileSize;	  //< Number of pixels in Y in the files
 
   bool read_image_from_file(const std::string filename);
-
+  void prefetch_image_from_file(const std::string filename);
+  std::string                 d_prefetchName;     //< Name of the next file to prefetch
+  vrpn_Thread                 *d_prefetchThread;  //< Thread that prefetches files from disk
+  
   static bool ds_majickInitialized;		  //< Has ImageMagick been initialized?
 };
 

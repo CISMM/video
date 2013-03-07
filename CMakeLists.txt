@@ -628,8 +628,8 @@ TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 )
 if (VIDEO_BUILD_PANOPTES)
 set (PNERVE_MAJOR_VERSION 1)
-set (PNERVE_MINOR_VERSION 2)
-set (PNERVE_PATCH_VERSION 2)
+set (PNERVE_MINOR_VERSION 4)
+set (PNERVE_PATCH_VERSION 0)
 
 set (CMAKE_INSTALL_PREFIX "/common1/nanowork/release/PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}" CACHE PATH
                     "Install path prefix, prepended onto install directories"
@@ -647,8 +647,9 @@ endif()
 # Install VRPN
 install (PROGRAMS "/usr/local/bin/vrpn_server" DESTINATION .)
 install (FILES "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/vrpn.cfg" DESTINATION .)
-execute_process (COMMAND sudo chown root ${CMAKE_INSTALL_PREFIX}/vrpn_server)
-execute_process (COMMAND sudo chmod 4755 ${CMAKE_INSTALL_PREFIX}/vrpn_server)
+# Grant root permission to vrpn_server, so no need to 'sudo' to launch ludl stage. But it conflicts with flycap.
+#execute_process (COMMAND sudo chown root ${CMAKE_INSTALL_PREFIX}/vrpn_server)
+#execute_process (COMMAND sudo chmod 4755 ${CMAKE_INSTALL_PREFIX}/vrpn_server)
 # Install vrpnLogToMatalb
 install (PROGRAMS "/common1/nanowork/build/3DFM/toMatlab/pc_linux64/vrpnLogToMatlab" DESTINATION .)
 # Intsll Well_Layout
