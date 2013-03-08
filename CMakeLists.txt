@@ -626,7 +626,7 @@ TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 if (VIDEO_BUILD_PANOPTES)
 set (PNERVE_MAJOR_VERSION 1) 
 set (PNERVE_MINOR_VERSION 4) 
-set (PNERVE_PATCH_VERSION 2) 
+set (PNERVE_PATCH_VERSION 1) 
 
 #set (CMAKE_INSTALL_PREFIX "/common1/nanowork/release/PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}" CACHE PATH
 #                    "Install path prefix, prepended onto install directories"
@@ -651,6 +651,8 @@ install (FILES "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/vrpn.cfg" DESTIN
 install (PROGRAMS "/common1/nanowork/build/3DFM/toMatlab/pc_linux64/vrpnLogToMatlab" DESTINATION .)
 # Intsll Well_Layout
 install (PROGRAMS "/common1/nanowork/build/Panoptes/Well_Layout_GUI/Well_Layout" DESTINATION .) 
+# Intsll PanoptesView 
+install (PROGRAMS "/common1/nanowork/src/Panoptes/PanoptesView/PanoptesView" DESTINATION .) 
 # Install ludle_server script
 install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/ludl_server" DESTINATION .)
 # Install mpi_hosts
