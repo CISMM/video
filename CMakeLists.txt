@@ -624,13 +624,13 @@ TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	${Panoptes_LIBRARY}
 )
 if (VIDEO_BUILD_PANOPTES)
-set (PNERVE_MAJOR_VERSION 1)
-set (PNERVE_MINOR_VERSION 4)
-set (PNERVE_PATCH_VERSION 0)
+set (PNERVE_MAJOR_VERSION 1) 
+set (PNERVE_MINOR_VERSION 4) 
+set (PNERVE_PATCH_VERSION 2) 
 
-set (CMAKE_INSTALL_PREFIX "/common1/nanowork/release/PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}" CACHE PATH
-                    "Install path prefix, prepended onto install directories"
-                    FORCE)
+#set (CMAKE_INSTALL_PREFIX "/common1/nanowork/release/PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}" CACHE PATH
+#                    "Install path prefix, prepended onto install directories"
+#                    force)
 
 # Install PanotpicNerve
 INSTALL(TARGETS PanopticNerve_LEWOS DESTINATION . )
