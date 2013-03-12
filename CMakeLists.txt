@@ -614,6 +614,8 @@ ADD_EXECUTABLE(PanopticNerve_LEWOS
 	PanopticNerve_LEWOS/ImageAnalyzer.cpp
 	PanopticNerve_LEWOS/NerveTest.cpp
 	PanopticNerve_LEWOS/vector3.cpp
+        PanopticNerve_LEWOS/calibration.cpp
+        thread.cpp
 )
 TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	base_camera_server_library
