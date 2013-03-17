@@ -740,7 +740,7 @@ static bool fill_and_send_video_region(unsigned minX, unsigned minY, unsigned ma
     size_t              new_size = g_camera->get_num_columns() * g_camera->get_num_rows();
 
     // Allocate a region that can hold the whole camera image if
-    // the image size is different from what we had before (probebly
+    // the image size is different from what we had before (probably
     // only happens the first time we're called).
     if (image_size != new_size) {
       if (image_16bit != NULL) {

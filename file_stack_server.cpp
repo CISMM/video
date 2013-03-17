@@ -212,7 +212,7 @@ bool  file_stack_server::read_image_from_file(const string filename)
 #ifdef _WIN32
   ViewInfo	  *vinfo;
 #else
-  CacheView	  *vinfo;
+  CacheView	*vinfo;
 #endif
 
   //Initialize the image info structure and read an image.
