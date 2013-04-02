@@ -628,7 +628,7 @@ TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 if (VIDEO_BUILD_PANOPTES)
 set (PNERVE_MAJOR_VERSION 1) 
 set (PNERVE_MINOR_VERSION 4) 
-set (PNERVE_PATCH_VERSION 1) 
+set (PNERVE_PATCH_VERSION 5) 
 
 #set (CMAKE_INSTALL_PREFIX "/common1/nanowork/release/PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}" CACHE PATH
 #                    "Install path prefix, prepended onto install directories"
@@ -720,11 +720,10 @@ install (CODE "
 execute_process (COMMAND tar -zcvf ${CMAKE_INSTALL_PREFIX}/../PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}.tar.gz -C ${CMAKE_INSTALL_PREFIX}/.. PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}) 
 ")
 
+include_directories("/usr/include/libusb-1.0")
+
 endif(VIDEO_BUILD_PANOPTES)
 
-if(UNIX)
-include_directories("/usr/include/libusb-1.0")
-endif(UNIX)
 
 if (VIDEO_PANOPTES_MPI)
     TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
@@ -820,7 +819,6 @@ if (VIDEO_USE_IMAGEMAGICK)
 	${ImageMagick_MagickCore_INCLUDE_DIR}
 endif (VIDEO_USE_IMAGEMAGICK)
 )
-
 #-----------------------------------------------------------------------------
 # Applications that need more than one file or nonstandard things.
 if (VIDEO_BUILD_APPLICATIONS)
