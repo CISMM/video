@@ -297,12 +297,11 @@ ADD_LIBRARY (base_camera_server_library
 )
 set_property(TARGET base_camera_server_library PROPERTY PUBLIC_HEADER ${BCS_PUBLIC_HEADERS})
 
-if(NOT VIDEO_BUILD_PANOPTES)
+if(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 install(TARGETS base_camera_server_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
-
-endif(NOT VIDEO_BUILD_PANOPTES)
+endif (NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 if (VIDEO_USE_IMAGEMAGICK)
 	set(FS_SOURCES file_stack_server.cpp file_list.cpp)
 	set(FS_PUBLIC_HEADERS file_stack_server.h file_list.h)
@@ -311,11 +310,11 @@ if (VIDEO_USE_IMAGEMAGICK)
 		${FS_SOURCES} ${FS_PUBLIC_HEADERS}
 	)
 	set_property(TARGET file_stack_library PROPERTY PUBLIC_HEADER ${FS_PUBLIC_HEADERS})
-        if(NOT VIDEO_BUILD_PANOPTES)
+	if(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 	install(TARGETS file_stack_library
 		ARCHIVE DESTINATION lib
 		PUBLIC_HEADER DESTINATION include)
-        endif(NOT VIDEO_BUILD_PANOPTES)
+	endif (NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 endif (VIDEO_USE_IMAGEMAGICK)
 
 if (VIDEO_USE_COOKE)
@@ -411,9 +410,11 @@ if (VIDEO_USE_FFMPEG)
 		${FFMPEG_SOURCES} ${FFMPEG_PUBLIC_HEADERS}
 	)
 	set_property(TARGET ffmpeg_video_library PROPERTY PUBLIC_HEADER ${FFMPEG_PUBLIC_HEADERS})
+	if (NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 	install(TARGETS ffmpeg_video_library
 		ARCHIVE DESTINATION lib
 		PUBLIC_HEADER DESTINATION include)
+	endif (NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 endif (VIDEO_USE_FFMPEG)
 
 # XXX NIKON
@@ -570,13 +571,13 @@ ADD_LIBRARY (spot_tracker_library
 )
 set_property(TARGET spot_tracker_library PROPERTY PUBLIC_HEADER ${STL_PUBLIC_HEADERS})
 
-if(NOT VIDEO_BUILD_PANOPTES)
+if(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 
 install(TARGETS spot_tracker_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
 
-endif(NOT VIDEO_BUILD_PANOPTES)
+endif(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 #-----------------------------------------------------------------------------
 # STOCC random-number library
 set(STC_SOURCES stocc_random_number_generator/mersenne.cpp
@@ -588,11 +589,11 @@ ADD_LIBRARY (stocc_random_number_generator_library
 )
 set_property(TARGET stocc_random_number_generator_library
 			PROPERTY PUBLIC_HEADER ${STC_PUBLIC_HEADERS})
-if(NOT VIDEO_BUILD_PANOPTES)
+if(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 install(TARGETS stocc_random_number_generator_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
-endif(NOT VIDEO_BUILD_PANOPTES)
+endif(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 
 
 if (VIDEO_BUILD_PANOPTES)
@@ -806,9 +807,11 @@ ADD_LIBRARY (Tcl_Linkvar
 	${LV_SOURCES} ${LV_PUBLIC_HEADERS}
 )
 set_property(TARGET Tcl_Linkvar PROPERTY PUBLIC_HEADER ${LV_PUBLIC_HEADERS})
+if (NOT APPLE)
 install(TARGETS Tcl_Linkvar
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
+endif (NOT APPLE)
 endif (VIDEO_BUILD_APPLICATIONS)
 
 #-----------------------------------------------------------------------------
