@@ -104,7 +104,8 @@ if (WIN32)
 	)
 else(WIN32)
 	set (PTHREAD_LIBRARY pthread)
-	set (ImageMagick_Needed_Libs MagickCore MagickWand)
+        # tiff shouldn't be linked separately, but ImageMagick has troubing linking static tiff delegate.
+	set (ImageMagick_Needed_Libs MagickCore MagickWand tiff)
 endif (WIN32)
 
 FIND_PACKAGE(CUDA)
@@ -1015,13 +1016,13 @@ if (VIDEO_USE_CUDA)
     # Comment out this section if you don't want spot_tracker_CUDA in the installer
     #--------------------------------------------------------------------------
     # configure_files makes CMAKE variables can be seen in the script
-    INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
-    CONFIGURE_FILE(
-      ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
-      ${CMAKE_BINARY_DIR}/mac_installer.cmake 
-      @ONLY IMMEDIATE
-    )
-    INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
+    #INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
+    #CONFIGURE_FILE(
+    #  ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
+    #  ${CMAKE_BINARY_DIR}/mac_installer.cmake 
+    #  @ONLY IMMEDIATE
+    #)
+    #INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
     #--------------------------------------------------------------------------
   ENDIF(NOT APPLE)
 
@@ -1169,15 +1170,16 @@ if (VIDEO_USE_CUDA)
     FILE(COPY CUDA_video_filter.tcl russ_widgets.tcl DESTINATION CUDA_video_filter.app/Contents/MacOS)
     INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
 
-    # Comment out this section if you don't want spot_tracker in the installer
+    # Comment out this section if you don't want CUDA_video_filter in the installer
     #--------------------------------------------------------------------------
     # configure_files makes CMAKE variables can be seen in the script
-    INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
-    CONFIGURE_FILE(
-      ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
-      ${CMAKE_BINARY_DIR}/mac_installer.cmake 
-      @ONLY IMMEDIATE
-    )
+    #INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
+    #CONFIGURE_FILE(
+    #  ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
+    #  ${CMAKE_BINARY_DIR}/mac_installer.cmake 
+    #  @ONLY IMMEDIATE
+    #)
+    #--------------------------------------------------------------------------
     INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
   ENDIF(NOT APPLE)
 
@@ -1302,19 +1304,19 @@ ELSE(NOT APPLE)
   # Comment out this section if you don't want video_optimizer in the installer
   #--------------------------------------------------------------------------
   # configure_files makes CMAKE variables can be seen in the script
-  INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
-  CONFIGURE_FILE(
-    ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
-    ${CMAKE_BINARY_DIR}/mac_installer.cmake 
-    @ONLY IMMEDIATE
-  )
-  INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
+  #INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
+  #CONFIGURE_FILE(
+  #  ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
+  #  ${CMAKE_BINARY_DIR}/mac_installer.cmake 
+  #  @ONLY IMMEDIATE
+  #)
+  #INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
   #--------------------------------------------------------------------------
 ENDIF(NOT APPLE)
 
-else()
+ELSE()
   ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp thread.cpp)
-endif()
+ENDIF() # Match cismm_video_optimizer
 
   TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
 	stocc_random_number_generator_library
