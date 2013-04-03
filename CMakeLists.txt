@@ -61,6 +61,7 @@ FIND_PACKAGE(quatlib REQUIRED)	# Sets QUATLIB_INCLUDE_DIR and QUATLIB_LIBRARIES
 FIND_PACKAGE(VRPN REQUIRED)
 FIND_PACKAGE(OpenGL REQUIRED)
 
+IF (WIN32)
 # Try to find NSRG Buildtime (NSRGBUILD) to set all we need for ImageMagic,
 # TCL, and Glut.  If not, then find the individual packages.
 FIND_PACKAGE(NSRGBUILD)
@@ -71,7 +72,7 @@ if (NSRGBUILD_FOUND)
 		${GLUI_INCLUDE_PATH}
 	)
 else (NSRGBUILD_FOUND)
-	FIND_PACKAGE(ImageMagick COMPONENTS MagickCore)	# Do we have ImageMagick?
+  FIND_PACKAGE(ImageMagick COMPONENTS MagickCore)	# Do we have ImageMagick?
   if (VIDEO_BUILD_APPLICATIONS)
 	FIND_PACKAGE(TCL REQUIRED)
 	FIND_PACKAGE(GLUT REQUIRED)
@@ -80,7 +81,16 @@ else (NSRGBUILD_FOUND)
 	FIND_PACKAGE(GLUT)
   endif (VIDEO_BUILD_APPLICATIONS)
 endif (NSRGBUILD_FOUND)
-
+ELSE (WIN32)
+  FIND_PACKAGE(ImageMagick COMPONENTS MagickCore)	# Do we have ImageMagick?
+  if (VIDEO_BUILD_APPLICATIONS)
+	FIND_PACKAGE(TCL REQUIRED)
+	FIND_PACKAGE(GLUT REQUIRED)
+  else (VIDEO_BUILD_APPLICATIONS)
+	FIND_PACKAGE(TCL)
+	FIND_PACKAGE(GLUT)
+  endif (VIDEO_BUILD_APPLICATIONS)
+ENDif (WIN32)
 # See if we have OpenMP on this architecture.  If so, turn it on.
 FIND_PACKAGE(OpenMP)
 if (OPENMP_FOUND)
@@ -1183,7 +1193,7 @@ if (VIDEO_USE_CUDA)
     #  @ONLY IMMEDIATE
     #)
     #--------------------------------------------------------------------------
-    INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
+    #INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
   ENDIF(NOT APPLE)
 
 endif (VIDEO_USE_CUDA)

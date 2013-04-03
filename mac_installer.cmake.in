@@ -1,5 +1,6 @@
 function(gp_resolved_file_type_override resolved_file type_var)
-  if(resolved_file MATCHES "^(/usr/X11/lib/)")
+  if(resolved_file MATCHES "^(/Library/Frameworks/)")
+        message("resolving ${resolved_file} as system")
         set(${type_var} "system" PARENT_SCOPE)
   endif()
 endfunction()

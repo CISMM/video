@@ -16,8 +16,10 @@
 #include <windows.h>
 #endif
 #ifdef __APPLE__
-#include <OPENGL/gl.h>
-#include <GLUT/glut.h>
+#include <GL/gl.h>
+#include <GL/glut.h>
+//#include <OPENGL/gl.h>
+//#include <GLUT/glut.h>
 #else
 #include <GL/gl.h>
 #include <GL/glut.h>
