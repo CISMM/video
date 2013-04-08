@@ -922,6 +922,7 @@ install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/video_spot_tracker.tcl
 		${CMAKE_CURRENT_SOURCE_DIR}/russ_widgets.tcl
 	DESTINATION bin)
 ELSE(NOT APPLE)
+SET (CPACK_PACKAGE_FILE_NAME "Video_spot_tracker_v07.07_Intel_Mac_Universal")
 FILE(COPY video_spot_tracker.tcl russ_widgets.tcl DESTINATION video_spot_tracker.app/Contents/MacOS)
 
 # Comment out this section if you don't want spot_tracker in the installer
