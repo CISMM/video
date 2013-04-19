@@ -23,6 +23,16 @@ void VRPN_Imager_camera_server::handle_description_message(void * userdata, cons
 {
   VRPN_Imager_camera_server *me = static_cast<VRPN_Imager_camera_server *>(userdata);
 
+  //---------------------------------------------------------------------
+  // If we've already gotten a description message, and the resolution is
+  // the same, then we don't do anything -- this keeps us from clearing the
+  // back buffer when we get an new region description.
+  if ( (me->_gotResolution) &&
+	(me->_num_rows == me->_imager->nRows()) &&
+	(me->_num_columns == me->_imager->nCols()) ) {
+    return;
+  }
+
   me->_num_rows = me->_imager->nRows();
   me->_num_columns = me->_imager->nCols();
   me->_minX = 0;

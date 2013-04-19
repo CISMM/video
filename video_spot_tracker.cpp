@@ -16,8 +16,10 @@
 #include <windows.h>
 #endif
 #ifdef __APPLE__
-#include <OPENGL/gl.h>
-#include <GLUT/glut.h>
+#include <GL/gl.h>
+#include <GL/glut.h>
+//#include <OPENGL/gl.h>
+//#include <GLUT/glut.h>
 #else
 #include <GL/gl.h>
 #include <GL/glut.h>
@@ -740,7 +742,7 @@ static bool fill_and_send_video_region(unsigned minX, unsigned minY, unsigned ma
     size_t              new_size = g_camera->get_num_columns() * g_camera->get_num_rows();
 
     // Allocate a region that can hold the whole camera image if
-    // the image size is different from what we had before (probebly
+    // the image size is different from what we had before (probably
     // only happens the first time we're called).
     if (image_size != new_size) {
       if (image_16bit != NULL) {
@@ -3419,6 +3421,28 @@ void Usage(const char *progname)
 
 int main(int argc, char *argv[])
 {
+
+#ifdef __APPLE__ 
+  // Check if this is an Intel Mac. If not, print out a dialog and exit.
+  FILE* pipe = popen("uname -m", "r");
+  if (!pipe) return 0;
+  char buffer[128];
+  std::string result = "";
+  while(!feof(pipe)) {
+    if(fgets(buffer, 128, pipe) != NULL)
+      result += buffer;
+  }
+  pclose(pipe);
+
+  std::string ppc = "ppc";
+
+  if (result.find(ppc) != std::string::npos)
+  {
+     system("python -c \"import tkMessageBox;tkMessageBox.showinfo('PowerPC Detected','This is not an Intel Mac. Video_spot_tracker runs only on Intel Macs.')\"");
+     exit(0);
+  }
+#endif
+
   // Set up exit handler to make sure we clean things up no matter
   // how we are quit.  We hope that we exit in a good way and so
   // cleanup() gets called, but if not then we do a dirty exit.

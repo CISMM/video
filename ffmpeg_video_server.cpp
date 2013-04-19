@@ -139,7 +139,7 @@ bool ffmpeg_video_server::open_video_file(void)
         m_pCodecCtx->width, m_pCodecCtx->height);
 
     // Initialize our packet
-    av_init_packet(&m_packet);
+    av_new_packet(&m_packet, numBytes);
 
     return true;
 }
@@ -237,12 +237,12 @@ bool ffmpeg_video_server::read_image_to_memory(unsigned int minX, unsigned int m
                         return false;
                     }
                     //printf("dbg: Converter initialized\n");
-                }
+              }
 
-                //printf("dbg: Frame finished\n");
-                sws_scale(m_img_convert_ctx, m_pFrame->data, m_pFrame->linesize, 0,
-                          m_pCodecCtx->height, m_pFrameRGB->data, m_pFrameRGB->linesize);
-                //printf("dbg: Scaling done\n");
+              //printf("dbg: Frame finished\n");
+              sws_scale(m_img_convert_ctx, m_pFrame->data, m_pFrame->linesize, 0,
+                        m_pCodecCtx->height, m_pFrameRGB->data, m_pFrameRGB->linesize);
+              //printf("dbg: Scaling done\n");
             }
         }
 

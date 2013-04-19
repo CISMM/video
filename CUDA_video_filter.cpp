@@ -23,6 +23,7 @@
 #include <GL/glut.h>
 #endif
 #include "controllable_video.h"
+#include "vrpn_FileConnection.h"
 
 using namespace std;
 

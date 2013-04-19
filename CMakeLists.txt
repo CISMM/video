@@ -61,6 +61,7 @@ FIND_PACKAGE(quatlib REQUIRED)	# Sets QUATLIB_INCLUDE_DIR and QUATLIB_LIBRARIES
 FIND_PACKAGE(VRPN REQUIRED)
 FIND_PACKAGE(OpenGL REQUIRED)
 
+IF (WIN32)
 # Try to find NSRG Buildtime (NSRGBUILD) to set all we need for ImageMagic,
 # TCL, and Glut.  If not, then find the individual packages.
 FIND_PACKAGE(NSRGBUILD)
@@ -71,7 +72,7 @@ if (NSRGBUILD_FOUND)
 		${GLUI_INCLUDE_PATH}
 	)
 else (NSRGBUILD_FOUND)
-	FIND_PACKAGE(ImageMagick COMPONENTS MagickCore)	# Do we have ImageMagick?
+  FIND_PACKAGE(ImageMagick COMPONENTS MagickCore)	# Do we have ImageMagick?
   if (VIDEO_BUILD_APPLICATIONS)
 	FIND_PACKAGE(TCL REQUIRED)
 	FIND_PACKAGE(GLUT REQUIRED)
@@ -80,7 +81,16 @@ else (NSRGBUILD_FOUND)
 	FIND_PACKAGE(GLUT)
   endif (VIDEO_BUILD_APPLICATIONS)
 endif (NSRGBUILD_FOUND)
-
+ELSE (WIN32)
+  FIND_PACKAGE(ImageMagick COMPONENTS MagickCore)	# Do we have ImageMagick?
+  if (VIDEO_BUILD_APPLICATIONS)
+	FIND_PACKAGE(TCL REQUIRED)
+	FIND_PACKAGE(GLUT REQUIRED)
+  else (VIDEO_BUILD_APPLICATIONS)
+	FIND_PACKAGE(TCL)
+	FIND_PACKAGE(GLUT)
+  endif (VIDEO_BUILD_APPLICATIONS)
+ENDif (WIN32)
 # See if we have OpenMP on this architecture.  If so, turn it on.
 FIND_PACKAGE(OpenMP)
 if (OPENMP_FOUND)
@@ -104,7 +114,8 @@ if (WIN32)
 	)
 else(WIN32)
 	set (PTHREAD_LIBRARY pthread)
-	set (ImageMagick_Needed_Libs MagickCore MagickWand)
+        # tiff shouldn't be linked separately, but ImageMagick has troubing linking static tiff delegate.
+	set (ImageMagick_Needed_Libs MagickCore MagickWand tiff)
 endif (WIN32)
 
 FIND_PACKAGE(CUDA)
@@ -296,12 +307,11 @@ ADD_LIBRARY (base_camera_server_library
 )
 set_property(TARGET base_camera_server_library PROPERTY PUBLIC_HEADER ${BCS_PUBLIC_HEADERS})
 
-if(NOT VIDEO_BUILD_PANOPTES)
+if(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 install(TARGETS base_camera_server_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
-
-endif(NOT VIDEO_BUILD_PANOPTES)
+endif (NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 if (VIDEO_USE_IMAGEMAGICK)
 	set(FS_SOURCES file_stack_server.cpp file_list.cpp)
 	set(FS_PUBLIC_HEADERS file_stack_server.h file_list.h)
@@ -310,11 +320,11 @@ if (VIDEO_USE_IMAGEMAGICK)
 		${FS_SOURCES} ${FS_PUBLIC_HEADERS}
 	)
 	set_property(TARGET file_stack_library PROPERTY PUBLIC_HEADER ${FS_PUBLIC_HEADERS})
-        if(NOT VIDEO_BUILD_PANOPTES)
+	if(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 	install(TARGETS file_stack_library
 		ARCHIVE DESTINATION lib
 		PUBLIC_HEADER DESTINATION include)
-        endif(NOT VIDEO_BUILD_PANOPTES)
+	endif (NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 endif (VIDEO_USE_IMAGEMAGICK)
 
 if (VIDEO_USE_COOKE)
@@ -410,9 +420,11 @@ if (VIDEO_USE_FFMPEG)
 		${FFMPEG_SOURCES} ${FFMPEG_PUBLIC_HEADERS}
 	)
 	set_property(TARGET ffmpeg_video_library PROPERTY PUBLIC_HEADER ${FFMPEG_PUBLIC_HEADERS})
+	if (NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 	install(TARGETS ffmpeg_video_library
 		ARCHIVE DESTINATION lib
 		PUBLIC_HEADER DESTINATION include)
+	endif (NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 endif (VIDEO_USE_FFMPEG)
 
 # XXX NIKON
@@ -569,13 +581,13 @@ ADD_LIBRARY (spot_tracker_library
 )
 set_property(TARGET spot_tracker_library PROPERTY PUBLIC_HEADER ${STL_PUBLIC_HEADERS})
 
-if(NOT VIDEO_BUILD_PANOPTES)
+if(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 
 install(TARGETS spot_tracker_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
 
-endif(NOT VIDEO_BUILD_PANOPTES)
+endif(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 #-----------------------------------------------------------------------------
 # STOCC random-number library
 set(STC_SOURCES stocc_random_number_generator/mersenne.cpp
@@ -587,11 +599,11 @@ ADD_LIBRARY (stocc_random_number_generator_library
 )
 set_property(TARGET stocc_random_number_generator_library
 			PROPERTY PUBLIC_HEADER ${STC_PUBLIC_HEADERS})
-if(NOT VIDEO_BUILD_PANOPTES)
+if(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 install(TARGETS stocc_random_number_generator_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
-endif(NOT VIDEO_BUILD_PANOPTES)
+endif(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 
 
 if (VIDEO_BUILD_PANOPTES)
@@ -615,7 +627,8 @@ ADD_EXECUTABLE(PanopticNerve_LEWOS
 	PanopticNerve_LEWOS/NerveTest.cpp
 	PanopticNerve_LEWOS/vector3.cpp
 	PanopticNerve_LEWOS/ZChaser.cpp
-	thread.cpp
+        PanopticNerve_LEWOS/calibration.cpp
+        thread.cpp
 )
 TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	base_camera_server_library
@@ -629,7 +642,7 @@ TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 if (VIDEO_BUILD_PANOPTES)
 set (PNERVE_MAJOR_VERSION 1) 
 set (PNERVE_MINOR_VERSION 4) 
-set (PNERVE_PATCH_VERSION 1) 
+set (PNERVE_PATCH_VERSION 5) 
 
 #set (CMAKE_INSTALL_PREFIX "/common1/nanowork/release/PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}" CACHE PATH
 #                    "Install path prefix, prepended onto install directories"
@@ -721,11 +734,10 @@ install (CODE "
 execute_process (COMMAND tar -zcvf ${CMAKE_INSTALL_PREFIX}/../PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}.tar.gz -C ${CMAKE_INSTALL_PREFIX}/.. PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}) 
 ")
 
+include_directories("/usr/include/libusb-1.0")
+
 endif(VIDEO_BUILD_PANOPTES)
 
-if(UNIX)
-include_directories("/usr/include/libusb-1.0")
-endif(UNIX)
 
 if (VIDEO_PANOPTES_MPI)
     TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
@@ -807,9 +819,11 @@ ADD_LIBRARY (Tcl_Linkvar
 	${LV_SOURCES} ${LV_PUBLIC_HEADERS}
 )
 set_property(TARGET Tcl_Linkvar PROPERTY PUBLIC_HEADER ${LV_PUBLIC_HEADERS})
+if (NOT APPLE)
 install(TARGETS Tcl_Linkvar
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
+endif (NOT APPLE)
 endif (VIDEO_BUILD_APPLICATIONS)
 
 #-----------------------------------------------------------------------------
@@ -821,7 +835,6 @@ if (VIDEO_USE_IMAGEMAGICK)
 	${ImageMagick_MagickCore_INCLUDE_DIR}
 endif (VIDEO_USE_IMAGEMAGICK)
 )
-
 #-----------------------------------------------------------------------------
 # Applications that need more than one file or nonstandard things.
 if (VIDEO_BUILD_APPLICATIONS)
@@ -911,6 +924,7 @@ install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/video_spot_tracker.tcl
 		${CMAKE_CURRENT_SOURCE_DIR}/russ_widgets.tcl
 	DESTINATION bin)
 ELSE(NOT APPLE)
+SET (CPACK_PACKAGE_FILE_NAME "Video_spot_tracker_v07.07_Intel_Mac_Universal")
 FILE(COPY video_spot_tracker.tcl russ_widgets.tcl DESTINATION video_spot_tracker.app/Contents/MacOS)
 
 # Comment out this section if you don't want spot_tracker in the installer
@@ -1018,13 +1032,13 @@ if (VIDEO_USE_CUDA)
     # Comment out this section if you don't want spot_tracker_CUDA in the installer
     #--------------------------------------------------------------------------
     # configure_files makes CMAKE variables can be seen in the script
-    INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
-    CONFIGURE_FILE(
-      ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
-      ${CMAKE_BINARY_DIR}/mac_installer.cmake 
-      @ONLY IMMEDIATE
-    )
-    INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
+    #INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
+    #CONFIGURE_FILE(
+    #  ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
+    #  ${CMAKE_BINARY_DIR}/mac_installer.cmake 
+    #  @ONLY IMMEDIATE
+    #)
+    #INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
     #--------------------------------------------------------------------------
   ENDIF(NOT APPLE)
 
@@ -1172,16 +1186,17 @@ if (VIDEO_USE_CUDA)
     FILE(COPY CUDA_video_filter.tcl russ_widgets.tcl DESTINATION CUDA_video_filter.app/Contents/MacOS)
     INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
 
-    # Comment out this section if you don't want spot_tracker in the installer
+    # Comment out this section if you don't want CUDA_video_filter in the installer
     #--------------------------------------------------------------------------
     # configure_files makes CMAKE variables can be seen in the script
-    INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
-    CONFIGURE_FILE(
-      ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
-      ${CMAKE_BINARY_DIR}/mac_installer.cmake 
-      @ONLY IMMEDIATE
-    )
-    INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
+    #INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
+    #CONFIGURE_FILE(
+    #  ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
+    #  ${CMAKE_BINARY_DIR}/mac_installer.cmake 
+    #  @ONLY IMMEDIATE
+    #)
+    #--------------------------------------------------------------------------
+    #INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
   ENDIF(NOT APPLE)
 
 endif (VIDEO_USE_CUDA)
@@ -1305,19 +1320,19 @@ ELSE(NOT APPLE)
   # Comment out this section if you don't want video_optimizer in the installer
   #--------------------------------------------------------------------------
   # configure_files makes CMAKE variables can be seen in the script
-  INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
-  CONFIGURE_FILE(
-    ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
-    ${CMAKE_BINARY_DIR}/mac_installer.cmake 
-    @ONLY IMMEDIATE
-  )
-  INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
+  #INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
+  #CONFIGURE_FILE(
+  #  ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
+  #  ${CMAKE_BINARY_DIR}/mac_installer.cmake 
+  #  @ONLY IMMEDIATE
+  #)
+  #INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
   #--------------------------------------------------------------------------
 ENDIF(NOT APPLE)
 
-else()
+ELSE()
   ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp thread.cpp)
-endif()
+ENDIF() # Match cismm_video_optimizer
 
   TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
 	stocc_random_number_generator_library

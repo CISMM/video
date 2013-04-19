@@ -209,10 +209,10 @@ bool  file_stack_server::read_image_from_file(const string filename)
   Image		  *image;
   ImageInfo       *image_info;
   PixelPacket	  *pixels;
-#ifdef _WIN32
-  ViewInfo	  *vinfo;
+#if (MagickLibVersion == 0x649)
+  ViewInfo	*vinfo;
 #else
-  CacheView	  *vinfo;
+  CacheView	*vinfo;
 #endif
 
   //Initialize the image info structure and read an image.
