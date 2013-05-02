@@ -627,7 +627,6 @@ ADD_EXECUTABLE(PanopticNerve_LEWOS
 	PanopticNerve_LEWOS/NerveTest.cpp
 	PanopticNerve_LEWOS/vector3.cpp
 	PanopticNerve_LEWOS/ZChaser.cpp
-        PanopticNerve_LEWOS/calibration.cpp
         thread.cpp
 )
 TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
