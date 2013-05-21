@@ -209,7 +209,7 @@ bool  file_stack_server::read_image_from_file(const string filename)
   Image		  *image;
   ImageInfo       *image_info;
   PixelPacket	  *pixels;
-#if (MagickLibVersion == 0x649)
+#if (MagickLibVersion <= 0x649)
   ViewInfo	*vinfo;
 #else
   CacheView	*vinfo;
