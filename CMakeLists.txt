@@ -641,11 +641,9 @@ TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 if (VIDEO_BUILD_PANOPTES)
 set (PNERVE_MAJOR_VERSION 1) 
 set (PNERVE_MINOR_VERSION 4) 
-set (PNERVE_PATCH_VERSION 5) 
+set (PNERVE_PATCH_VERSION 6) 
 
-#set (CMAKE_INSTALL_PREFIX "/common1/nanowork/release/PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}" CACHE PATH
-#                    "Install path prefix, prepended onto install directories"
-#                    force)
+set (CMAKE_INSTALL_PREFIX "/common1/nanowork/release/PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}")
 
 # Install PanotpicNerve
 INSTALL(TARGETS PanopticNerve_LEWOS DESTINATION . )
@@ -693,7 +691,7 @@ install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerv
 # Install 3dfm scripts
 install (CODE "
 message(\"Retrieving CVS repository\")
-set(ENV{CVSROOT} \":ext:nanowork@cvs.cs.unc.edu:/afs/cs.unc.edu/project/stm/src/CVS_repository\")
+set(ENV{CVSROOT} \":ext:taylorr@login.cs.unc.edu:/afs/cs.unc.edu/project/stm/src/CVS_repository\")
 set(ENV{CVS_RSH} ssh)
 execute_process(COMMAND cvs checkout 3dfmAnalysis)
 execute_process(COMMAND mkdir -p ${CMAKE_INSTALL_PREFIX}/scripts)
