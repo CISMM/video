@@ -222,18 +222,6 @@ multi_spot_image::multi_spot_image(std::vector<Spot>& s,
 		  }
 	  }
   }
-  
-  // Add zero-mean uniform noise to the image, with the specified width
-  for (i = _minx; i <= _maxx; i++) {
-    for (j = _miny; j <= _maxy; j++) {
-      if (find_index(i,j,index)) {
-        // This line is commented for testing because it affects the positions of points in images of different sizes.
-  	    //double unit_rand = (double)(rand()) / RAND_MAX;
-        // This line is commented because it uses the results of the previous line. 
-  	    //_image[index] += (unit_rand - 0.5) * 2 * noise;
-      }
-    }
-  }  
 }
 
 int main(int argc, char *argv[])
