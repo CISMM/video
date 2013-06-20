@@ -674,20 +674,25 @@ string (FIND ${myhostname} "osmium" is_osmium)
 if (${is_osmium} GREATER "-1")
 install (FILES "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/mpi_hosts" DESTINATION .)
 else()
-install (CODE "
-file(WRITE ${CMAKE_INSTALL_PREFIX}/mpi_hosts \"monoptes\n\")")
+install (FILES "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/mpi_hosts_monoptes" DESTINATION .)
 endif()
+# Install LEWOS_xmit_VRPN_from_serial
+install (PROGRAMS "/common1/nanowork/build/LEWOS/LEWOS_xmit_VRPN_from_serial" DESTINATION .)
 # If on osmium
 if (${is_osmium} GREATER "-1")
 # Install start_server.bash and stop_server.bash
 install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/start_server.bash" "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/stop_server.bash" DESTINATION .)
-# Install LEWOS_xmit_VRPN_from_serial
-install (PROGRAMS "/common1/nanowork/build/LEWOS/LEWOS_xmit_VRPN_from_serial" DESTINATION .)
 # install vrpn_LUDL_and_tilt.cfg
 install (FILES "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/vrpn_LUDL_and_tilt.cfg" DESTINATION .)
-endif()
-# Install mpirun_panopticnerve.bash
 install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/mpirun_panopticnerve.bash" DESTINATION .)
+else()
+# Install start_server.bash and stop_server.bash
+install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/start_server_monoptes.bash" "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/stop_server.bash" DESTINATION .)
+# install vrpn_LUDL_and_tilt.cfg
+install (FILES "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/vrpn_LUDL_and_tilt_monoptes.cfg" DESTINATION .)
+# Install mpirun_panopticnerve.bash
+install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/mpirun_panopticnerve_monoptes.bash" DESTINATION .)
+endif()
 # Install 3dfm scripts
 install (CODE "
 message(\"Retrieving CVS repository\")
@@ -1497,12 +1502,15 @@ if (NOT VIDEO_USE_CUDA)
 CPP_APPLICATION(cismm_video_optimizer apps)
 endif (NOT VIDEO_USE_CUDA)
 CPP_APPLICATION(compare_tracking_files apps)
+CPP_APPLICATION(check_found_spots apps)
 if (VIDEO_USE_EDT)
 	CPP_APPLICATION(edt_video_take apps)
 	CAPC_APPLICATION(manual_capture apps)
 endif (VIDEO_USE_EDT)
 if (NOT VIDEO_USE_CUDA)
+CPP_APPLICATION(make_compression_video apps)
 CPP_APPLICATION(make_moving_spot_video apps)
+CPP_APPLICATION(make_multi_spot_test apps)
 CPP_APPLICATION(make_test_image apps)
 endif (NOT VIDEO_USE_CUDA)
 CPP_NOGUI_APPLICATION(video_imager_server apps)

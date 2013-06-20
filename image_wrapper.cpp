@@ -307,6 +307,13 @@ void Integrated_Gaussian_image::recompute(double background, double noise,
   _oversample = oversample;
   int i,j, index;
 
+    // Fill in the background intensity.
+  for (i = _minx; i <= _maxx; i++) {
+    for (j = _miny; j <= _maxy; j++) {
+      write_pixel_nocheck(i, j, _background);
+    }
+  }
+
 //  XXX Verify that this centers the pixel like it should.
   // Compute where the samples should be taken.  These need to be taken
   // symmetrically around the pixel center and cover all samples within
@@ -324,8 +331,8 @@ void Integrated_Gaussian_image::recompute(double background, double noise,
 #ifdef	DEBUG
   printf("Gaussian_image::recompute(): Making Gaussian of standard deviation %lg, background %lg, volume %lg\n", std_dev, background, summedvolume);
 #endif
-  for (i = _minx; i <= _maxx; i++) {
-    for (j = _miny; j <= _maxy; j++) {
+  for (i = (int)floor(centerx - (3.5*std_dev)); i <= (int)ceil(centerx + (3.5*std_dev)); i++) {
+	for (j = (int)floor(centery - (3.5*std_dev)); j <= (int)ceil(centery + (3.5*std_dev)); j++) {
       double x0 = (i - centerx) - 0.5;    // The left edge of the pixel in Gaussian space
       double x1 = x0 + 1;                 // The right edge of the pixel in Gaussian space
       double y0 = (j - centery) - 0.5;    // The bottom edge of the pixel in Gaussian space

@@ -312,6 +312,10 @@ bool g_stop_logging = false;
 bool g_quit_logging_thread = false;
 
 //--------------------------------------------------------------------------
+bool allow_optimization = true; // If running from command line, allow option to prevent optimization.
+bool first_frame_only_autofind = false; // Whether or not to autofind beads after first frame
+
+//--------------------------------------------------------------------------
 // Tcl controls and displays
 void  logfilename_changed(char *newvalue, void *);
 void  device_filename_changed(char *newvalue, void *);
@@ -2406,7 +2410,7 @@ void myIdleFunc(void)
   // Keep track of whether we found any more beads.  If so, we need to re-run
   // optimization so that all the new beads find their final place.
   bool found_more_beads = false;
-  if (g_findThisManyBeads > g_trackers.tracker_count()) {
+  if (g_findThisManyBeads > g_trackers.tracker_count() && (!first_frame_only_autofind || g_frame_number == 0)) {
     // make sure we only try to auto-find once per new frame of video
     if (g_gotNewFrame) {
         g_trackers.default_radius(g_Radius);
@@ -2420,7 +2424,7 @@ void myIdleFunc(void)
         g_gotNewFrame = false;
     }
   }
-  if (g_findThisManyFluorescentBeads > g_trackers.tracker_count()) {
+  if (g_findThisManyFluorescentBeads > g_trackers.tracker_count() && (!first_frame_only_autofind || g_frame_number == 0)) {
     if (g_gotNewFluorescentFrame) {
       g_trackers.default_radius(g_Radius);
       if (g_trackers.autofind_fluorescent_beads_in(*laf_image,
@@ -3358,10 +3362,10 @@ void Usage(const char *progname)
     fprintf(stderr, "           [-dark_spot] [-follow_jumps] [-rod3 LENGTH ORIENT] [-outfile NAME]\n");
     fprintf(stderr, "           [-precision P] [-sample_spacing S] [-show_lost_and_found]\n");
     fprintf(stderr, "           [-lost_behavior B] [-lost_tracking_sensitivity L] [-blur_lost_and_found B]\n");
-    fprintf(stderr, "           [-center_surround R]\n");
+	fprintf(stderr, "           [-center_surround R] [-optimization_off]\n");
     fprintf(stderr, "           [-intensity_lost_sensitivity IL] [-dead_zone_around_border DB]\n");
-    fprintf(stderr, "           [-maintain_fluorescent_beads M] [-fluorescent_spot_threshold FT]\n");
-    fprintf(stderr, "           [-fluorescent_max_regions FR]\n");
+    fprintf(stderr, "           [-first_frame_autofind] [-maintain_fluorescent_beads M]\n");
+    fprintf(stderr, "           [-fluorescent_spot_threshold FT] [-fluorescent_max_regions FR]\n");
     fprintf(stderr, "           [-maintain_this_many_beads M] [-dead_zone_around_trackers DT]\n");
     fprintf(stderr, "           [-candidate_spot_threshold T] [-sliding_window_radius SR]\n");
     fprintf(stderr, "           [-radius R] [-tracker X Y R] [-tracker X Y R] ...\n");
@@ -3382,12 +3386,14 @@ void Usage(const char *progname)
     fprintf(stderr, "       -lost_behavior: Set lost tracker behavior: 0:stop; 1:delete; 2:hover\n");
     fprintf(stderr, "       -blur_lost_and_found: Set blur_lost_and_found to B (default 0, which is off)\n");
     fprintf(stderr, "       -center_surround: Set center_surround behavior radius for lost and found to R (default 0, which is off)\n");
+	fprintf(stderr, "       -optimization_off: turn off optimization (optimization is allowed by default)\n");
     fprintf(stderr, "       -lost_tracking_sensitivity: Set lost_tracking_sensitivity to L\n");
     fprintf(stderr, "       -intensity_lost_sensitivity:Set intensity_lost_tracking_sensitivity to L\n");
     fprintf(stderr, "       -dead_zone_around_border: Set a dead zone around the region of interest\n");
     fprintf(stderr, "                 edge within which new trackers will not be found\n");
     fprintf(stderr, "       -dead_zone_around_trackers: Set a dead zone around all current trackers\n");
     fprintf(stderr, "                 within which new trackers will not be found\n");
+	fprintf(stderr, "       -first_frame_autofind: Autofind beads in first frame, then not afterwards\n");
     fprintf(stderr, "       -maintain_fluorescent_beads: Try to autofind up to M fluorescent beads at every\n");
     fprintf(stderr, "                 if there are not that many already.\n");
     fprintf(stderr, "       -fluorescent_spot_threshold: Set the threshold for possible spots when\n");
@@ -3696,6 +3702,9 @@ int main(int argc, char *argv[])
       if (++i >= argc) { Usage(argv[0]); }
       g_Radius = atof(argv[i]);
       g_trackers.add_tracker(g_X,g_Y,g_Radius);
+	} else if (!strncmp(argv[i], "-optimization_off", strlen("-optimization_off"))) {
+	allow_optimization = false;
+	g_log_without_opt = 1;
     } else if (!strncmp(argv[i], "-lost_tracking_sensitivity", strlen("-lost_tracking_sensitivity"))) {
 	if (++i >= argc) { Usage(argv[0]); }
 	g_lossSensitivity = atof(argv[i]);
@@ -3714,6 +3723,8 @@ int main(int argc, char *argv[])
     } else if (!strncmp(argv[i], "-dead_zone_around_trackers", strlen("-dead_zone_around_trackers"))) {
 	if (++i >= argc) { Usage(argv[0]); }
 	g_trackerDeadZone = atof(argv[i]);
+	} else if (!strncmp(argv[i], "-first_frame_autofind", strlen("-first_frame_autofind"))) {
+	first_frame_only_autofind = true;
     } else if (!strncmp(argv[i], "-maintain_fluorescent_beads", strlen("-maintain_fluorescent_beads"))) {
 	if (++i >= argc) { Usage(argv[0]); }
 	g_findThisManyFluorescentBeads = atof(argv[i]);
@@ -4073,7 +4084,9 @@ int main(int argc, char *argv[])
   // to autofind beads.  If we don't have a video in one
   // of these circumstances, then we go ahead and quit.
   if (g_trackers.tracker_count() || !g_use_gui || (g_findThisManyBeads > 0.0)) {
-    g_opt = 1;
+    if (allow_optimization) {
+	  g_opt = 1;
+	}
     g_quit_at_end_of_video = true;
     if (g_video) {
       (*g_play) = 1;
