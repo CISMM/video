@@ -2,16 +2,16 @@
 FileVersion=1.1
 FileType=QSetupIniFile
 ComposerVersion=5.0.0.0
-OperatingSystem=WinXP  5.1  2600 (Service Pack 2)
+OperatingSystem=WinNTx  6.1  7601 (Service Pack 1)
 
 [Project]
 ProjectName=spot_tracker_testing_tools
-ProjectDirectory=D:\Temp\video\tracker_testing_tools
-NonSFXDirectory=D:\Temp\video\tracker_testing_tools\NonSFX
-MediaFileName=spot_tracker_testing_tools_01_01
+ProjectDirectory=F:\taylorr\STM\src\video\tracker_testing_tools
+NonSFXDirectory=F:\taylorr\STM\src\video\tracker_testing_tools\NonSFX
+MediaFileName=spot_tracker_testing_tools_02_01
 CopyMediaToFName=
 ProgramDescriptiveName=Spot Tracker testing tools
-ProgramVersion=01.01
+ProgramVersion=02.01
 CompanyName=UNC Nanoscale Science Research Group
 ProgVerLiveUpdate=0
 RegisterAsApp=1
@@ -62,7 +62,7 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|1|0|
 CompanyUrl=www.cs.unc.edu/nano
 
 [TargetExe]
-TargetDirectory=<ProgramFilesDir>NSRG\spot_Tracker_testing_tools_01_01
+TargetDirectory=<ProgramFilesDir>NSRG\spot_Tracker_testing_tools_02_01
 CommonDirectory=<CommonFilesDir>UNC Nanoscale Science Research Group
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\Installation_README.txt
@@ -73,7 +73,7 @@ RunTimeDir_3=|||||||1||||1||1|<ProgramFilesDir>|||||
 [Dialogs]
 SelectedDialogs=Welcome,License,*Readme,User Information,Setup Type,Custom,*Destination,Associate,*Shortcuts,Confirm Setup,Copy Files,*Complete
 LicenseTextFile=
-ReadmeTextFile=D:\Temp\video\tracker_testing_tools\Installation_README.txt
+ReadmeTextFile=F:\taylorr\STM\src\video\tracker_testing_tools\Installation_README.txt
 ReadmeTextFile2=
 UseNotepad=0
 SpaceReqOnDriveCheckBox=0
@@ -106,7 +106,7 @@ ShowCopyrightWarning=1
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=NSRG/Spot Tracker testing tools 01_01
+ProgramLinkFolder=NSRG/Spot Tracker testing tools 02_01
 ProgramLinkName=Installation_README
 ProgramLinkParam=
 ProgramLinkWorkDir=
@@ -227,8 +227,9 @@ Group-000=Main Group
 TypicalCompactData=15
 Description=This is the main group of files
 Item-000=Fol*<Application Folder>[0]
-Item-001=Fil*D:\Temp\video\add_noise_to_image.cpp
-Item-002=Fil*D:\Temp\video\Release\add_noise_to_image.exe
-Item-003=Fil*D:\Temp\video\Release\compare_tracking_files.exe
-Item-004=Fil*D:\Temp\video\Release\make_moving_spot_video.exe
-Item-005=Fil*D:\Temp\video\tracker_testing_tools\Installation_README.txt
+Item-001=Fil*C:\tmp\vs2008\video-build\Release\add_noise_to_image.exe
+Item-002=Fil*C:\tmp\vs2008\video-build\Release\check_found_spots.exe
+Item-003=Fil*C:\tmp\vs2008\video-build\Release\compare_tracking_files.exe
+Item-004=Fil*C:\tmp\vs2008\video-build\Release\make_moving_spot_video.exe
+Item-005=Fil*C:\tmp\vs2008\video-build\Release\make_multi_spot_test.exe
+Item-006=Fil*F:\taylorr\STM\src\video\tracker_testing_tools\Installation_README.txt
