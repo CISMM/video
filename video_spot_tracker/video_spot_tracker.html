@@ -201,14 +201,16 @@
   the settings to help you determine effective ones. The window will also indicate 
   where beads would be found given the current threshold and auto-find settings. 
   The <i>blur_lost_and_found</i> slider controls the width in pixels of a Gaussian 
-  kernel that is convolved with the image to remove noise before the lost and 
-  found processing is done to it. A setting of zero disables this feature, and 
-  higher numbers blur away larger and larger features. The <i>center_surround</i> 
-  slider subtracts the surrounding value from each point (blurring with a kernel 
-  that is the sum of the two sliders), reducing the impact of background brightness 
-  level. This slider is useful in fluorescence videos where the background is 
-  non-uniform. It only takes effect if both <i>blur_lost_and_found</i> and <i>center_surround</i> 
-  are nonzero.</p>
+  kernel that is convolved with the image to remove noise by blurring it before 
+  the lost and found processing is done. A setting of zero disables this feature, 
+  and higher numbers blur away larger and larger features. The <i>center_surround</i> 
+  slider blurs with a kernel whose radius is the sum of the two sliders and then 
+  subtracts this value from the blurred image, reducing the impact of background 
+  brightness level. Center_surround is useful in fluorescence videos where the 
+  background is non-uniform. It only operates if both <i>blur_lost_and_found</i> 
+  and <i>center_surround</i> are nonzero. If you use <i>center_surround</i> in 
+  with <i>show_debug</i>, you will probably want to use the <i>brighten</i> slider 
+  on the main control panel to make the beads visible.</p>
 <p><b>Lost:</b> Two tracking sensitivity sliders located on this control panel 
   set thresholds for detection of lost tracking. A threshold setting of zero disables 
   each feature, and is the default. The <i>kernel_lost_tracking_sensitivity</i> 
