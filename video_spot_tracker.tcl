@@ -2,6 +2,10 @@
 # Sets up the control panel for the Video Spot Tracker program.
 # XXX Eventually, it should handle all of the controls.
 
+##########################################################
+# Hide a Tcl/Tk console in Mac
+console hide
+
 ###########################################################
 # Global variable to remember where they are saving files.
 set fileinfo(open_dir) "C:\\"
