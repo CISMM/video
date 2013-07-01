@@ -12,10 +12,9 @@ typedef enum { DISC, CONE, GAUSSIAN, ROD
 void Usage (const char * s)
 {
   fprintf(stderr,"Usage: %s [-v] [-background BACK] [oversampling OVER]\n", s);
-  fprintf(stderr,"       [-imagesize WIDTH HEIGHT]\n");
-  fprintf(stderr,"       [-gradient MIN MAX]\n");
+  fprintf(stderr,"       [-imagesize WIDTH HEIGHT] [-gradient MIN MAX]\n");
   fprintf(stderr,"       [-disc VALUE RADIUS X Y | cone VALUE RADIUS X Y | -gaussian CENTER_VALUE STD_DEV X Y ]\n");
-  fprintf(stderr,"       [BASENAME]\n");
+  fprintf(stderr,"       [-frames F] [-motion RADIUS SPEED] [BASENAME]\n");
   fprintf(stderr,"     -v: Verbose mode\n");
   fprintf(stderr,"     -background: Specify the background brightness, infraction of total brightness (default 0)\n");
   fprintf(stderr,"     -oversampling: How many times oversampling in X and Y (default 100)\n");
@@ -24,6 +23,8 @@ void Usage (const char * s)
   fprintf(stderr,"     -disc: Draw a disc-shaped bead of specified value (fraction of total) and radius in pixels (default 1.0 10)\n");
   fprintf(stderr,"     -cone: Draw a cone-shaped bead of specified maximum value (fraction of total) and radius in pixels\n");
   fprintf(stderr,"     -gaussian: Draw a Gaussian-shaped bead of specified maximum fractional brightness and standard deviation in pixels\n");
+  fprintf(stderr,"     -frames: Make a video with F number of frmes (defaults to 1, producing a single image)\n");
+  fprintf(stderr,"     -motion: Beads move in circular motion with specified RADIUS and SPEED (degrees/frame)\n");
   fprintf(stderr,"     BASENAME: Base name for the output file (default ./multi_spot if not specified)\n");
   exit(0);
 }
@@ -67,7 +68,8 @@ public:
   multi_spot_image(std::vector<Spot>& b,
          int minx = 0, int maxx = 255, int miny = 0, int maxy = 255,
 	     double background = 0.0, double noise = 0.0,
-	     int oversample = 1, double gradientmin = 0.0, double gradientmax = 0.0);
+	     int oversample = 1, double gradientmin = 0.0, double gradientmax = 0.0,
+		 unsigned frame = 0, double motion_rad = 0.0, double motion_spd = 0.0);
 
 protected:
   int	  _oversample;
@@ -76,26 +78,14 @@ protected:
 multi_spot_image::multi_spot_image(std::vector<Spot>& s, 
                            int minx, int maxx, int miny, int maxy,
 		                   double background, double noise,
-		                   int oversample, double gradientmin, double gradientmax) :
+		                   int oversample, double gradientmin, double gradientmax,
+						   unsigned frame, double motion_rad, double motion_spd) :
   double_image(minx, maxx, miny, maxy),
   _oversample(oversample)
 {
   int i,j, index;
   double oi,oj;	// Oversample steps
   double summedvolume;
-
-  for(std::vector<Spot>::size_type spot = 0; spot < s.size(); spot++) {
-	switch(s[spot].spot_type) {
-	case DISC: 
-		// Make sure the parameters are meaningful
-	  if ( (_oversample <= 0) ) {
-		  fprintf(stderr,"multi_disc_image::multi_disc_image(): Bad oversample\n");
-		  _minx = _maxx = _miny = _maxy = 0;
-		  return;
-	  }
-	  break;
-	}
-  }
 
   // Fill in the background intensity.
   for (i = _minx; i <= _maxx; i++) {
@@ -132,14 +122,26 @@ multi_spot_image::multi_spot_image(std::vector<Spot>& s,
   
   // visualize all the beads in the spot vector, s
   for(std::vector<Spot>::size_type spot = 0; spot < s.size(); spot++){
+
+	  // Find out where bead should be
+	  double x = s[spot].x, y = s[spot].y;
+	  // Subtracting 1 from the cos() value so that we start at the
+      // correct location, not one radius away from it.
+      x = s[spot].x + motion_rad * (cos(frame * motion_spd * M_PI/180) - 1);
+      y = s[spot].y + motion_rad * sin(frame * motion_spd * M_PI/180);
+
+	  // Flip the image in Y because the write function is going to flip it again
+	  // for us before saving the image.
+      y = _maxx - y;
+
 	  switch(s[spot].spot_type) {
 	  case DISC:
 		  {
 		  // Add in 0.5 pixel to the X and Y positions
 		  // so that we center the disc on the middle of the pixel rather than
 		  // having it centered between pixels.
-		  // s[spot].x += 0.5;
-		  // s[spot].y += 0.5;
+		  // x += 0.5;
+		  // y += 0.5;
 
 		  // Fill in the spot intensity (the part of it that is within the image).
 		  // Oversample the image by the factor specified in _oversample, averaging
@@ -148,9 +150,9 @@ multi_spot_image::multi_spot_image(std::vector<Spot>& s,
 		  printf("multi_spot_image::multi_spot_image(): Making disk of radius %lg\n", s[spot].r);
 #endif
 		  double disk2 = s[spot].r * s[spot].r;
-		  for (i = (int)floor(s[spot].x - s[spot].r); i <= (int)ceil(s[spot].x + s[spot].r); i++) {
-			  for (j = (int)floor(s[spot].y - s[spot].r); j <= (int)ceil(s[spot].y + s[spot].r); j++) {
-				  if ( disk2 >= (i - s[spot].x)*(i - s[spot].x) + (j - s[spot].y)*(j - s[spot].y) ) {
+		  for (i = (int)floor(x - s[spot].r); i <= (int)ceil(x + s[spot].r); i++) {
+			  for (j = (int)floor(y - s[spot].r); j <= (int)ceil(y + s[spot].r); j++) {
+				  if ( disk2 >= (i - x)*(i - x) + (j - y)*(j - y) ) {
 					  if (find_index(i,j,index)) {
 						  _image[index] = 0;
 						  for (oi = 0; oi < _oversample; oi++) {
@@ -174,9 +176,9 @@ multi_spot_image::multi_spot_image(std::vector<Spot>& s,
 #ifdef	DEBUG
 		  printf("multi_spot_image::multi_spot_image(): Making cone of radius %lg\n", s[spot].r));
 #endif
-		  for (i = (int)floor(s[spot].x - s[spot].r); i <= (int)ceil(s[spot].x + s[spot].r); i++) {
-			  for (j = (int)floor(s[spot].y - s[spot].r); j <= (int)ceil(s[spot].y + s[spot].r); j++) {
-				  double dist = sqrt((i-s[spot].x)*(i-s[spot].x) + (j-s[spot].y)*(j-s[spot].y));
+		  for (i = (int)floor(x - s[spot].r); i <= (int)ceil(x + s[spot].r); i++) {
+			  for (j = (int)floor(y - s[spot].r); j <= (int)ceil(y + s[spot].r); j++) {
+				  double dist = sqrt((i-x)*(i-x) + (j-y)*(j-y));
 				  if ( s[spot].r >= dist ) {
 					  if (find_index(i,j,index)) {
 						  _image[index] = 0;
@@ -204,11 +206,11 @@ multi_spot_image::multi_spot_image(std::vector<Spot>& s,
 		  printf("multi_spot_image::multi_spot_image(): Making Gaussian of standard deviation %lg, background %lg, volume %lg\n",
 			  s[spot].r, background, s[spot].intensity * s[spot].r*s[spot].r * 2 * M_PI);
 #endif
-		  for (i = (int)floor(s[spot].x - (3.5*s[spot].r)); i <= (int)ceil(s[spot].x + (3.5*s[spot].r)); i++) {
-			  for (j = (int)floor(s[spot].y - (3.5*s[spot].r)); j <= (int)ceil(s[spot].y + (3.5*s[spot].r)); j++) {
-				  double x0 = (i - s[spot].x) - 0.5;    // The left edge of the pixel in Gaussian space
+		  for (i = (int)floor(x - (3.5*s[spot].r)); i <= (int)ceil(x + (3.5*s[spot].r)); i++) {
+			  for (j = (int)floor(y - (3.5*s[spot].r)); j <= (int)ceil(y + (3.5*s[spot].r)); j++) {
+				  double x0 = (i - x) - 0.5;    // The left edge of the pixel in Gaussian space
 				  double x1 = x0 + 1;                   // The right edge of the pixel in Gaussian space
-				  double y0 = (j - s[spot].y) - 0.5;    // The bottom edge of the pixel in Gaussian space
+				  double y0 = (j - y) - 0.5;    // The bottom edge of the pixel in Gaussian space
 				  double y1 = y0 + 1;                   // The top edge of the pixel in Gaussian space
 				  if (find_index(i,j,index)) {
 					  // For this call to ComputeGaussianVolume, we assume 1-meter pixels.
@@ -238,8 +240,9 @@ int main(int argc, char *argv[])
   const char *basename = "multi_spot";
   double intensity = 65535;			  // pixel value within a disc, maximum pixel value for a cone or Gaussian
   double radius_std = 10;             // radius of a disc or cone, standard deviation for a Gaussian 
-  double random_step = 1;              // Maximum magnitude of noise step
-  double random_angle = 1;             // Maximum degrees of angle change
+  double motion_rad = 0;
+  double motion_spd = 0;
+  unsigned frames = 1;
   bool verbose = false;               // Print out info along the way?
 
   int	realparams = 0;
@@ -295,6 +298,14 @@ int main(int argc, char *argv[])
 	  start_y = atof(argv[i]);
           Spot spot(GAUSSIAN, start_x, start_y, intensity, radius_std);
 		  spots.push_back(spot);
+	} else if (!strncmp(argv[i], "-frames", strlen("-frames"))) {
+          if (++i > argc) { Usage(argv[0]); }
+	  frames = atoi(argv[i]);
+	} else if (!strncmp(argv[i], "-motion", strlen("-motion"))) {
+          if (++i > argc) { Usage(argv[0]); }
+	  motion_rad = atof(argv[i]);
+          if (++i > argc) { Usage(argv[0]); }
+	  motion_spd = atof(argv[i]);
     } else if (!strncmp(argv[i], "-v", strlen("-v"))) {
           verbose = true;
     } else if (argv[i][0] == '-') {	// Unknown flag
@@ -324,43 +335,53 @@ int main(int argc, char *argv[])
 
   //------------------------------------------------------------------------------------
   // Open the CSV file that will record the motion and put the header information into it.
-  //FILE  *g_csv_file = NULL;		  //< File to save data in with .csv extension
-  //char *csvname = new char[strlen(basename)+5];	// Remember the closing '\0'
-  //if (csvname == NULL) {
-  //  fprintf(stderr, "Out of memory when allocating CSV file name\n");
-  //  return -1;
-  //}
-  //sprintf(csvname, "%s.csv", basename);
-  //if ( NULL == (g_csv_file = fopen(csvname, "w")) ) {
-  //  fprintf(stderr,"Cannot open CSV file for writing: %s\n", csvname);
-  //} else {
-  //  fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius,Orientation (if meaningful)\n");
-  //}
-  //delete [] csvname;
+  FILE  *g_csv_file = NULL;		  //< File to save data in with .csv extension
+  char *csvname = new char[strlen(basename)+5];	// Remember the closing '\0'
+  if (csvname == NULL) {
+    fprintf(stderr, "Out of memory when allocating CSV file name\n");
+    return -1;
+  }
+  sprintf(csvname, "%s.csv", basename);
+  if ( NULL == (g_csv_file = fopen(csvname, "w")) ) {
+    fprintf(stderr,"Cannot open CSV file for writing: %s\n", csvname);
+  } else {
+    fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius,Orientation (if meaningful)\n");
+  }
+  delete [] csvname;
 
   //------------------------------------------------------------------------------------
   // Generate images matching the requested motion and disc types, with the
   // specified geometries, and write them to files.
-
+    
+  unsigned frame;
+  for (frame = 0; frame < frames; frame++) {
     // Make the appropriate image using spot vector.
     image_wrapper *beads;
-    beads = new multi_spot_image(spots, 0, width-1, 0, height-1, background, 0.0, oversampling, gradient_min, gradient_max); 
+    beads = new multi_spot_image(spots, 0, width-1, 0, height-1, background, 0.0, oversampling, 
+		gradient_min, gradient_max, frame, motion_rad, motion_spd); 
 
     // Write the image to file whose name is the base name with
     // the frame number and .tif added.
-    sprintf(filename, "%s.%04d.tif", basename, 0);
+    sprintf(filename, "%s.%04d.tif", basename, frame);
     if (verbose) { printf("Writing %s:\n", filename);}
     beads->write_to_grayscale_tiff_file(filename, 0);
 
-    // Write the information about the current bead to the CSV file, in a format
-    // that matches the header description.  We DO NOT flip y in this report.
-    //fprintf(g_csv_file, "%d,0,%lg,%lg,0,%lg,%lg\n", frame, x,y, radius_std, angle);
+	// Find out where the first bead should be
+	double x = spots[0].x, y = spots[0].y;
+	// Subtracting 1 from the cos() value so that we start at the
+    // correct location, not one radius away from it.
+    x = spots[0].x + motion_rad * (cos(frame * motion_spd * M_PI/180) - 1);
+    y = spots[0].y + motion_rad * sin(frame * motion_spd * M_PI/180);
+
+    // Write the information about the first bead to the CSV file, in a format
+    // that matches the header description.  We DO NOT flip y in this report
+    fprintf(g_csv_file, "%d,0,%lg,%lg,0,%lg,%lg\n", frame, x, y, radius_std, 0);
 
     // Clean up things allocated for this frame.
     delete beads;
+  }
 
-
-  //// Clean up things allocated for the whole sequence
-  //if (g_csv_file) { fclose(g_csv_file); g_csv_file = NULL; };
+  // Clean up things allocated for the whole sequence
+  if (g_csv_file) { fclose(g_csv_file); g_csv_file = NULL; };
   return 0;
 }

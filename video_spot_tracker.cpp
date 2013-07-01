@@ -2121,6 +2121,8 @@ void myIdleFunc(void)
       g_logging = 0;
       g_logfilename = "";
       g_logged_traces.clear();
+	  g_trackers.delete_trackers();
+	  Spot_Information::reset_static_index();
 
       // Do the rewind and setting after clearing the logging, so that
       // the last logged frame has the correct index.

@@ -8,12 +8,12 @@ void Usage (const char * s)
 {
   fprintf(stderr,"Usage: %s [-v] [-frames FRAMES]\n", s);
   fprintf(stderr,"       [-resolution WIDTH HEIGHT]\n");
-  fprintf(stderr,"       [-bead MAX STD] [-motion RAD SPD]\n");
+  fprintf(stderr,"       [-bead MAX STD X Y] [-motion RAD SPD]\n");
   fprintf(stderr,"       [-noise F V] [BASENAME]\n");
   fprintf(stderr,"     -v: Verbose mode\n");
   fprintf(stderr,"     -frames: The number of output images (default 120)\n");
   fprintf(stderr,"     -resolution: Specify the image size in X and Y (default 101 101)\n");
-  fprintf(stderr,"     -bead: Add Gaussian bead with max value MAX and standard deviation STD\n");
+  fprintf(stderr,"     -bead: Add Gaussian bead with max value MAX and standard deviation STD starting at coordinate (X,Y)\n");
   fprintf(stderr,"     -motion: Bead moves in circular motion with radius RAD at speed SPD (degrees/second)\n");
   fprintf(stderr,"     -noise: Add Poisson noise with fraction of proportionality F and Gaussian noise of variance V\n");
   fprintf(stderr,"     BASENAME: Base name for the output file (default ./test_video if not specified)\n");

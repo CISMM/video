@@ -671,6 +671,9 @@ public:
   // The index to use for the next tracker that is created
   static unsigned get_static_index();
 
+  // Reset index upon rewinding a video
+  static void reset_static_index() { d_static_index = 0; }
+
 protected:
   spot_tracker_XY	*d_tracker_XY;	    //< The tracker we're keeping information for in XY
   spot_tracker_Z	*d_tracker_Z;	    //< The tracker we're keeping information for in Z
