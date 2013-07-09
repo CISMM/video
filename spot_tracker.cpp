@@ -1083,6 +1083,222 @@ double	twolines_image_spot_tracker_interp::check_fitness(const image_wrapper &im
   return fitness;
 }
 
+image_oriented_spot_tracker_interp::image_oriented_spot_tracker_interp(double radius, bool inverted, double pixelaccuracy,
+				     double radiusaccuracy, double sample_separation_in_pixels, double orientation) :
+    spot_tracker_XY(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)
+{
+  // Make sure the parameters make sense
+  if (_rad <= 0) {
+    fprintf(stderr, "image_oriented_spot_tracker::image_oriented_spot_tracker(): Invalid radius, using 1.0\n");
+    _rad = 1.0;
+  }
+  if (_pixelacc <= 0) {
+    fprintf(stderr, "image_oriented_spot_tracker::image_oriented_spot_tracker(): Invalid pixel accuracy, using 0.25\n");
+    _pixelacc = 0.25;
+  }
+  if (_radacc <= 0) {
+    fprintf(stderr, "image_oriented_spot_tracker::image_oriented_spot_tracker(): Invalid radius accuracy, using 0.25\n");
+    _radacc = 0.25;
+  }
+  if (_samplesep <= 0) {
+    fprintf(stderr, "image_oriented_spot_tracker::image_oriented_spot_tracker(): Invalid sample spacing, using 1.00\n");
+    _samplesep = 1.0;
+  }
+
+  // Set the initial step sizes for radius and pixels
+  _pixelstep = 2.0; if (_pixelstep < 4*_pixelacc) { _pixelstep = 4*_pixelacc; };
+  _radstep = 2.0; if (_radstep < 4*_radacc) { _radstep = 4*_radacc; };
+
+  // No test image yet
+  _testimage = NULL;
+}
+
+image_oriented_spot_tracker_interp::~image_oriented_spot_tracker_interp()
+{
+  if (_testimage != NULL) {
+    delete [] _testimage;
+    _testimage = NULL;
+  }
+}
+
+bool	image_oriented_spot_tracker_interp::set_image(const image_wrapper &image, unsigned rgb, double x, double y, double rad, 
+														double orientation)
+{
+  // Find out the desired test radius, clip it to fit within the test
+  // image boundaries, and make sure it is valid.
+  int desired_rad = (int)ceil(rad);
+
+  int minx, maxx, miny, maxy;
+  image.read_range(minx, maxx, miny, maxy);
+  // Subtract one because bilerp will sometimes go one beyond the
+  // pixel you want, which can be beyond the image.
+  desired_rad = (int)min(desired_rad, x - minx - 1);
+  desired_rad = (int)min(desired_rad, y - miny - 1);
+  desired_rad = (int)min(desired_rad, maxx - x - 1);
+  desired_rad = (int)min(desired_rad, maxy - y - 1);
+
+  if (desired_rad <= 0) {
+    fprintf(stderr,"image_oriented_spot_tracker_interp::set_image(): Non-positive radius, giving up\n");
+    if (_testimage) {
+      delete [] _testimage;
+      _testimage = NULL;
+    }
+    return false;
+  }
+
+  // If we have a test image already whose radius is too small, then
+  // delete the existing image.
+  if (_testrad && (desired_rad > _testrad)) {
+    delete [] _testimage;
+    _testimage = NULL;
+  }
+
+  // Set the parameters for the test image.  The x and y values are set to
+  // point at the pixel in the middle of the stored test image, NOT at the locations
+  // in the original image.
+  _testrad = desired_rad;
+  _testx = desired_rad;
+  _testy = desired_rad;
+  _testsize = 2 * desired_rad + 1;
+
+  // If we have not test image (we may have just deleted it), then
+  // allocate space to store a new one.
+  if ( (_testimage = new double[_testsize*_testsize]) == NULL) {
+    fprintf(stderr,"image_oriented_spot_tracker_interp::set_image(): Out of memory allocating image (%dx%d)\n", _testsize, _testsize);
+    return false;
+  }
+
+  // Sample the input image into the test image, interpolating between pixels.
+  int xsamp, ysamp;
+  for (xsamp = -desired_rad; xsamp <= desired_rad; xsamp++) {
+    for (ysamp = -desired_rad; ysamp <= desired_rad; ysamp++) {
+	  double startx = xsamp;
+	  double starty = ysamp;
+	  // to support different orientations, each point is rotated in 2D space
+	  // by the specified degree before reading the value
+	  double x_rotated = sqrt((startx*startx)+(starty*starty)) * cos(atan(starty/startx) + (orientation * (M_PI/180)));
+	  double y_rotated = sqrt((startx*startx)+(starty*starty)) * sin(atan(starty/startx) + (orientation * (M_PI/180)));
+
+      _testimage[_testx + xsamp + _testsize * (_testy + ysamp)] = image.read_pixel_bilerp_nocheck(x + x_rotated, y + y_rotated, rgb);
+    }
+  }
+
+  return true;
+}
+
+// Check the fitness of the stored image against another image, at the current parameter settings.
+// Return the fitness value there.
+
+// We assume that we are looking at a smooth function, so we do linear
+// interpolation and sample within the space of the kernel, rather than
+// point-sampling the nearest pixel.
+
+double	image_oriented_spot_tracker_interp::check_fitness(const image_wrapper &image, unsigned rgb)
+{
+  double  val;				//< Pixel value read from the image
+  double  pixels = 0;			//< How many pixels we ended up using (used in floating-point calculations only)
+  double  fitness = 0.0;		//< Accumulates the fitness values
+  double  x, y;				//< Loops over coordinates, distance from the center.
+  double orientation = get_orientation();
+
+  // If we haven't ever gotten the original image, go ahead and grab it now from
+  // the image we've been asked to optimize from.
+  if (_testimage == NULL) {
+    fprintf(stderr,"image_oriented_spot_tracker_interp::check_fitness(): Called before set_image() succeeded (grabbing from image)\n");
+    set_image(image, rgb, get_x(), get_y(), get_radius(), orientation);
+    if (_testimage == NULL) {
+      return 0;
+    }
+  }
+
+  // If our center is outside of the image, return a very low fitness value.
+  int minx, miny, maxx, maxy;
+  image.read_range(minx, maxx, miny, maxy);
+  if ( (get_x() < minx) || (get_x() > maxx) || (get_y() < miny) || (get_y() > maxy) ) {
+    fitness = -1e10;
+    return fitness;
+  }
+
+  // Find the fitness.
+  for (x = -_testrad; x <= _testrad; x++) {
+    for (y = -_testrad; y <= _testrad; y++) {
+	  // to support different orientations, each point is rotated in 2D space
+	  // by the specified degree before reading the value
+	  double x_rotated = sqrt((x*x)+(y*y)) * cos(atan(y/x) + (orientation * (M_PI/180)));
+	  double y_rotated = sqrt((x*x)+(y*y)) * sin(atan(y/x) + (orientation * (M_PI/180)));
+      if (image.read_pixel_bilerp(get_x()+x_rotated,get_y()+y_rotated,val, rgb)) {
+	double myval = _testimage[(int)(_testx+x) + _testsize * (int)(_testy+y)];
+	double squarediff = (val-myval) * (val-myval);
+	fitness -= squarediff;
+	pixels++;
+      }
+    }
+  }
+
+  // Normalize the fitness value by the number of pixels we have chosen,
+  // or set it low if we never found any.
+  if (pixels) {
+    fitness /= pixels;
+  } else {
+    fitness = -1e10;
+  }
+
+  // We never invert the fitness: we don't care whether it is a dark
+  // or bright spot.
+  return fitness;
+}
+
+// Check the fitness of the stored image against another image, at the current parameter settings.
+// Return the fitness value there.
+
+// We assume that we are looking at a smooth function, so we do linear
+// interpolation and sample within the space of the kernel, rather than
+// point-sampling the nearest pixel.
+
+
+bool  image_oriented_spot_tracker_interp::take_single_optimization_step(const image_wrapper &image, unsigned rgb, double &x, double &y,
+                   bool do_x, bool do_y, bool do_r)
+{
+  double  new_fitness;      //< Checked fitness value to see if it is better than current one
+  bool    betterbase = false; //< Did the base class find a better fit?
+  bool    betterorient = false;//< Do we find a better orientation?
+
+  // See if the base class fitting steps can do better
+  betterbase = spot_tracker_XY::take_single_optimization_step(image, rgb, x, y, do_x, do_y, do_r);
+
+  // Try going in +/- orient and see if we find a better orientation.
+  // XXX HACK: Orientation step is set based on the pixelstep and scaled so
+  // that each endpoint will move one pixelstep unit as the orientation changes.
+
+  double orient_step = _pixelstep * (180 / M_PI) / get_radius();
+  {
+    double v0, vplus, vminus;
+    double starting_o = get_orientation();
+    v0 = _fitness;                                      // Value at starting location
+    set_orientation(starting_o + orient_step);  // Try going a step in +orient
+    vplus = check_fitness(image, rgb);
+    set_orientation(starting_o - orient_step);  // Try going a step in -orient
+    vminus = check_fitness(image, rgb);
+    unsigned which;
+    new_fitness = max3(v0, vplus, vminus, which);
+    switch (which) {
+      case 0: set_orientation(starting_o);
+              break;
+      case 1: set_orientation(starting_o + orient_step);
+              betterorient = true;
+              break;
+      case 2: set_orientation(starting_o - orient_step);
+              betterorient = true;
+              break;
+    }
+    _fitness = new_fitness;
+  }
+
+  // Return the new location and whether we found a better one.
+  x = get_x(); y = get_y();
+  return betterbase || betterorient;
+}
+
 Gaussian_spot_tracker::Gaussian_spot_tracker(double radius, bool inverted, double pixelaccuracy,
 				     double radiusaccuracy, double sample_separation_in_pixels,
                                      double background, double summedvalue) :

@@ -189,6 +189,8 @@ const int KERNEL_DISK = 0;	  //< These must match the values used in video_spot_
 const int KERNEL_CONE = 1;
 const int KERNEL_SYMMETRIC = 2;
 const int KERNEL_FIONA = 3;
+const int KERNEL_IMAGE = 4;
+const int KERNEL_IMAGE_ORIENTED = 5;
 
 // How a tracker should behave when it is lost
 const int LOST_STOP = 0;
@@ -364,8 +366,10 @@ Tclvar_float		g_search_radius("search_radius",0);	  //< Search radius for doing 
 Tclvar_int_with_button	g_predict("predict",NULL,0);
 Tclvar_int_with_button	g_kernel_type("kerneltype", NULL, KERNEL_SYMMETRIC, rebuild_trackers);
 Tclvar_int_with_button	g_rod("rod3",NULL,0, rebuild_trackers);
+Tclvar_int_with_button	g_imageor("imageor",NULL,0, rebuild_trackers);
 Tclvar_float_with_scale	g_length("length", ".rod3", 10, 50, 20);
-Tclvar_float_with_scale	g_orientation("orient", ".rod3", 0, 359, 0);
+Tclvar_float_with_scale	g_rod_orientation("orient", ".rod3", 0, 359, 0);
+Tclvar_float_with_scale	g_image_orientation("orient", ".imageor", 0, 359, 0);
 Tclvar_int_with_button	g_opt("optimize",".kernel.optimize");
 Tclvar_int_with_button	g_opt_z("optimize_z",".kernel.optimize", 0, handle_optimize_z_change);
 Tclvar_selector		g_psf_filename("psf_filename", NULL, NULL, "");
@@ -532,6 +536,12 @@ spot_tracker_XY  *create_appropriate_xytracker(double x, double y, double r)
     } else if (g_kernel_type == KERNEL_CONE) {
       g_interpolate = 1;
       tracker = new cone_spot_tracker_interp(r,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
+	} else if (g_kernel_type == KERNEL_IMAGE) {
+      g_interpolate = 1;
+      tracker = new image_spot_tracker_interp(r,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
+	} else if (g_kernel_type == KERNEL_IMAGE_ORIENTED) {
+      g_interpolate = 1;
+      tracker = new image_oriented_spot_tracker_interp(r,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
     } else if (g_interpolate) {
       tracker = new disk_spot_tracker_interp(r,(g_invert != 0), g_precision, 0.1, g_sampleSpacing);
     } else {
@@ -847,13 +857,16 @@ static	bool  save_log_frame(int frame_number)
     double mean_background= 0.0;  // Computed background
     double gaussiansummedvalue = 0.0, computedsummedvalue = 0.0;
 
-    // If we are tracking rods, then we adjust the orientation to match.
+    // If we are tracking rods or oriented images, then we adjust the orientation to match.
     if (g_rod) {
       // Horrible hack to make this work with rod type
       orient = reinterpret_cast<rod3_spot_tracker_interp*>(tracker->xytracker())->get_orientation();
       length = reinterpret_cast<rod3_spot_tracker_interp*>(tracker->xytracker())->get_length();
     }
-
+	if (g_imageor) {
+	  orient = reinterpret_cast<image_oriented_spot_tracker_interp*>(tracker->xytracker())->get_orientation();
+	}
+	
     if (g_kernel_type == KERNEL_FIONA) {
       // Horrible hack to make this export extra stuff for a FIONA kernel
       background = reinterpret_cast<FIONA_spot_tracker*>(tracker->xytracker())->get_background();
@@ -1242,7 +1255,67 @@ void myDisplayFunc(void)
 	    glVertex2f(x + dxx*length/2,y + dyx*length/2);
 	  glEnd();
         }
-      } else if (g_round_cursor) {
+	} else if (g_imageor) {
+	// Need to draw something for the ImageOr tracker type.
+	double orient = static_cast<image_oriented_spot_tracker_interp*>(tracker->xytracker())->get_orientation();
+	double radius = static_cast<rod3_spot_tracker_interp*>(tracker->xytracker())->get_radius();
+	double dxx = (cos(orient * M_PI/180)) * (2.0/g_image->get_num_columns());
+	double dyx = (sin(orient * M_PI/180)) * (2.0/g_image->get_num_rows());
+	double dxy = (sin(orient * M_PI/180)) * (2.0/g_image->get_num_columns());
+	double dyy = -(cos(orient * M_PI/180)) * (2.0/g_image->get_num_rows());
+        if (g_round_cursor) { // Draw a box around, with lines coming into edges of trackers
+          // Draw a box around that is two tracker radii past the ends and
+          // two tracker radii away from the center on each side.  We'll be bringing
+          // lines in from this by one radius next.
+	  glBegin(GL_LINES);
+            // +Y side
+	    glVertex2f( x - dxx*(3*radius) + dxy*(2*radius),
+                        y - dyx*(3*radius) + dyy*(2*radius));
+	    glVertex2f( x + dxx*(3*radius) + dxy*(2*radius),
+                        y + dyx*(3*radius) + dyy*(2*radius));
+            // -Y side
+	    glVertex2f( x - dxx*(3*radius) - dxy*(2*radius),
+                        y - dyx*(3*radius) - dyy*(2*radius));
+	    glVertex2f( x + dxx*(3*radius) - dxy*(2*radius),
+                        y + dyx*(3*radius) - dyy*(2*radius));
+            // +X side
+	    glVertex2f( x + dxx*(3*radius) + dxy*(2*radius),
+                        y + dyx*(3*radius) + dyy*(2*radius));
+	    glVertex2f( x + dxx*(3*radius) - dxy*(2*radius),
+                        y + dyx*(3*radius) - dyy*(2*radius));
+            // -X side
+	    glVertex2f( x - dxx*(3*radius) + dxy*(2*radius),
+                        y - dyx*(3*radius) + dyy*(2*radius));
+	    glVertex2f( x - dxx*(3*radius) - dxy*(2*radius),
+                        y - dyx*(3*radius) - dyy*(2*radius));
+	  glEnd();
+
+          // Draw lines coming in from the ends of the box to touch the
+          // outer radius of tracking.
+	  glBegin(GL_LINES);
+	    glVertex2f(x + dxx*(3*radius),y + dyx*(3*radius));
+	    glVertex2f(x + dxx*(radius + radius),y + dyx*(radius + radius));
+	    glVertex2f(x - dxx*(3*radius),y - dyx*(3*radius));
+	    glVertex2f(x - dxx*(radius + radius),y - dyx*(radius + radius));
+	  glEnd();
+
+          // Draw lines coming in from the middle sides of the box to touch the
+          // outer radius of tracking.
+	  glBegin(GL_LINES);
+	    glVertex2f( x + dxy*(2*radius), y + dyy*(2*radius));
+	    glVertex2f( x + dxy*(radius),   y + dyy*(radius));
+	    
+            glVertex2f( x - dxy*(2*radius), y - dyy*(2*radius));
+	    glVertex2f( x - dxy*(radius),   y - dyy*(radius));
+	  glEnd();
+
+        } else {  // Single-line cursor for images if we aren't using the round cursor.
+	  glBegin(GL_LINES);
+	    glVertex2f(x - dxx*radius,y - dyx*radius);
+	    glVertex2f(x + dxx*radius,y + dyx*radius);
+	  glEnd();
+		}
+	  } else if (g_round_cursor) {
         // First, make a ring that is twice the radius so that it does not obscure the border.
 	double stepsize = M_PI / tracker->xytracker()->get_radius();
 	double runaround;
@@ -1714,12 +1787,19 @@ void myLandscapeDisplayFunc(void)
 	double dy = - sin(orient * M_PI/180);
 	double delta = x - (g_landscape_strip_width+1)/2.0;
 	g_trackers.active_tracker()->xytracker()->set_location(start_x + dx*delta, start_y + dy*delta);
-      } else {
+	  } else if (g_imageor) {
+	// Horrible hack to make this work with imageor type
+	double orient = static_cast<image_oriented_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
+	double dx =   cos(orient * M_PI/180);
+	double dy = - sin(orient * M_PI/180);
+	double delta = x - (g_landscape_strip_width+1)/2.0;
+	g_trackers.active_tracker()->xytracker()->set_location(start_x + dx*delta, start_y + dy*delta);
+	  } else {
 	g_trackers.active_tracker()->xytracker()->set_location(x + xImageOffset, start_y);
       }
       this_val = g_trackers.active_tracker()->xytracker()->check_fitness(*g_image, g_colorIndex);
       glVertex3f( strip_start_x + x * strip_step_x, this_val * scale - offset,0);
-    }
+	}
     glEnd();
 
     // Put the tracker back where it started.
@@ -1949,6 +2029,8 @@ void optimize_all_trackers(void)
         case KERNEL_CONE: t = KT_CONE; break;
         case KERNEL_SYMMETRIC: t = KT_SYMMETRIC; break;
         case KERNEL_FIONA: t = KT_FIONA; break;
+		case KERNEL_IMAGE: t = KT_IMAGE; break;
+		case KERNEL_IMAGE_ORIENTED: t = KT_IMAGE_ORIENTED; break;
         default: fprintf(stderr,"Unrecognized kernel type: %d\n", static_cast<int>(g_kernel_type));
                  dirtyexit();
       }
@@ -2312,10 +2394,13 @@ void myIdleFunc(void)
     g_trackers.active_tracker()->xytracker()->set_radius(g_Radius);
     if (g_rod) {
       // Horrible hack to enable adjustment of a parameter that only exists on
-      // the rod tracker
+      // the rod and imageor trackers
       static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->set_length(g_length);
-      static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->set_orientation(g_orientation);
+      static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->set_orientation(g_rod_orientation);
     }
+	if(g_imageor) {
+	  static_cast<image_oriented_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->set_orientation(g_image_orientation);
+	}
   }
 
   // If we have gotten a new video frame and we're making a blurred image
@@ -2562,9 +2647,13 @@ void myIdleFunc(void)
     g_Error = (float)g_trackers.active_tracker()->xytracker()->get_fitness();
     if (g_rod) {
       // Horrible hack to make this work with rod type
-      g_orientation = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
+      g_rod_orientation = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
       g_length = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_length();
     }
+	if (g_imageor) {
+	  // Horrible hack to make this work with imageor type
+	  g_image_orientation = static_cast<image_oriented_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
+	}
   }
 
   //------------------------------------------------------------
@@ -2684,9 +2773,13 @@ void  activate_and_drag_nearest_tracker_to(double x, double y)
     g_Radius = g_trackers.active_tracker()->xytracker()->get_radius();
     if (g_rod) {
       // Horrible hack to make this work with rod type
-      g_orientation = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
+      g_rod_orientation = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
       g_length = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_length();
     }
+	if (g_imageor) {
+      // Horrible hack to make this work with rod type
+	  g_image_orientation = static_cast<image_oriented_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
+	}
   }
 }
 
@@ -2716,9 +2809,12 @@ void keyboardCallbackForGLUT(unsigned char key, int x, int y)
       g_Error = (float)g_trackers.active_tracker()->xytracker()->get_fitness();
       if (g_rod) {
         // Horrible hack to make this work with rod type
-        g_orientation = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
+        g_rod_orientation = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
         g_length = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_length();
       }
+	  if (g_rod) {
+	    g_image_orientation = static_cast<image_oriented_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
+	  }
     }
   }
 }
@@ -3130,8 +3226,10 @@ void  handle_save_state_change(int newvalue, void *)
   fprintf(f, "set search_radius %lg\n", (double)(g_search_radius));
   fprintf(f, "set predict %d\n", (int)(g_predict));
   fprintf(f, "set rod3 %d\n", (int)(g_rod));
+  fprintf(f, "set imageor %d\n", (int)(g_imageor));
   fprintf(f, "set length %lg\n", (double)(g_length));
-  fprintf(f, "set orient %lg\n", (double)(g_orientation));
+  fprintf(f, "set rod orient %lg\n", (double)(g_rod_orientation));
+  fprintf(f, "set image orient %lg\n", (double)(g_image_orientation));
   fprintf(f, "set round_cursor %d\n", (int)(g_round_cursor));
   fprintf(f, "set show_tracker %d\n", (int)(g_mark));
   fprintf(f, "set show_video %d\n", (int)(g_show_video));
@@ -3365,9 +3463,9 @@ void  handle_optimize_z_change(int newvalue, void *)
 
 void Usage(const char *progname)
 {
-    fprintf(stderr, "Usage: %s [-nogui] [-gui] [-kernel disc|cone|symmetric|FIONA]\n", progname);
-    fprintf(stderr, "           [-dark_spot] [-follow_jumps] [-rod3 LENGTH ORIENT] [-outfile NAME]\n");
-    fprintf(stderr, "           [-precision P] [-sample_spacing S] [-show_lost_and_found]\n");
+    fprintf(stderr, "Usage: %s [-nogui] [-gui] [-kernel disc|cone|symmetric|FIONA|image|imageor]\n", progname);
+    fprintf(stderr, "           [-dark_spot] [-follow_jumps] [-rod3 LENGTH ORIENT] [-imageor ORIENT]\n");
+    fprintf(stderr, "           [-outfile NAME] [-precision P] [-sample_spacing S] [-show_lost_and_found]\n");
     fprintf(stderr, "           [-lost_behavior B] [-lost_tracking_sensitivity L] [-blur_lost_and_found B]\n");
 	fprintf(stderr, "           [-center_surround R] [-optimization_off]\n");
     fprintf(stderr, "           [-intensity_lost_sensitivity IL] [-dead_zone_around_border DB]\n");
@@ -3382,8 +3480,9 @@ void Usage(const char *progname)
     fprintf(stderr, "           [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n");
     fprintf(stderr, "       -nogui: Run without the video display window (no Glut/OpenGL)\n");
     fprintf(stderr, "       -gui: Run with the video display window (no Glut/OpenGL)\n");
-    fprintf(stderr, "       -kernel: Use kernels of the specified type (default symmetric)\n");
+    fprintf(stderr, "       -kernel: Use kernels of the specified type (default symmetric).\n");
     fprintf(stderr, "       -rod3: Make a rod3 kernel of specified LENGTH(pixels) & ORIENT(degrees)\n");
+    fprintf(stderr, "       -imageor: set orientation of oriented image tracker to specified ORIENT (degrees)\n");
     fprintf(stderr, "       -dark_spot: Track a dark spot (default is bright spot)\n");
     fprintf(stderr, "       -follow_jumps: Set the follow_jumps flag\n");
     fprintf(stderr, "       -outfile: Save the track to the file 'name' (.vrpn will be appended)\n");
@@ -3455,6 +3554,7 @@ int main(int argc, char *argv[])
      exit(0);
   }
 #endif
+
 
   // Set up exit handler to make sure we clean things up no matter
   // how we are quit.  We hope that we exit in a good way and so
@@ -3663,6 +3763,11 @@ int main(int argc, char *argv[])
         g_kernel_type = KERNEL_SYMMETRIC;
       } else if (!strncmp(argv[i], "FIONA", strlen("FIONA"))) {
         g_kernel_type = KERNEL_FIONA;
+	  } else if (!strncmp(argv[i], "imageor", strlen("imageor"))) {
+        g_kernel_type = KERNEL_IMAGE_ORIENTED;
+		g_imageor = 1;
+	  } else if (!strncmp(argv[i], "image", strlen("image"))) {
+        g_kernel_type = KERNEL_IMAGE;
       } else {
         Usage(argv[0]);
         exit(-1);
@@ -3698,8 +3803,11 @@ int main(int argc, char *argv[])
       if (++i >= argc) { Usage(argv[0]); }
       g_length = atof(argv[i]);
       if (++i >= argc) { Usage(argv[0]); }
-      g_orientation = atof(argv[i]);
+      g_rod_orientation = atof(argv[i]);
       g_rod = 1;
+    } else if (!strncmp(argv[i], "-imageor", strlen("-imageor"))) {
+      if (++i >= argc) { Usage(argv[0]); }
+      g_image_orientation = atof(argv[i]);
     } else if (!strncmp(argv[i], "-precision", strlen("-precision"))) {
       if (++i >= argc) { Usage(argv[0]); }
       g_precision = atof(argv[i]);
