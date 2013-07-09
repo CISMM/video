@@ -374,6 +374,62 @@ protected:
 };
 
 //----------------------------------------------------------------------------
+// This class is initialized with an image that it should track, and then
+// it will optimize against this initial image by shifting
+// over a specified range to find the image whose pixel-wise least-squares
+// difference is minimized. This version checks different orientations.
+
+class image_oriented_spot_tracker_interp : public spot_tracker_XY {
+public:
+  // Set initial parameters of the search routine
+  image_oriented_spot_tracker_interp(double radius,
+		    bool inverted = false,
+		    double pixelaccuracy = 0.25,
+		    double radiusaccuracy = 0.25,
+		    double sample_separation_in_pixels = 1.0,
+			double orientation = 0.0);
+  virtual ~image_oriented_spot_tracker_interp();
+
+  // Initialize with the image that we are trying to match and the
+  // position in the image we are to check.  The image is resampled
+  // at sub-pixel resolution around the location.  Returns true on
+  // success and false on failure.
+  virtual bool	set_image(const image_wrapper &image, unsigned rgb, double x, double y, double rad, double orientation);
+
+  // Optimize starting at the specified location to find the best-fit image.
+  // This calls the base-class optimizer (which tries position and optionally
+  // radius) and then try changing the orientation.
+  // Take only one optimization step.  Return whether we ended up finding a
+  // better location/orientation or not.  Return new location in any case. The
+  // boolean parameters tell whether to try stepping in each of X, Y, and
+  // orientation.
+  virtual bool	take_single_optimization_step(const image_wrapper &image, unsigned rgb, double &x, double &y,
+				      bool do_x, bool do_y, bool do_r);
+
+  /// Check the fitness against an image, at the current parameter settings.
+  // Return the fitness value there.
+  virtual double  check_fitness(const image_wrapper &image, unsigned rgb);
+
+  /// Get at internal information
+  double  get_orientation(void) const { return d_orientation; };
+
+    /// Set the desired orientation
+  virtual bool	set_orientation(const double orient_in_degrees) {
+	d_orientation = orient_in_degrees;
+	return true;
+    };
+
+
+protected:
+  double  *_testimage;	  //< The image to test for fitness against
+  int	  _testrad;	  //< The radius of pixels stored from the test image
+  int	  _testsize;	  //< The size of the stored image (2 * _testrad + 1)
+  int	  _testx, _testy; //< The center of the image for testing point of view
+  double  d_orientation;  //< The orientation of the image in degrees
+};
+
+
+//----------------------------------------------------------------------------
 // This class is initialized with a description of a Gaussian profile that it
 // should track, and then it will optimize against this initial image by shifting
 // over a specified range to find the image whose pixel-wise least-squares
@@ -693,7 +749,9 @@ enum KERNEL_TYPE {
   KT_DISK = 0,
   KT_CONE = 1,
   KT_SYMMETRIC = 2,
-  KT_FIONA = 3
+  KT_FIONA = 3,
+  KT_IMAGE = 4,
+  KT_IMAGE_ORIENTED = 5
 };
 
 //----------------------------------------------------------------------------------
