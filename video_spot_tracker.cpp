@@ -318,6 +318,9 @@ bool allow_optimization = true; // If running from command line, allow option to
 bool first_frame_only_autofind = false; // Whether or not to autofind beads after first frame
 
 //--------------------------------------------------------------------------
+bool g_imageor = false; // Whether or not to use oriented image kernel
+
+//--------------------------------------------------------------------------
 // Tcl controls and displays
 void  logfilename_changed(char *newvalue, void *);
 void  device_filename_changed(char *newvalue, void *);
@@ -366,7 +369,6 @@ Tclvar_float		g_search_radius("search_radius",0);	  //< Search radius for doing 
 Tclvar_int_with_button	g_predict("predict",NULL,0);
 Tclvar_int_with_button	g_kernel_type("kerneltype", NULL, KERNEL_SYMMETRIC, rebuild_trackers);
 Tclvar_int_with_button	g_rod("rod3",NULL,0, rebuild_trackers);
-Tclvar_int_with_button	g_imageor("imageor",NULL,0, rebuild_trackers);
 Tclvar_float_with_scale	g_length("length", ".rod3", 10, 50, 20);
 Tclvar_float_with_scale	g_rod_orientation("orient", ".rod3", 0, 359, 0);
 Tclvar_float_with_scale	g_image_orientation("orient", ".imageor", 0, 359, 0);
@@ -3133,6 +3135,10 @@ void  set_kymograph_visibility(int newvalue, void *)
 // This version is for float sliders
 void  rebuild_trackers(float /*newvalue*/, void *)
 {
+  // Making it work with imageor kernel so a separate checkbox isn't needed
+  if (g_kernel_type == KERNEL_IMAGE_ORIENTED) {
+	g_imageor = 1;
+  }
   g_trackers.min_bead_separation(g_trackerDeadZone);
   g_trackers.min_border_distance(g_borderDeadZone);
   g_trackers.color_index(g_colorIndex);

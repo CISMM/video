@@ -209,9 +209,11 @@ int main(int argc, char *argv[])
         angle = (90 - frame * spiral_speed);
         break;
       case RANDOM:
-        x += random_step * unit_random();
-        y += random_step * unit_random();
-        angle += random_angle * unit_random();
+		if (frame != 0) {
+          x += random_step * unit_random();
+          y += random_step * unit_random();
+		  angle += random_angle * unit_random();
+		}
     }
 
     // Flip the image in Y because the write function is going to flip it again
