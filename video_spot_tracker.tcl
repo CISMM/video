@@ -52,16 +52,22 @@ pack .kernel.options -side left
 frame .kernel.type -relief raised -borderwidth 1
 frame .kernel.type.left
 frame .kernel.type.right
+frame .kernel.type.top
 radiobutton .kernel.type.left.disc -variable kerneltype -text disc -value 0
 radiobutton .kernel.type.left.cone -variable kerneltype -text cone -value 1
-radiobutton .kernel.type.right.symmetric -variable kerneltype -text symmetric -value 2
-radiobutton .kernel.type.right.fiona -variable kerneltype -text FIONA -value 3
+radiobutton .kernel.type.top.symmetric -variable kerneltype -text symmetric -value 2
+radiobutton .kernel.type.top.fiona -variable kerneltype -text FIONA -value 3
+radiobutton .kernel.type.right.image -variable kerneltype -text image -value 4
+radiobutton .kernel.type.right.imageor -variable kerneltype -text imageor -value 5 -command update_imageor_window_visibility
 pack .kernel.type.left.disc -anchor w
 pack .kernel.type.left.cone -anchor w
-pack .kernel.type.right.symmetric -anchor w
-pack .kernel.type.right.fiona -anchor w
+pack .kernel.type.top.symmetric -anchor w
+pack .kernel.type.top.fiona -anchor w
+pack .kernel.type.right.image -anchor w
+pack .kernel.type.right.imageor -anchor w
 pack .kernel.type.left -side left
-pack .kernel.type.right -side left
+pack .kernel.type.right -side right
+pack .kernel.type.top -side top
 pack .kernel.type -side left
 
 frame .kernel.options2
@@ -129,6 +135,18 @@ proc update_rod_window_visibility {nm el op} {
 	} else {
 		wm withdraw .rod3
 	}
+}
+
+###########################################################
+# Put the places for the controls for the oreinted image kernels.
+# This window should only be visible when imageor is turned on.
+
+toplevel .imageor
+wm geometry .imageor +860+10
+wm withdraw .imageor
+
+proc update_imageor_window_visibility {args} {
+	wm deiconify .imageor
 }
 
 ###########################################################
