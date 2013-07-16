@@ -115,8 +115,8 @@
 
 <p><img src="kernel.jpg" width="745" height="173"></p>
 
-<p>There are four types of tracking kernels available: disc, cone, symmetric, 
-  and FIONA. Their properties are controlled using interface widgets in the <cite>kernel</cite> 
+<p>There are six types of tracking kernels available: disc, cone, symmetric, 
+  and FIONA, image, and imageor (oriented image). Their properties are controlled using interface widgets in the <cite>kernel</cite> 
   control panel.</p>
 
 <p>For tracking spots that are even in intensity, or which have uneven intensities within them but a defined circular edge, the <cite><strong>disc</strong></cite> kernel should be used. The radius should be set to match the radius of the spots you wish to track. The <cite><strong>interpolate</strong></cite> checkbox should be set for more accuracy and cleared for more speed.</p>
@@ -164,8 +164,22 @@
   less than the actual length of the bar on the screen. The symmetric kernel is 
   probably the least useful. Note that if the bars flex, this tracker may not 
   work very well.</p>
-<h3>Enabling the trackers to follow jumps in bead position</h3>
 
+<p>The <cite><strong>image</strong></cite> kernel is an image-based kernel that can be
+  used to track particles that are neither radially symmetric nor rods. This kernel 
+  should be used on any object for which none of the other kernels are applicable. 
+  This image-based kernel begins by reading in an image from the first frame of the video
+  at the specified location with width and height equal to twice the specified radius, 
+  and in each subsequent frame, it looks in X and Y for the position in the frame that 
+  best fits the initial image. If the particle rotates, the <cite><strong>imageor</strong></cite> 
+  kernel is useful, as the orientation of the tracker can be set (similar to the rod3 kernel) 
+  before the initial reference image is set, and when tracking in subsequent frames, the 
+  tracker will take steps in orientation as well as in X and Y, recording orientation data 
+  for each frame as well as position. The radius should be set so that the tracker 
+  encompasses the whole object, which is most easily determined when the round_cursor 
+  box is left unchecked, as the line displayed is equal to the tracker's width.
+
+<h3>Enabling the trackers to follow jumps in bead position</h3>
 
 <p>The <strong><cite>follow_jumps</cite></strong> check-box activates a more-robust 
   tracking algorithm that first looks for the best image match within 4 radii 
@@ -398,7 +412,7 @@
 <h3></h3>
 <h3>Controlling playback</h3>
 
-<p>Whether logging is turned on or not, the video can be played by checking the <b><i>play_video</i></b> checkbox, and paused by unchecking it. The <b><i>single_step_video</i></b> checkbox will step forwards one video frame each time it is pressed. The <b><i>rewind</i></b> checkbox causes the video to rewind to the beginning, play the first frame of the video, and then pause. The <cite>FrameNum</cite> display shows which frame of a video file is currently being displayed.</p> 
+<p>Whether logging is turned on or not, the video can be played by checking the <b><i>play_video</i></b> checkbox, and paused by unchecking it. The <b><i>single_step_video</i></b> checkbox will step forwards one video frame each time it is pressed. The <b><i>rewind</i></b> checkbox causes the video to rewind to the beginning, play the first frame of the video, and then pause, as well as deleting any existing trackers. The <cite>FrameNum</cite> display shows which frame of a video file is currently being displayed.</p> 
 
 <h3>Background removal</h3>
 <p>When the <i>background_subtract</i> checkbox is selected, the program will 
