@@ -387,7 +387,7 @@ public:
 		    double pixelaccuracy = 0.25,
 		    double radiusaccuracy = 0.25,
 		    double sample_separation_in_pixels = 1.0,
-			double orientation = 0.0);
+			double orientation = 0.0, int frames_to_average = 0);
   virtual ~image_oriented_spot_tracker_interp();
 
   // Initialize with the image that we are trying to match and the
@@ -406,6 +406,8 @@ public:
   virtual bool	take_single_optimization_step(const image_wrapper &image, unsigned rgb, double &x, double &y,
 				      bool do_x, bool do_y, bool do_r);
 
+  virtual void  optimize_xy(const image_wrapper &image, unsigned rgb, double &x, double &y);
+
   /// Check the fitness against an image, at the current parameter settings.
   // Return the fitness value there.
   virtual double  check_fitness(const image_wrapper &image, unsigned rgb);
@@ -419,8 +421,14 @@ public:
 	return true;
     };
 
+  virtual bool  set_frames_to_average(const double frames_to_average) {
+	max_images = (int)floor(frames_to_average);
+	return true;
+  }
 
 protected:
+  std::list<double *> trackedimages;
+  int max_images;
   double  *_testimage;	  //< The image to test for fitness against
   int	  _testrad;	  //< The radius of pixels stored from the test image
   int	  _testsize;	  //< The size of the stored image (2 * _testrad + 1)

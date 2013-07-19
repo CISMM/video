@@ -372,6 +372,7 @@ Tclvar_int_with_button	g_rod("rod3",NULL,0, rebuild_trackers);
 Tclvar_float_with_scale	g_length("length", ".rod3", 10, 50, 20);
 Tclvar_float_with_scale	g_rod_orientation("orient", ".rod3", 0, 359, 0);
 Tclvar_float_with_scale	g_image_orientation("orient", ".imageor", 0, 359, 0);
+Tclvar_float_with_scale g_frames_to_average("frames_to_average", ".imageor", 0, 10, 0);
 Tclvar_int_with_button	g_opt("optimize",".kernel.optimize");
 Tclvar_int_with_button	g_opt_z("optimize_z",".kernel.optimize", 0, handle_optimize_z_change);
 Tclvar_selector		g_psf_filename("psf_filename", NULL, NULL, "");
@@ -2402,6 +2403,7 @@ void myIdleFunc(void)
     }
 	if(g_imageor) {
 	  static_cast<image_oriented_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->set_orientation(g_image_orientation);
+	  static_cast<image_oriented_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->set_frames_to_average(g_frames_to_average);
 	}
   }
 
@@ -2814,7 +2816,7 @@ void keyboardCallbackForGLUT(unsigned char key, int x, int y)
         g_rod_orientation = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
         g_length = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_length();
       }
-	  if (g_rod) {
+	  if (g_imageor) {
 	    g_image_orientation = static_cast<image_oriented_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_orientation();
 	  }
     }
@@ -3236,6 +3238,7 @@ void  handle_save_state_change(int newvalue, void *)
   fprintf(f, "set length %lg\n", (double)(g_length));
   fprintf(f, "set rod orient %lg\n", (double)(g_rod_orientation));
   fprintf(f, "set image orient %lg\n", (double)(g_image_orientation));
+  fprintf(f, "set frames to average %d\n", (double)(g_frames_to_average));
   fprintf(f, "set round_cursor %d\n", (int)(g_round_cursor));
   fprintf(f, "set show_tracker %d\n", (int)(g_mark));
   fprintf(f, "set show_video %d\n", (int)(g_show_video));
@@ -3470,7 +3473,7 @@ void  handle_optimize_z_change(int newvalue, void *)
 void Usage(const char *progname)
 {
     fprintf(stderr, "Usage: %s [-nogui] [-gui] [-kernel disc|cone|symmetric|FIONA|image|imageor]\n", progname);
-    fprintf(stderr, "           [-dark_spot] [-follow_jumps] [-rod3 LENGTH ORIENT] [-imageor ORIENT]\n");
+    fprintf(stderr, "           [-dark_spot] [-follow_jumps] [-rod3 LENGTH ORIENT] [-imageor ORIENT FRAMES]\n");
     fprintf(stderr, "           [-outfile NAME] [-precision P] [-sample_spacing S] [-show_lost_and_found]\n");
     fprintf(stderr, "           [-lost_behavior B] [-lost_tracking_sensitivity L] [-blur_lost_and_found B]\n");
 	fprintf(stderr, "           [-center_surround R] [-optimization_off]\n");
@@ -3488,7 +3491,9 @@ void Usage(const char *progname)
     fprintf(stderr, "       -gui: Run with the video display window (no Glut/OpenGL)\n");
     fprintf(stderr, "       -kernel: Use kernels of the specified type (default symmetric).\n");
     fprintf(stderr, "       -rod3: Make a rod3 kernel of specified LENGTH(pixels) & ORIENT(degrees)\n");
-    fprintf(stderr, "       -imageor: set orientation of oriented image tracker to specified ORIENT (degrees)\n");
+    fprintf(stderr, "       -imageor: set orientation of oriented image tracker to specified ORIENT(degrees)\n");
+	fprintf(stderr, "				and average test image over specified number of FRAMES (default 0, which\n");
+	fprintf(stderr, "				only uses the initial test image rather than changing it at each frame)\n");
     fprintf(stderr, "       -dark_spot: Track a dark spot (default is bright spot)\n");
     fprintf(stderr, "       -follow_jumps: Set the follow_jumps flag\n");
     fprintf(stderr, "       -outfile: Save the track to the file 'name' (.vrpn will be appended)\n");
@@ -3814,6 +3819,8 @@ int main(int argc, char *argv[])
     } else if (!strncmp(argv[i], "-imageor", strlen("-imageor"))) {
       if (++i >= argc) { Usage(argv[0]); }
       g_image_orientation = atof(argv[i]);
+	  if (++i >= argc) { Usage(argv[0]); }
+      g_frames_to_average = atof(argv[i]);
     } else if (!strncmp(argv[i], "-precision", strlen("-precision"))) {
       if (++i >= argc) { Usage(argv[0]); }
       g_precision = atof(argv[i]);
