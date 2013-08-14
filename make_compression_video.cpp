@@ -32,11 +32,12 @@ public:
   // spots in the specified locations (may be subpixel) with respective
   // radii and intensities, as listed in the spot vector, s.
   compression_test_image(int minx = 0, int maxx = 255, int miny = 0, 
-		 int maxy = 255, double gaussian_var = 0, double poisson_frac = 0,
+		 int maxy = 255, int minv = 0, int maxv = 255, double gaussian_var = 0, double poisson_frac = 0,
 		 double bead_val = 0, double bead_std = 0, double x = 0, double y = 0);
 };
 
-compression_test_image::compression_test_image(int minx, int maxx, int miny, int maxy,
+compression_test_image::compression_test_image(int minx, int maxx, int miny, int maxy, 
+                int minv, int maxv,
 		double gaussian_var, double poisson_frac, double bead_val, double bead_std,
 		double x, double y) :
   double_image(minx, maxx, miny, maxy)
@@ -47,7 +48,7 @@ compression_test_image::compression_test_image(int minx, int maxx, int miny, int
   // Fill in the base intensity of each pixel.
   for (i = _minx; i <= _maxx; i++) {
     for (j = _miny; j <= _maxy; j++) {
-		double intensity = (i / double(maxx)) * 65535;
+		double intensity = minv * 255 + (i / double(maxx)) * 255 * (maxv-minv);
 		write_pixel_nocheck(i, j, intensity);
 	}
   }
@@ -119,6 +120,10 @@ int main(int argc, char *argv[])
   const char *basename = "test_video";
   bool verbose = false;               // Print out info along the way?
 
+  unsigned minv = 0;        // min pixel intensity for bkgd 
+  unsigned maxv = 255;    // max ....   ...      . .  .
+ 
+
   int	realparams = 0;
   int	i;
   i = 1;
@@ -133,7 +138,7 @@ int main(int argc, char *argv[])
 	  height = atoi(argv[i]);
 	} else if (!strncmp(argv[i], "-bead", strlen("-bead"))) {
           if (++i > argc) { Usage(argv[0]); }
-	  bead_val = 65535* atof(argv[i]);
+	  bead_val = 65535 * atof(argv[i]);
           if (++i > argc) { Usage(argv[0]); }
 	  bead_std = atof(argv[i]);
 		  if (++i > argc) { Usage(argv[0]); }
@@ -152,6 +157,12 @@ int main(int argc, char *argv[])
 	  gaussian_var = atof(argv[i]);
     } else if (!strncmp(argv[i], "-v", strlen("-v"))) {
           verbose = true;
+    } else if (!strncmp(argv[i], "-minv", strlen("-minv"))) {
+          if (++i > argc) { Usage(argv[0]); }
+          minv = atoi(argv[i]);
+    } else if (!strncmp(argv[i], "-maxv", strlen("-maxv"))) {
+          if (++i > argc) { Usage(argv[0]); }
+          maxv = atoi(argv[i]);
     } else if (argv[i][0] == '-') {	// Unknown flag
 	  Usage(argv[0]);
     } else switch (realparams) {		// Non-flag parameters
@@ -193,7 +204,7 @@ int main(int argc, char *argv[])
 
     // Make a new image
     image_wrapper *cur_image;
-	cur_image = new compression_test_image(0, width-1, 0, height-1, gaussian_var, poisson_frac, 
+	cur_image = new compression_test_image(0, width-1, 0, height-1, minv, maxv, gaussian_var, poisson_frac, 
 											bead_val, bead_std, x, flip_y);    
 
     // Write the image to file whose name is the base name with
