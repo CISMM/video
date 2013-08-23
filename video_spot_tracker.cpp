@@ -2861,7 +2861,7 @@ void  logfilename_changed(char *newvalue, void *)
   // the server, mainloop for a while, then tell the client to
   // stop logging and wait until the client disconnects before
   // going on.
-  if (strlen(newvalue) == 0) {
+  if ((strlen(newvalue) == 0) && g_vrpn_connection) {
     g_vrpn_connection->send_pending_reports();
     int i;
     for (i = 0; i < 100; i++) {
