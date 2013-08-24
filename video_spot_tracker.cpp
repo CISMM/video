@@ -1041,7 +1041,8 @@ void myDisplayFunc(void)
     // Figure out how many bits we need to shift to the right.
     // This depends on how many bits the camera has above zero minus
     // the number of bits we want to shift to brighten the image.
-    // If this number is negative, clamp to zero.
+    // If this number is negative, clamp to zero.  It also depends
+    // on whether we're doing background subtraction.
     int shift_due_to_camera = static_cast<int>(g_camera_bit_depth) - 8;
     int total_shift = shift_due_to_camera - g_brighten;
     if (total_shift < 0) { total_shift = 0; }
@@ -1064,7 +1065,14 @@ void myDisplayFunc(void)
 
     if (g_opengl_video) {
       // If we can't write using OpenGL, turn off the feature for next frame.
-      if (!drawn_image->write_to_opengl_quad(pow(2.0,static_cast<double>(g_brighten + blurred_dim)))) {
+      printf("XXX shift taken to power = %lg\n", g_brighten + blurred_dim);
+      // If we're doing background subtraction, then we need to scale down so that
+      // the total brightness = 1 rather than 2^camera, because we're using GL_FLOAT
+      // rather than GL_UNSIGNED_BYTE in the texture writes.
+      if (g_background_subtract) {
+        total_shift -= g_camera_bit_depth;
+      }
+      if (!drawn_image->write_to_opengl_quad(pow(2.0,static_cast<double>(total_shift + blurred_dim)))) {
         g_opengl_video = false;
       }
     } else {
