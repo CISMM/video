@@ -922,6 +922,7 @@ bool	image_spot_tracker_interp::set_image(const image_wrapper &image, unsigned r
 
   if (desired_rad <= 0) {
     fprintf(stderr,"image_spot_tracker_interp::set_image(): Non-positive radius, giving up\n");
+    fprintf(stderr,"  (tracker location (%lg, %lg)\n", x, y);
     if (_testimage) {
       delete [] _testimage;
       _testimage = NULL;
@@ -1749,24 +1750,6 @@ unsigned Spot_Information::get_static_index() {
 //----------------------------------------------------------------------------------
 // Tracker_Collection_Manager class implementation
 
-// This function allows for much simpler freeing up of std::lists of
-//  Spot_Information pointers.
-static bool deleteAll( Spot_Information * theElement ) {
-        if (theElement != NULL)
-                delete theElement; // we'll let our Spot_Information destructor do the work
-        return true;
-}
-
-// This function allows for removal of lost trackers from the list.
-static bool deleteLost( Spot_Information * theElement ) {
-    if (theElement->lost()) {
-        delete theElement; // we'll let our Spot_Information destructor do the work
-        return true;
-    } else {
-        return false;
-    }
-}
-
 Tracker_Collection_Manager::~Tracker_Collection_Manager()
 {
     delete_trackers();
@@ -1774,11 +1757,14 @@ Tracker_Collection_Manager::~Tracker_Collection_Manager()
 
 void Tracker_Collection_Manager::delete_trackers()
 {
-    // Delete all of the tracker objects we had created.
-    d_trackers.remove_if(deleteAll);
+  // Delete all of the tracker objects we had created.
+  while (!d_trackers.empty()) {
+    delete d_trackers.front();
+    d_trackers.pop_front();
+  }
 
-    // No active tracker.
-    d_active_tracker = -1;
+  // No active tracker.
+  d_active_tracker = -1;
 }
 
 bool Tracker_Collection_Manager::delete_tracker(unsigned which)
@@ -2267,7 +2253,10 @@ bool Tracker_Collection_Manager::find_more_brightfield_beads_in(
 	//printf("%i candidates were not lost.\n", numnotlost);
 	
 	// clean up candidate spots memory
-	potentialTrackers.remove_if( deleteAll );
+        while (!potentialTrackers.empty()) {
+          delete potentialTrackers.front();
+          potentialTrackers.pop_front();
+        }
 
 	// clear up our SMD memory in reverse order from allocation to make it
         // easier for the memory manager
@@ -2423,8 +2412,7 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
       }
     }
 
-    // Clean up our temporary images in reverse order to make it easier for the
-    // memory allocator.
+    // Clean up our temporary image.
     delete threshold_image;
 
     return true;
@@ -2608,7 +2596,7 @@ unsigned Tracker_Collection_Manager::optimize_based_on(const image_wrapper &s_im
   } else {
 
     // Free the buffer, if it is not NULL
-    if (copy_of_image.buf) { delete [] copy_of_image.buf; }
+    if (copy_of_image.buf) { delete [] copy_of_image.buf; copy_of_image.buf = NULL; }
 
 #else
   {
@@ -2981,7 +2969,7 @@ void Tracker_Collection_Manager::mark_lost_brightfield_beads_in(const image_wrap
 
   } else {
     // Free the buffer, if it is not NULL
-    if (copy_of_image.buf) { delete [] copy_of_image.buf; }
+    if (copy_of_image.buf) { delete [] copy_of_image.buf; copy_of_image.buf = NULL; }
 
 #else
   {
@@ -3091,14 +3079,22 @@ unsigned Tracker_Collection_Manager::delete_beads_marked_as_lost(void)
     }
 
     // Remove all lost beads.
-    d_trackers.remove_if(deleteLost);
+    std::list<Spot_Information *>::iterator it = d_trackers.begin();
+    while (it != d_trackers.end()) {
+      if((*it)->lost()) {
+        delete *it;
+        it = d_trackers.erase(it);
+      } else {
+        ++it;
+      }
+    }
  
     // If the active tracker was lost, set the active tracker to the first one.
     if (active_lost) {
       if (d_trackers.size() == 0) {
         d_active_tracker = -1;
       } else {
-        d_active_tracker = 0;
+        d_active_tracker = d_trackers.size() - 1;
       }
     }
 
