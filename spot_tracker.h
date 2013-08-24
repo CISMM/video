@@ -914,10 +914,10 @@ protected:
     float                           d_default_fluorescence_lost_threshold;  // Default lost-tracking threshold for new beads
     unsigned                        d_color_index;          // Color index from the image.
     bool                            d_invert;               // Look for dark bead on bright background?
-    std::list<Spot_Information *>   d_trackers; // Trackers we're managing
+    std::list<Spot_Information *>   d_trackers;             // Trackers we're managing
     int                             d_active_tracker;       // Index of the active tracker, -1 if none.
-    TCM_XYTRACKER_CREATOR           d_xy_tracker_creator; // Used to make new trackers
-    TCM_ZTRACKER_CREATOR            d_z_tracker_creator; // Used to make new trackers
+    TCM_XYTRACKER_CREATOR           d_xy_tracker_creator;   // Used to make new trackers
+    TCM_ZTRACKER_CREATOR            d_z_tracker_creator;    // Used to make new trackers
 
     // Helper function for find_more_brightfield_beads_in.
     // Computes a local SMD measure (cross) at the location (x,y) with
