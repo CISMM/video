@@ -494,13 +494,26 @@ double	subtracted_image::read_pixel_nocheck(int x, int y, unsigned rgb) const
 // camera type.
 bool subtracted_image::write_to_opengl_texture(GLuint tex_id)
 {
-  const GLint   NUM_COMPONENTS = 1;
-  const GLenum  FORMAT = GL_LUMINANCE;
-  const GLenum  TYPE = GL_FLOAT;
-  const void*   BASE_BUFFER = _image;
-  const void*   SUBSET_BUFFER = &_image[NUM_COMPONENTS * ( _minx + get_num_columns()*_miny )];
-  return write_to_opengl_texture_generic(tex_id, NUM_COMPONENTS, FORMAT, TYPE,
-    BASE_BUFFER, SUBSET_BUFFER, _minx, _miny, _maxx, _maxy);
+  if (get_num_colors() == 1) {
+    const GLint   NUM_COMPONENTS = 1;
+    const GLenum  FORMAT = GL_LUMINANCE;
+    const GLenum  TYPE = GL_FLOAT;
+    const void*   BASE_BUFFER = _image;
+    const void*   SUBSET_BUFFER = &_image[NUM_COMPONENTS * ( _minx + get_num_columns()*_miny )];
+    return write_to_opengl_texture_generic(tex_id, NUM_COMPONENTS, FORMAT, TYPE,
+      BASE_BUFFER, SUBSET_BUFFER, _minx, _miny, _maxx, _maxy);
+  } else if (get_num_colors() == 3) {
+    const GLint   NUM_COMPONENTS = 3;
+    const GLenum  FORMAT = GL_RGB;
+    const GLenum  TYPE = GL_FLOAT;
+    const void*   BASE_BUFFER = _image;
+    const void*   SUBSET_BUFFER = &_image[NUM_COMPONENTS * ( _minx + get_num_columns()*_miny )];
+    return write_to_opengl_texture_generic(tex_id, NUM_COMPONENTS, FORMAT, TYPE,
+      BASE_BUFFER, SUBSET_BUFFER, _minx, _miny, _maxx, _maxy);
+  } else {
+    fprintf(stderr,"subtracted_image::write_to_opengl_texture(): Not implemented for images with %d colors\n", get_num_colors());
+    return false;
+  }
 }
 
 
