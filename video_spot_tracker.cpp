@@ -2007,9 +2007,14 @@ void optimize_all_trackers(void)
 	  // that caused them to be lost never shows up.
 	  // All of the possible loss-reasons were marked above, so
 	  // we won't miss edge-deleted trackers (for example).
-	  g_deleted_trackers.add_tracker(tracker->xytracker()->get_x(),
+          // We don't store this if we're not logging video.
+          if (g_log_video) {
+            g_deleted_trackers.add_tracker(tracker->xytracker()->get_x(),
 		tracker->xytracker()->get_y(),
 		tracker->xytracker()->get_radius());
+          } else {
+            g_deleted_trackers.delete_trackers();
+          }
 
           // Delete this tracker from the list (it was made active above)
           g_trackers.delete_active_tracker();
@@ -2430,7 +2435,7 @@ void myIdleFunc(void)
       if (g_trackers.autofind_fluorescent_beads_in(*laf_image,
               g_fluorescentSpotThreshold,
               g_intensityLossSensitivity,
-              g_findThisManyFluorescentBeads - g_trackers.tracker_count())) {
+              g_fluorescentMaxRegions)) {
 	  found_more_beads = true;
       }
       g_gotNewFluorescentFrame = false;
