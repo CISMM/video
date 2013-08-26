@@ -642,9 +642,12 @@ TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 if (VIDEO_BUILD_PANOPTES)
 set (PNERVE_MAJOR_VERSION 1) 
 set (PNERVE_MINOR_VERSION 4) 
-set (PNERVE_PATCH_VERSION 7) 
+set (PNERVE_PATCH_VERSION 8) 
 
-set (CMAKE_INSTALL_PREFIX "/common1/nanowork/release/PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}")
+#set (CMAKE_INSTALL_PREFIX "/common1/nanowork/release/PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}")
+#set (PROJECT_NAME "PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}")
+set (PROJECT_NAME "1.0")
+set (CMAKE_INSTALL_PREFIX "/common1/phsiao/release/${PROJECT_NAME}")
 
 # Install PanotpicNerve
 INSTALL(TARGETS PanopticNerve_LEWOS DESTINATION . )
@@ -697,7 +700,7 @@ endif()
 # Install 3dfm scripts
 install (CODE "
 message(\"Retrieving CVS repository\")
-set(ENV{CVSROOT} \":ext:taylorr@login.cs.unc.edu:/afs/cs.unc.edu/project/stm/src/CVS_repository\")
+set(ENV{CVSROOT} \":ext:$ENV{USER}@login.cs.unc.edu:/afs/cs.unc.edu/project/stm/src/CVS_repository\")
 set(ENV{CVS_RSH} ssh)
 execute_process(COMMAND cvs checkout 3dfmAnalysis)
 execute_process(COMMAND mkdir -p ${CMAKE_INSTALL_PREFIX}/scripts)
@@ -728,13 +731,16 @@ install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerv
 if (${is_osmium} EQUAL "-1")
 install (CODE "
 file (WRITE ${CMAKE_INSTALL_PREFIX}/gnome-terminal.desktop
-\"[Desktop Entry]\nName=Terminal\nComment=Use the command line\nTryExec=gnome-terminal\nExec=gnome-terminal --working-directory=/common1/nanowork/release/PanopticNerve-\\${PNERVE_MAJOR_VERSION}.\\${PNERVE_MINOR_VERSION}.\\${PNERVE_PATCH_VERSION}\nIcon=utilities-terminal\nType=Application\nX-GNOME-DocPath=gnome-terminal/index.html\nX-GNOME-Bugzilla-Bugzilla=GNOME\nX-GNOME-Bugzilla-Product=gnome-terminal\nX-GNOME-Bugzilla-Component=BugBuddyBugs\nX-GNOME-Bugzilla-Version=2.30.2\nCategories=GNOME;GTK;Utility;TerminalEmulator;\nStartupNotify=true\nOnlyShowIn=GNOME;\nX-Ubuntu-Gettext-Domain=gnome-terminal\")
+\"[Desktop Entry]\nName=Terminal\nComment=Use the command line\nTryExec=gnome-terminal\nExec=gnome-terminal --working-directory=${CMAKE_INSTALL_PREFIX}\nIcon=utilities-terminal\nType=Application\nX-GNOME-DocPath=gnome-terminal/index.html\nX-GNOME-Bugzilla-Bugzilla=GNOME\nX-GNOME-Bugzilla-Product=gnome-terminal\nX-GNOME-Bugzilla-Component=BugBuddyBugs\nX-GNOME-Bugzilla-Version=2.30.2\nCategories=GNOME;GTK;Utility;TerminalEmulator;\nStartupNotify=true\nOnlyShowIn=GNOME;\nX-Ubuntu-Gettext-Domain=gnome-terminal\")
 execute_process (COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/gnome-terminal.desktop)
 ")
 endif ()
 # Create a .tar.gz installer
+#install (CODE "
+#execute_process (COMMAND tar -zcvf ${CMAKE_INSTALL_PREFIX}/../PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}.tar.gz -C ${CMAKE_INSTALL_PREFIX}/.. PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}) 
+#")
 install (CODE "
-execute_process (COMMAND tar -zcvf ${CMAKE_INSTALL_PREFIX}/../PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}.tar.gz -C ${CMAKE_INSTALL_PREFIX}/.. PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}) 
+execute_process (COMMAND tar -zcvf ${CMAKE_INSTALL_PREFIX}/../${PROJECT_NAME}.tar.gz -C ${CMAKE_INSTALL_PREFIX}/.. ${PROJECT_NAME}) 
 ")
 
 include_directories("/usr/include/libusb-1.0")
