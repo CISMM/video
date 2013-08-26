@@ -180,7 +180,7 @@ static bool parse_tcl_set_command(const char *cmd)
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "07.07";
+const char *Version_string = "08.00";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -1065,7 +1065,6 @@ void myDisplayFunc(void)
 
     if (g_opengl_video) {
       // If we can't write using OpenGL, turn off the feature for next frame.
-      printf("XXX shift taken to power = %lg\n", g_brighten + blurred_dim);
       // If we're doing background subtraction, then we need to scale down so that
       // the total brightness = 1 rather than 2^camera, because we're using GL_FLOAT
       // rather than GL_UNSIGNED_BYTE in the texture writes.

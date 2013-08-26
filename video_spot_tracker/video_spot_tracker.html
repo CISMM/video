@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v07.07</title>
+<title>Video Spot Tracker v08.00</title>
 
-<h1>Video Spot Tracker version 07.07</h1>
+<h1>Video Spot Tracker version 08.00</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots (particles) in an <a href="http://ffmpeg.org/">FFMPEG</a>-compatible 
@@ -75,7 +75,7 @@
   to jump around between frames.</p>
 <p><b><i>NOTE:</i></b> With Windows XP service pack 2 and with other firewall software, running the program causes a dialog box to appear asking whether to block the program; the program needs to be unblocked only if the program is to be connected to a local or remote feedback system that relies on the tracking data. This happens when the program opens the Internet port assigned to it (3883) by the Internet Domain Naming Authority to export the data through the standard VRPN protocol (<a href="http://www.vrpn.org">www.vrpn.org</a>).</p> 
 
-<h2><img src="GUI.jpg" width="161" height="714" align="right">Using the program</h2>
+<h2><img src="GUI.jpg" width="169" height="718" align="right">Using the program</h2>
 
 <p>When the program is run and a file is selected, four windows will appear. The image window that appears on the lower right contains the first image within the video file or a continually-updating image from a live camera feed. The control panel named <b><i>tk</i></b> that appears on the left when the program is run (shown here to the right) contains a number of interaction widgets that control the operation of the program. The <b><i>kernel</i></b> control panel that appears above the image window (described later) controls the type of tracking kernel being used. The <b><i>log</i></b> control panel is described later.</p>
 
@@ -113,7 +113,7 @@
 
 <h3>Selecting the type of tracker and tracking/logging parameters</h3>
 
-<p><img src="kernel.jpg" width="745" height="173"></p>
+<p><img src="kernel.jpg" width="823" height="176"></p>
 
 <p>There are six types of tracking kernels available: disc, cone, symmetric, 
   and FIONA, image, and imageor (oriented image). Their properties are controlled using interface widgets in the <cite>kernel</cite> 
@@ -165,20 +165,21 @@
   probably the least useful. Note that if the bars flex, this tracker may not 
   work very well.</p>
 
-<p>The <cite><strong>image</strong></cite> kernel is an image-based kernel that can be
-  used to track particles that are neither radially symmetric nor rods. This kernel 
-  should be used on any object for which none of the other kernels are applicable. 
-  This image-based kernel begins by reading in an image from the first frame of the video
-  at the specified location with width and height equal to twice the specified radius, 
-  and in each subsequent frame, it looks in X and Y for the position in the frame that 
-  best fits the initial image. If the particle rotates, the <cite><strong>imageor</strong></cite> 
-  kernel is useful, as the orientation of the tracker can be set (similar to the rod3 kernel) 
-  before the initial reference image is set, and when tracking in subsequent frames, the 
-  tracker will take steps in orientation as well as in X and Y, recording orientation data 
-  for each frame as well as position. The radius should be set so that the tracker 
-  encompasses the whole object, which is most easily determined when the round_cursor 
-  box is left unchecked, as the line displayed is equal to the tracker's width.
-
+<p>The <cite><strong>image</strong></cite> kernel is an image-based kernel that 
+  can be used to track particles that are neither radially symmetric nor rods. 
+  This kernel should be used on any object for which none of the other kernels 
+  are applicable. This image-based kernel begins by reading in an image from the 
+  first frame of the video at the specified location with width and height equal 
+  to twice the specified radius, and in each subsequent frame, it looks in X and 
+  Y for the position in the frame that best fits the initial image. If the tracked 
+  object rotates, the <cite><strong>imageor</strong></cite> kernel is useful, 
+  as the orientation of the tracker can be set (similar to the rod3 kernel) before 
+  the initial reference image is set, and when tracking in subsequent frames, 
+  the tracker will take steps in orientation as well as in X and Y, recording 
+  orientation data for each frame as well as position. The radius should be set 
+  so that the tracker encompasses the whole object, which is most easily determined 
+  when the round_cursor box is left unchecked, as the line displayed is equal 
+  to the tracker's width. 
 <h3>Enabling the trackers to follow jumps in bead position</h3>
 
 <p>The <strong><cite>follow_jumps</cite></strong> check-box activates a more-robust 
@@ -299,7 +300,7 @@
   but may miss spots. The <i>intensity_lost_tracking_sensitivity</i> also controls 
   where trackers will be initialized; they will not appear where they would be 
   immediately lost.</p>
-<h3>Faster display update</h3>
+<h3>Restricting tracking area to speed images from live video cameras</h3>
 
 <p><img src="small_area.jpg" width="162" height="175" align="right">Once you have created all of the trackers you want, you may check the <cite><strong>small_area</strong></cite> checkbox. This will cause the program to limit its update to a small area of pixels that surrounds the active trackers. This requires less processing and makes the update rate faster when the video is played. For the Roper and SPOT cameras, it also reduces the amount of data transmitted from the camera itself, again increasing the frame rate. This area will update itself as the trackers move, and it extends 4 radii past each tracker. This should enable the trackers to continue to track spots that are moving away from the updated video area.  A green box shows up in the video window to indicate the area being updated.</p>
 
@@ -444,6 +445,32 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 8.00:</h3>
+<ul>
+  <li>Added two new image-based tracking kernels, one of which follows asymmetric 
+    objects that rotate and one of which follows asymmetric objects that do not 
+    rotate.</li>
+  <li>Added a feature to enable autofinding only in the first frame of a video, 
+    then not afterwards.</li>
+  <li>Fixed an out-of-memory bug when lots of beads are being found using autofind 
+    but video was not being passed through -- the lost trackers needed for video 
+    storage were being accumulated but never deleted in that case.</li>
+  <li>Fixed two bugs with background subtraction that were causing the preview 
+    window to display the information improperly. The code for tracking saw the 
+    correct images, and things worked if texture video was off, but the display 
+    in the normal case was rescaled in space and intensity.</li>
+  <li>Spot tracker now pre-fetches frames when reading from the image stack reader. 
+    This helps tracking throughput.</li>
+  <li>Fixed a bug where storing video sometimes lost frames due to a VRPN pong 
+    message arriving at the server and causing it to delete the non-filled-in 
+    parts of the video.</li>
+  <li>Fixed crashes on exit when no file was selected in the opening dialog.</li>
+  <li>Modified autodelete behavior to leave the highest-numbered remaining particle 
+    as the selected one, to match manual-deletion behavior.</li>
+  <li>Hides the console window on the mac and cleaned up version string and exit 
+    behavior when it notices a problem.</li>
+  <li>Fixed crash bug when loading TIFF files on the mac.</li>
+</ul>
 <h3>Version 7.07:</h3>
 <ul>
   <li>Added CUDA acceleration to the lost-tracking detection for brightfield tracking 
