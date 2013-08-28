@@ -176,6 +176,10 @@ static bool parse_tcl_set_command(const char *cmd)
 	return false;
 }
 
+// Used to time our total average tracking rate per second, which is
+// useful when we're run as a no-gui application.
+static struct timeval program_start_time;
+
 #endif
 
 //--------------------------------------------------------------------------
@@ -661,12 +665,26 @@ static void  dirtyexit(void)
 static void  cleanup(void)
 {
   static bool cleaned_up_already = false;
-
   if (cleaned_up_already) {
     return;
   } else {
     cleaned_up_already = true;
   }
+
+#ifdef VST_NO_GUI
+  //------------------------------------------------------------
+  // Capture timing information and print out how many frames per second
+  // are being tracked.
+
+  { struct timeval now;
+    gettimeofday(&now, NULL);
+    double timesecs = 0.001 * vrpn_TimevalMsecs(vrpn_TimevalDiff(now, program_start_time));
+    static int total_frames = g_frame_number + 1;
+
+    double frames_per_sec = (total_frames) / timesecs;
+    printf("\nAveraged %lg frames per second over %d frames\n", frames_per_sec, total_frames);
+  }
+#endif
 
   // Done with the camera and other objects.
   printf("Cleanly ");
@@ -3575,7 +3593,6 @@ int main(int argc, char *argv[])
   }
 #endif
 
-
   // Set up exit handler to make sure we clean things up no matter
   // how we are quit.  We hope that we exit in a good way and so
   // cleanup() gets called, but if not then we do a dirty exit.
@@ -4206,6 +4223,9 @@ int main(int argc, char *argv[])
   if (strlen(logname) > 0) {
     logfilename_changed(const_cast<char *>((const char*)(g_logfilename)), NULL);
   }
+
+  // Start our average tracking rate timing
+  vrpn_gettimeofday(&program_start_time, NULL);
 #endif
 
   //------------------------------------------------------------------
