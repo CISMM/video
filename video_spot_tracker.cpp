@@ -337,7 +337,7 @@ Tclvar_float		g_X("x");
 Tclvar_float		g_Y("y");
 Tclvar_float		g_Z("z");
 Tclvar_float		g_Error("error");
-Tclvar_float_with_scale	g_Radius("radius", ".kernel.radius", 1, 30, 5);
+Tclvar_float_with_scale	g_Radius("radius", ".kernel.radius", 1, 30, 5, rebuild_trackers);
 Tclvar_float_with_scale	*g_minX;
 Tclvar_float_with_scale	*g_maxX;
 Tclvar_float_with_scale	*g_minY;
@@ -372,7 +372,8 @@ Tclvar_int_with_button	g_rod("rod3",NULL,0, rebuild_trackers);
 Tclvar_float_with_scale	g_length("length", ".rod3", 10, 50, 20);
 Tclvar_float_with_scale	g_rod_orientation("rod_orient", ".rod3", 0, 359, 0);
 Tclvar_float_with_scale	g_image_orientation("image_orient", ".imageor", 0, 359, 0);
-Tclvar_float_with_scale g_frames_to_average("frames_to_average", ".imageor", 0, 10, 0);
+Tclvar_float_with_scale g_imageor_avg_frames("frames_to_average", ".imageor", 0, 10, 0);
+Tclvar_float_with_scale g_image_avg_frames("frames_to_average", ".image", 0, 10, 0);
 Tclvar_int_with_button	g_opt("optimize",".kernel.optimize");
 Tclvar_int_with_button	g_opt_z("optimize_z",".kernel.optimize", 0, handle_optimize_z_change);
 Tclvar_selector		g_psf_filename("psf_filename", NULL, NULL, "");
@@ -1666,6 +1667,9 @@ void myBeadDisplayFunc(void)
         // Horrible hack to make this work with rod type
         radius = static_cast<rod3_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_length() / 2;
       }
+	  if ((g_imageor || g_kernel_type == KERNEL_IMAGE) && g_frame_number > 0) {
+	    radius = (static_cast<image_oriented_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_testsize())/4;
+	  }
       int min_x = (g_beadseye_size+1)/2 - 2 * radius;
       int max_x = (g_beadseye_size+1)/2 + 2 * radius;
       int min_y = (g_beadseye_size+1)/2 - 2 * radius;
@@ -1685,21 +1689,36 @@ void myBeadDisplayFunc(void)
       int total_shift = shift_due_to_camera - g_brighten;
       if (total_shift < 0) { total_shift = 0; }
       int shift = total_shift;
-      for (x = min_x; x < max_x; x++) {
-        for (y = min_y; y < max_y; y++) {
-	  if (!g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix, g_colorIndex)) {
-	    g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = 0;
-	    g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = 0;
-	    g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = 0;
-	    g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
-	  } else {
-	    g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = ((vrpn_uint16)(double_pix)) >> shift;
-	    g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = ((vrpn_uint16)(double_pix)) >> shift;
-	    g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = ((vrpn_uint16)(double_pix)) >> shift;
-	    g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
+	  if ((g_imageor || g_kernel_type == KERNEL_IMAGE) && g_frame_number > 0) {
+		  double *averaged_image = static_cast<image_oriented_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_test_image();
+		  int imageor_testsize = static_cast<image_oriented_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->get_testsize();
+		  for (x = min_x; x < max_x; x++) {
+			for (y = min_y; y < max_x; y++) {
+				double_pix = averaged_image[x - min_x + imageor_testsize * (y - min_y)];
+				g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = ((vrpn_uint16)(double_pix)) >> shift;
+				g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = ((vrpn_uint16)(double_pix)) >> shift;
+				g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = ((vrpn_uint16)(double_pix)) >> shift;
+				g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
+			}
+		  }
 	  }
-        }
-      }
+	  else {
+		  for (x = min_x; x < max_x; x++) {
+			for (y = min_y; y < max_y; y++) {
+		  if (!g_image->read_pixel_bilerp(x+xImageOffset, y+yImageOffset, double_pix, g_colorIndex)) {
+			g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = 0;
+			g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = 0;
+			g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = 0;
+			g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
+		  } else {
+			g_beadseye_image[0 + 4 * (x + g_beadseye_size * (y))] = ((vrpn_uint16)(double_pix)) >> shift;
+			g_beadseye_image[1 + 4 * (x + g_beadseye_size * (y))] = ((vrpn_uint16)(double_pix)) >> shift;
+			g_beadseye_image[2 + 4 * (x + g_beadseye_size * (y))] = ((vrpn_uint16)(double_pix)) >> shift;
+			g_beadseye_image[3 + 4 * (x + g_beadseye_size * (y))] = 255;
+		  }
+			}
+		  }
+	  }
 
       // Store the pixels from the image into the frame buffer
       // so that they cover the entire image (starting from lower-left
@@ -2410,7 +2429,10 @@ void myIdleFunc(void)
     }
 	if(g_imageor) {
 	  static_cast<image_oriented_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->set_orientation(g_image_orientation);
-	  static_cast<image_oriented_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->set_frames_to_average(g_frames_to_average);
+	  static_cast<image_oriented_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->set_frames_to_average(g_imageor_avg_frames);
+	}
+	if(g_kernel_type == KERNEL_IMAGE) {
+	  static_cast<image_spot_tracker_interp*>(g_trackers.active_tracker()->xytracker())->set_frames_to_average(g_image_avg_frames);
 	}
   }
 
@@ -3246,7 +3268,8 @@ void  handle_save_state_change(int newvalue, void *)
   fprintf(f, "set length %lg\n", (double)(g_length));
   fprintf(f, "set rod_orient %lg\n", (double)(g_rod_orientation));
   fprintf(f, "set image_orient %lg\n", (double)(g_image_orientation));
-  fprintf(f, "set frames_to_average %d\n", (double)(g_frames_to_average));
+  fprintf(f, "set frames_to_average %d\n", (double)(g_imageor_avg_frames));
+  fprintf(f, "set frames_to_average %d\n", (double)(g_image_avg_frames));
   fprintf(f, "set round_cursor %d\n", (int)(g_round_cursor));
   fprintf(f, "set show_tracker %d\n", (int)(g_mark));
   fprintf(f, "set show_video %d\n", (int)(g_show_video));
@@ -3482,7 +3505,7 @@ void  handle_optimize_z_change(int newvalue, void *)
 void Usage(const char *progname)
 {
     fprintf(stderr, "Usage: %s [-nogui] [-gui] [-kernel disc|cone|symmetric|FIONA|image|imageor]\n", progname);
-    fprintf(stderr, "           [-dark_spot] [-follow_jumps] [-rod3 LENGTH ORIENT] [-imageor ORIENT FRAMES]\n");
+    fprintf(stderr, "           [-dark_spot] [-follow_jumps] [-rod3 LENGTH ORIENT] [-image FRAMES] [-imageor ORIENT FRAMES]\n");
     fprintf(stderr, "           [-outfile NAME] [-precision P] [-sample_spacing S] [-show_lost_and_found]\n");
     fprintf(stderr, "           [-lost_behavior B] [-lost_tracking_sensitivity L] [-blur_lost_and_found B]\n");
 	fprintf(stderr, "           [-center_surround R] [-optimization_off]\n");
@@ -3500,9 +3523,11 @@ void Usage(const char *progname)
     fprintf(stderr, "       -gui: Run with the video display window (no Glut/OpenGL)\n");
     fprintf(stderr, "       -kernel: Use kernels of the specified type (default symmetric).\n");
     fprintf(stderr, "       -rod3: Make a rod3 kernel of specified LENGTH(pixels) & ORIENT(degrees)\n");
-    fprintf(stderr, "       -imageor: set orientation of oriented image tracker to specified ORIENT(degrees)\n");
-	fprintf(stderr, "				and average test image over specified number of FRAMES (default 0, which\n");
-	fprintf(stderr, "				only uses the initial test image rather than changing it at each frame)\n");
+	fprintf(stderr, "       -image: set averaged test image over a number of FRAMES (default 0, which\n");
+	fprintf(stderr, "               only uses the initial test image, not changing it at each frame)\n");
+    fprintf(stderr, "       -imageor: set orientation of tracker to specified ORIENT(degrees)\n");
+	fprintf(stderr, "               and averaged test image over a number of FRAMES (default 0, which\n");
+	fprintf(stderr, "               only uses the initial test image, not changing it at each frame)\n");
     fprintf(stderr, "       -dark_spot: Track a dark spot (default is bright spot)\n");
     fprintf(stderr, "       -follow_jumps: Set the follow_jumps flag\n");
     fprintf(stderr, "       -outfile: Save the track to the file 'name' (.vrpn will be appended)\n");
@@ -3786,7 +3811,7 @@ int main(int argc, char *argv[])
         g_kernel_type = KERNEL_FIONA;
       } else if (!strncmp(argv[i], "imageor", strlen("imageor"))) {
         g_kernel_type = KERNEL_IMAGE_ORIENTED;
-	g_imageor = true;
+		g_imageor = true;
       } else if (!strncmp(argv[i], "image", strlen("image"))) {
         g_kernel_type = KERNEL_IMAGE;
       } else {
@@ -3826,11 +3851,14 @@ int main(int argc, char *argv[])
       if (++i >= argc) { Usage(argv[0]); }
       g_rod_orientation = atof(argv[i]);
       g_rod = 1;
+	} else if (!strncmp(argv[i], "-image", strlen("-image"))) {
+	  if (++i >= argc) { Usage(argv[0]); }
+      g_image_avg_frames = atoi(argv[i]);
     } else if (!strncmp(argv[i], "-imageor", strlen("-imageor"))) {
       if (++i >= argc) { Usage(argv[0]); }
       g_image_orientation = atof(argv[i]);
 	  if (++i >= argc) { Usage(argv[0]); }
-      g_frames_to_average = atof(argv[i]);
+      g_imageor_avg_frames = atoi(argv[i]);
     } else if (!strncmp(argv[i], "-precision", strlen("-precision"))) {
       if (++i >= argc) { Usage(argv[0]); }
       g_precision = atof(argv[i]);

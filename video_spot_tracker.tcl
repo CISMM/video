@@ -57,7 +57,7 @@ radiobutton .kernel.type.left.disc -variable kerneltype -text disc -value 0
 radiobutton .kernel.type.left.cone -variable kerneltype -text cone -value 1
 radiobutton .kernel.type.top.symmetric -variable kerneltype -text symmetric -value 2
 radiobutton .kernel.type.top.fiona -variable kerneltype -text FIONA -value 3
-radiobutton .kernel.type.right.image -variable kerneltype -text image -value 4
+radiobutton .kernel.type.right.image -variable kerneltype -text image -value 4 -command update_image_window_visibility
 radiobutton .kernel.type.right.imageor -variable kerneltype -text imageor -value 5 -command update_imageor_window_visibility
 pack .kernel.type.left.disc -anchor w
 pack .kernel.type.left.cone -anchor w
@@ -138,7 +138,19 @@ proc update_rod_window_visibility {nm el op} {
 }
 
 ###########################################################
-# Put the places for the controls for the oreinted image kernels.
+# Put the places for the controls for the image-based kernel.
+# This window should only be visible when image is turned on.
+
+toplevel .image
+wm geometry .image +860+10
+wm withdraw .image
+
+proc update_image_window_visibility {args} {
+	wm deiconify .image
+}
+
+###########################################################
+# Put the places for the controls for the oriented image kernel.
 # This window should only be visible when imageor is turned on.
 
 toplevel .imageor
