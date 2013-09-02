@@ -1057,14 +1057,17 @@ void myDisplayFunc(void)
     printf("Filling pixels %d,%d through %d,%d\n", (int)(*g_minX),(int)(*g_minY), (int)(*g_maxX), (int)(*g_maxY));
 #endif
 
-    // Figure out how many bits we need to shift to the right.
+    // Figure out how much gain to apply to the image, which will determine
+    // the scale for OpenGL video and the shift for non-textured video.
     // This depends on how many bits the camera has above zero minus
     // the number of bits we want to shift to brighten the image.
-    // If this number is negative, clamp to zero.  It also depends
-    // on whether we're doing background subtraction.
-    int shift_due_to_camera = static_cast<int>(g_camera_bit_depth) - 8;
-    int total_shift = shift_due_to_camera - g_brighten;
-    if (total_shift < 0) { total_shift = 0; }
+    double gain_due_to_camera = pow(2.0, -(g_camera_bit_depth - 8.0) );
+    double gain_due_to_slider = pow(2.0, static_cast<double>(g_brighten));
+
+    // We're using a 16-bit short for the file reader and an 8-bit unsigned
+    // for the FFMPEG video reader.  We need to scale by the inverse of the
+    // camera gain for OpenGL to make things line back up.
+    double gain_due_to_format = 1.0/gain_due_to_camera;
 
     // Figure out which image to display.  If we're in debug and have a surround-subtract
     // image, we show it.  Otherwise, if we're in debug mode and have a
@@ -1074,27 +1077,39 @@ void myDisplayFunc(void)
     if (g_show_debug) {
       if (g_blurred_image) {
         drawn_image = g_blurred_image;
-        blurred_dim = -1 * g_camera_bit_depth;  // Scale to range 0..1 for floating-point
+        // We have the gain set by default for and 8-bit image, scale this to 0-1
+        // because we now have a floating-point image
+        gain_due_to_format = pow(2.0, -8.0);
       }
       if (g_surround_image) {
         drawn_image = g_surround_image;
-        blurred_dim = -1 * g_camera_bit_depth;  // Scale to range 0..1 for floating-point
+        // We have the gain set by default for and 8-bit image, scale this to 0-1
+        // because we now have a floating-point image
+        gain_due_to_format = pow(2.0, -8.0);
       }
     }
 
     if (g_opengl_video) {
+      double offset_due_to_gain = 0.0;
+
       // If we can't write using OpenGL, turn off the feature for next frame.
-      // If we're doing background subtraction, then we need to scale down so that
-      // the total brightness = 1 rather than 2^camera, because we're using GL_FLOAT
-      // rather than GL_UNSIGNED_BYTE in the texture writes.
       if (g_background_subtract) {
-        total_shift -= g_camera_bit_depth;
+        // We have the gain set by default for and 8-bit image, scale this to 0-1
+        gain_due_to_format = pow(2.0, -8.0);
+
+        // If we are using other than an 8-bit camera, then we need to shift the
+        // offset so that we don't blow out the whole image -- this will let us zoom
+        // in around the average brightness of the image rather than a brightness of
+        // zero.  The average brightness is one less than the halfway brightness of
+        // the camera.  We'd like to offset with the present gain to keep that at
+        // 0.5.
+        offset_due_to_gain = -0.5 * (gain_due_to_slider - 1.0);
       }
-      if (!drawn_image->write_to_opengl_quad(pow(2.0,static_cast<double>(total_shift + blurred_dim)))) {
+      if (!drawn_image->write_to_opengl_quad(gain_due_to_camera * gain_due_to_slider * gain_due_to_format, offset_due_to_gain)) {
         g_opengl_video = false;
       }
     } else {
-      int shift = total_shift;
+      int shift = -static_cast<int>(log(gain_due_to_camera * gain_due_to_slider) / log(2.0));
       for (r = *g_minY; r <= *g_maxY; r++) {
         unsigned lowc = *g_minX, hic = *g_maxX; //< Speeds things up.
         unsigned char *pixel_base = &g_glut_image[ 4*(lowc + drawn_image->get_num_columns() * r) ]; //< Speeds things up
