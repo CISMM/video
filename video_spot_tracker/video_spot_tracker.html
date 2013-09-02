@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v08.00</title>
+<title>Video Spot Tracker v08.01</title>
 
-<h1>Video Spot Tracker version 08.00</h1>
+<h1>Video Spot Tracker version 08.01</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots (particles) in an <a href="http://ffmpeg.org/">FFMPEG</a>-compatible 
@@ -171,15 +171,19 @@
   are applicable. This image-based kernel begins by reading in an image from the 
   first frame of the video at the specified location with width and height equal 
   to twice the specified radius, and in each subsequent frame, it looks in X and 
-  Y for the position in the frame that best fits the initial image. If the tracked 
-  object rotates, the <cite><strong>imageor</strong></cite> kernel is useful, 
-  as the orientation of the tracker can be set (similar to the rod3 kernel) before 
-  the initial reference image is set, and when tracking in subsequent frames, 
-  the tracker will take steps in orientation as well as in X and Y, recording 
-  orientation data for each frame as well as position. The radius should be set 
-  so that the tracker encompasses the whole object, which is most easily determined 
-  when the round_cursor box is left unchecked, as the line displayed is equal 
-  to the tracker's width. 
+  Y for the position in the frame that best fits the initial image. The number 
+  of frames to average over can be set with a slider; the default value of 0 just 
+  takes the original image. Setting the value larger will let the tracker adjust 
+  as the shape of the object changes,but this will also cause the tracker to drift 
+  off the visual center of the object because there is nothing to stabilize it 
+  to the original object center. If the tracked object rotates, the <cite><strong>imageor</strong></cite> 
+  kernel is useful, as the orientation of the tracker can be set (similar to the 
+  rod3 kernel) before the initial reference image is set, and when tracking in 
+  subsequent frames, the tracker will take steps in orientation as well as in 
+  X and Y, recording orientation data for each frame as well as position. The 
+  radius should be set so that the tracker encompasses the whole object, which 
+  is most easily determined when the round_cursor box is left unchecked, as the 
+  line displayed is equal to the tracker's width. 
 <h3>Enabling the trackers to follow jumps in bead position</h3>
 
 <p>The <strong><cite>follow_jumps</cite></strong> check-box activates a more-robust 
@@ -445,6 +449,19 @@
 
 <h2>Version Information</h2>
 
+<h3>Version 8.01:</h3>
+<ul>
+  <li>Fixed bugs in the brightness of the displayed images for 16-bit images when 
+    texture video is being used. Adjusted the brightness to scale around the middle 
+    value when background subtraction is turned on. None of these affect tracking 
+    performance. </li>
+  <li>Added a slider to allow image averaging for the <i>image</i> kernel, in 
+    addition to the one for the <i>imageor</i> kernel. Note that setting this 
+    larger than one can cause drift away from the visual center of the object 
+    because there is nothing stabilizing the kernel.</li>
+  <li>The <i>image</i> and <i>imageor</i> trackers now rebuild when the tracker 
+    radius is adjusted.</li>
+</ul>
 <h3>Version 8.00:</h3>
 <ul>
   <li>Added two new image-based tracking kernels, one of which follows asymmetric 
