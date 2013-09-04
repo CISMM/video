@@ -868,7 +868,7 @@ double	symmetric_spot_tracker_interp::check_fitness(const image_wrapper &image, 
 }
 
 image_spot_tracker_interp::image_spot_tracker_interp(double radius, bool inverted, double pixelaccuracy,
-				     double radiusaccuracy, double sample_separation_in_pixels) :
+				     double radiusaccuracy, double sample_separation_in_pixels, int frames_to_average) :
     spot_tracker_XY(radius, inverted, pixelaccuracy, radiusaccuracy, sample_separation_in_pixels)
 {
   // Make sure the parameters make sense
@@ -895,6 +895,7 @@ image_spot_tracker_interp::image_spot_tracker_interp(double radius, bool inverte
 
   // No test image yet
   _testimage = NULL;
+  max_images = frames_to_average; 
 }
 
 image_spot_tracker_interp::~image_spot_tracker_interp()
@@ -903,10 +904,20 @@ image_spot_tracker_interp::~image_spot_tracker_interp()
     delete [] _testimage;
     _testimage = NULL;
   }
+
+  for (std::list<double *>::iterator it=trackedimages.begin(); it != trackedimages.end(); it++) {
+	delete [] *it;
+  }
+  trackedimages.clear();
 }
 
 bool	image_spot_tracker_interp::set_image(const image_wrapper &image, unsigned rgb, double x, double y, double rad)
 {
+  // If we want to only use the initial test image and we already have it, do nothing.
+  if (max_images == 0 && _testimage != NULL) {
+    return true;
+  }
+
   // Find out the desired test radius, clip it to fit within the test
   // image boundaries, and make sure it is valid.
   int desired_rad = (int)ceil(rad);
@@ -921,8 +932,7 @@ bool	image_spot_tracker_interp::set_image(const image_wrapper &image, unsigned r
   desired_rad = (int)min(desired_rad, maxy - y - 1);
 
   if (desired_rad <= 0) {
-    fprintf(stderr,"image_spot_tracker_interp::set_image(): Non-positive radius, giving up\n");
-    fprintf(stderr,"  (tracker location (%lg, %lg)\n", x, y);
+    fprintf(stderr,"image_oriented_spot_tracker_interp::set_image(): Non-positive radius, giving up\n");
     if (_testimage) {
       delete [] _testimage;
       _testimage = NULL;
@@ -930,36 +940,63 @@ bool	image_spot_tracker_interp::set_image(const image_wrapper &image, unsigned r
     return false;
   }
 
-  // If we have a test image already whose radius is too small, then
-  // delete the existing image.
-  if (_testrad && (desired_rad > _testrad)) {
-    delete [] _testimage;
-    _testimage = NULL;
-  }
-
   // Set the parameters for the test image.  The x and y values are set to
   // point at the pixel in the middle of the stored test image, NOT at the locations
-  // in the original image.
-  _testrad = desired_rad;
-  _testx = desired_rad;
-  _testy = desired_rad;
-  _testsize = 2 * desired_rad + 1;
-
-  // If we have not test image (we may have just deleted it), then
-  // allocate space to store a new one.
-  if ( (_testimage = new double[_testsize*_testsize]) == NULL) {
-    fprintf(stderr,"image_spot_tracker_interp::set_image(): Out of memory allocating image (%dx%d)\n", _testsize, _testsize);
-    return false;
+  // in the original image. If the radius has changed, we need to reset the test image
+  if (_testrad != desired_rad) {
+	trackedimages.clear();
+	_testrad = desired_rad;
+	_testx = desired_rad;
+	_testy = desired_rad;
+	_testsize = 2 * desired_rad + 1;
+	if (_testimage != NULL) {
+	  delete [] _testimage;
+	  _testimage = new double[_testsize*_testsize];
+	}
   }
 
+   // If there isn't a test image yet, then allocate memory for a new one.
+  if (_testimage == NULL) {
+	_testimage = new double[_testsize*_testsize];
+  }
+  
+  double *_newimage = new double[_testsize*_testsize];
+  
   // Sample the input image into the test image, interpolating between pixels.
   int xsamp, ysamp;
   for (xsamp = -desired_rad; xsamp <= desired_rad; xsamp++) {
     for (ysamp = -desired_rad; ysamp <= desired_rad; ysamp++) {
-      _testimage[_testx + xsamp + _testsize * (_testy + ysamp)] = image.read_pixel_bilerp_nocheck(x + xsamp, y + ysamp, rgb);
+      _newimage[_testx + xsamp + _testsize * (_testy + ysamp)] = image.read_pixel_bilerp_nocheck(x + xsamp, y + ysamp, rgb);
     }
   }
+  
+  // Get rid of the oldest image if we have too many
+  if (max_images < 1) {
+	  set_frames_to_average(1);
+  }
+  while (trackedimages.size() >= (unsigned)max_images) {
+    double *oldestimage = trackedimages.front();
+	trackedimages.pop_front();
+	delete [] oldestimage;
+  }
+  trackedimages.push_back(_newimage);
 
+  for (int i = 0; i < _testsize*_testsize; i++) {
+	  _testimage[i] = 0;
+  }
+  
+  // Sum the values from each image
+  for (std::list<double *>::iterator it=trackedimages.begin(); it != trackedimages.end(); it++) {
+	for (int i = 0; i < _testsize*_testsize; i++) {
+	  _testimage[i] += (*it)[i];
+	}
+  } 
+  
+  // Divide to get the average value at each pixel
+  for (int i = 0; i < _testsize*_testsize; i++) {	
+	_testimage[i] = _testimage[i] / trackedimages.size();
+  }
+  
   return true;
 }
 
@@ -1026,6 +1063,12 @@ double	image_spot_tracker_interp::check_fitness(const image_wrapper &image, unsi
 // We assume that we are looking at a smooth function, so we do linear
 // interpolation and sample within the space of the kernel, rather than
 // point-sampling the nearest pixel.
+
+void  image_spot_tracker_interp::optimize_xy(const image_wrapper &image, unsigned rgb, double &x, double &y)
+{
+	spot_tracker_XY::optimize_xy(image, rgb, x, y);
+	set_image(image, rgb, get_x(), get_y(), get_radius());
+}
 
 double	twolines_image_spot_tracker_interp::check_fitness(const image_wrapper &image, unsigned rgb)
 {
@@ -1181,19 +1224,20 @@ bool	image_oriented_spot_tracker_interp::set_image(const image_wrapper &image, u
   
   // Sample the input image into the test image, interpolating between pixels.
   int xsamp, ysamp;
+  double startx, starty, x_rotated, y_rotated;
   for (xsamp = -desired_rad; xsamp <= desired_rad; xsamp++) {
     for (ysamp = -desired_rad; ysamp <= desired_rad; ysamp++) {
-	  double startx = xsamp;
-	  double starty = ysamp;
+	  startx = xsamp;
+	  starty = ysamp;
 	  // to support different orientations, each point is rotated in 2D space
 	  // by the specified degree before reading the value
-	  double x_rotated = sqrt((startx*startx)+(starty*starty)) * cos(atan(starty/startx) + (orientation * (M_PI/180)));
-	  double y_rotated = sqrt((startx*startx)+(starty*starty)) * sin(atan(starty/startx) + (orientation * (M_PI/180)));
+	  x_rotated = sqrt((startx*startx)+(starty*starty)) * cos(atan2(starty,startx) + (orientation * (M_PI/180)));
+	  y_rotated = sqrt((startx*startx)+(starty*starty)) * sin(atan2(starty,startx) + (orientation * (M_PI/180)));
 
       _newimage[_testx + xsamp + _testsize * (_testy + ysamp)] = image.read_pixel_bilerp_nocheck(x + x_rotated, y + y_rotated, rgb);
     }
   }
-  
+
   // Get rid of the oldest image if we have too many
   if (max_images < 1) {
 	  set_frames_to_average(1);
@@ -1258,17 +1302,18 @@ double	image_oriented_spot_tracker_interp::check_fitness(const image_wrapper &im
   }
   
   // Find the fitness.
+  double x_rotated, y_rotated;
   for (x = -_testrad; x <= _testrad; x++) {
     for (y = -_testrad; y <= _testrad; y++) {
 	  // to support different orientations, each point is rotated in 2D space
 	  // by the specified degree before reading the value
-	  double x_rotated = sqrt((x*x)+(y*y)) * cos(atan(y/x) + (orientation * (M_PI/180)));
-	  double y_rotated = sqrt((x*x)+(y*y)) * sin(atan(y/x) + (orientation * (M_PI/180)));
+	  x_rotated = sqrt((x*x)+(y*y)) * cos(atan2(y,x) + (orientation * (M_PI/180)));
+	  y_rotated = sqrt((x*x)+(y*y)) * sin(atan2(y,x) + (orientation * (M_PI/180)));
       if (image.read_pixel_bilerp(get_x()+x_rotated,get_y()+y_rotated,val, rgb)) {
-	double myval = _testimage[(int)(_testx+x) + _testsize * (int)(_testy+y)];
-	double squarediff = (val-myval) * (val-myval);
-	fitness -= squarediff;
-	pixels++;
+		double myval = _testimage[(int)(_testx+x) + _testsize * (int)(_testy+y)];
+		double squarediff = (val-myval) * (val-myval);
+		fitness -= squarediff;
+		pixels++;
       }
     }
   }

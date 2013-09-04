@@ -326,7 +326,8 @@ public:
 		    bool inverted = false,
 		    double pixelaccuracy = 0.25,
 		    double radiusaccuracy = 0.25,
-		    double sample_separation_in_pixels = 1.0);
+		    double sample_separation_in_pixels = 1.0,
+			int frames_to_average = 0);
   virtual ~image_spot_tracker_interp();
 
   // Initialize with the image that we are trying to match and the
@@ -339,7 +340,16 @@ public:
   // Return the fitness value there.
   virtual double  check_fitness(const image_wrapper &image, unsigned rgb);
 
+  virtual void  optimize_xy(const image_wrapper &image, unsigned rgb, double &x, double &y);
+
+  virtual bool  set_frames_to_average(const double frames_to_average) {
+	max_images = (int)floor(frames_to_average);
+	return true;
+  }
+
 protected:
+  std::list<double *> trackedimages;
+  int max_images;
   double  *_testimage;	  //< The image to test for fitness against
   int	  _testrad;	  //< The radius of pixels stored from the test image
   int	  _testsize;	  //< The size of the stored image (2 * _testrad + 1)
@@ -425,6 +435,10 @@ public:
 	max_images = (int)floor(frames_to_average);
 	return true;
   }
+
+  double* get_test_image(void) const { return _testimage; };
+
+  int get_testsize(void) const { return _testsize; };
 
 protected:
   std::list<double *> trackedimages;
