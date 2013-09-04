@@ -646,7 +646,7 @@ set (PNERVE_PATCH_VERSION 8)
 
 #set (CMAKE_INSTALL_PREFIX "/common1/nanowork/release/PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}")
 #set (PROJECT_NAME "PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}")
-set (PROJECT_NAME "1.0")
+set (PROJECT_NAME "3.0")
 set (CMAKE_INSTALL_PREFIX "/common1/phsiao/release/${PROJECT_NAME}")
 
 # Install PanotpicNerve
@@ -698,14 +698,17 @@ install (FILES "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/vrpn_LUDL_and_ti
 install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/mpirun_panopticnerve_monoptes.bash" DESTINATION .)
 endif()
 # Install 3dfm scripts
+#install (CODE "
+#message(\"Retrieving CVS repository\")
+#set(ENV{CVSROOT} \":ext:$ENV{USER}@login.cs.unc.edu:/afs/cs.unc.edu/project/stm/src/CVS_repository\")
+#set(ENV{CVS_RSH} ssh)
+#execute_process(COMMAND cvs checkout 3dfmAnalysis)
+#execute_process(COMMAND mkdir -p ${CMAKE_INSTALL_PREFIX}/scripts)
+#execute_process(COMMAND cp -R 3dfmAnalysis ${CMAKE_INSTALL_PREFIX}/scripts)
+#execute_process(COMMAND rm -rf 3dfmAnalysis)")
 install (CODE "
-message(\"Retrieving CVS repository\")
-set(ENV{CVSROOT} \":ext:$ENV{USER}@login.cs.unc.edu:/afs/cs.unc.edu/project/stm/src/CVS_repository\")
-set(ENV{CVS_RSH} ssh)
-execute_process(COMMAND cvs checkout 3dfmAnalysis)
-execute_process(COMMAND mkdir -p ${CMAKE_INSTALL_PREFIX}/scripts)
-execute_process(COMMAND cp -R 3dfmAnalysis ${CMAKE_INSTALL_PREFIX}/scripts)
-execute_process(COMMAND rm -rf 3dfmAnalysis)")
+execute_process(COMMAND git clone /afs/unc/proj/stm/src/git/3dfmAnalysis.git ${CMAKE_INSTALL_PREFIX}/3dfmAnalysis) 
+")
 # Install wells.txt
 install (FILES "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/wells.txt" DESTINATION .)
 # Install script of starting firefox
