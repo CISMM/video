@@ -640,14 +640,15 @@ TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	${Panoptes_LIBRARY}
 )
 if (VIDEO_BUILD_PANOPTES)
-set (PNERVE_MAJOR_VERSION 1) 
-set (PNERVE_MINOR_VERSION 4) 
-set (PNERVE_PATCH_VERSION 8) 
+set (PNERVE_MAJOR_VERSION 3) 
+set (PNERVE_MINOR_VERSION 0) 
+set (PNERVE_PATCH_VERSION 1) 
 
 #set (CMAKE_INSTALL_PREFIX "/common1/nanowork/release/PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}")
-#set (PROJECT_NAME "PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}")
-set (PROJECT_NAME "3.0")
-set (CMAKE_INSTALL_PREFIX "/common1/phsiao/release/${PROJECT_NAME}")
+set (PROJECT_NAME "PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}")
+#set (PROJECT_NAME "3.0")
+#set (CMAKE_INSTALL_PREFIX "/common1/nanowork/release/${PROJECT_NAME}")
+set (CMAKE_INSTALL_PREFIX "/common1/cribb/release/${PROJECT_NAME}")
 
 # Install PanotpicNerve
 INSTALL(TARGETS PanopticNerve_LEWOS DESTINATION . )
@@ -707,7 +708,7 @@ endif()
 #execute_process(COMMAND cp -R 3dfmAnalysis ${CMAKE_INSTALL_PREFIX}/scripts)
 #execute_process(COMMAND rm -rf 3dfmAnalysis)")
 install (CODE "
-execute_process(COMMAND git clone /afs/unc/proj/stm/src/git/3dfmAnalysis.git ${CMAKE_INSTALL_PREFIX}/3dfmAnalysis) 
+execute_process(COMMAND git clone /afs/unc/proj/stm/src/git/3dfmAnalysis.git ${CMAKE_INSTALL_PREFIX}/scripts/3dfmAnalysis) 
 ")
 # Install wells.txt
 install (FILES "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/wells.txt" DESTINATION .)
