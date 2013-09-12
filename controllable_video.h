@@ -53,6 +53,9 @@ public:
   /// Rewind the stored video to the beginning (also pauses).
   virtual void rewind(void) = 0;
 
+  /// Move the stored video to the given frame (also pauses).
+  virtual void go_to_frame(int frame_number) = 0;
+
   /// Single-step the stored video for one frame.
   virtual void single_step() = 0;
 };
@@ -102,6 +105,7 @@ public:
   void pause(void) { VRPN_Imager_camera_server::pause(); }
   void rewind(void) { pause(); VRPN_Imager_camera_server::rewind(); }
   void single_step(void) { VRPN_Imager_camera_server::single_step(); }
+  void go_to_frame(int frame_number) { VRPN_Imager_camera_server::go_to_frame(frame_number); }
 };
 #endif
 
@@ -115,6 +119,7 @@ public:
   void pause(void) { raw_file_server::pause(); }
   void rewind(void) { pause(); raw_file_server::rewind(); }
   void single_step(void) { raw_file_server::single_step(); }
+  void go_to_frame(int frame_number) { raw_file_server::go_to_frame(frame_number); }
 };
 
 #ifdef VST_USE_IMAGEMAGICK
@@ -125,6 +130,7 @@ public:
   void play(void) { file_stack_server::play(); }
   void pause(void) { file_stack_server::pause(); }
   void rewind(void) { pause(); file_stack_server::rewind(); }
+  void go_to_frame(int frame_number) { pause(); file_stack_server::go_to_frame(frame_number); }
   void single_step(void) { file_stack_server::single_step(); }
 };
 #endif

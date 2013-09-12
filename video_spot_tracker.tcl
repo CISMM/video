@@ -117,6 +117,16 @@ pack .kernel.optimize -side left
 # Quit the program if this window is destroyed
 bind .kernel <Destroy> {global quit ; set quit 1} 
 
+###########################################################
+# Put the places for the controls for going to specific frames.
+# This window should only be visible when go_to_frame is turned on.
+
+set go_to_frame_number 0
+
+proc update_goto_window_visibility {args} {
+		global go_to_frame_number
+		newvalue_dialogue go_to_frame_number
+}
 
 ###########################################################
 # Put the places for the controls for the rod kernels.

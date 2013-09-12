@@ -319,9 +319,8 @@ bool g_quit_logging_thread = false;
 
 //--------------------------------------------------------------------------
 bool allow_optimization = true; // If running from command line, allow option to prevent optimization.
+bool load_saved_file = false; // Are we loading a previously save CSV file to append to?
 bool first_frame_only_autofind = false; // Whether or not to autofind beads after first frame
-
-//--------------------------------------------------------------------------
 bool g_imageor = false; // Whether or not to use oriented image kernel
 
 //--------------------------------------------------------------------------
@@ -370,6 +369,7 @@ Tclvar_int_with_button	g_interpolate("interpolate",NULL,1, rebuild_trackers);
 Tclvar_int_with_button	g_parabolafit("parabolafit",NULL,0);
 Tclvar_int_with_button	g_follow_jumps("follow_jumps",NULL,0, set_maximum_search_radius);
 Tclvar_float		g_search_radius("search_radius",0);	  //< Search radius for doing local max in before optimizing.
+Tclvar_float		g_go_to_frame_number("go_to_frame_number", 0);
 Tclvar_int_with_button	g_predict("predict",NULL,0);
 Tclvar_int_with_button	g_kernel_type("kerneltype", NULL, KERNEL_SYMMETRIC, rebuild_trackers);
 Tclvar_int_with_button	g_rod("rod3",NULL,0, rebuild_trackers);
@@ -878,6 +878,12 @@ static	bool  save_log_frame(int frame_number)
     double background = 0.0;      // Best-fit background
     double mean_background= 0.0;  // Computed background
     double gaussiansummedvalue = 0.0, computedsummedvalue = 0.0;
+	double center_intensity = 0.0;
+
+	double value;
+	if (g_image->read_pixel_bilerp(tracker->xytracker()->get_x(), tracker->xytracker()->get_y(), value, g_colorIndex)) {
+		center_intensity = value;
+	}
 
     // If we are tracking rods or oriented images, then we adjust the orientation to match.
     if (g_rod) {
@@ -914,6 +920,7 @@ static	bool  save_log_frame(int frame_number)
         if (count != 0) {
          mean_background /= count;
         }
+
       }
 
       // Calculate the summed value above background in a 5-pixel-radius region around the center
@@ -984,10 +991,10 @@ static	bool  save_log_frame(int frame_number)
 	first_time = false;
       }
       double interval = timediff(now, start);
-      fprintf(g_csv_file, "%d, %d, %lf,%lf,%lf, %lf, %lf,%lf, %lf,%lf, %lf,%lf\n",
+      fprintf(g_csv_file, "%d, %d, %lf,%lf,%lf, %lf, %lf, %lf,%lf, %lf,%lf, %lf,%lf\n",
         frame_number, tracker->index(),
         pos[0], pos[1], pos[2],
-        tracker->xytracker()->get_radius(),
+        tracker->xytracker()->get_radius(), center_intensity,
         orient, length,
         background, gaussiansummedvalue, mean_background,computedsummedvalue);
 
@@ -2218,18 +2225,26 @@ void myIdleFunc(void)
   if (g_video) {
     static  int	last_play = 0;
 
+	if (g_go_to_frame_number != 0) {
+	    g_frame_number = (int)floor(g_go_to_frame_number);
+		g_video->go_to_frame(g_frame_number);
+		g_video->pause();
+	}
+
     // If the user has pressed step, then run the video for a
     // single step and pause it.
     if (*g_step) {
       g_video->single_step();
       *g_play = 0;
       *g_step = 0;
+	  g_go_to_frame_number = 0;
     }
 
     // If the user has pressed play, start the video playing
     if (!last_play && *g_play) {
       g_video->play();
       *g_rewind = 0;
+	  g_go_to_frame_number = 0;
     }
 
     // If the user has cleared play, then pause the video
@@ -2247,6 +2262,7 @@ void myIdleFunc(void)
     if (*g_rewind) {
       *g_play = 0;
       *g_rewind = 0;
+	  g_go_to_frame_number = 0;
       g_logging = 0;
       g_logfilename = "";
       g_logged_traces.clear();
@@ -3003,7 +3019,7 @@ void  logfilename_changed(char *newvalue, void *)
   // were already logging.  If we don't check this, it tries to
   // write the frame even though we don't have logging going the
   // very first time we start logging.
-  if (g_csv_file && g_vrpn_tracker && (g_log_frame_number_last_logged != g_frame_number)) {
+  if (g_csv_file && g_vrpn_tracker && (g_log_frame_number_last_logged != g_frame_number) && (!load_saved_file)) {
     if (!save_log_frame(g_frame_number)) {
       fprintf(stderr, "logfile_changed: Could not save log frame\n");
       cleanup();
@@ -3045,6 +3061,7 @@ void  logfilename_changed(char *newvalue, void *)
 
     // Open the CSV file and put the titles on.
     // Make sure that the file does not exist by deleting it if it does.
+	// Don't do this if we are appending to a previous log file.
     // The Tcl code had a dialog box that asked the user if they wanted
     // to overwrite, so this is "safe."
     char *csvname = new char[strlen(newvalue)+1];	// Remember the closing '\0'
@@ -3055,21 +3072,27 @@ void  logfilename_changed(char *newvalue, void *)
     }
     strcpy(csvname, newvalue);
     strcpy(&csvname[strlen(csvname)-5], ".csv");
-    FILE *in_the_way;
-    if ( (in_the_way = fopen(csvname, "r")) != NULL) {
-      fclose(in_the_way);
-      int err;
-      if ( (err=remove(csvname)) != 0) {
-	fprintf(stderr,"Error: could not delete existing logfile %s\n", (char*)(csvname));
-	perror("   Reason");
-	cleanup();
-	exit(-1);
+	if (!load_saved_file) {
+		FILE *in_the_way;
+		if ( (in_the_way = fopen(csvname, "r")) != NULL) {
+			fclose(in_the_way);
+			int err;
+			if ( (err=remove(csvname)) != 0) {
+				fprintf(stderr,"Error: could not delete existing logfile %s\n", (char*)(csvname));
+				perror("   Reason");
+				cleanup();
+				exit(-1);
+			}
+		}
+	}
+	if (load_saved_file) {
+	  if ( NULL == (g_csv_file = fopen(csvname, "a")) ) {
+        fprintf(stderr,"Cannot open CSV file for appending: %s\n", csvname);
       }
-    }
-    if ( NULL == (g_csv_file = fopen(csvname, "w")) ) {
+	} else if ( NULL == (g_csv_file = fopen(csvname, "w")) ) {
       fprintf(stderr,"Cannot open CSV file for writing: %s\n", csvname);
     } else {
-      fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius,Orientation (if meaningful),Length (if meaningful), Fit Background (for FIONA), Gaussian Summed Value (for FIONA), Mean Background (FIONA), Summed Value (for FIONA)\n");
+      fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius,Center Intensity,Orientation (if meaningful),Length (if meaningful), Fit Background (for FIONA), Gaussian Summed Value (for FIONA), Mean Background (FIONA), Summed Value (for FIONA)\n");
     }
     delete [] csvname;
   }
@@ -3336,6 +3359,7 @@ bool load_trackers_from_file(const char *inname)
     }
   }
   fclose(f);
+  g_frame_number = max_frame_number + 1;
 
   //------------------------------------------------------------
   // Open the file again and read through it to pull out all
@@ -3358,6 +3382,7 @@ bool load_trackers_from_file(const char *inname)
     fprintf(stderr, "load_trackers_from_file(): Bad header line: %s\n", line);
     return false;
   }
+  
   while (fgets(line, sizeof(line)-1, f)) {
     int frame_number, spot_id;
     double x,y,z,r;
@@ -3535,7 +3560,7 @@ void Usage(const char *progname)
     fprintf(stderr, "           [-radius R] [-tracker X Y R] [-tracker X Y R] ...\n");
     fprintf(stderr, "           [-FIONA_background BG]\n");
     fprintf(stderr, "           [-raw_camera_params sizex sizey bitdepth channels headersize frameheadersize]\n");
-    fprintf(stderr, "           [-load_state FILE] [-log_video N] [-continue_from FILE]\n");
+    fprintf(stderr, "           [-load_state FILE] [-log_video N] [-append_from FILE]\n");
     fprintf(stderr, "           [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n");
     fprintf(stderr, "       -nogui: Run without the video display window (no Glut/OpenGL)\n");
     fprintf(stderr, "       -gui: Run with the video display window (no Glut/OpenGL)\n");
@@ -3588,7 +3613,8 @@ void Usage(const char *progname)
     fprintf(stderr, "                 (default throws a dialog box to ask you for them)\n");
     fprintf(stderr, "       -load_state: Load program state from FILE\n");
     fprintf(stderr, "       -log_video: Log every Nth frame of video (in addition to every tracker every frame)\n");
-    fprintf(stderr, "       -continue_from: Load trackers from last frame in the specified CSV FILE and continue tracking\n");
+	fprintf(stderr, "       -append_from: Load trackers from last frame in the specified CSV FILE with ability to continue\n");
+	fprintf(stderr, "                 tracking and to add further log data to the same file.\n");
     fprintf(stderr, "       source: The source file for tracking can be specified here (default is\n");
     fprintf(stderr, "                 a dialog box)\n");
     exit(-1);
@@ -3952,12 +3978,19 @@ int main(int argc, char *argv[])
       if (++i >= argc) { Usage(argv[0]); }
       g_log_video = 1;
       g_video_full_frame_every = atoi(argv[i]);
-    } else if (!strncmp(argv[i], "-continue_from", strlen("-continue_from"))) {
+    } else if (!strncmp(argv[i], "-append_from", strlen("-append_from"))) {
       if (++i >= argc) { Usage(argv[0]); }
-      if (!load_trackers_from_file(argv[i])) {
-        fprintf(stderr,"-continue_from: Could not load trackers from %s\n", argv[i]);
+	  load_saved_file = true;
+	  char *name = new char[strlen(argv[i])+6];
+      sprintf(name, "%s.vrpn", argv[i]);
+	  char *csvname = new char[strlen(argv[i])+5];
+	  sprintf(csvname, "%s.csv", argv[i]);
+      g_logfilename = name;
+      if (!load_trackers_from_file(csvname)) {
+        fprintf(stderr,"-append_from: Could not load trackers from %s\n", argv[i]);
         exit(-1);
       }
+
 // argv[1] will be -psn103_xxx when launched in a bundle
 // So we need to ignore it. 
 #ifdef __APPLE__
@@ -4204,6 +4237,18 @@ int main(int argc, char *argv[])
 		    g_tk_control_interp->result);
 	    return(-1);
     }
+	sprintf(command, "button .gotoframe -text go_to_frame -command update_goto_window_visibility");
+    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
+	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+		    g_tk_control_interp->result);
+	    return(-1);
+    }
+	sprintf(command, "pack .gotoframe -side bottom -fill x");
+    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
+	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+		    g_tk_control_interp->result);
+	    return(-1);
+    }
 #endif
   }
 
@@ -4213,6 +4258,12 @@ int main(int argc, char *argv[])
     if (g_camera) { delete g_camera; g_camera = NULL; }
     cleanup();
     exit(-1);
+  }
+
+  // If we are continuing from a loaded CSV file, skip to where it left off.
+  if(load_saved_file) {
+	printf("Starting at frame number: %d\n", g_frame_number);
+    g_video->go_to_frame(g_frame_number);
   }
 
   //------------------------------------------------------------------

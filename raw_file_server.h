@@ -27,6 +27,10 @@ public:
   /// Rewind the stored video to the beginning (also pauses).
   virtual void rewind(void);
 
+  // Moves the stored video to a given frame number (also pauses).
+  // Works like rewind but goes to any frame rather than just the beginning.
+  virtual void go_to_frame(int frame_number);
+
   /// Single-step the stored video for one frame.
   virtual void single_step();
 

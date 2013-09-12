@@ -517,6 +517,11 @@ void  VRPN_Imager_camera_server::rewind()
   }
 }
 
+void VRPN_Imager_camera_server::go_to_frame(int frame_number)
+{
+  return;
+}
+
 void  VRPN_Imager_camera_server::single_step()
 {
   if (_fileCon) {
