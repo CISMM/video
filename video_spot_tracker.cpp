@@ -4277,7 +4277,7 @@ int main(int argc, char *argv[])
 
   // If we are continuing from a loaded CSV file, skip to where it left off.
   if(load_saved_file) {
-	printf("Starting at frame number: %d\n", g_frame_number);
+	printf("Starting at frame number: %d\n", static_cast<int>(g_frame_number));
     g_video->go_to_frame(g_frame_number);
   }
 
