@@ -2240,7 +2240,7 @@ void myIdleFunc(void)
   if (g_video) {
     static  int	last_play = 0;
 
-	if (g_go_to_frame_number != 0) {
+	if (g_go_to_frame_number > 0) {
 	    g_frame_number = (int)floor(g_go_to_frame_number);
 		g_video->go_to_frame(g_frame_number);
 		g_video->pause();

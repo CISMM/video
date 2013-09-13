@@ -132,7 +132,7 @@ void raw_file_server::go_to_frame(int frame_number)
   for (int i = 0; i <= frame_number; i++) {
 	  if (fread(d_buffer, get_num_columns() * get_num_rows(), 1, d_infile) != 1) {
 		  char  msg[1024];
-		  sprintf(msg, "raw_file_server::go_to_frame: Could not read through frames");
+		  sprintf(msg, "raw_file_server::go_to_frame: Could not find frame");
 		  perror(msg);
 		  d_mode = PAUSE;
 		  return;
