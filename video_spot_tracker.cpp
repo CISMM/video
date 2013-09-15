@@ -319,7 +319,8 @@ bool g_quit_logging_thread = false;
 
 //--------------------------------------------------------------------------
 bool allow_optimization = true; // If running from command line, allow option to prevent optimization.
-bool load_saved_file = false; // Are we loading a previously save CSV file to append to?
+bool load_saved_file = false; // Are we loading a previously saved CSV file to append to?
+int first_appended_frame;
 bool first_frame_only_autofind = false; // Whether or not to autofind beads after first frame
 bool g_imageor = false; // Whether or not to use oriented image kernel
 
@@ -3375,6 +3376,7 @@ bool load_trackers_from_file(const char *inname)
   }
   fclose(f);
   g_frame_number = max_frame_number + 1;
+  first_appended_frame = g_frame_number;
 
   //------------------------------------------------------------
   // Open the file again and read through it to pull out all
@@ -3575,7 +3577,7 @@ void Usage(const char *progname)
     fprintf(stderr, "           [-radius R] [-tracker X Y R] [-tracker X Y R] ...\n");
     fprintf(stderr, "           [-FIONA_background BG]\n");
     fprintf(stderr, "           [-raw_camera_params sizex sizey bitdepth channels headersize frameheadersize]\n");
-    fprintf(stderr, "           [-load_state FILE] [-log_video N] [-append_from FILE]\n");
+    fprintf(stderr, "           [-load_state FILE] [-log_video N] [-continue_from FILE] [-append_from FILE MODE]\n");
     fprintf(stderr, "           [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n");
     fprintf(stderr, "       -nogui: Run without the video display window (no Glut/OpenGL)\n");
     fprintf(stderr, "       -gui: Run with the video display window (no Glut/OpenGL)\n");
@@ -3628,8 +3630,10 @@ void Usage(const char *progname)
     fprintf(stderr, "                 (default throws a dialog box to ask you for them)\n");
     fprintf(stderr, "       -load_state: Load program state from FILE\n");
     fprintf(stderr, "       -log_video: Log every Nth frame of video (in addition to every tracker every frame)\n");
-	fprintf(stderr, "       -append_from: Load trackers from last frame in the specified CSV FILE with ability to continue\n");
-	fprintf(stderr, "                 tracking and to add further log data to the same file.\n");
+	fprintf(stderr, "       -continue_from: Load trackers from last frame in the specified CSV FILE and continue tracking\n");
+	fprintf(stderr, "       -append_from: Load trackers from last frame in the specified CSV FILE with\n");
+	fprintf(stderr, "                 ability to continue tracking and to add further log data to the \n");
+	fprintf(stderr, "                 same file.\n");
     fprintf(stderr, "       source: The source file for tracking can be specified here (default is\n");
     fprintf(stderr, "                 a dialog box)\n");
     exit(-1);
@@ -3993,6 +3997,12 @@ int main(int argc, char *argv[])
       if (++i >= argc) { Usage(argv[0]); }
       g_log_video = 1;
       g_video_full_frame_every = atoi(argv[i]);
+	} else if (!strncmp(argv[i], "-continue_from", strlen("-continue_from"))) {
+      if (++i >= argc) { Usage(argv[0]); }
+      if (!load_trackers_from_file(argv[i])) {
+        fprintf(stderr,"-continue_from: Could not load trackers from %s\n", argv[i]);
+        exit(-1);
+      }
     } else if (!strncmp(argv[i], "-append_from", strlen("-append_from"))) {
       if (++i >= argc) { Usage(argv[0]); }
 	  load_saved_file = true;
@@ -4273,12 +4283,6 @@ int main(int argc, char *argv[])
     if (g_camera) { delete g_camera; g_camera = NULL; }
     cleanup();
     exit(-1);
-  }
-
-  // If we are continuing from a loaded CSV file, skip to where it left off.
-  if(load_saved_file) {
-	printf("Starting at frame number: %d\n", g_frame_number);
-    g_video->go_to_frame(g_frame_number);
   }
 
   //------------------------------------------------------------------

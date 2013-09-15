@@ -190,6 +190,11 @@ void  file_stack_server::rewind()
 
 void  file_stack_server::go_to_frame(int frame_number)
 {
+  if(frame_number > (int)d_fileNames.size()) {
+	  char  msg[1024];
+		  sprintf(msg, "file_stack_server::go_to_frame: Frame number too high");
+		  perror(msg);
+  }
   // Seek back to the first file
   d_whichFile = d_fileNames.begin();
   // Move to requested frame
