@@ -4285,6 +4285,15 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
+<<<<<<< HEAD
+=======
+  // If we are continuing from a loaded CSV file, skip to where it left off.
+  if(load_saved_file) {
+	printf("Starting at frame number: %d\n", static_cast<int>(g_frame_number));
+    g_video->go_to_frame(g_frame_number);
+  }
+
+>>>>>>> 2131af56a4d88d6f36e14175ec8372c022232051
   //------------------------------------------------------------------
   // Initialize the controls for the clipping based on the size of
   // the image we got.
