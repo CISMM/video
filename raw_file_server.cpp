@@ -113,36 +113,6 @@ void  raw_file_server::rewind()
   d_mode = SINGLE;
 }
 
-void raw_file_server::go_to_frame(int frame_number)
-{
-  // Seek to the beginning of the file.
-  if (d_infile != NULL) {
-    fseek(d_infile, 0, SEEK_SET);
-  }
-
-  // If we've been asked to skip a header, do so now.
-  if (d_header_size> 0) {
-    if (fread(d_buffer, d_header_size, 1, d_infile) != 1) {
-      char  msg[1024];
-      sprintf(msg, "raw_file_server::go_to_frame: Could not skip file header");
-      perror(msg);
-      return;
-    }
-  }
-  for (int i = 0; i <= frame_number; i++) {
-	  if (fread(d_buffer, get_num_columns() * get_num_rows(), 1, d_infile) != 1) {
-		  char  msg[1024];
-		  sprintf(msg, "raw_file_server::go_to_frame: Could not find frame");
-		  perror(msg);
-		  d_mode = PAUSE;
-		  return;
-	  }
-  }
-
-  // Read one frame when we start
-  d_mode = SINGLE;
-}
-
 void  raw_file_server::single_step()
 {
   d_mode = SINGLE;

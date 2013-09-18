@@ -517,31 +517,6 @@ void  VRPN_Imager_camera_server::rewind()
   }
 }
 
-void VRPN_Imager_camera_server::go_to_frame(int frame_number)
-{
-  int i;
-  if (_fileCon) {
-    pause();
-    _fileCon->reset();
-
-    // Try to read the first frame from the imager.  First,
-    // speed up the replay rate until we get done with the first frame.
-    // If the reading times out, then retry the read several times.
-    _fileCon->set_replay_rate(100.0);
-    _paused = false;
-    _pause_after_one_frame = true;
-    for (i = 0; i < 3; i++) {
-      if (read_one_frame(0, _num_columns-1, 0, _num_rows-1, 0)) { break; }
-    }
-    _pause_after_one_frame = false;
-    pause();
-    _justStepped = true;
-
-  } else {
-    fprintf(stderr, "VRPN_Imager_camera_server: Cannot rewind a non-file connection.\n");
-  }
-}
-
 void  VRPN_Imager_camera_server::single_step()
 {
   if (_fileCon) {

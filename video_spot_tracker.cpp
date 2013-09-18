@@ -3577,7 +3577,7 @@ void Usage(const char *progname)
     fprintf(stderr, "           [-radius R] [-tracker X Y R] [-tracker X Y R] ...\n");
     fprintf(stderr, "           [-FIONA_background BG]\n");
     fprintf(stderr, "           [-raw_camera_params sizex sizey bitdepth channels headersize frameheadersize]\n");
-    fprintf(stderr, "           [-load_state FILE] [-log_video N] [-continue_from FILE] [-append_from FILE MODE]\n");
+    fprintf(stderr, "           [-load_state FILE] [-log_video N] [-continue_from FILE] [-append_from FILE]\n");
     fprintf(stderr, "           [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n");
     fprintf(stderr, "       -nogui: Run without the video display window (no Glut/OpenGL)\n");
     fprintf(stderr, "       -gui: Run with the video display window (no Glut/OpenGL)\n");
@@ -4285,15 +4285,6 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
-<<<<<<< HEAD
-=======
-  // If we are continuing from a loaded CSV file, skip to where it left off.
-  if(load_saved_file) {
-	printf("Starting at frame number: %d\n", static_cast<int>(g_frame_number));
-    g_video->go_to_frame(g_frame_number);
-  }
-
->>>>>>> 2131af56a4d88d6f36e14175ec8372c022232051
   //------------------------------------------------------------------
   // Initialize the controls for the clipping based on the size of
   // the image we got.
