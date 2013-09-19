@@ -370,7 +370,7 @@ Tclvar_int_with_button	g_interpolate("interpolate",NULL,1, rebuild_trackers);
 Tclvar_int_with_button	g_parabolafit("parabolafit",NULL,0);
 Tclvar_int_with_button	g_follow_jumps("follow_jumps",NULL,0, set_maximum_search_radius);
 Tclvar_float		g_search_radius("search_radius",0);	  //< Search radius for doing local max in before optimizing.
-Tclvar_float		g_go_to_frame_number("go_to_frame_number", 0);
+Tclvar_float		g_go_to_frame_number("go_to_frame_number", -1);
 Tclvar_int_with_button	g_predict("predict",NULL,0);
 Tclvar_int_with_button	g_kernel_type("kerneltype", NULL, KERNEL_SYMMETRIC, rebuild_trackers);
 Tclvar_int_with_button	g_rod("rod3",NULL,0, rebuild_trackers);
@@ -396,7 +396,9 @@ Tclvar_int_with_button	g_show_traces("show_logged_traces","",1);
 Tclvar_int_with_button	g_background_subtract("background_subtract","",0, reset_background_image);
 Tclvar_int_with_button	g_kymograph("kymograph","",0, set_kymograph_visibility);
 Tclvar_int_with_button	g_quit("quit",NULL);	// don't set directly, only by calling cleanup() or dirtyexit()
-Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL, *g_step = NULL;
+Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL;
+Tclvar_int				g_step_back("stepback", 0);
+Tclvar_int				g_step_forward("stepforward", 0);
 Tclvar_selector		g_logfilename("logfilename", NULL, NULL, "", logfilename_changed, NULL);
 Tclvar_int		g_log_relative("logging_relative");
 Tclvar_int		g_log_without_opt("logging_without_opt");
@@ -659,7 +661,6 @@ static void  dirtyexit(void)
   if (g_landscape_floats) { delete [] g_landscape_floats; g_landscape_floats = NULL; };
   if (g_play) { delete g_play; g_play = NULL; };
   if (g_rewind) { delete g_rewind; g_rewind = NULL; };
-  if (g_step) { delete g_step; g_step = NULL; };
   if (g_csv_file) { fclose(g_csv_file); g_csv_file = NULL; g_csv_file = NULL; };
   printf("objects deleted and files closed.\n");
 }
@@ -2241,26 +2242,39 @@ void myIdleFunc(void)
   if (g_video) {
     static  int	last_play = 0;
 
-	if (g_go_to_frame_number > 0) {
+	if (g_step_back) {
+		g_go_to_frame_number = g_frame_number - 1;
+		*g_play = 0;
+		g_step_back = 0;
+	}
+
+	if (g_go_to_frame_number > -1) {
 	    g_frame_number = (int)floor(g_go_to_frame_number);
-		g_video->go_to_frame(g_frame_number);
+		g_video->rewind();
+		g_video->play();
+		for(int i = 0; i <= g_go_to_frame_number; i++) {
+		  if (!g_camera->read_image_to_memory((int)(*g_minX),(int)(*g_maxX), (int)(*g_minY),(int)(*g_maxY), g_exposure)) {
+			  fprintf(stderr, "Can't read image (%d,%d to %d,%d) to memory!\n", (int)(*g_minX),(int)(*g_minY), (int)(*g_maxX),(int)(*g_maxY));
+			  cleanup();
+			  exit(-1);
+		  }
+		}
 		g_video->pause();
+		g_go_to_frame_number = -1;
 	}
 
     // If the user has pressed step, then run the video for a
     // single step and pause it.
-    if (*g_step) {
+    if (g_step_forward) {
       g_video->single_step();
       *g_play = 0;
-      *g_step = 0;
-	  g_go_to_frame_number = 0;
+	  g_step_forward = 0;
     }
 
     // If the user has pressed play, start the video playing
     if (!last_play && *g_play) {
       g_video->play();
       *g_rewind = 0;
-	  g_go_to_frame_number = 0;
     }
 
     // If the user has cleared play, then pause the video
@@ -2278,7 +2292,6 @@ void myIdleFunc(void)
     if (*g_rewind) {
       *g_play = 0;
       *g_rewind = 0;
-	  g_go_to_frame_number = 0;
       g_logging = 0;
       g_logfilename = "";
       g_logged_traces.clear();
@@ -4224,8 +4237,55 @@ int main(int argc, char *argv[])
     // Start out paused at the beginning of the file.
     g_play = new Tclvar_int_with_button("play_video","",0);
     g_rewind = new Tclvar_int_with_button("rewind_video","",1);
-    g_step = new Tclvar_int_with_button("single_step_video","");
 #ifndef VST_NO_GUI
+		    sprintf(command, "frame .stepframe");
+    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
+	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+		    g_tk_control_interp->result);
+	    return(-1);
+    }
+			sprintf(command, "button .stepframe.gotoframe -text go_to_frame -command update_goto_window_visibility");
+    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
+	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+		    g_tk_control_interp->result);
+	    return(-1);
+    }
+    sprintf(command, "button .stepframe.stepforward -text \"-->\" -command { set stepforward 1}");
+    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
+	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+		    g_tk_control_interp->result);
+	    return(-1);
+    }
+    sprintf(command, "button .stepframe.stepback -text \"<--\" -command {set stepback 1}");
+    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
+	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+		    g_tk_control_interp->result);
+	    return(-1);
+    }
+    sprintf(command, "pack .stepframe");
+    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
+	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+		    g_tk_control_interp->result);
+	    return(-1);
+    }
+		sprintf(command, "pack .stepframe.gotoframe -side left");
+    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
+	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+		    g_tk_control_interp->result);
+	    return(-1);
+    }
+    sprintf(command, "pack .stepframe.stepback -side left");
+    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
+	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+		    g_tk_control_interp->result);
+	    return(-1);
+    }
+    sprintf(command, "pack .stepframe.stepforward -side right");
+    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
+	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+		    g_tk_control_interp->result);
+	    return(-1);
+	}
     sprintf(command, "frame .frame");
     if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
 	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
@@ -4257,18 +4317,6 @@ int main(int argc, char *argv[])
 	    return(-1);
     }
     sprintf(command, "pack .frame.framevalue -side right");
-    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
-	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
-		    g_tk_control_interp->result);
-	    return(-1);
-    }
-	sprintf(command, "button .gotoframe -text go_to_frame -command update_goto_window_visibility");
-    if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
-	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
-		    g_tk_control_interp->result);
-	    return(-1);
-    }
-	sprintf(command, "pack .gotoframe -side bottom -fill x");
     if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
 	    fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
 		    g_tk_control_interp->result);

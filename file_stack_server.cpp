@@ -188,24 +188,6 @@ void  file_stack_server::rewind()
   d_mode = SINGLE;
 }
 
-void  file_stack_server::go_to_frame(int frame_number)
-{
-  if(frame_number > (int)d_fileNames.size()) {
-	  char  msg[1024];
-		  sprintf(msg, "file_stack_server::go_to_frame: Frame number too high");
-		  perror(msg);
-  }
-  // Seek back to the first file
-  d_whichFile = d_fileNames.begin();
-  // Move to requested frame
-  for(int i = 0; i <= frame_number; i++) {
-	  d_whichFile++;
-  }
-
-  // Read one frame when we start
-  d_mode = SINGLE;
-}
-
 void  file_stack_server::single_step()
 {
   d_mode = SINGLE;

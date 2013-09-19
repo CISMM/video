@@ -26,10 +26,6 @@ public:
   // that image.
   virtual void rewind(void);
 
-  // Moves the stored video to a given frame number (also pauses).
-  // Works like rewind but goes to any frame rather than just the beginning.
-  virtual void go_to_frame(int frame_number);
-
   /// Single-step the stored video for one frame.
   // This causes a new image to be read (unless we're at the last image) the next
   // time read_image_to_memory() is called, and then pauses at that image.
