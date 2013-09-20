@@ -87,6 +87,13 @@ const int SUBTRACT_NEIGHBORS = 5;
 // Glut wants to take over the world when it starts, so we need to make
 // global access to the objects we will be using.
 
+Tclvar_int          g_tcl_raw_camera_numx("raw_numx");
+Tclvar_int          g_tcl_raw_camera_numy("raw_numy");
+Tclvar_int          g_tcl_raw_camera_bitdepth("raw_bitdepth");
+Tclvar_int          g_tcl_raw_camera_channels("raw_channels");
+Tclvar_int          g_tcl_raw_camera_headersize("raw_headersize");
+Tclvar_int          g_tcl_raw_camera_frameheadersize("raw_frameheadersize");
+
 char  *g_device_name = NULL;			  //< Name of the device to open
 base_camera_server  *g_camera = NULL;		  //< Camera used to get an image
 image_wrapper	    *g_image_to_display = NULL;	  //< Image that we're supposed to display
@@ -174,6 +181,43 @@ Tclvar_int_with_button	g_auto_gain("auto_gain",NULL,0);
 Tclvar_float_with_scale	g_clip_high("clip_high", ".gain.high", 0, 1, 1);
 Tclvar_float_with_scale	g_clip_low("clip_low", ".gain.low", 0, 1, 0);
 
+//--------------------------------------------------------------------------
+// Return the length of the named file.  Used to help figure out what
+// kind of raw file is being opened.  Returns -1 on failure.
+// NOTE: Some of our files are longer than 2GB, which means that
+// a 32-bit long will wrap and so be unable to determine the file
+// length.
+#ifndef	_WIN32
+  #define __int64 long
+  #define _fseeki64 fseek
+  #define _ftelli64 ftell
+#endif
+#ifdef	__MINGW32__
+  #define __int64 long
+  #define _fseeki64 fseek
+  #define _ftelli64 ftell
+#endif
+static __int64 determine_file_length(const char *filename)
+{
+#ifdef	_WIN32
+  FILE *f = fopen(filename, "rb");
+#else
+  FILE *f = fopen(filename, "r");
+#endif
+  if (f == NULL) {
+    perror("determine_file_length(): Could not open file for reading");
+    return -1;
+  }
+  __int64 val;
+  if ( (val = _fseeki64(f, 0, SEEK_END)) != 0) {
+    fprintf(stderr, "determine_file_length(): fseek() returned %ld", val);
+    fclose(f);
+    return -1;
+  }
+  __int64 length = _ftelli64(f);
+  fclose(f);
+  return length;
+}
 
 //--------------------------------------------------------------------------
 // Helper routine to get the Y coordinate right when going between camera
@@ -1419,6 +1463,15 @@ int main(int argc, char *argv[])
   vrpn_FILE_CONNECTIONS_SHOULD_PRELOAD = false;
   vrpn_FILE_CONNECTIONS_SHOULD_ACCUMULATE = false;
 
+    // These defaults are set for a Pulnix camera
+  unsigned  raw_camera_params_valid = false;  //< Have the following been set intentionally?
+  unsigned  raw_camera_numx = 648;
+  unsigned  raw_camera_numy = 484;
+  unsigned  raw_camera_bitdepth = 8;        //< Number of bits per channel in raw file camera
+  unsigned  raw_camera_channels = 1;        //< Number of channels in raw file camera
+  unsigned  raw_camera_headersize = 0;      //< Number of header bytes in raw file camera
+  unsigned  raw_camera_frameheadersize = 0;      //< Number of header bytes in raw file camera
+
   //------------------------------------------------------------------
   // Generic Tcl startup.  Getting and interpreter and mainwindow.
 
@@ -1579,6 +1632,120 @@ int main(int argc, char *argv[])
     if (g_quit) {
       cleanup();
       exit(0);
+    }
+  }
+
+  //------------------------------------------------------------------
+  // If we're being asked to open a raw file and we don't have a set of
+  // raw-file parameters, then see if we can figure them out based on the
+  // file size or else throw a dialog box asking for them.
+  if (  (strcmp(".raw", &g_device_name[strlen(g_device_name)-4]) == 0) ||
+        (strcmp(".RAW", &g_device_name[strlen(g_device_name)-4]) == 0) ) {
+
+    if (!raw_camera_params_valid) {
+      //------------------------------------------------------------
+      // See if we can figure out the right settings for these parameters
+      // based on the file size (if it is an even multiple of the particular
+      // file sizes for the odd-sized Pulnix camera or the Point Grey camera that
+      // we're using at UNC.  Standard sizes are going to be harder to
+      // determine, because if there are 100 frames it will mask the difference
+      // between power-of-2 changes on each axis (640x480 vs. 1280x960, for example).
+      __int64 file_length = determine_file_length(g_device_name);
+      if (file_length > 0) {   // Zero length means we can't tell, <0 means failure.
+        double frame_size, num_frames;
+
+        // Check for original Pulnix cameras used at UNC
+        frame_size = 648 * 484;
+        num_frames = file_length / frame_size;
+        if ( num_frames == floor(num_frames) ) {
+          printf("Assuming EDT/Pulnix file format (648x484)\n");
+          raw_camera_numx = 648;
+          raw_camera_numy = 484;
+          raw_camera_bitdepth = 8;
+          raw_camera_channels = 1;
+          raw_camera_headersize = 0;
+          raw_camera_frameheadersize = 0;
+          raw_camera_params_valid = true;
+        } else {
+          // Check for Point Grey camera being used at UNC
+          frame_size = 1024 * 768 + 112;
+          num_frames = file_length / frame_size;
+          if ( num_frames == floor(num_frames) ) {
+            printf("Assuming Point Grey file format (1024x768, 112-byte frame headers)\n");
+            raw_camera_numx = 1024;
+            raw_camera_numy = 768;
+            raw_camera_bitdepth = 8;
+            raw_camera_channels = 1;
+            raw_camera_headersize = 0;
+            raw_camera_frameheadersize = 112;
+            raw_camera_params_valid = true;
+          } else {
+            // Check for another camera being used at UNC
+            frame_size = 512 * 512 + 0;
+            num_frames = file_length / frame_size;
+            if ( num_frames == floor(num_frames) ) {
+              printf("Assuming file format (512x512, 0-byte frame headers)\n");
+              raw_camera_numx = 512;
+              raw_camera_numy = 512;
+              raw_camera_bitdepth = 8;
+              raw_camera_channels = 1;
+              raw_camera_headersize = 0;
+              raw_camera_frameheadersize = 0;
+              raw_camera_params_valid = true;
+            } else {
+              // Check for another camera being used at UNC
+              frame_size = 656 * 494 + 0;
+              num_frames = file_length / frame_size;
+              if ( num_frames == floor(num_frames) ) {
+                printf("Assuming file format (565x494, 0-byte frame headers)\n");
+                raw_camera_numx = 656;
+                raw_camera_numy = 494;
+                raw_camera_bitdepth = 8;
+                raw_camera_channels = 1;
+                raw_camera_headersize = 0;
+                raw_camera_frameheadersize = 0;
+                raw_camera_params_valid = true;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (!raw_camera_params_valid) {
+      //------------------------------------------------------------
+      // Create a callback for a variable that will tell when the
+      // params are filled and then create a dialog box that will ask the user
+      // to either fill it in or quit.
+      Tclvar_int  raw_params_set("raw_params_set", 0);
+      if (Tcl_Eval(tk_control_interp, "ask_user_for_raw_file_params") != TCL_OK) {
+        fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command, tk_control_interp->result);
+        cleanup();
+        exit(-1);
+      }
+
+      do {
+        //------------------------------------------------------------
+        // This pushes changes in the C variables over to Tcl.
+
+        while (Tk_DoOneEvent(TK_DONT_WAIT)) {};
+        if (Tclvar_mainloop()) {
+	  fprintf(stderr,"Tclvar Mainloop failed\n");
+        }
+      } while ( (raw_params_set == 0) && !g_quit);
+      if (g_quit) {
+        cleanup();
+        exit(0);
+      }
+
+      // XXX Read the Tcl variables associated with this into our params
+      // and then say that the params have been filled in.
+      raw_camera_numx = g_tcl_raw_camera_numx;
+      raw_camera_numy = g_tcl_raw_camera_numy;
+      raw_camera_bitdepth = g_tcl_raw_camera_bitdepth;
+      raw_camera_channels = g_tcl_raw_camera_channels;
+      raw_camera_headersize = g_tcl_raw_camera_headersize;
+      raw_camera_frameheadersize = g_tcl_raw_camera_frameheadersize;
     }
   }
 

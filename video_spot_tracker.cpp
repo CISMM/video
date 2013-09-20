@@ -320,7 +320,7 @@ bool g_quit_logging_thread = false;
 //--------------------------------------------------------------------------
 bool allow_optimization = true; // If running from command line, allow option to prevent optimization.
 bool load_saved_file = false; // Are we loading a previously saved CSV file to append to?
-int first_appended_frame;
+int loaded_frames = 0; //number of frames loaded when appending to an existing CSV file.
 bool first_frame_only_autofind = false; // Whether or not to autofind beads after first frame
 bool g_imageor = false; // Whether or not to use oriented image kernel
 
@@ -994,7 +994,7 @@ static	bool  save_log_frame(int frame_number)
       }
       double interval = timediff(now, start);
       fprintf(g_csv_file, "%d, %d, %lf,%lf,%lf, %lf, %lf, %lf,%lf, %lf,%lf, %lf,%lf\n",
-        frame_number, tracker->index(),
+        frame_number + loaded_frames, tracker->index(),
         pos[0], pos[1], pos[2],
         tracker->xytracker()->get_radius(), center_intensity,
         orient, length,
@@ -2243,12 +2243,20 @@ void myIdleFunc(void)
     static  int	last_play = 0;
 
 	if (g_step_back) {
+		g_logging = 0;
+        g_logfilename = "";
+        g_logged_traces.clear();
 		g_go_to_frame_number = g_frame_number - 1;
 		*g_play = 0;
 		g_step_back = 0;
 	}
 
 	if (g_go_to_frame_number > -1) {
+		if (g_go_to_frame_number < g_frame_number) {
+			g_logging = 0;
+			g_logfilename = "";
+			g_logged_traces.clear();
+		}
 	    g_frame_number = (int)floor(g_go_to_frame_number);
 		g_video->rewind();
 		g_video->play();
@@ -3048,7 +3056,7 @@ void  logfilename_changed(char *newvalue, void *)
   // were already logging.  If we don't check this, it tries to
   // write the frame even though we don't have logging going the
   // very first time we start logging.
-  if (g_csv_file && g_vrpn_tracker && (g_log_frame_number_last_logged != g_frame_number) && (!load_saved_file)) {
+  if (g_csv_file && g_vrpn_tracker && (g_log_frame_number_last_logged != g_frame_number)) {
     if (!save_log_frame(g_frame_number)) {
       fprintf(stderr, "logfile_changed: Could not save log frame\n");
       cleanup();
@@ -3388,8 +3396,7 @@ bool load_trackers_from_file(const char *inname)
     }
   }
   fclose(f);
-  g_frame_number = max_frame_number + 1;
-  first_appended_frame = g_frame_number;
+  loaded_frames = max_frame_number + 1;
 
   //------------------------------------------------------------
   // Open the file again and read through it to pull out all
