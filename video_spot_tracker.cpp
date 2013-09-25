@@ -231,6 +231,8 @@ unsigned            g_background_count = 0;       //< Number of frames we've alr
 copy_of_image	    *g_last_image = NULL;	  //< Copy of the last image we had, if any
 image_wrapper       *g_blurred_image = NULL;      //< Blurred image used for autofind/delete, if any
 image_wrapper       *g_surround_image = NULL;     //< Blurred background image used for autofind/delete, if any
+double_image		*x_flipped_image = NULL;	  //< Image flipped in x if asked for
+double_image		*y_flipped_image = NULL;	  //< Image flipped in y if asked for
 
 Controllable_Video  *g_video = NULL;		  //< Video controls, if we have them
 Tclvar_int_with_button	g_frame_number("frame_number",NULL,-1);  //< Keeps track of video frame number
@@ -391,11 +393,13 @@ Tclvar_int_with_button	g_mark("show_tracker",NULL,1);
 Tclvar_int_with_button	g_show_video("show_video","",1);
 Tclvar_int_with_button	g_opengl_video("use_texture_video","",1);
 Tclvar_int_with_button	g_show_debug("show_debug","",0, set_debug_visibility);
-Tclvar_int_with_button	g_show_clipping("show_clipping","",0);
+Tclvar_int_with_button	g_clip_and_flip("clip_and_flip","",0);
 Tclvar_int_with_button	g_show_traces("show_logged_traces","",1);
 Tclvar_int_with_button	g_background_subtract("background_subtract","",0, reset_background_image);
 Tclvar_int_with_button	g_kymograph("kymograph","",0, set_kymograph_visibility);
 Tclvar_int_with_button	g_quit("quit",NULL);	// don't set directly, only by calling cleanup() or dirtyexit()
+Tclvar_int_with_button  g_flip_in_x("flip_in_x",".clipping",0);
+Tclvar_int_with_button  g_flip_in_y("flip_in_y",".clipping",0);
 Tclvar_int_with_button	*g_play = NULL, *g_rewind = NULL;
 Tclvar_int				g_step_back("stepback", 0);
 Tclvar_int				g_step_forward("stepforward", 0);
@@ -2448,6 +2452,33 @@ void myIdleFunc(void)
   double_image = *g_camera;
   g_image = &double_image;
 */
+
+  //flip image in x or y if needed
+  if(g_flip_in_x) {
+	  delete x_flipped_image; //delete last flipped image
+	  int maxx = g_image->get_num_columns()-1;
+	  int maxy = g_image->get_num_rows()-1;
+	  x_flipped_image = new double_image(0, maxx, 0, maxy);
+	  for(int i = 0; i <= maxx; i++) {
+		  for (int j = 0; j < maxy; j++) {
+			  x_flipped_image->write_pixel_nocheck(i,j,g_image->read_pixel_nocheck(maxx-i,j));
+		  }
+	  }
+	  g_image = x_flipped_image;  
+  }
+  if(g_flip_in_y) {
+	  delete y_flipped_image; //delete last flipped image;
+	  int maxx = g_image->get_num_columns()-1;
+	  int maxy = g_image->get_num_rows()-1;
+	  y_flipped_image = new double_image(0, maxx, 0, maxy);
+	  for(int i = 0; i <= maxx; i++) {
+		  for (int j = 0; j < maxy; j++) {
+			  y_flipped_image->write_pixel_nocheck(i,j,g_image->read_pixel_nocheck(i,maxy-j));
+		  }
+	  }
+	  g_image = y_flipped_image;
+  }
+
   // If we're doing background subtraction, then we set things up to accumulate
   // an average image and do a subtraction between the current image and the
   // background image, and then we point the g_image at this computed image.
@@ -4367,7 +4398,7 @@ int main(int argc, char *argv[])
     cleanup();
     exit(-1);
   }
-
+ 
   //------------------------------------------------------------------
   // If we asked for logging on the command line, start it here --
   // after we have started the logging server above.

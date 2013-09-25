@@ -197,12 +197,12 @@ pack .kernel.bottom.parms.right.full_area
 toplevel .clipping
 wm geometry .clipping +800+10
 wm withdraw .clipping
-set show_clipping 0
-trace variable show_clipping w update_clipping_window_visibility
+set clip_and_flip 0
+trace variable clip_and_flip w update_clipping_window_visibility
 
 proc update_clipping_window_visibility {nm el op} {
-	global show_clipping
-	if { $show_clipping } {
+	global clip_and_flip
+	if { $clip_and_flip } {
 		wm deiconify .clipping
 	} else {
 		wm withdraw .clipping
