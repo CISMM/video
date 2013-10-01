@@ -260,6 +260,7 @@ bool                g_tracker_is_lost = false;    //< Is there a lost tracker?
 vector<Position_Vector_XY>  g_logged_traces;      //< Stores the trajectories of logged beads
 
 vrpn_Connection	    *g_vrpn_connection = NULL;    //< Connection to send position over
+int					g_port_number = 3883;		//< port number for VRPN connection
 vrpn_Tracker_Server *g_vrpn_tracker = NULL;	  //< Tracker server to send positions
 vrpn_Analog_Server  *g_vrpn_analog = NULL;        //< Analog server to report frame number
 vrpn_Imager_Server  *g_vrpn_imager = NULL;        //< VRPN Imager Server in case we're forwarding images
@@ -2028,7 +2029,9 @@ void logging_thread_function(void *)
     }
 
     printf("Logging thread writing to %s\n", newvalue);
-    g_client_connection = vrpn_get_connection_by_name("Spot@localhost", newvalue);
+	char  name[256];
+	sprintf(name, ":%d", g_port_number);
+    g_client_connection = vrpn_get_connection_by_name(name, newvalue);
     g_client_tracker = new vrpn_Tracker_Remote("Spot@localhost");
     g_client_imager = new vrpn_Imager_Remote("TestImage@localhost");
 
@@ -4383,7 +4386,11 @@ int main(int argc, char *argv[])
   // Set up the VRPN server connection and the tracker object that will
   // report the position when tracking is turned on.  Reserve 300,000
   // sensor locations (this should be an overestimate).
-  g_vrpn_connection = vrpn_create_server_connection();
+  int port_number = 3883;
+  do {
+	g_vrpn_connection = vrpn_create_server_connection(port_number++);
+  } while (g_vrpn_connection->doing_okay() == 0);
+  g_port_number = port_number - 1;
   g_vrpn_tracker = new vrpn_Tracker_Server("Spot", g_vrpn_connection, 300000);
   g_vrpn_analog = new vrpn_Analog_Server("FrameNumber", g_vrpn_connection, 1);
   g_vrpn_imager = new vrpn_Imager_Server("TestImage", g_vrpn_connection,
