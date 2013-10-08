@@ -208,6 +208,7 @@ OPTION(VIDEO_USE_VRPN_IMAGER "Enable to include VRPN_Imager camera code in build
 OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" OFF)
 
 OPTION(VIDEO_BUILD_PANOPTES "Enable to build Panoptes applications" OFF)
+OPTION(VIDEO_BUILD_FREQUENCY_SWEEP "Enable to build frequency sweep applications" OFF)
 
 #-----------------------------------------------------------------------------
 # Set compile-time definitions for all projects based on what has been
@@ -606,6 +607,25 @@ install(TARGETS stocc_random_number_generator_library
 endif(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
 
 
+if (VIDEO_BUILD_FREQUENCY_SWEEP)
+FIND_PACKAGE(LEWOS REQUIRED)
+FIND_PACKAGE(Panoptes REQUIRED)
+INCLUDE_DIRECTORIES(
+        ${LEWOS_INCLUDE_DIR}
+        ${PANOPTES_INCLUDE_DIR}
+)
+ADD_EXECUTABLE(Frequency_voltage_plot
+	PanopticNerve_LEWOS/query_resonance_freq.cpp
+)
+TARGET_LINK_LIBRARIES(Frequency_voltage_plot
+    ${VRPN_LIBRARIES}
+	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
+	${LEWOS_LIBRARIES}
+	${Panoptes_LIBRARY}
+)
+
+endif (VIDEO_BUILD_FREQUENCY_SWEEP)
+
 if (VIDEO_BUILD_PANOPTES)
 ADD_DEFINITIONS(-DPANOPTES_USE_POINTGREY)
 FIND_PACKAGE(LEWOS REQUIRED)
@@ -628,7 +648,7 @@ ADD_EXECUTABLE(PanopticNerve_LEWOS
 	PanopticNerve_LEWOS/vector3.cpp
 	PanopticNerve_LEWOS/ZChaser.cpp
 	PanopticNerve_LEWOS/helper.cpp
-        thread.cpp
+    thread.cpp
 )
 TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	base_camera_server_library
@@ -639,6 +659,7 @@ TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	${LEWOS_LIBRARIES}
 	${Panoptes_LIBRARY}
 )
+
 if (VIDEO_BUILD_PANOPTES)
 set (PNERVE_MAJOR_VERSION 5) 
 set (PNERVE_MINOR_VERSION 0) 
@@ -1219,7 +1240,6 @@ ADD_EXECUTABLE(swap_ppm_lines swap_ppm_lines.cpp ppm.C)
 TARGET_LINK_LIBRARIES(swap_ppm_lines
 )
 SET_TARGET_PROPERTIES(swap_ppm_lines PROPERTIES SOLUTION_FOLDER apps)
-
 
 if (VIDEO_USE_EDT)
 	SET(TARGET_NAME GLUItake)
