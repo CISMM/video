@@ -38,14 +38,14 @@ static	Tcl_Interp	*interpreter = NULL;	// Tcl interpreter used
 // when the variables changes.
 
 static	char	*handle_int_value_change(ClientData clientData,
-	Tcl_Interp *interp, char * /*name1*/, char * /*name2*/, int /*flags*/)
+	Tcl_Interp *interp, const char * /*name1*/, const char * /*name2*/, int /*flags*/)
 {
         char    *cvalue;
 	int	value;
 	Tclvar_int	*intvar = (Tclvar_int*)(clientData);
 
 	// Look up the new value of the variable
-	cvalue = Tcl_GetVar(interp, intvar->my_tcl_varname,
+	cvalue = (char*)Tcl_GetVar(interp, intvar->my_tcl_varname,
 		 TCL_GLOBAL_ONLY);
 	if (cvalue == NULL) {
 		fprintf(stderr,"Warning!  Can't read %s from Tcl\n",
@@ -68,7 +68,7 @@ static	char	*handle_int_value_change(ClientData clientData,
 // when the variables changes.
 
 static	char	*handle_float_value_change(ClientData clientData,
-	Tcl_Interp *interp, char * /*name1*/, char * /*name2*/, int /*flags*/)
+	Tcl_Interp *interp, const char * /*name1*/, const char * /*name2*/, int /*flags*/)
 {
         char    *cvalue;
 	double	value;
@@ -76,7 +76,7 @@ static	char	*handle_float_value_change(ClientData clientData,
 
 // 	printf("floatvalchange: %s %s %s\n", name1, name2, floatvar->my_tcl_varname);
 	// Look up the new value of the variable
-	cvalue = Tcl_GetVar(interp, floatvar->my_tcl_varname, 
+	cvalue = (char*)Tcl_GetVar(interp, floatvar->my_tcl_varname, 
 		 TCL_GLOBAL_ONLY);
 	if (cvalue == NULL) {
 		fprintf(stderr,"Warning!  Can't read %s from Tcl\n",
@@ -99,13 +99,13 @@ static	char	*handle_float_value_change(ClientData clientData,
 // when the variables changes.
 
 static	char	*handle_string_value_change(ClientData clientData,
-	Tcl_Interp *interp, char * /*name1*/, char * /*name2*/, int /*flags*/)
+	Tcl_Interp *interp, const char * /*name1*/, const char * /*name2*/, int /*flags*/)
 {
         char    *cvalue;
 	Tclvar_selector	*selvar = (Tclvar_selector*)(clientData);
 
 	// Look up the new value of the variable
-	cvalue = Tcl_GetVar(interp, selvar->my_tcl_varname, 
+	cvalue = (char*)Tcl_GetVar(interp, selvar->my_tcl_varname, 
 		 TCL_GLOBAL_ONLY);
 	if (cvalue == NULL) {
 		fprintf(stderr,"Warning!  Can't read %s from Tcl\n",
