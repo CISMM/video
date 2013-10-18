@@ -103,7 +103,11 @@ bool ffmpeg_video_server::open_video_file(void)
 
     // Open codec
     //printf("dbg: opening codec\n");
+#ifdef __APPLE__
+    if (avcodec_open2(m_pCodecCtx, m_pCodec, NULL)<0) {
+#else
     if (avcodec_open(m_pCodecCtx, m_pCodec)<0) {
+#endif
         fprintf(stderr,"ffmpeg_video_server::open_video_file(): Cannot open CODEC\n");
         return false;
     }
