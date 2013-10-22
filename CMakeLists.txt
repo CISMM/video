@@ -118,10 +118,14 @@ if (WIN32)
 		CORE_RL_ttf_ CORE_RL_wand_ CORE_RL_wmf_ CORE_RL_xlib_ CORE_RL_zlib_
 		X11 Xext
 	)
-else(WIN32)
+elseif(__APPLE__)
 	set (PTHREAD_LIBRARY pthread)
         # tiff shouldn't be linked separately, but ImageMagick has trouble linking static tiff delegate.
 	set (ImageMagick_Needed_Libs libMagickCore-6.Q16.a libMagickWand-6.Q16.a tiff)
+else(__APPLE__)
+	set (PTHREAD_LIBRARY pthread)
+        # tiff shouldn't be linked separately, but ImageMagick has trouble linking static tiff delegate.
+	set (ImageMagick_Needed_Libs MagickCore tiff)
 endif (WIN32)
 
 FIND_PACKAGE(CUDA)
