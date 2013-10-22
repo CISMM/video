@@ -2030,10 +2030,10 @@ void logging_thread_function(void *)
 
     printf("Logging thread writing to %s\n", newvalue);
 	char  name[256];
-	sprintf(name, ":%d", g_port_number);
+	sprintf(name, "localhost:%d", g_port_number);
     g_client_connection = vrpn_get_connection_by_name(name, newvalue);
-    g_client_tracker = new vrpn_Tracker_Remote("Spot@localhost");
-    g_client_imager = new vrpn_Imager_Remote("TestImage@localhost");
+    g_client_tracker = new vrpn_Tracker_Remote("Spot@localhost", g_client_connection);
+    g_client_imager = new vrpn_Imager_Remote("TestImage@localhost", g_client_connection);
 
     //------------------------------------------------------------
     // Let the logging connection do its thing, sleeping only briefly
