@@ -1,9 +1,13 @@
-function(gp_resolved_file_type_override resolved_file type_var)
-  if(resolved_file MATCHES "^(/Library/Frameworks/)")
-        message("resolving ${resolved_file} as system")
-        set(${type_var} "system" PARENT_SCOPE)
-  endif()
-endfunction()
+# glut will be copied into bundel before 'make package'. Because it's install_name
+# has @executable_path, it has to be within the bundle.
+# I tried to change its install name, but it doesn't like a long path, so I give up. 
+
+#function(gp_resolved_file_type_override resolved_file type_var)
+#  if(resolved_file MATCHES "glut")
+#        message("resolving ${resolved_file} as embedded, and copying it to the bundle.")
+#        set(${type_var} "embedded" PARENT_SCOPE)
+#  endif()
+#endfunction()
 
 include(BundleUtilities)
 fixup_bundle( @CMAKE_CURRENT_BINARY_DIR@/@TARGET_NAME@.app "" "")

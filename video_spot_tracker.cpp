@@ -3870,14 +3870,7 @@ int main(int argc, char *argv[])
           return(-1);
   }
 
-#ifdef __APPLE__
-  sprintf(command, "console hide", executable_directory);
-  if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
-          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
-                  g_tk_control_interp->result);
-          return(-1);
-  }
-#endif
+
   //------------------------------------------------------------------
   // This routine must be called in order to initialize all of the
   // variables that came into scope before the interpreter was set
@@ -3895,6 +3888,16 @@ int main(int argc, char *argv[])
                   g_tk_control_interp->result);
           return(-1);
   }
+
+#ifdef __APPLE__
+  sprintf(command, "console hide", executable_directory);
+  if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
+          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+                  g_tk_control_interp->result);
+          return(-1);
+  }
+#endif
+
 #endif
 
   //------------------------------------------------------------------
