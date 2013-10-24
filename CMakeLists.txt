@@ -118,11 +118,11 @@ if (WIN32)
 		CORE_RL_ttf_ CORE_RL_wand_ CORE_RL_wmf_ CORE_RL_xlib_ CORE_RL_zlib_
 		X11 Xext
 	)
-elseif(__APPLE__)
+elseif(APPLE)
 	set (PTHREAD_LIBRARY pthread)
         # tiff shouldn't be linked separately, but ImageMagick has trouble linking static tiff delegate.
 	set (ImageMagick_Needed_Libs libMagickCore-6.Q16.a libMagickWand-6.Q16.a tiff)
-else(__APPLE__)
+else(APPLE)
 	set (PTHREAD_LIBRARY pthread)
         # tiff shouldn't be linked separately, but ImageMagick has trouble linking static tiff delegate.
 	set (ImageMagick_Needed_Libs MagickCore tiff)
@@ -998,23 +998,31 @@ SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
 IF(NOT APPLE)
 install(TARGETS video_spot_tracker
 	RUNTIME DESTINATION bin)
+
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/video_spot_tracker.tcl
 		${CMAKE_CURRENT_SOURCE_DIR}/russ_widgets.tcl
 	DESTINATION bin)
 ELSE(NOT APPLE)
-SET (CPACK_PACKAGE_FILE_NAME "Video_spot_tracker_v07.07_Intel_Mac_Universal")
+SET (CPACK_PACKAGE_FILE_NAME "Video_spot_tracker_v08.01_Intel_Mac_Universal")
 FILE(COPY video_spot_tracker.tcl russ_widgets.tcl DESTINATION video_spot_tracker.app/Contents/MacOS)
+
+# Copy all the glut libraries to the bundle
+STRING(FIND ${GLUT_glut_LIBRARY} "/" DIR_END REVERSE)
+STRING(SUBSTRING ${GLUT_glut_LIBRARY} 0 ${DIR_END} GLUT_LIB_DIR)
+file(GLOB_RECURSE GLUT_ALL_LIBS 
+     	 ${GLUT_LIB_DIR}/*${CMAKE_SHARED_LIBRARY_SUFFIX})
+FILE(COPY ${GLUT_ALL_LIBS} DESTINATION video_spot_tracker.app/Contents/MacOS)
 
 # Comment out this section if you don't want spot_tracker in the installer
 #--------------------------------------------------------------------------
 # configure_files makes CMAKE variables can be seen in the script
-INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
 CONFIGURE_FILE(
     ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
     ${CMAKE_BINARY_DIR}/mac_installer.cmake 
     @ONLY IMMEDIATE
 )
 INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
+INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
 #--------------------------------------------------------------------------
 ENDIF(NOT APPLE)
 endif (NOT VIDEO_USE_CUDA)
@@ -1120,13 +1128,13 @@ if (VIDEO_USE_CUDA)
     # Comment out this section if you don't want spot_tracker_CUDA in the installer
     #--------------------------------------------------------------------------
     # configure_files makes CMAKE variables can be seen in the script
-    #INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
     #CONFIGURE_FILE(
     #  ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
     #  ${CMAKE_BINARY_DIR}/mac_installer.cmake 
     #  @ONLY IMMEDIATE
     #)
     #INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
+    #INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
     #--------------------------------------------------------------------------
   ENDIF(NOT APPLE)
 
@@ -1297,7 +1305,6 @@ if (VIDEO_USE_CUDA)
     # Comment out this section if you don't want CUDA_video_filter in the installer
     #--------------------------------------------------------------------------
     # configure_files makes CMAKE variables can be seen in the script
-    #INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
     #CONFIGURE_FILE(
     #  ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
     #  ${CMAKE_BINARY_DIR}/mac_installer.cmake 
@@ -1305,6 +1312,7 @@ if (VIDEO_USE_CUDA)
     #)
     #--------------------------------------------------------------------------
     #INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
+    #INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
   ENDIF(NOT APPLE)
 
 endif (VIDEO_USE_CUDA)
@@ -1437,13 +1445,13 @@ ELSE(NOT APPLE)
   # Comment out this section if you don't want video_optimizer in the installer
   #--------------------------------------------------------------------------
   # configure_files makes CMAKE variables can be seen in the script
-  #INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
   #CONFIGURE_FILE(
   #  ${CMAKE_SOURCE_DIR}/mac_installer.cmake.in
   #  ${CMAKE_BINARY_DIR}/mac_installer.cmake 
   #  @ONLY IMMEDIATE
   #)
   #INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
+  #INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
   #--------------------------------------------------------------------------
 ENDIF(NOT APPLE)
 
@@ -1524,7 +1532,6 @@ ENDIF() # Match cismm_video_optimizer
 		${FFMPEG_LIBRARIES}
 		ffmpeg_video_library
 	        )
-		message("${FFMPEG_LIBRARIES}")
   endif (VIDEO_USE_FFMPEG)
   TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
 	${VRPN_SERVER_LIBRARIES}
