@@ -297,7 +297,7 @@ set device_filename ""
 proc ask_user_for_filename { } {
 	global device_filename quit fileinfo
 		
-	set types { {"Image Stack Files" "*.avi *.tif *.bmp *.raw *.spe"} }
+	set types { {"Image Stack Files" "*.avi *.tif *.bmp *.raw *.spe .jpg .pgm"} }
 	set device_filename [tk_getOpenFile -filetypes $types \
 		-defaultextension ".avi" \
 		-initialdir $fileinfo(open_dir) \
@@ -367,7 +367,7 @@ set psf_filename "NONE"
 proc ask_user_for_psf_filename { } {
 	global psf_filename fileinfo
 		
-	set types { {"Image Stack Files" "*.avi *.tif *.bmp *.raw *.spe"} }
+	set types { {"Image Stack Files" "*.avi *.tif *.bmp *.raw *.spe *.jpg *.pgm"} }
 	set psf_filename [tk_getOpenFile -filetypes $types \
 		-defaultextension ".tif" \
 		-initialdir $fileinfo(open_dir) \
