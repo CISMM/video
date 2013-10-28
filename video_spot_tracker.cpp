@@ -3696,7 +3696,12 @@ void Usage(const char *progname)
 int main(int argc, char *argv[])
 {
 
-#ifdef __APPLE__ 
+#ifdef __APPLE__
+  bool exec_bundle = false;
+  if (argc > 1 && argv[1][0] == '-' && argv[1][1]=='p' && argv[1][2]=='s' && argv[1][3]=='n') {
+      exec_bundle = true;
+  }
+  
   // Check if this is an Intel Mac. If not, print out a dialog and exit.
   FILE* pipe = popen("uname -m", "r");
   if (!pipe) return 0;
@@ -3890,11 +3895,13 @@ int main(int argc, char *argv[])
   }
 
 #ifdef __APPLE__
-  sprintf(command, "console hide", executable_directory);
-  if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
-          fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
-                  g_tk_control_interp->result);
-          return(-1);
+  if(exec_bundle) {
+      sprintf(command, "console hide", executable_directory);
+      if (Tcl_Eval(g_tk_control_interp, command) != TCL_OK) {
+              fprintf(stderr, "Tcl_Eval(%s) failed: %s\n", command,
+                      g_tk_control_interp->result);
+              return(-1);
+      }
   }
 #endif
 
@@ -4076,7 +4083,7 @@ int main(int argc, char *argv[])
 // argv[1] will be -psn103_xxx when launched in a bundle
 // So we need to ignore it. 
 #ifdef __APPLE__
-    } else if (argv[i][0] == '-' && argv[i][1]=='p' && argv[i][2]=='s' && argv[i][3]=='n') {
+    } else if (exec_bundle) {
       continue;
 #endif
     } else if (argv[i][0] == '-') {

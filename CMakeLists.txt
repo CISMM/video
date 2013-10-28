@@ -88,6 +88,11 @@ ELSE (WIN32)
 	PATH_SUFFIXES
 	${_libsuffixes}
   )
+  FIND_PATH(jpeg_LIBRARY_DIR
+	libjpeg.a	
+	PATH_SUFFIXES
+	${_libsuffixes}
+  )
   FIND_PACKAGE(ImageMagick COMPONENTS MagickCore)	# Do we have ImageMagick?
   if (VIDEO_BUILD_APPLICATIONS)
 	FIND_PACKAGE(TCL REQUIRED)
@@ -106,7 +111,7 @@ if (OPENMP_FOUND)
 
 endif()
 
-link_directories( ${ImageMagick_MagickCore_LIBRARY_DIR} ${tiff_LIBRARY_DIR})
+link_directories( ${ImageMagick_MagickCore_LIBRARY_DIR} ${tiff_LIBRARY_DIR} ${jpeg_LIBRARY_DIR})
 
 if (WIN32)
 	# To avoid warnings in case we're using Visual Studio
@@ -121,7 +126,7 @@ if (WIN32)
 elseif(APPLE)
 	set (PTHREAD_LIBRARY pthread)
         # tiff shouldn't be linked separately, but ImageMagick has trouble linking static tiff delegate.
-	set (ImageMagick_Needed_Libs libMagickCore-6.Q16.a libMagickWand-6.Q16.a tiff)
+	set (ImageMagick_Needed_Libs libMagickCore-6.Q16.a libMagickWand-6.Q16.a tiff jpeg)
 else(APPLE)
 	set (PTHREAD_LIBRARY pthread)
         # tiff shouldn't be linked separately, but ImageMagick has trouble linking static tiff delegate.
