@@ -36,7 +36,7 @@ find_library(FILE_STACK_LIBRARY NAMES file_stack_library.lib libfile_stack_libra
 )
 mark_as_advanced(FILE_STACK_LIBRARY)
 
-find_library(SPOT_TRACKER_LIBRARY NAMES spot_tracker_library.lib libspot_track_library.a
+find_library(SPOT_TRACKER_LIBRARY NAMES spot_tracker_library.lib libspot_tracker_library.a
 		PATHS
 		"C:/Program Files/CISMM_VIDEO/lib"
 		C:/usr/local/lib
