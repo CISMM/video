@@ -603,8 +603,8 @@ endif (VIDEO_USE_DIRECTSHOW)
 
 #-----------------------------------------------------------------------------
 # Spot tracker library
-set(STL_SOURCES image_wrapper.cpp spot_math.cpp spot_tracker.cpp)
-set(STL_PUBLIC_HEADERS image_wrapper.h spot_math.h spot_tracker.h)
+set(STL_SOURCES image_wrapper.cpp spot_math.cpp thread.cpp spot_tracker.cpp)
+set(STL_PUBLIC_HEADERS image_wrapper.h spot_math.h thread.h spot_tracker.h)
 ADD_LIBRARY (spot_tracker_library
 	${STL_SOURCES} ${STL_PUBLIC_HEADERS}
 )
@@ -676,7 +676,6 @@ ADD_EXECUTABLE(PanopticNerve_LEWOS
 	PanopticNerve_LEWOS/vector3.cpp
 	PanopticNerve_LEWOS/ZChaser.cpp
 	PanopticNerve_LEWOS/helper.cpp
-    thread.cpp
 )
 TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
 	base_camera_server_library
@@ -915,9 +914,9 @@ if (VIDEO_BUILD_APPLICATIONS)
 if (NOT VIDEO_USE_CUDA)
 SET(TARGET_NAME video_spot_tracker)
 IF(NOT APPLE)
-	ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp thread.cpp)
+	ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp)
 ELSE(NOT APPLE)
-	ADD_EXECUTABLE(video_spot_tracker MACOSX_BUNDLE video_spot_tracker.cpp thread.cpp)
+	ADD_EXECUTABLE(video_spot_tracker MACOSX_BUNDLE video_spot_tracker.cpp)
 ENDIF(NOT APPLE)
 if (VIDEO_USE_IMAGEMAGICK)
 	TARGET_LINK_LIBRARIES(video_spot_tracker
@@ -1037,9 +1036,9 @@ endif (NOT VIDEO_USE_CUDA)
 if (VIDEO_USE_CUDA)
   SET(TARGET_NAME video_spot_tracker_CUDA)
   IF(NOT APPLE)
-	CUDA_ADD_EXECUTABLE(video_spot_tracker_CUDA video_spot_tracker.cpp thread.cpp spot_tracker.cu)
+	CUDA_ADD_EXECUTABLE(video_spot_tracker_CUDA video_spot_tracker.cpp spot_tracker.cu)
   ELSE(NOT APPLE)
-	CUDA_ADD_EXECUTABLE(video_spot_tracker_CUDA MACOSX_BUNDLE video_spot_tracker.cpp thread.cpp)
+	CUDA_ADD_EXECUTABLE(video_spot_tracker_CUDA MACOSX_BUNDLE video_spot_tracker.cpp)
   ENDIF(NOT APPLE)
 
   if (VIDEO_USE_IMAGEMAGICK)
@@ -1149,9 +1148,9 @@ endif (VIDEO_USE_CUDA)
 # XXX Then do we CUDA compile everything that uses spot-tracker lib?
 SET(TARGET_NAME video_spot_tracker_nogui)
 if (VIDEO_USE_CUDA)
-	CUDA_ADD_EXECUTABLE(video_spot_tracker_nogui video_spot_tracker.cpp thread.cpp spot_tracker.cu)
+	CUDA_ADD_EXECUTABLE(video_spot_tracker_nogui video_spot_tracker.cpp spot_tracker.cu)
 else (VIDEO_USE_CUDA)
-	ADD_EXECUTABLE(video_spot_tracker_nogui video_spot_tracker.cpp thread.cpp)
+	ADD_EXECUTABLE(video_spot_tracker_nogui video_spot_tracker.cpp)
 endif (VIDEO_USE_CUDA)
 if (VIDEO_USE_IMAGEMAGICK)
 	TARGET_LINK_LIBRARIES(video_spot_tracker_nogui
@@ -1250,9 +1249,9 @@ ENDIF(NOT APPLE)
 if (VIDEO_USE_CUDA)
   SET(TARGET_NAME CUDA_video_filter)
   IF(NOT APPLE)
-	CUDA_ADD_EXECUTABLE(CUDA_video_filter CUDA_video_filter.cpp thread.cpp spot_tracker.cu)
+	CUDA_ADD_EXECUTABLE(CUDA_video_filter CUDA_video_filter.cpp spot_tracker.cu)
   ELSE(NOT APPLE)
-	CUDA_ADD_EXECUTABLE(CUDA_video_filter MACOSX_BUNDLE CUDA_video_filter.cpp thread.cpp spot_tracker.cu)
+	CUDA_ADD_EXECUTABLE(CUDA_video_filter MACOSX_BUNDLE CUDA_video_filter.cpp spot_tracker.cu)
   ENDIF(NOT APPLE)
 
   if (VIDEO_USE_IMAGEMAGICK)
@@ -1442,9 +1441,9 @@ MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 if( ${APPLICATION_NAME} MATCHES cismm_video_optimizer )
 
 IF(NOT APPLE)
-  ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp thread.cpp)
+  ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp)
 ELSE(NOT APPLE)
-  ADD_EXECUTABLE(${APPLICATION_NAME} MACOSX_BUNDLE ${APPLICATION_NAME}.cpp thread.cpp)
+  ADD_EXECUTABLE(${APPLICATION_NAME} MACOSX_BUNDLE ${APPLICATION_NAME}.cpp)
   FILE(COPY cismm_video_optimizer.tcl russ_widgets.tcl DESTINATION cismm_video_optimizer.app/Contents/MacOS)
 
   # Comment out this section if you don't want video_optimizer in the installer
@@ -1461,7 +1460,7 @@ ELSE(NOT APPLE)
 ENDIF(NOT APPLE)
 
 ELSE()
-  ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp thread.cpp)
+  ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp)
 ENDIF() # Match cismm_video_optimizer
 
   TARGET_LINK_LIBRARIES(${APPLICATION_NAME}
