@@ -195,8 +195,8 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, f
     // Set the grab timeout to 5 seconds
     config.grabTimeout = 5000;
 
-    printf("XXX PGR non-triggered mode not yet implemented in new interface\n");
-    return;
+    //printf("XXX PGR non-triggered mode not yet implemented in new interface\n");
+    //return;
   }
 
   // Set the camera configuration to configure the timeout setting
