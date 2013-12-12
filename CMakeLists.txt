@@ -157,13 +157,6 @@ if (WIN32)
   OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" ON)
 endif (WIN32)
 
-find_package(MPI)
-if (MPI_FOUND)
-	OPTION(VIDEO_PANOPTES_MPI "Enable to use MPI in build" ON)
-else (MPI_FOUND)
-	OPTION(VIDEO_PANOPTES_MPI "Enable to use MPI in build" OFF)
-endif (MPI_FOUND)
-
 # Configuration options controlling what gets included in the build.
 # Look up each of the camera-driver libraries.  If they are found, then turn them
 # on by default.
@@ -225,16 +218,12 @@ OPTION(VIDEO_USE_SEM "Enable to include SEM (from nanoManipulator) camera code i
 OPTION(VIDEO_USE_VRPN_IMAGER "Enable to include VRPN_Imager camera code in build" ON)
 OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" OFF)
 
-OPTION(VIDEO_BUILD_PANOPTES "Enable to build Panoptes applications" OFF)
 OPTION(VIDEO_BUILD_FREQUENCY_SWEEP "Enable to build frequency sweep applications" OFF)
 
 #-----------------------------------------------------------------------------
 # Set compile-time definitions for all projects based on what has been
 # selected.
 
-if (VIDEO_PANOPTES_MPI)
-	ADD_DEFINITIONS(-DPANOPTES_USE_MPI)
-endif (VIDEO_PANOPTES_MPI)
 if (VIDEO_USE_IMAGEMAGICK)
 	ADD_DEFINITIONS(-DVST_USE_IMAGEMAGICK)
 endif (VIDEO_USE_IMAGEMAGICK)
@@ -653,233 +642,6 @@ TARGET_LINK_LIBRARIES(Frequency_voltage_plot
 )
 
 endif (VIDEO_BUILD_FREQUENCY_SWEEP)
-
-if (VIDEO_BUILD_PANOPTES)
-ADD_DEFINITIONS(-DPANOPTES_USE_POINTGREY)
-FIND_PACKAGE(LEWOS REQUIRED)
-FIND_PACKAGE(Panoptes REQUIRED)
-INCLUDE_DIRECTORIES(
-        ${LEWOS_INCLUDE_DIR}
-        ${PANOPTES_INCLUDE_DIR}
-)
-if (VIDEO_PANOPTES_MPI)
-INCLUDE_DIRECTORIES(
-	${MPI_INCLUDE_PATH}
-)
-endif (VIDEO_PANOPTES_MPI)
-SET(TARGET_NAME PanopticNerve_LEWOS)
-ADD_EXECUTABLE(PanopticNerve_LEWOS
-	PanopticNerve_LEWOS/PanopticNerve.cpp
-	PanopticNerve_LEWOS/cameraImage.cpp
-	PanopticNerve_LEWOS/ImageAnalyzer.cpp
-	PanopticNerve_LEWOS/NerveTest.cpp
-	PanopticNerve_LEWOS/vector3.cpp
-	PanopticNerve_LEWOS/ZChaser.cpp
-	PanopticNerve_LEWOS/helper.cpp
-)
-TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
-	base_camera_server_library
-	spot_tracker_library
-	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
-	${OPENGL_glu_LIBRARY}
-	${OPENGL_gl_LIBRARY}
-	${LEWOS_LIBRARIES}
-	${Panoptes_LIBRARY}
-)
-
-if (VIDEO_BUILD_PANOPTES)
-set (PNERVE_MAJOR_VERSION 5) 
-set (PNERVE_MINOR_VERSION 0) 
-set (PNERVE_PATCH_VERSION 0) 
-
-#set (CMAKE_INSTALL_PREFIX "/common1/nanowork/release/PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}")
-set (PROJECT_NAME "PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}")
-#set (PROJECT_NAME "3.0")
-#set (CMAKE_INSTALL_PREFIX "/common1/nanowork/release/${PROJECT_NAME}")
-set (CMAKE_INSTALL_PREFIX "/common1/nanowork/release/${PROJECT_NAME}")
-
-# Install PanotpicNerve
-INSTALL(TARGETS PanopticNerve_LEWOS DESTINATION . )
-# Install video_spot_tracker
-if (EXISTS "${CMAKE_CURRENT_BINARY_DIR}/video_spot_tracker_nogui")
-  INSTALL (PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/video_spot_tracker_nogui DESTINATION .)
-  INSTALL (FILES ${CMAKE_CURRENT_SOURCE_DIR}/video_spot_tracker.tcl DESTINATION .) 
-else()
-  message("video_spot_tracker hasn'n been build")
-endif()
-# Install VRPN
-install (PROGRAMS "/usr/local/bin/vrpn_server" DESTINATION .)
-install (FILES "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/vrpn.cfg" DESTINATION .)
-# Grant root permission to vrpn_server, so no need to 'sudo' to launch ludl stage. But it conflicts with flycap.
-#execute_process (COMMAND sudo chown root ${CMAKE_INSTALL_PREFIX}/vrpn_server)
-#execute_process (COMMAND sudo chmod 4755 ${CMAKE_INSTALL_PREFIX}/vrpn_server)
-# Install vrpnLogToMatalb
-install (PROGRAMS "/common1/nanowork/build/3DFM/toMatlab/pc_linux64/vrpnLogToMatlab" DESTINATION .)
-# Intsll Well_Layout
-install (PROGRAMS "/common1/nanowork/build/Panoptes/Well_Layout_GUI/Well_Layout" DESTINATION .) 
-# Intsll PanoptesView 
-install (PROGRAMS "/common1/nanowork/src/Panoptes/PanoptesView/PanoptesView" DESTINATION .) 
-# Install ludle_server script
-install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/ludl_server" DESTINATION .)
-# Install mpi_hosts
-execute_process (COMMAND hostname OUTPUT_VARIABLE myhostname)
-string (FIND ${myhostname} "osmium" is_osmium)
-if (${is_osmium} GREATER "-1")
-install (FILES "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/mpi_hosts" DESTINATION .)
-else()
-install (FILES "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/mpi_hosts_monoptes" DESTINATION .)
-endif()
-# Install LEWOS_xmit_VRPN_from_serial
-install (PROGRAMS "/common1/nanowork/build/LEWOS/LEWOS_xmit_VRPN_from_serial" DESTINATION .)
-# If on osmium
-if (${is_osmium} GREATER "-1")
-# Install start_server.bash and stop_server.bash
-install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/start_server.bash" "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/stop_server.bash" DESTINATION .)
-# install vrpn_LUDL_and_tilt.cfg
-install (FILES "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/vrpn_LUDL_and_tilt.cfg" DESTINATION .)
-install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/mpirun_panopticnerve.bash" DESTINATION .)
-else()
-# Install start_server.bash and stop_server.bash
-install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/start_server_monoptes.bash" "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/stop_server.bash" DESTINATION .)
-# install vrpn_LUDL_and_tilt.cfg
-install (FILES "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/vrpn_LUDL_and_tilt_monoptes.cfg" DESTINATION .)
-# Install mpirun_panopticnerve.bash
-install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/mpirun_panopticnerve_monoptes.bash" DESTINATION .)
-endif()
-# Install 3dfm scripts
-#install (CODE "
-#message(\"Retrieving CVS repository\")
-#set(ENV{CVSROOT} \":ext:$ENV{USER}@login.cs.unc.edu:/afs/cs.unc.edu/project/stm/src/CVS_repository\")
-#set(ENV{CVS_RSH} ssh)
-#execute_process(COMMAND cvs checkout 3dfmAnalysis)
-#execute_process(COMMAND mkdir -p ${CMAKE_INSTALL_PREFIX}/scripts)
-#execute_process(COMMAND cp -R 3dfmAnalysis ${CMAKE_INSTALL_PREFIX}/scripts)
-#execute_process(COMMAND rm -rf 3dfmAnalysis)")
-install (CODE "
-execute_process(COMMAND git clone /afs/unc/proj/stm/src/git/3dfmAnalysis.git ${CMAKE_INSTALL_PREFIX}/scripts/3dfmAnalysis) 
-")
-# Install wells.txt
-install (FILES "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/wells.txt" DESTINATION .)
-# Install script of starting firefox
-install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/Display_Results" DESTINATION scripts)
-# Install script for launching Matlab on Monoptes
-install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/Run_Matlab_monoptes" DESTINATION scripts)
-# Install script for launching Matlab on Ponoptes
-install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/Run_Matlab_panoptes" DESTINATION scripts)
-# Install script for combining MCU parameters
-install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/Run_MCUCombine" DESTINATION scripts)
-# Install script running vrpnLogToMatlab
-install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/Run_VrpnLogToMatlab" DESTINATION scripts)
-# Install script running video_spot_tracker
-install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/Run_VST" DESTINATION scripts)
-# Install script Check_Okay_To_Delete
-install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/Check_Okay_To_Delete" DESTINATION scripts)
-# Install script Delete_Files_If_Okay 
-install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/Delete_Files_If_Okay" DESTINATION scripts)
-# Install script Run_VST_CompressCompare 
-install (PROGRAMS "${CMAKE_CURRENT_SOURCE_DIR}/PanopticNerve_LEWOS/Panoptic_Nerve_Linux_Scripts/Run_VST_CompressCompare" DESTINATION scripts)
-
-# Create a terminal shortcut
-if (${is_osmium} EQUAL "-1")
-install (CODE "
-file (WRITE ${CMAKE_INSTALL_PREFIX}/gnome-terminal.desktop
-\"[Desktop Entry]\nName=Terminal\nComment=Use the command line\nTryExec=gnome-terminal\nExec=gnome-terminal --working-directory=${CMAKE_INSTALL_PREFIX}\nIcon=utilities-terminal\nType=Application\nX-GNOME-DocPath=gnome-terminal/index.html\nX-GNOME-Bugzilla-Bugzilla=GNOME\nX-GNOME-Bugzilla-Product=gnome-terminal\nX-GNOME-Bugzilla-Component=BugBuddyBugs\nX-GNOME-Bugzilla-Version=2.30.2\nCategories=GNOME;GTK;Utility;TerminalEmulator;\nStartupNotify=true\nOnlyShowIn=GNOME;\nX-Ubuntu-Gettext-Domain=gnome-terminal\")
-execute_process (COMMAND chmod +x ${CMAKE_INSTALL_PREFIX}/gnome-terminal.desktop)
-")
-endif ()
-# Create a .tar.gz installer
-#install (CODE "
-#execute_process (COMMAND tar -zcvf ${CMAKE_INSTALL_PREFIX}/../PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}.tar.gz -C ${CMAKE_INSTALL_PREFIX}/.. PanopticNerve-${PNERVE_MAJOR_VERSION}.${PNERVE_MINOR_VERSION}.${PNERVE_PATCH_VERSION}) 
-#")
-install (CODE "
-execute_process (COMMAND tar -zcvf ${CMAKE_INSTALL_PREFIX}/../${PROJECT_NAME}.tar.gz -C ${CMAKE_INSTALL_PREFIX}/.. ${PROJECT_NAME}) 
-")
-
-include_directories("/usr/include/libusb-1.0")
-
-endif(VIDEO_BUILD_PANOPTES)
-
-
-if (VIDEO_PANOPTES_MPI)
-    TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
-	${MPI_CXX_LIBRARIES}
-    )
-endif (VIDEO_PANOPTES_MPI)
-  if (VIDEO_USE_DIRECTSHOW)
-    TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
-	directx_library
-    )
-  endif (VIDEO_USE_DIRECTSHOW)  
-  if (VIDEO_USE_COOKE)
-		TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
-			cooke_library
-			${Cooke_LIBRARIES}
-		)
-  endif (VIDEO_USE_COOKE)
-  if (VIDEO_USE_DIAGINC)
-		TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
-			diaginc_library
-			${DiagInc_LIBRARIES}
-		)
-  endif (VIDEO_USE_DIAGINC)
-  if (VIDEO_USE_EDT)
-		TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
-			EDT_library
-			${EDT_LIBRARIES}
-		)
-  endif (VIDEO_USE_EDT)
-  if (VIDEO_USE_ROPER)
-		TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
-			Roper_library
-			${ROPER_LIBRARIES}
-		)
-  endif (VIDEO_USE_ROPER)
-  if (VIDEO_USE_POINTGREY)
-		TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
-			point_grey_library
-			${POINTGREY_LIBRARIES}
-		)
-  endif (VIDEO_USE_POINTGREY)
-  if (VIDEO_USE_VRPN_IMAGER)
-		TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
-			vrpn_imager_library
-		)
-  endif (VIDEO_USE_VRPN_IMAGER)
-  if (VIDEO_USE_QT4)
-		TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
-			qt4_video_library
-			${QT_LIBRARIES}
-		)
-  endif (VIDEO_USE_QT4)
-  if (VIDEO_USE_FFMPEG)
-                SET(FFMPEG_LIBRARIES
-		${FFMPEG_AVCODEC_LIBRARY}
-		${FFMPEG_AVDEVICE_LIBRARY}
-		${FFMPEG_AVFILTER_LIBRARY}
-		${FFMPEG_AVFORMAT_LIBRARY}
-		${FFMPEG_AVUTIL_LIBRARY}
-		${FFMPEG_SWRESAMPLE_LIBRARY}
-		${FFMPEG_SWSCALE_LIBRARY}
-	        )
-	        SET(FFMPEG_FOUND ON)
-		TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
-			ffmpeg_video_library
-			${FFMPEG_LIBRARIES}
-		)
-  endif (VIDEO_USE_FFMPEG)
-  if (UNIX)
-	TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
-		${LEWOS_LIBRARIES}
-	)
-  endif (UNIX)
-  if (VIDEO_USE_IMAGEMAGICK)
-	TARGET_LINK_LIBRARIES(PanopticNerve_LEWOS
-		file_stack_library
-		${ImageMagick_Needed_Libs}
-    )
-  endif (VIDEO_USE_IMAGEMAGICK)
-SET_TARGET_PROPERTIES(PanopticNerve_LEWOS PROPERTIES SOLUTION_FOLDER apps)
-endif(VIDEO_BUILD_PANOPTES)
 
 #-----------------------------------------------------------------------------
 # Tcl-Linkvar library (not a library in the initial project file)
