@@ -4,7 +4,6 @@
 #include  "base_camera_server.h"
 #include  "spot_math.h"
 
-// The code section below pertains spefically to the Panoptes motion control simulations.
 /* ---------------------------------------------------------------------------------------------- */
 class bead_motion { // describes the motion of an individual bead
 public:

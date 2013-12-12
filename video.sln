@@ -425,15 +425,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "stereo_spin", "stereo_spin.
 		{66492EFA-0424-49C0-8A53-7A659E35EFBD} = {66492EFA-0424-49C0-8A53-7A659E35EFBD}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PanopticNerve", "PanopticNerve.vcproj", "{F9994AC3-FD12-4EE4-9C4E-74DEFD252C12}"
-	ProjectSection(WebsiteProperties) = preProject
-		Debug.AspNetCompiler.Debug = "True"
-		Release.AspNetCompiler.Debug = "False"
-	EndProjectSection
-	ProjectSection(ProjectDependencies) = postProject
-		{91C28129-4CA6-4833-88B5-25CCA8B16722} = {91C28129-4CA6-4833-88B5-25CCA8B16722}
-	EndProjectSection
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PointGrey_ROI", "PointGrey_ROI\PointGrey_ROI.vcproj", "{B3FBB925-EFFF-473C-B889-47502D447D81}"
 	ProjectSection(WebsiteProperties) = preProject
 		Debug.AspNetCompiler.Debug = "True"
@@ -448,16 +439,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "make_moving_spot_video", "m
 	ProjectSection(ProjectDependencies) = postProject
 		{EBB6DEEB-7B41-4D5A-B0EA-D9AAE8BB69AB} = {EBB6DEEB-7B41-4D5A-B0EA-D9AAE8BB69AB}
 		{91C28129-4CA6-4833-88B5-25CCA8B16722} = {91C28129-4CA6-4833-88B5-25CCA8B16722}
-	EndProjectSection
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Panoptes_Stage_Control", "Panoptes_Stage_Control.vcproj", "{91F0C1E3-C659-45DB-9ADE-E2B80767C804}"
-	ProjectSection(WebsiteProperties) = preProject
-		Debug.AspNetCompiler.Debug = "True"
-		Release.AspNetCompiler.Debug = "False"
-	EndProjectSection
-	ProjectSection(ProjectDependencies) = postProject
-		{91C28129-4CA6-4833-88B5-25CCA8B16722} = {91C28129-4CA6-4833-88B5-25CCA8B16722}
-		{EBB6DEEB-7B41-4D5A-B0EA-D9AAE8BB69AB} = {EBB6DEEB-7B41-4D5A-B0EA-D9AAE8BB69AB}
 	EndProjectSection
 EndProject
 Global
