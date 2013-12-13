@@ -218,8 +218,6 @@ OPTION(VIDEO_USE_SEM "Enable to include SEM (from nanoManipulator) camera code i
 OPTION(VIDEO_USE_VRPN_IMAGER "Enable to include VRPN_Imager camera code in build" ON)
 OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" OFF)
 
-OPTION(VIDEO_BUILD_FREQUENCY_SWEEP "Enable to build frequency sweep applications" OFF)
-
 #-----------------------------------------------------------------------------
 # Set compile-time definitions for all projects based on what has been
 # selected.
@@ -315,11 +313,11 @@ ADD_LIBRARY (base_camera_server_library
 )
 set_property(TARGET base_camera_server_library PROPERTY PUBLIC_HEADER ${BCS_PUBLIC_HEADERS})
 
-if(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
+if(NOT (APPLE))
 install(TARGETS base_camera_server_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
-endif (NOT (VIDEO_BUILD_PANOPTES OR APPLE))
+endif (NOT (APPLE))
 if (VIDEO_USE_IMAGEMAGICK)
 	set(FS_SOURCES file_stack_server.cpp file_list.cpp)
 	set(FS_PUBLIC_HEADERS file_stack_server.h file_list.h)
@@ -328,11 +326,11 @@ if (VIDEO_USE_IMAGEMAGICK)
 		${FS_SOURCES} ${FS_PUBLIC_HEADERS}
 	)
 	set_property(TARGET file_stack_library PROPERTY PUBLIC_HEADER ${FS_PUBLIC_HEADERS})
-	if(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
+	if(NOT (APPLE))
 	install(TARGETS file_stack_library
 		ARCHIVE DESTINATION lib
 		PUBLIC_HEADER DESTINATION include)
-	endif (NOT (VIDEO_BUILD_PANOPTES OR APPLE))
+	endif (NOT (APPLE))
 endif (VIDEO_USE_IMAGEMAGICK)
 
 if (VIDEO_USE_COOKE)
@@ -390,11 +388,9 @@ if (VIDEO_USE_POINTGREY)
 		${POINTGREY_SOURCES} ${POINTGREY_PUBLIC_HEADERS}
 	)
 	set_property(TARGET point_grey_library PROPERTY PUBLIC_HEADER ${POINTGREY_PUBLIC_HEADERS})
-        if(NOT VIDEO_BUILD_PANOPTES)
 	install(TARGETS point_grey_library
 		ARCHIVE DESTINATION lib
 		PUBLIC_HEADER DESTINATION include)
-        endif(NOT VIDEO_BUILD_PANOPTES)
 endif (VIDEO_USE_POINTGREY)
 
 if (VIDEO_USE_VRPN_IMAGER)
@@ -428,11 +424,11 @@ if (VIDEO_USE_FFMPEG)
 		${FFMPEG_SOURCES} ${FFMPEG_PUBLIC_HEADERS}
 	)
 	set_property(TARGET ffmpeg_video_library PROPERTY PUBLIC_HEADER ${FFMPEG_PUBLIC_HEADERS})
-	if (NOT (VIDEO_BUILD_PANOPTES OR APPLE))
+	if (NOT (APPLE))
 	install(TARGETS ffmpeg_video_library
 		ARCHIVE DESTINATION lib
 		PUBLIC_HEADER DESTINATION include)
-	endif (NOT (VIDEO_BUILD_PANOPTES OR APPLE))
+	endif (NOT (APPLE))
 endif (VIDEO_USE_FFMPEG)
 
 # XXX NIKON
@@ -599,13 +595,13 @@ ADD_LIBRARY (spot_tracker_library
 )
 set_property(TARGET spot_tracker_library PROPERTY PUBLIC_HEADER ${STL_PUBLIC_HEADERS})
 
-if(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
+if(NOT (APPLE))
 
 install(TARGETS spot_tracker_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
 
-endif(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
+endif(NOT (APPLE))
 #-----------------------------------------------------------------------------
 # STOCC random-number library
 set(STC_SOURCES stocc_random_number_generator/mersenne.cpp
@@ -617,31 +613,11 @@ ADD_LIBRARY (stocc_random_number_generator_library
 )
 set_property(TARGET stocc_random_number_generator_library
 			PROPERTY PUBLIC_HEADER ${STC_PUBLIC_HEADERS})
-if(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
+if(NOT (APPLE))
 install(TARGETS stocc_random_number_generator_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
-endif(NOT (VIDEO_BUILD_PANOPTES OR APPLE))
-
-
-if (VIDEO_BUILD_FREQUENCY_SWEEP)
-FIND_PACKAGE(LEWOS REQUIRED)
-FIND_PACKAGE(Panoptes REQUIRED)
-INCLUDE_DIRECTORIES(
-        ${LEWOS_INCLUDE_DIR}
-        ${PANOPTES_INCLUDE_DIR}
-)
-ADD_EXECUTABLE(Frequency_voltage_plot
-	PanopticNerve_LEWOS/query_resonance_freq.cpp
-)
-TARGET_LINK_LIBRARIES(Frequency_voltage_plot
-    ${VRPN_LIBRARIES}
-	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
-	${LEWOS_LIBRARIES}
-	${Panoptes_LIBRARY}
-)
-
-endif (VIDEO_BUILD_FREQUENCY_SWEEP)
+endif(NOT (APPLE))
 
 #-----------------------------------------------------------------------------
 # Tcl-Linkvar library (not a library in the initial project file)
@@ -1427,9 +1403,6 @@ endif (NOT VIDEO_USE_CUDA)
 CPP_NOGUI_APPLICATION(video_imager_server apps)
 CPP_APPLICATION(csv_to_xml apps)
 CPP_APPLICATION(xml_tracking_compare apps)
-if (NOT VIDEO_USE_CUDA)
-CPP_APPLICATION(Panoptes_Stage_Control apps)
-endif (NOT VIDEO_USE_CUDA)
 if (VIDEO_USE_ROPER)
 	CPP_APPLICATION(roper_example apps)
 	CPP_APPLICATION(roper_spot_tracker apps)
