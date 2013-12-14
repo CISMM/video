@@ -37,8 +37,13 @@ static	Tcl_Interp	*interpreter = NULL;	// Tcl interpreter used
 //	Update the integer variable in the handler that is pointed to
 // when the variables changes.
 
+#ifdef  _WIN32
+static	char	*handle_int_value_change(ClientData clientData,
+	Tcl_Interp *interp, char * /*name1*/, char * /*name2*/, int /*flags*/)
+#else
 static	char	*handle_int_value_change(ClientData clientData,
 	Tcl_Interp *interp, const char * /*name1*/, const char * /*name2*/, int /*flags*/)
+#endif
 {
         char    *cvalue;
 	int	value;
@@ -67,8 +72,13 @@ static	char	*handle_int_value_change(ClientData clientData,
 //	Update the float variable in the handler that is pointed to
 // when the variables changes.
 
+#ifdef  _WIN32
+static	char	*handle_float_value_change(ClientData clientData,
+	Tcl_Interp *interp, char * /*name1*/, char * /*name2*/, int /*flags*/)
+#else
 static	char	*handle_float_value_change(ClientData clientData,
 	Tcl_Interp *interp, const char * /*name1*/, const char * /*name2*/, int /*flags*/)
+#endif
 {
         char    *cvalue;
 	double	value;
@@ -98,8 +108,13 @@ static	char	*handle_float_value_change(ClientData clientData,
 //	Update the string variable in the handler that is pointed to
 // when the variables changes.
 
+#ifdef  _WIN32
+static	char	*handle_string_value_change(ClientData clientData,
+	Tcl_Interp *interp, char * /*name1*/, char * /*name2*/, int /*flags*/)
+#else
 static	char	*handle_string_value_change(ClientData clientData,
 	Tcl_Interp *interp, const char * /*name1*/, const char * /*name2*/, int /*flags*/)
+#endif
 {
         char    *cvalue;
 	Tclvar_selector	*selvar = (Tclvar_selector*)(clientData);
