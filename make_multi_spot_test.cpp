@@ -364,7 +364,7 @@ int main(int argc, char *argv[])
     // the frame number and .tif added.
     sprintf(filename, "%s.%04d.tif", basename, frame);
     if (verbose) { printf("Writing %s:\n", filename);}
-    beads->write_to_grayscale_tiff_file(filename, 0);
+    beads->write_to_grayscale_tiff_file(filename, 0, 1.0, 0.0, true);
 
 	// Find out where the first bead should be
 	double x = spots[0].x, y = spots[0].y;
