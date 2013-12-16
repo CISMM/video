@@ -26,6 +26,11 @@
 #endif
 #include "controllable_video.h"
 
+// For PlaySound()
+#ifdef _WIN32
+#include <MMSystem.h>
+#endif
+
 #include <quat.h>
 #include <vrpn_Connection.h>
 #include <vrpn_FileConnection.h>
