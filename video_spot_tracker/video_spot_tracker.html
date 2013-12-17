@@ -38,19 +38,8 @@
     videotape, that you produce and disseminate outside your group using our program. 
     These should be addressed to: taylorr@cs.unc.edu; Russell M. Taylor II, Department 
     of Computer Science, Sitterson Hall,University of North Carolina at Chapel 
-    Hill, Chapel Hill, NC 27599-3175.<br>
-  </li>
+    Hill, Chapel Hill, NC 27599-3175.</li>
 </ul>
-<p><b>Thank-You Ware:</b> Rather than making you register to download our software 
-  or join a mailing list or provide other personally-identifying material to use 
-  our code, we've come up with the following easy and anonymous way for you to 
-  let us know we're helping the community. When you press the &quot;Say Thank 
-  You!&quot; button to let us know you appreciate having the tool, the application 
-  sends a web query to our server and logs your response (not your name or your 
-  phone number, just a web hit count). We add up these counts and report them 
-  to the reviewers for our renewal applications when we ask NIBIB to continue 
-  funding us to maintain our existing tools and to build new ones. Please press 
-  the button whenever you feel like the tool has been helpful to you.</p>
 <h2>Running the program</h2>
 
 <p><img src="raw_dialog.jpg" width="158" height="322" align="left">The program 
@@ -447,6 +436,45 @@
   value. The results of these tests (and the images themselves) can be found at 
   <a href="http://www.cs.unc.edu/%7Etaylorr/vst_tests">http://www.cs.unc.edu/~taylorr/vst_tests</a>.</p>
 
+<h2>Running from the command line</h2>
+<p>Video spot tracker has a number of command-line options that can be used to 
+  control its behavior, and even to run it in batch mode without any user interface 
+  appearing on the screen. This lets it be used in workflows without user intervention. 
+  There should be an executable named <b>video_spot_tracker_nogui</b> in the install 
+  directory. To get a complete list of options, you run:</p>
+<blockquote>
+  <p><i>video_spot_tracker_nogui -help</i></p>
+</blockquote>
+<p>You can also run <i>video_spot_tracker -help</i> to get a version that includes 
+  the user interface, but which pre-sets some of the settings. Most of the controls 
+  that are available in the GUI interface are also available in the command-line 
+  interface. Some of the commonly-used ones are described here:</p>
+<ul>
+  <li>-nogui: Run without the OpenGL display window.</li>
+  <li>-load_state FILENAME : Load the system state from FILENAME; it must have 
+    been stored using the save_state button.</li>
+  <li>-outfile FILENAME : Save the resulting traces to FILENAME.vrpn and FILENAME.csv.</li>
+  <li>-tracker X Y RADIUS : Creates a tracker at the specified location and radius; 
+    can be used multiple times for many trackers</li>
+  <li>-first_frame_autofind : Only do autofind in the first frame of the video, 
+    then track what is found (must set autofind parameters in the state file or 
+    using other command-line arguments for this to actually find anything).</li>
+  <li>FILENAME : The name of the input file to read from.</li>
+</ul>
+<p>If all of the above are specified, the program will track the specified trackers 
+  in the specified video and then quit when it gets to the end of the video. It 
+  is also possible to add autofind parameters so that the program will detect 
+  beads automatically (this may be done in the state file).</p>
+<h3>Windows</h3>
+<p>Running from the command line on Windows is complicated by the fact that you 
+  need to set up some environment variables before running so that it can find 
+  Tcl/Tk and other things. The easiest approach may be to make a copy of the <b>video_spot_tracker.bat</b> 
+  file and name it <b>video_spot_tracker_nogui.bat</b> and then change the program 
+  that it runs to be the nogui version and add any command-line arguments that 
+  you want. Then create a shortcut to this batch file (right click) and make sure 
+  the &quot;Start in:&quot; property of the shortcut is the directory where the 
+  batch file was installed. Then you can drag one or more files onto this shortcut 
+  and have them be tracked using those arguments.</p>
 <h2>Version Information</h2>
 
 <h3>Version 8.01:</h3>
