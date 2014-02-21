@@ -23,5 +23,7 @@ private:
 
   bool triggered;
 
+  void configure_triggering_and_timeout(bool is_triggered, unsigned timeout_ms);
+
   unsigned char* imgPtr;
 };

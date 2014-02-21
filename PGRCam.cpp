@@ -48,6 +48,57 @@ void PrintError( Error error , const char *function_name)
   error.PrintErrorTrace();
 }
 
+// Helper function to set the triggering mode and timout for
+// the camera.
+
+void PGRCam::configure_triggering_and_timeout(bool is_triggered,
+	unsigned timeout_ms)
+{
+  printf("PGRCam::configure_triigering_and_timout: trig %d, timeout %d\n",
+	static_cast<int>(is_triggered), timeout_ms);
+
+  // Get the camera configuration to configure the timeout setting
+  FC2Config config;
+  error = cam.GetConfiguration(&config);
+  if (error!=PGRERROR_OK) {
+    PrintError(error, "GetConfiguration");
+    return;
+  } 
+
+  // Configure the camera triggered mode
+  TriggerMode triggerMode;
+  error = cam.GetTriggerMode(&triggerMode);
+  if(error!=PGRERROR_OK){
+    PrintError(error, "GetTriggerMode");
+    return;
+  }
+    
+  // Set camera to trigger mode 0
+  triggerMode.onOff = is_triggered;
+  triggerMode.mode = 1;
+  triggerMode.parameter = 0;
+    
+  // Triggering the camera externally using source 0.
+  triggerMode.source = 0;
+    
+  error = cam.SetTriggerMode(&triggerMode);
+  if(error!=PGRERROR_OK){
+    PrintError(error, "SetTriggerMode");
+    return;
+  }
+
+  // Set the timeout in milliseconds
+  config.grabTimeout = timeout_ms;
+
+  // Set the camera configuration to configure the timeout setting
+  error = cam.SetConfiguration(&config);
+  if(error!=PGRERROR_OK){
+    PrintError(error, "SetConfiguration");
+    return;
+  }
+
+}
+
 PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, float gain, int camera)
         : triggered(trigger)
 {
@@ -94,26 +145,25 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, f
   const PixelFormat k_fmt7PixFmt = PIXEL_FORMAT_MONO8;
   
   Mode k_fmt7Mode;
-  if(binning == 1)
+  if(binning == 1) {
     k_fmt7Mode = MODE_0; // MODE_0 = no binning
-  else
+  } else {
     k_fmt7Mode = MODE_1; // MODE_1 = 2x2 binning
+  }
 
   // Query for available Format 7 modes
   Format7Info fmt7Info;
   bool supported;
   fmt7Info.mode = k_fmt7Mode;
   error = cam.GetFormat7Info(&fmt7Info, &supported);
-  if(error != PGRERROR_OK){
+  if (error != PGRERROR_OK) {
     PrintError(error, "GetFormat7Info");
     return;
   }
-
   PrintFormat7Capabilities(fmt7Info);
 
-  if((k_fmt7PixFmt & fmt7Info.pixelFormatBitField)==0){
-    // Pixel format not supported!
-	printf("Pixel format is not supported\n");
+  if ((k_fmt7PixFmt & fmt7Info.pixelFormatBitField)==0) {
+    printf("Pixel format is not supported\n");
     return;
   }
     
@@ -133,13 +183,12 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, f
     &fmt7ImageSettings,
     &valid,
     &fmt7PacketInfo);
-  if(error!=PGRERROR_OK){
+  if (error!=PGRERROR_OK) {
     PrintError(error, "ValidateFormat7Settings");
     return;
   }
 
-  if(!valid){
-    // Settings are not valid
+  if (!valid) {
     printf("Format7 settings are not valid\n");
     return;
   }
@@ -148,61 +197,8 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, f
   error = cam.SetFormat7Configuration(
     &fmt7ImageSettings,
 	fmt7PacketInfo.maxBytesPerPacket);
-  if(error!=PGRERROR_OK){
+  if (error!=PGRERROR_OK) {
     PrintError(error, "SetFormat7Configuration");
-    return;
-  }
-
-  // Get the camera configuration to configure the timeout setting
-  FC2Config config;
-  error = cam.GetConfiguration(&config);
-  if(error!=PGRERROR_OK){
-    PrintError(error, "GetConfiguration");
-    return;
-  } 
-
-  // Configure the camera triggered mode
-  if (trigger) {
-    TriggerMode triggerMode;
-    error = cam.GetTriggerMode(&triggerMode);
-    if(error!=PGRERROR_OK){
-      PrintError(error, "GetTriggerMode");
-      return;
-    }
-    
-    // Set camera to trigger mode 0
-    triggerMode.onOff = true;
-    triggerMode.mode = 1;
-    triggerMode.parameter = 0;
-    
-    // Triggering the camera externally using source 0.
-    triggerMode.source = 0;
-    
-    error = cam.SetTriggerMode(&triggerMode);
-    if(error!=PGRERROR_OK){
-      PrintError(error, "SetTriggerMode");
-      return;
-    }
-
-    // If we're in trigger mode, set the capture timeout to 100 milliseconds,
-    // so we won't wait forever for an image. This will cause the higher-level
-    // code to get control again at a reasonable rate. Otherwise, set the grab 
-    // timeout to 5 seconds.
-    config.grabTimeout = 100;
-  }
-  // Configure the camera non-triggered mode
-  else {
-    // Set the grab timeout to 5 seconds
-    config.grabTimeout = 5000;
-
-    //printf("XXX PGR non-triggered mode not yet implemented in new interface\n");
-    //return;
-  }
-
-  // Set the camera configuration to configure the timeout setting
-  error = cam.SetConfiguration(&config);
-  if(error!=PGRERROR_OK){
-    PrintError(error, "SetConfiguration");
     return;
   }
 
@@ -216,7 +212,7 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, f
     PrintError(error, "GetProperty GAIN");
     return;
   }
-  
+
   // Setting to absolute value mode
   prop.absControl = true;
   // Setting to manual mode
@@ -237,12 +233,23 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, f
   	return;
   }
 
+  // Set the triggering mode and timeout on the camera.
+  // If we're in trigger mode, set the capture timeout to 100 milliseconds,
+  // so we won't wait forever for an image. This will cause the higher-level
+  // code to get control again at a reasonable rate. Otherwise, set the grab 
+  // timeout to 5 seconds.
+  if (triggered) {
+    configure_triggering_and_timeout(true, 100);
+  } else {
+    configure_triggering_and_timeout(false, 5000);
+  }
+
   // Camera is ready, start capturing images 
   cols = fmt7Info.maxWidth;
   rows = fmt7Info.maxHeight;
 
   error = cam.StartCapture();
-  if(error != PGRERROR_OK){
+  if (error != PGRERROR_OK) {
     PrintError(error, "StartCapture");
     return;
   }   
@@ -260,18 +267,7 @@ PGRCam::~PGRCam()
   }      
 
   // Turn off trigger mode
-  TriggerMode triggerMode;
-  error = cam.GetTriggerMode( &triggerMode );
-  if (error != PGRERROR_OK) {
-      PrintError( error, "GetTriggerMode" );
-      return;
-  }
-  triggerMode.onOff = false;
-  error = cam.SetTriggerMode( &triggerMode );
-  if (error != PGRERROR_OK) {
-      PrintError( error, "SetTriggerMode" );
-      return;
-  }    
+  configure_triggering_and_timeout(false, 1000);
 
   // Disconnect the camera
   error = cam.Disconnect();
