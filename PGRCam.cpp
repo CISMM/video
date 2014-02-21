@@ -162,7 +162,7 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, f
   } 
 
   // Configure the camera triggered mode
-  if(trigger){
+  if (trigger) {
     TriggerMode triggerMode;
     error = cam.GetTriggerMode(&triggerMode);
     if(error!=PGRERROR_OK){
@@ -184,14 +184,14 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, f
       return;
     }
 
-	// If we're in trigger mode, set the capture timeout to 100 milliseconds,
+    // If we're in trigger mode, set the capture timeout to 100 milliseconds,
     // so we won't wait forever for an image. This will cause the higher-level
     // code to get control again at a reasonable rate. Otherwise, set the grab 
     // timeout to 5 seconds.
     config.grabTimeout = 100;
   }
   // Configure the camera non-triggered mode
-  else{
+  else {
     // Set the grab timeout to 5 seconds
     config.grabTimeout = 5000;
 
@@ -225,7 +225,7 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, f
   prop.onOff = true;
   // Making sure the OnePush feature is disabled
   prop.onePush = false;
-  // Setting to 0dB
+  // Setting to the specified gain
   prop.absValue = gain;
 
   printf("GAIN = %.2f\n\n", gain);
@@ -250,11 +250,11 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, f
   connected = true;
 }
 
-PGRCam::~PGRCam() {
+PGRCam::~PGRCam()
+{
   // Stop capturing images
   error = cam.StopCapture();
-  if (error != PGRERROR_OK)
-  {
+  if (error != PGRERROR_OK) {
       PrintError( error, "StopCapture" );
       return;
   }      
@@ -262,44 +262,37 @@ PGRCam::~PGRCam() {
   // Turn off trigger mode
   TriggerMode triggerMode;
   error = cam.GetTriggerMode( &triggerMode );
-  if (error != PGRERROR_OK)
-  {
+  if (error != PGRERROR_OK) {
       PrintError( error, "GetTriggerMode" );
       return;
   }
   triggerMode.onOff = false;
   error = cam.SetTriggerMode( &triggerMode );
-  if (error != PGRERROR_OK)
-  {
+  if (error != PGRERROR_OK) {
       PrintError( error, "SetTriggerMode" );
       return;
   }    
 
   // Disconnect the camera
   error = cam.Disconnect();
-  if (error != PGRERROR_OK)
-  {
+  if (error != PGRERROR_OK) {
       PrintError( error, "Disconnect" );
       return;
   }
 }
 
-bool PGRCam::GetNewImage() {
-  if (!connected) {
-    return false;
-  }
+bool PGRCam::GetNewImage()
+{
+  if (!connected) { return false; }
 
   error = cam.RetrieveBuffer( &image );
-  if ( (error != PGRERROR_OK) && (error != PGRERROR_TIMEOUT) )
-  {
+  if ( (error != PGRERROR_OK) && (error != PGRERROR_TIMEOUT) ) {
       PrintError( error, "RetrieveBuffer" );
       return false;
   }
 
   // If we timed out, go ahead and return false.
-  if (error == PGRERROR_TIMEOUT) {
-    return false;
-  }
+  if (error == PGRERROR_TIMEOUT) { return false; }
 
   // update iRows and iCols
   rows = image.GetRows();
@@ -310,7 +303,8 @@ bool PGRCam::GetNewImage() {
   return (error == PGRERROR_OK);
 }
 
-unsigned char* PGRCam::GetImagePointer() {
-	
-	return imgPtr;
+unsigned char* PGRCam::GetImagePointer()
+{
+  return imgPtr;
 }
+
