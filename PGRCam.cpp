@@ -51,12 +51,21 @@ void PrintError( Error error , const char *function_name)
 // Helper function to set the triggering mode and timout for
 // the camera.
 
+void PGRCam::grab_and_toss_initial_image(void)
+{
+  error = cam.StartCapture();
+  if (error != PGRERROR_OK) { return; }   
+
+  configure_triggering_and_timeout(false, 500);
+  error = cam.RetrieveBuffer( &image );
+
+  error = cam.StopCapture();
+  if (error != PGRERROR_OK) { return; }   
+}
+
 void PGRCam::configure_triggering_and_timeout(bool is_triggered,
 	unsigned timeout_ms)
 {
-  printf("PGRCam::configure_triigering_and_timout: trig %d, timeout %d\n",
-	static_cast<int>(is_triggered), timeout_ms);
-
   // Get the camera configuration to configure the timeout setting
   FC2Config config;
   error = cam.GetConfiguration(&config);
@@ -232,6 +241,13 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, f
   	PrintError(error, "SetProperty GAIN");
   	return;
   }
+
+  // The camera produces an abnormal image the first frame after we
+  // change its gain.  To avoid having this show up to the user, we
+  // take an image with the new gain setting in non-triggered mode
+  // before we finish configuring the triggering mode.  Horrible hack
+  // to get around camera behavior.
+  grab_and_toss_initial_image();
 
   // Set the triggering mode and timeout on the camera.
   // If we're in trigger mode, set the capture timeout to 100 milliseconds,
