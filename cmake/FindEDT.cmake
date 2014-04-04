@@ -7,6 +7,7 @@
 # Look for the header files (picking any one from the directories we need).
 FIND_PATH(EDT_INCLUDE_PATH NAMES libedt.h
 		PATHS
+		"C:/EDT/pdv"
 		"C:/Program Files (x86)/CISMM/external/EDT/pdv"
 		/usr/local/include
 )
@@ -21,15 +22,18 @@ find_library(PDV_LIBRARY
 	PATH_SUFFIXES
 	${_libsuffixes}
 	PATHS
+	"C:/EDT/pdv/lib/x86"
 	"C:/Program Files (x86)/CISMM/external/EDT/pdv"
 	/usr/local
 )
 find_library(EDTMMX_LIBRARY
 	NAMES
 	edt_mmx
+	pdvplus
 	PATH_SUFFIXES
 	${_libsuffixes}
 	PATHS
+	"C:/EDT/pdv/lib/x86"
 	"C:/Program Files (x86)/CISMM/external/EDT/pdv"
 	/usr/local
 )
