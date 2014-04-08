@@ -18,7 +18,7 @@
 #include <process.h>
 #include <windows.h>
 #include <string>
-#include "glui.h"
+#include <glui.h>
 #include <GL/glut.h>
 #include "edtinc.h"
 #include "vrpn_shared.h"
@@ -216,7 +216,8 @@ int main(int argc, char* argv[])
   /****************************************/
 
   GLUI *glui = GLUI_Master.create_glui( "GLUItake" );
-  
+
+
   glui->add_checkbox( "Swap Lines", &swaplines );
   glui->add_checkbox( "TimeStamps", &timestamps );
 //  glui->add_checkbox( "Integrate", &integrate );
@@ -224,7 +225,7 @@ int main(int argc, char* argv[])
   GLUI_Spinner *unit_spinner = 
     glui->add_spinner( "Unit:", GLUI_SPINNER_INT, &unit );
     unit_spinner->set_int_limits( 0, 9 ); 
-  
+   
   GLUI_Spinner *channel_spinner = 
     glui->add_spinner( "Channel:", GLUI_SPINNER_INT, &channel );
     channel_spinner->set_int_limits( 0, 9 ); 
@@ -252,7 +253,7 @@ int main(int argc, char* argv[])
   GLUI_Button *start_capture =
     glui->add_button( "Start Capture", 0, (GLUI_Update_CB) start_collection);
 
-  /* */
+  
   GLUI_Button *cancel_capture =
     glui->add_button( "Abort Capture", 0, (GLUI_Update_CB) abort_collection);
   
@@ -264,9 +265,9 @@ int main(int argc, char* argv[])
 
   // We register the idle callback with GLUI, *not* with GLUT 
   GLUI_Master.set_glutIdleFunc( myGlutIdle ); 
-
+  
   glutMainLoop();
-    
+  
 }
 
 
@@ -625,6 +626,7 @@ void open_camera() {
 		strcpy(devname, EDT_INTERFACE);
     }
 
+
     camera_open = true;
     
     if ((pdv_p = pdv_open_channel(devname, unit, channel)) == NULL)
@@ -633,6 +635,13 @@ void open_camera() {
 	pdv_perror(errstr);
 	return;
     }
+
+	if(edt_set_max_buffers( pdv_p , 1024 ) == -1)
+	{
+		sprintf(errstr, "edt_set_max_buffers() failed\n");
+		pdv_perror(errstr);
+		return;
+	}
 
     /*
      * get image size and name for display, save, printfs, etc.
