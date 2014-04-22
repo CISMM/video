@@ -23,7 +23,7 @@
 #include "edtinc.h"
 #include "vrpn_shared.h"
 
-const char VERSION_STRING[] = "1.00";
+const char VERSION_STRING[] = "1.1";
 #define NUM_THREADS 2
 #define COLLECT 1
 #define DISPLAY 2

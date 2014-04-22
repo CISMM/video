@@ -2,16 +2,16 @@
 FileVersion=1.1
 FileType=QSetupIniFile
 ComposerVersion=5.0.0.0
-OperatingSystem=WinXP  5.1  2600 (Service Pack 3)
+OperatingSystem=WinNTx  6.1  7601 (Service Pack 1)
 
 [Project]
 ProjectName=GLUI_take
-ProjectDirectory=D:\jeremy\GLUItake\video\GLUI_take
-NonSFXDirectory=D:\jeremy\GLUItake\video\GLUI_take\NonSFX
-MediaFileName=GLUI_take_v1_00
+ProjectDirectory=C:\Users\cribb\src\video\GLUI_take
+NonSFXDirectory=C:\Users\cribb\src\video\GLUI_take\NonSFX
+MediaFileName=GLUI_take_v1_1
 CopyMediaToFName=
 ProgramDescriptiveName=GLUI_take Pulnix Frame Grabber
-ProgramVersion=1.00
+ProgramVersion=1.1
 CompanyName=UNC CISMM
 ProgVerLiveUpdate=0
 RegisterAsApp=1
@@ -33,8 +33,8 @@ BottomLabel=0
 TopLabelText="GLUI_take Pulnix Frame Grabber"
 TopLabel2Text=""
 BottomLabelText="Copyright © 2005"
-BackgroundDesign=XP Background
-TopBackgroundColor=8421504
+BackgroundDesign=Gradient
+TopBackgroundColor=15780518
 BottomBackgroundColor=12632256
 AddBottomColor=1
 DlgBmp3DFrame=1
@@ -62,7 +62,7 @@ BottomLabelFont=|Tahoma|10|16777215|1|0|1|0|
 CompanyUrl=cismm.org
 
 [TargetExe]
-TargetDirectory=<ProgramFilesDir>CISMM\GLUI_take_v01.00
+TargetDirectory=<ProgramFilesDir>CISMM\GLUI_take_v01.1
 CommonDirectory=<CommonFilesDir>
 AuxDirectory=<FontDir>
 TargetExeName=<Application Folder>\GLUItake.bat
@@ -106,8 +106,8 @@ ShowCopyrightWarning=1
 [Shortcuts]
 AddMainShortCut=1
 ForceRemoveShortcutFolder=0
-ProgramLinkFolder=CISMM\GLUI_take Pulnix Frame Grabber v1.00
-ProgramLinkName=GLUItake v1.00
+ProgramLinkFolder=CISMM\GLUI_take Pulnix Frame Grabber v1.1
+ProgramLinkName=GLUItake v1.1
 ProgramLinkParam=
 ProgramLinkWorkDir=E:\Data\video
 ProgramLinkRun=Minimized
@@ -130,7 +130,7 @@ StartUpChecked=1
 QuickLaunchChecked=1
 SetAllUsers=1
 AddUninstallShortcut=1
-Item-000=*|GLUI_take v1.00|<Application Folder>\GLUItake.bat|<Desktop>||<Application Folder>|Minimized||0|1||0|
+Item-000=*|GLUI_take v1.1|<Application Folder>\GLUItake.bat|<Desktop>||E:\data\video|Minimized||0|1||0|
 
 [Billboard]
 AddBillboard=1
@@ -164,7 +164,7 @@ AutoUpdateProbeSpin=1
 AutoUpdateProbeText=Only at Agent Start
 
 [Switches]
-OperatingSystems=NT,2000,XP,2003
+OperatingSystems=2000,XP,2003
 OverwriteFlag=1
 CreateUnInstall=1
 ScrambleUnInstallData=0
@@ -192,7 +192,7 @@ AutorunStartApp=0
 
 [Environment]
 Env-000=*|EDTPATH|C:\EDT\pdv|Create|Remove|System|
-Env-001=*|GLUITAKEPATH|<ProgramFilesDir>\CISMM\GLUI_take_v01.00|Create|Remove|System|
+Env-001=*|GLUITAKEPATH|<ProgramFilesDir>\CISMM\GLUI_take_v01.1|Create|Remove|System|
 
 [Association]
 OpenWith=0
@@ -230,6 +230,9 @@ Group-000=Main Group
 TypicalCompactData=15
 Description=This is the main group of files
 Item-000=Fol*<Application Folder>[0]
-Item-001=Fil*C:\NSRG\external\pc_win32\bin\glut32.dll
-Item-002=Fil*D:\jeremy\GLUItake\video\GLUI_take\GLUItake.bat
-Item-003=Fil*D:\jeremy\GLUItake\video\Release\GLUItake.exe
+Item-001=Fil*C:\EDT\pdv\bin\x86\clseredt.dll
+Item-002=Fil*C:\EDT\pdv\bin\x86\pdvlib.dll
+Item-003=Fil*C:\Program Files\CISMM\external\bin\glut32.dll
+Item-004=Fil*C:\Users\cribb\build\video\Release\GLUItake.exe
+Item-005=Fil*C:\Users\cribb\src\video\GLUI_take\GLUItake.bat
+Item-006=Fil*C:\Users\cribb\src\video\GLUI_take\ptm6710cl_3dfm.cfg

@@ -1,5 +1,5 @@
 @ECHO OFF
-"%EDTPATH%\initcam" -f %EDTPATH%\camera_config\ptm6710cl_3dfm.cfg
+"%EDTPATH%\initcam" -f "%GLUITAKEPATH%\ptm6710cl_3dfm.cfg"
 "%GLUITAKEPATH%\GLUItake.exe"
 echo.
 pause
