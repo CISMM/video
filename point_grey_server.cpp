@@ -41,9 +41,13 @@ bool point_grey_server::get_pixel_from_memory(unsigned int X, unsigned int Y, vr
 	return true;
 }
 
-bool point_grey_server::read_image_to_memory(unsigned int minX, unsigned int maxX, unsigned int minY, unsigned int maxY, double exposure_time_millisecs) {
-	vrpn_gettimeofday(&m_timestamp, NULL);
+bool point_grey_server::read_image_to_memory(unsigned int minX, unsigned int maxX, unsigned int minY, unsigned int maxY, double exposure_time_millisecs)
+{
+    // XXX If the exposure changed since the camera was opened, we need to
+    // change it here.
 	if (m_cam != NULL) {
+        // Record the time at which we asked for the image, then get the image
+	    vrpn_gettimeofday(&m_timestamp, NULL);
 		return m_cam->GetNewImage();
 	}
 	else

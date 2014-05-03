@@ -211,6 +211,7 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, f
     return;
   }
 
+  //-------------------------------------------------------
   // Configure the camera GAIN setting
   Property prop;
   prop.type = GAIN;
@@ -240,6 +241,49 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, f
   if (error!=PGRERROR_OK){
   	PrintError(error, "SetProperty GAIN");
   	return;
+  }
+
+  //-------------------------------------------------------
+  // Configure the camera SHUTTER (exposure time) setting.
+  // If it is -1, set the camera to auto-expose.
+  prop.type = SHUTTER;
+
+  // Reading the GAIN value from the camera
+  error = cam.GetProperty(&prop);
+  if(error!=PGRERROR_OK){
+    PrintError(error, "GetProperty SHUTTER");
+    return;
+  }
+
+  // Setting to absolute value mode
+  prop.absControl = true;
+
+  // Making sure the property is enabled
+  prop.onOff = true;
+
+  if (msExposure > 0) {
+
+    // Setting to manual mode
+    prop.autoManualMode = false;
+    // Setting to the specified gain
+    prop.absValue = static_cast<float>(msExposure);
+    printf("SHUTTER = %.2f\n\n", msExposure);
+
+  } else {
+
+    // Setting to automatic mode
+    prop.autoManualMode = true;
+    // Setting to an initial value
+    prop.absValue = 10;
+    printf("SHUTTER = auto\n\n");
+
+  }
+
+  // Setting the property to the camera
+  error = cam.SetProperty(&prop);
+  if (error!=PGRERROR_OK){
+	  PrintError(error, "SetProperty SHUTTER");
+	  return;
   }
 
   // The camera produces an abnormal image the first frame after we

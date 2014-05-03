@@ -125,7 +125,9 @@ bool  edt_server::read_image_to_memory(unsigned minX, unsigned maxX,
 
   if (!_status) { return false; }
 
+  //---------------------------------------------------------------------
   // XXX Set the exposure time.
+
   //---------------------------------------------------------------------
   // Set the size of the window to include all pixels if there were not
   // any binning.  This means adding all but 1 of the binning back at
@@ -170,7 +172,7 @@ bool  edt_server::read_image_to_memory(unsigned minX, unsigned maxX,
   vrpn_gettimeofday(&now, NULL);
   if (now.tv_sec > last.tv_sec) {
     last = now;
-    printf("XXX EDT: %d outstanding buffers\n", outstanding );
+    //printf("XXX EDT: %d outstanding buffers\n", outstanding );
   }
 
   /*

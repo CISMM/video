@@ -211,8 +211,9 @@ static bool  get_camera(const char *name,
 #endif  
 #ifdef	VST_USE_POINTGREY
   if (!strcmp(name, "point_grey")) {
-    point_grey_server *r = new point_grey_server();
+    point_grey_server *r = new point_grey_server(-1, *exposure);
     *camera = r;
+    *bit_depth = 8;
   } else
 #endif  
 #ifdef	VST_USE_DIRECTX
@@ -220,6 +221,7 @@ static bool  get_camera(const char *name,
     // Passing width and height as zero leaves it open to whatever the camera has
     directx_camera_server *d = new directx_camera_server(1,0,0);	// Use camera #1 (first one found)
     *camera = d;
+    *bit_depth = 8;
 
     //-------------------------------------------------------------------
     // Read frames until we get a good one or until we get ten bad ones
@@ -241,6 +243,7 @@ static bool  get_camera(const char *name,
   } else if (!strcmp(name, "directx640x480")) {
     directx_camera_server *d = new directx_camera_server(1,640,480);	// Use camera #1 (first one found)
     *camera = d;
+    *bit_depth = 8;
 
     //-------------------------------------------------------------------
     // Read frames until we get a good one or until we get ten bad ones
@@ -390,10 +393,12 @@ static bool  get_camera(const char *name,
       FFMPEG_Controllable_Video *f = new FFMPEG_Controllable_Video(name);
       *camera = f;
       *video = f;
+      *bit_depth = 8;
 #elif defined VST_USE_DIRECTX
       Directx_Controllable_Video *f = new Directx_Controllable_Video(name);
       *camera = f;
       *video = f;
+      *bit_depth = 8;
 #elif defined VST_USE_QT4
       QT_Controllable_Video *f = new QT_Controllable_Video(name);
       *camera = f;

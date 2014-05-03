@@ -2,6 +2,7 @@
 
 class PGRCam {
 public:
+    // Exposure of -1 means to use auto-exposure.
 	PGRCam(double framerate = -1, double msExposure = -1, int binning = 1, bool trigger = 0, float gain = 0, int camera = 0);
 	~PGRCam();
 
