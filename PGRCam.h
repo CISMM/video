@@ -3,7 +3,9 @@
 class PGRCam {
 public:
     // Exposure of -1 means to use auto-exposure.
-	PGRCam(double framerate = -1, double msExposure = -1, int binning = 1, bool trigger = 0, float gain = 0, int camera = 0);
+	PGRCam(double framerate = -1, double msExposure = -1,
+      int binning = 1, bool trigger = 0, float gain = 0, int camera = 0,
+      int trigger_mode = 1);
 	~PGRCam();
 
 	bool GetNewImage();
@@ -24,7 +26,8 @@ private:
 
   bool triggered;
 
-  void configure_triggering_and_timeout(bool is_triggered, unsigned timeout_ms);
+  void configure_triggering_and_timeout(bool is_triggered, unsigned timeout_ms,
+    int trigger_mode = 1);
   void grab_and_toss_initial_image();
 
   unsigned char* imgPtr;

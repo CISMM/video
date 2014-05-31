@@ -63,8 +63,11 @@ void PGRCam::grab_and_toss_initial_image(void)
   if (error != PGRERROR_OK) { return; }   
 }
 
+// Trigger mode 0 has the camera integrate for the specified exposure
+// time.  Trigger mode 1 ("bulb mode") integrates as long as the trigger
+// is held low and then scans out when it is raised again.
 void PGRCam::configure_triggering_and_timeout(bool is_triggered,
-	unsigned timeout_ms)
+	unsigned timeout_ms, int trigger_mode)
 {
   // Get the camera configuration to configure the timeout setting
   FC2Config config;
@@ -82,12 +85,15 @@ void PGRCam::configure_triggering_and_timeout(bool is_triggered,
     return;
   }
     
-  // Set camera to trigger mode 0
+  // Set camera to the requested trigger mode.
+  printf("XXX PGRCam: Trigger mode %d\n", trigger_mode);
   triggerMode.onOff = is_triggered;
-  triggerMode.mode = 1;
+  triggerMode.mode = trigger_mode;
   triggerMode.parameter = 0;
     
   // Triggering the camera externally using source 0.
+  // A source of 7 means software triggered, which is not what
+  // we want.
   triggerMode.source = 0;
     
   error = cam.SetTriggerMode(&triggerMode);
@@ -108,7 +114,9 @@ void PGRCam::configure_triggering_and_timeout(bool is_triggered,
 
 }
 
-PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, float gain, int camera)
+PGRCam::PGRCam(double framerate, double msExposure,
+               int binning, bool trigger, float gain, int camera,
+               int trigger_mode)
         : triggered(trigger)
 {
   connected = false;
@@ -244,11 +252,22 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, f
   }
 
   //-------------------------------------------------------
+  // The camera produces an abnormal image the first frame after we
+  // change its gain.  To avoid having this show up to the user, we
+  // take an image with the new gain setting in non-triggered mode
+  // before we finish configuring the triggering mode.  Horrible hack
+  // to get around camera behavior.
+  // Do this before we configure the camera shutter mode because it
+  // configures the camera to not use shutter mode so we're sure to
+  // get an image.
+  grab_and_toss_initial_image();
+
+  //-------------------------------------------------------
   // Configure the camera SHUTTER (exposure time) setting.
   // If it is -1, set the camera to auto-expose.
   prop.type = SHUTTER;
 
-  // Reading the GAIN value from the camera
+  // Reading the SHUTTER value from the camera
   error = cam.GetProperty(&prop);
   if(error!=PGRERROR_OK){
     PrintError(error, "GetProperty SHUTTER");
@@ -286,20 +305,13 @@ PGRCam::PGRCam(double framerate, double msExposure, int binning, bool trigger, f
 	  return;
   }
 
-  // The camera produces an abnormal image the first frame after we
-  // change its gain.  To avoid having this show up to the user, we
-  // take an image with the new gain setting in non-triggered mode
-  // before we finish configuring the triggering mode.  Horrible hack
-  // to get around camera behavior.
-  grab_and_toss_initial_image();
-
   // Set the triggering mode and timeout on the camera.
   // If we're in trigger mode, set the capture timeout to 100 milliseconds,
   // so we won't wait forever for an image. This will cause the higher-level
   // code to get control again at a reasonable rate. Otherwise, set the grab 
   // timeout to 5 seconds.
   if (triggered) {
-    configure_triggering_and_timeout(true, 100);
+    configure_triggering_and_timeout(true, 100, trigger_mode);
   } else {
     configure_triggering_and_timeout(false, 5000);
   }
