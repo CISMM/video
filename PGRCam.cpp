@@ -86,7 +86,6 @@ void PGRCam::configure_triggering_and_timeout(bool is_triggered,
   }
     
   // Set camera to the requested trigger mode.
-  printf("XXX PGRCam: Trigger mode %d\n", trigger_mode);
   triggerMode.onOff = is_triggered;
   triggerMode.mode = trigger_mode;
   triggerMode.parameter = 0;
