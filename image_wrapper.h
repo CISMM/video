@@ -163,6 +163,7 @@ public:
   // Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.  For this image, all pixels are
   // within it -- we recompute a point-sampled value whenever we need one.
+  using image_wrapper::read_pixel;
   virtual bool	read_pixel(int x, int y, double &result, unsigned /* RGB ignored */) const;
   virtual double read_pixel_nocheck(int x, int y, unsigned /* RGB ignored */) const;
 

@@ -233,6 +233,7 @@ public:
 
   // Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.
+  using image_wrapper::read_pixel;
   virtual bool	read_pixel(int x, int y, double &result, unsigned ignored = 0) const;
   inline double read_pixel_nocheck(int x, int y, unsigned ignored = 0) const
   {
@@ -289,6 +290,7 @@ public:
 
   // Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.
+  using image_wrapper::read_pixel;
   virtual bool	read_pixel(int x, int y, double &result, unsigned ignored = 0) const;
   inline double read_pixel_nocheck(int x, int y, unsigned ignored = 0) const
   {
@@ -356,6 +358,7 @@ public:
 
   /// Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.
+  using image_wrapper::read_pixel;
   virtual bool	read_pixel(int x, int y, double	&result, unsigned rgb = 0) const;
 
   /// Read a pixel from the image into a double; Don't check boundaries.
@@ -418,6 +421,7 @@ public:
 
   /// Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.
+  using image_wrapper::read_pixel;
   virtual bool	read_pixel(int x, int y, double	&result, unsigned rgb = 0) const {
     return _ref.read_pixel(x,y, result, rgb);
   }
@@ -456,6 +460,7 @@ public:
 
   /// Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.
+  using image_wrapper::read_pixel;
   virtual bool	read_pixel(int x, int y, double	&result, unsigned rgb = 0) const
   {
     return _ref.read_pixel_bilerp(newx(x,y), newy(x,y), result, rgb);
@@ -512,6 +517,7 @@ public:
 
   /// Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.
+  using image_wrapper::read_pixel;
   virtual bool	read_pixel(int x, int y, double	&result, unsigned rgb = 0) const
   {
     double x_new, y_new;
@@ -585,6 +591,7 @@ public:
 
   /// Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.
+  using image_wrapper::read_pixel;
   virtual bool	read_pixel(int x, int y, double	&result, unsigned rgb = 0) const;
 
   /// Read a pixel from the image into a double; Don't check boundaries.
@@ -627,6 +634,7 @@ public:
 
   /// Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.
+  using image_wrapper::read_pixel;
   virtual bool	read_pixel(int x, int y, double	&result, unsigned rgb = 0) const;
 
   /// Read a pixel from the image into a double; Don't check boundaries.
@@ -672,6 +680,7 @@ public:
 
   /// Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.
+  using image_wrapper::read_pixel;
   virtual bool	read_pixel(int x, int y, double	&result, unsigned rgb = 0) const;
 
   /// Read a pixel from the image into a double; Don't check boundaries.
@@ -728,6 +737,7 @@ public:
   /// Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.  Takes the mean by dividing by
   // the number of images read.
+  using image_wrapper::read_pixel;
   virtual bool	read_pixel(int x, int y, double	&result, unsigned rgb = 0) const;
 
   /// Read a pixel from the image into a double; Don't check boundaries.
@@ -856,6 +866,7 @@ public:
   /// Read a pixel from the image into a double; return true if the pixel
   // was in the image, false if it was not.  Assumes a stack taken bottom-to-top,
   // so that the bottom line in the image (when drawn normally) is at the bottom.
+  using image_wrapper::read_pixel;
   virtual bool	read_pixel(int x, int y, double	&result, unsigned rgb = 0) const
     {
       result = 0;
