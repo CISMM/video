@@ -806,7 +806,7 @@ symmetric_spot_tracker_interp::~symmetric_spot_tracker_interp()
   if (_radius_counts) { delete [] _radius_counts; _radius_counts = NULL; }
 }
 
-// Check the fitness of the disk against an image, at the current parameter settings.
+// Check the fitness of the tracker against an image, at the current parameter settings.
 // Return the fitness value there.
 
 // Compute the variance of all the points using the shortcut
@@ -841,10 +841,10 @@ double	symmetric_spot_tracker_interp::check_fitness(const image_wrapper &image, 
 // surely slow things down.
 #if 1
       if (image.read_pixel_bilerp(get_x()+list->x,get_y()+list->y,val, rgb)) {
-	valSum += val;
-	squareValSum += val*val;
-	pixels++;
-	list++;	  //< Makes big speed difference to do this with increment vs. index
+	    valSum += val;
+	    squareValSum += val*val;
+	    pixels++;
+	    list++;	  //< Makes big speed difference to do this with increment vs. index
       }
 #else
       val = image.read_pixel_bilerp_nocheck(get_x()+list->x, get_y()+list->y, rgb);

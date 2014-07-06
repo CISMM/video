@@ -2163,20 +2163,20 @@ void optimize_all_trackers(void)
         g_trackers.set_active_tracker_index(i);
         if (g_lostBehavior == LOST_DELETE) {
 
-	  // Make a new tracker on the deleted list that matches the
-	  // location and radius of this one, so we can store video
-	  // around it this one last time.  This will make it so that
-	  // a second batch-run tracker script on the stored video info
-	  // will behave the same as one run on the original data.
-	  // Without this, trackers don't get lost because the frame
-	  // that caused them to be lost never shows up.
-	  // All of the possible loss-reasons were marked above, so
-	  // we won't miss edge-deleted trackers (for example).
+	      // Make a new tracker on the deleted list that matches the
+	      // location and radius of this one, so we can store video
+	      // around it this one last time.  This will make it so that
+	      // a second batch-run tracker script on the stored video info
+	      // will behave the same as one run on the original data.
+	      // Without this, trackers don't get lost because the frame
+	      // that caused them to be lost never shows up.
+	      // All of the possible loss-reasons were marked above, so
+	      // we won't miss edge-deleted trackers (for example).
           // We don't store this if we're not logging video.
           if (g_log_video) {
             g_deleted_trackers.add_tracker(tracker->xytracker()->get_x(),
-		tracker->xytracker()->get_y(),
-		tracker->xytracker()->get_radius());
+		    tracker->xytracker()->get_y(),
+		    tracker->xytracker()->get_radius());
           } else {
             g_deleted_trackers.delete_trackers();
           }
