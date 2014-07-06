@@ -186,6 +186,7 @@ public:
 
 	// This method will always "optimize" in x and y, but not r. It will always return
 	// false to indicate to callers that no further optimization should take place.
+    using spot_tracker_XY::take_single_optimization_step;
 	virtual bool take_single_optimization_step(const image_wrapper &image, unsigned rgb, double &x, double &y,
 				      bool do_x, bool do_y, bool do_r);
 
@@ -340,6 +341,7 @@ public:
   // Return the fitness value there.
   virtual double  check_fitness(const image_wrapper &image, unsigned rgb);
 
+  using spot_tracker_XY::optimize_xy;
   virtual void  optimize_xy(const image_wrapper &image, unsigned rgb, double &x, double &y);
 
   virtual bool  set_frames_to_average(const double frames_to_average) {
@@ -413,9 +415,11 @@ public:
   // better location/orientation or not.  Return new location in any case. The
   // boolean parameters tell whether to try stepping in each of X, Y, and
   // orientation.
+  using spot_tracker_XY::take_single_optimization_step;
   virtual bool	take_single_optimization_step(const image_wrapper &image, unsigned rgb, double &x, double &y,
 				      bool do_x, bool do_y, bool do_r);
 
+  using spot_tracker_XY::optimize_xy;
   virtual void  optimize_xy(const image_wrapper &image, unsigned rgb, double &x, double &y);
 
   /// Check the fitness against an image, at the current parameter settings.
@@ -530,6 +534,7 @@ public:
   // better location/radius or not.  Return new location in any case.  The
   // boolean parameters tell whether to try stepping in each of X, Y, and
   // Radius.
+  using spot_tracker_XY::take_single_optimization_step;
   virtual bool	take_single_optimization_step(const image_wrapper &image, unsigned rgb, double &x, double &y,
 				      bool do_x, bool do_y, bool do_r);
 
@@ -607,6 +612,7 @@ public:
   // better location/radius or not.  Return new location in any case.  The
   // boolean parameters tell whether to try stepping in each of X, Y, and
   // Radius.
+  using spot_tracker_XY::take_single_optimization_step;
   virtual bool	take_single_optimization_step(const image_wrapper &image, unsigned rgb, double &x, double &y,
 				      bool do_x, bool do_y, bool do_r);
 
