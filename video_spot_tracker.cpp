@@ -365,6 +365,7 @@ Tclvar_float_with_scale g_lossSensitivity("kernel_lost_tracking_sensitivity", ".
 Tclvar_float_with_scale g_intensityLossSensitivity("intensity_lost_tracking_sensitivity", ".lost_and_found_controls.bottom", 0.0, 10.0, 0.0);
 Tclvar_float_with_scale g_borderDeadZone("dead_zone_around_border", ".lost_and_found_controls.top", 0.0, 30.0, 0.0);
 Tclvar_float_with_scale g_trackerDeadZone("dead_zone_around_trackers", ".lost_and_found_controls.top", 0.0, 3.0, 0.0);
+Tclvar_float_with_scale g_checkBeadCountInterval("check_bead_count_interval", ".lost_and_found_controls.top", 1.0, 100.0, 5.0);
 Tclvar_float_with_scale g_findThisManyFluorescentBeads("maintain_fluorescent_beads", ".lost_and_found_controls.bottom", 0.0, 100.0, 0.0);
 Tclvar_float_with_scale g_fluorescentSpotThreshold("fluorescent_spot_threshold", ".lost_and_found_controls.bottom", 0.0, 1.0, 0.5);
 Tclvar_float_with_scale g_fluorescentMaxRegions("fluorescent_max_regions", ".lost_and_found_controls.bottom", 0.0, 1000.0, 1000.0);
@@ -2644,39 +2645,44 @@ void myIdleFunc(void)
   // there is already one will have the new bead positions to test against.
   // Keep track of whether we found any more beads.  If so, we need to re-run
   // optimization so that all the new beads find their final place.
-  bool found_more_beads = false;
-  if (g_findThisManyBeads > g_trackers.tracker_count() && (!first_frame_only_autofind || g_frame_number == 0)) {
-    // make sure we only try to auto-find once per new frame of video
-    if (g_gotNewFrame) {
-        g_trackers.default_radius(g_Radius);
-        if (g_trackers.find_more_brightfield_beads_in(*laf_image,
-            g_slidingWindowRadius,
-            g_candidateSpotThreshold,
-            g_findThisManyBeads - g_trackers.tracker_count(),
-            vertCandidates, horiCandidates)) {
-	    found_more_beads = true;
-        }
-        g_gotNewFrame = false;
-    }
-  }
-  if (g_findThisManyFluorescentBeads > g_trackers.tracker_count() && (!first_frame_only_autofind || g_frame_number == 0)) {
-    if (g_gotNewFluorescentFrame) {
-      g_trackers.default_radius(g_Radius);
-      if (g_trackers.autofind_fluorescent_beads_in(*laf_image,
-              g_fluorescentSpotThreshold,
-              g_intensityLossSensitivity,
-              g_fluorescentMaxRegions)) {
-	  found_more_beads = true;
-      }
-      g_gotNewFluorescentFrame = false;
-    }
-    // Delete responses that are in the dead zone around the image.
-    g_trackers.delete_edge_beads_in(*laf_image);
-  }
 
-  // If we found any new beads, then we need to optimize them.
-  if (found_more_beads) {
-    optimize_all_trackers();
+  // We check bead count every g_interval_to_check_bead_count frames to make the code run faster.
+  if(int(g_frame_number) % int(g_checkBeadCountInterval) == 0) {
+      printf("at frame %d, checking bead count\n", int(g_frame_number));
+      bool found_more_beads = false;
+      if (g_findThisManyBeads > g_trackers.tracker_count() && (!first_frame_only_autofind || g_frame_number == 0)) {
+        // make sure we only try to auto-find once per new frame of video
+        if (g_gotNewFrame) {
+            g_trackers.default_radius(g_Radius);
+            if (g_trackers.find_more_brightfield_beads_in(*laf_image,
+                g_slidingWindowRadius,
+                g_candidateSpotThreshold,
+                g_findThisManyBeads - g_trackers.tracker_count(),
+                vertCandidates, horiCandidates)) {
+            found_more_beads = true;
+            }
+            g_gotNewFrame = false;
+        }
+      }
+      if (g_findThisManyFluorescentBeads > g_trackers.tracker_count() && (!first_frame_only_autofind || g_frame_number == 0)) {
+        if (g_gotNewFluorescentFrame) {
+          g_trackers.default_radius(g_Radius);
+          if (g_trackers.autofind_fluorescent_beads_in(*laf_image,
+                  g_fluorescentSpotThreshold,
+                  g_intensityLossSensitivity,
+                  g_fluorescentMaxRegions)) {
+          found_more_beads = true;
+          }
+          g_gotNewFluorescentFrame = false;
+        }
+        // Delete responses that are in the dead zone around the image.
+        g_trackers.delete_edge_beads_in(*laf_image);
+      }
+
+      // If we found any new beads, then we need to optimize them.
+      if (found_more_beads) {
+        optimize_all_trackers();
+      }
   }
 
   // Update the kymograph if it is active and if we have a new video frame.
@@ -3393,6 +3399,7 @@ void  handle_save_state_change(int newvalue, void *)
   fprintf(f, "set background_subtract %d\n", (int)(g_background_subtract));
   fprintf(f, "set logging_video %d\n", (int)(g_log_video));
   fprintf(f, "set video_full_frame_every %lg\n", (double)(g_video_full_frame_every));
+  fprintf(f, "set check_bead_count_interval %lg\n", (double)(g_checkBeadCountInterval));
 
   fclose(f);
 }
@@ -3693,6 +3700,7 @@ void Usage(const char *progname)
 	fprintf(stderr, "       -append_from: Load trackers from last frame in the specified CSV FILE with\n");
 	fprintf(stderr, "                 ability to continue tracking and to add further log data to the \n");
 	fprintf(stderr, "                 same file.\n");
+	fprintf(stderr, "       -check_bead_count_interval: Interaval in frames to check whether the current bead count is low.\n");
     fprintf(stderr, "       source: The source file for tracking can be specified here (default is\n");
     fprintf(stderr, "                 a dialog box)\n");
     exit(-1);
@@ -4072,6 +4080,9 @@ int main(int argc, char *argv[])
         fprintf(stderr,"-continue_from: Could not load trackers from %s\n", argv[i]);
         exit(-1);
       }
+    } else if (!strncmp(argv[i], "-check_bead_count_interval", strlen("-check_bead_count_interval"))) {
+      if (++i >= argc) { Usage(argv[0]); }
+      g_checkBeadCountInterval = atoi(argv[i]);
     } else if (!strncmp(argv[i], "-append_from", strlen("-append_from"))) {
       if (++i >= argc) { Usage(argv[0]); }
 	  load_saved_file = true;
