@@ -2648,7 +2648,6 @@ void myIdleFunc(void)
 
   // We check bead count every g_interval_to_check_bead_count frames to make the code run faster.
   if(int(g_frame_number) % int(g_checkBeadCountInterval) == 0) {
-      printf("at frame %d, checking bead count\n", int(g_frame_number));
       bool found_more_beads = false;
       if (g_findThisManyBeads > g_trackers.tracker_count() && (!first_frame_only_autofind || g_frame_number == 0)) {
         // make sure we only try to auto-find once per new frame of video
