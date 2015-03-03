@@ -3204,6 +3204,7 @@ void  logfilename_changed(char *newvalue, void *)
       g_log_offset_z = g_trackers.active_tracker()->ztracker()->get_z();
     }
   }
+  g_stop_logging = false;
 }
 
 // If the device filename becomes non-empty, then set the global
