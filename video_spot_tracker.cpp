@@ -369,6 +369,7 @@ Tclvar_float_with_scale g_checkBeadCountInterval("check_bead_count_interval", ".
 Tclvar_float_with_scale g_findThisManyFluorescentBeads("maintain_fluorescent_beads", ".lost_and_found_controls.bottom", 0.0, 100.0, 0.0);
 Tclvar_float_with_scale g_fluorescentSpotThreshold("fluorescent_spot_threshold", ".lost_and_found_controls.bottom", 0.0, 1.0, 0.5);
 Tclvar_float_with_scale g_fluorescentMaxRegions("fluorescent_max_regions", ".lost_and_found_controls.bottom", 0.0, 1000.0, 1000.0);
+Tclvar_float_with_scale g_fluorescentMaxRegionSize("fluorescent_max_region_size", ".lost_and_found_controls.bottom", 0.0, 60000.0, 60000.0);
 Tclvar_float_with_scale g_findThisManyBeads("maintain_this_many_beads", ".lost_and_found_controls.middle", 0.0, 100.0, 0.0);
 Tclvar_float_with_scale g_candidateSpotThreshold("candidate_spot_threshold", ".lost_and_found_controls.middle", 0.0, 5.0, 5.0);
 Tclvar_float_with_scale g_slidingWindowRadius("sliding_window_radius", ".lost_and_found_controls.middle", 5.0, 15.0, 10.0);
@@ -2669,7 +2670,8 @@ void myIdleFunc(void)
           if (g_trackers.autofind_fluorescent_beads_in(*laf_image,
                   g_fluorescentSpotThreshold,
                   g_intensityLossSensitivity,
-                  g_fluorescentMaxRegions)) {
+                  g_fluorescentMaxRegions,
+                  g_fluorescentMaxRegionSize)) {
           found_more_beads = true;
           }
           g_gotNewFluorescentFrame = false;
@@ -3374,6 +3376,7 @@ void  handle_save_state_change(int newvalue, void *)
   fprintf(f, "set dead_zone_around_trackers %lg\n", (double)(g_trackerDeadZone));
   fprintf(f, "set maintain_fluorescent_beads %lg\n", (double)(g_findThisManyFluorescentBeads));
   fprintf(f, "set fluorescent_max_regions %lg\n", (double)(g_fluorescentMaxRegions));
+  fprintf(f, "set fluorescent_max_region_size %lg\n", (double)(g_fluorescentMaxRegionSize));
   fprintf(f, "set fluorescent_spot_threshold %lg\n", (double)(g_fluorescentSpotThreshold));
   fprintf(f, "set maintain_this_many_beads %lg\n", (double)(g_findThisManyBeads));
   fprintf(f, "set candidate_spot_threshold %lg\n", (double)(g_candidateSpotThreshold));
@@ -4044,6 +4047,9 @@ int main(int argc, char *argv[])
     } else if (!strncmp(argv[i], "-fluorescent_max_regions", strlen("-fluorescent_max_regions"))) {
 	if (++i >= argc) { Usage(argv[0]); }
 	g_fluorescentMaxRegions = atof(argv[i]);
+    } else if (!strncmp(argv[i], "-fluorescent_max_region_sisze", strlen("-fluorescent_max_region_size"))) {
+	if (++i >= argc) { Usage(argv[0]); }
+	g_fluorescentMaxRegionSize = atof(argv[i]);
     } else if (!strncmp(argv[i], "-fluorescent_spot_threshold", strlen("-fluorescent_spot_threshold"))) {
 	if (++i >= argc) { Usage(argv[0]); }
 	g_fluorescentSpotThreshold = atof(argv[i]);

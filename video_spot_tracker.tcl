@@ -226,7 +226,7 @@ pack .lost_and_found_controls.behavior.hover -side left
 frame .lost_and_found_controls.top -relief raised -borderwidth 1
 pack .lost_and_found_controls.top -side top
 frame .lost_and_found_controls.middle -relief raised -borderwidth 1
-pack .lost_and_found_controls.middle -side left
+pack .lost_and_found_controls.middle -side left -fill y 
 frame .lost_and_found_controls.bottom -relief raised -borderwidth 1
 pack .lost_and_found_controls.bottom -side right
 wm withdraw .lost_and_found_controls

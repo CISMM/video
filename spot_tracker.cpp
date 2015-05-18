@@ -2583,7 +2583,8 @@ bool Tracker_Collection_Manager::find_more_brightfield_beads_in(
 bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapper &s_image,
                                                          float thresh,
                                                          float var_thresh,
-                                                         unsigned max_regions)
+                                                         unsigned max_regions,
+                                                         unsigned max_region_size)
 {
     //printf("Autofinding fluorescent beads.\n"); fflush(stdout);
     // Find out how large the image is.
@@ -2678,6 +2679,11 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
       // check to make sure we don't already have a tracker too close to where
       // we want to put the new one.
       bool safe = true;
+      if (count >= max_region_size)
+      {
+          safe = false;
+      }
+
       for (loop = d_trackers.begin(); loop != d_trackers.end(); loop++)  {
         double curX, curY;
         spot_tracker_XY *curTracker = (*loop)->xytracker();

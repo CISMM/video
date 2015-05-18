@@ -929,7 +929,8 @@ public:
     bool autofind_fluorescent_beads_in(const image_wrapper &s_image,
                                            float thresh = 0.2,
                                            float var_thresh = 1.5,
-					   unsigned max_regions = 0);
+					   unsigned max_regions = 0,
+                       unsigned max_region_size = 60000);
 
     // Find the specified number of additional trackers, which should be placed
     // at the highest-response locations in the image that is not within one
