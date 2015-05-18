@@ -4047,7 +4047,7 @@ int main(int argc, char *argv[])
     } else if (!strncmp(argv[i], "-fluorescent_max_regions", strlen("-fluorescent_max_regions"))) {
 	if (++i >= argc) { Usage(argv[0]); }
 	g_fluorescentMaxRegions = atof(argv[i]);
-    } else if (!strncmp(argv[i], "-fluorescent_max_region_sisze", strlen("-fluorescent_max_region_size"))) {
+    } else if (!strncmp(argv[i], "-fluorescent_max_region_size", strlen("-fluorescent_max_region_size"))) {
 	if (++i >= argc) { Usage(argv[0]); }
 	g_fluorescentMaxRegionSize = atof(argv[i]);
     } else if (!strncmp(argv[i], "-fluorescent_spot_threshold", strlen("-fluorescent_spot_threshold"))) {
