@@ -2707,7 +2707,7 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
           break;
         }
         spot_tracker_Z *z = default_z_tracker_creator();
-        Spot_Information *si = new Spot_Information(xy,z);
+        Spot_Information *si = new Spot_Information(xy,z,false, count);
         if (si == NULL) {
           fprintf(stderr,"Tracker_Collection_Manager::autofind_fluorescent_beads_in(): Can't make Spot Information\n");
           break;
@@ -2719,6 +2719,7 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
           delete si;
         } else {
           d_trackers.push_back(si);
+          printf("create spot information with region %d\n", si->get_region_size());
         }
       }
     }

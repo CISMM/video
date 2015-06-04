@@ -1005,12 +1005,12 @@ static	bool  save_log_frame(int frame_number)
 	first_time = false;
       }
       double interval = timediff(now, start);
-      fprintf(g_csv_file, "%d, %d, %lf,%lf,%lf, %lf, %lf, %lf,%lf, %lf,%lf, %lf,%lf\n",
+      fprintf(g_csv_file, "%d, %d, %lf,%lf,%lf, %lf, %lf, %lf,%lf, %lf,%lf, %lf,%lf, %d\n",
         frame_number + loaded_frames, tracker->index(),
         pos[0], pos[1], pos[2],
         tracker->xytracker()->get_radius(), center_intensity,
         orient, length,
-        background, gaussiansummedvalue, mean_background,computedsummedvalue);
+        background, gaussiansummedvalue, mean_background,computedsummedvalue, tracker->get_region_size());
 
       // Make sure there are enough vectors to store all available trackers, then
       // store a new entry for each tracker that currently exists.
@@ -3175,7 +3175,7 @@ void  logfilename_changed(char *newvalue, void *)
 	} else if ( NULL == (g_csv_file = fopen(csvname, "w")) ) {
       fprintf(stderr,"Cannot open CSV file for writing: %s\n", csvname);
     } else {
-      fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius,Center Intensity,Orientation (if meaningful),Length (if meaningful), Fit Background (for FIONA), Gaussian Summed Value (for FIONA), Mean Background (FIONA), Summed Value (for FIONA)\n");
+      fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius,Center Intensity,Orientation (if meaningful),Length (if meaningful), Fit Background (for FIONA), Gaussian Summed Value (for FIONA), Mean Background (FIONA), Summed Value (for FIONA), Region Size\n");
     }
     delete [] csvname;
   }
