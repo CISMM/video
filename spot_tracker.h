@@ -754,6 +754,7 @@ public:
   void lost(bool l) { d_lost = l; };
 
   int get_region_size(void) const { return d_region_size; }
+  void set_region_size(int region_size) { d_region_size = region_size; }
   // The index to use for the next tracker that is created
   static unsigned get_static_index();
 

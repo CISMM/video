@@ -3472,7 +3472,10 @@ bool load_trackers_from_file(const char *inname)
   while (fgets(line, sizeof(line)-1, f)) {
     int frame_number, spot_id;
     double x,y,z,r;
-    if (sscanf(line, "%d,%d,%lg,%lg,%lg,%lg", &frame_number, &spot_id, &x, &y, &z, &r) <= 0) {
+    double center_intensity, orientation, length, fit, gaussian, mean, summed;
+    int region_size;
+    if (sscanf(line, "%d,%d,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%d", &frame_number, &spot_id, &x, &y, &z, &r,
+        &center_intensity, &orientation, &length, &fit, &gaussian, &mean, &summed, &region_size) <= 0) {
       fprintf(stderr, "load_trackers_from_file(): Bad data line: %s\n", line);
     }
     if (frame_number == max_frame_number) {
@@ -3480,6 +3483,7 @@ bool load_trackers_from_file(const char *inname)
       g_Y = y;
       g_Radius = r;
       g_trackers.add_tracker(g_X,g_Y,g_Radius);
+      g_trackers.active_tracker()->set_region_size(region_size);
     }
   }
   fclose(f);
