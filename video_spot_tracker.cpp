@@ -325,6 +325,11 @@ bool g_gotNewFluorescentFrame = false;  // Used by autofind.
 bool g_stop_logging = false;
 bool g_quit_logging_thread = false;
 
+
+// Variables used to determine if extra information will be output in the .csv file,
+// including fluorescent region size and the sensitivity value.
+bool g_enable_internal_values = false;
+
 //--------------------------------------------------------------------------
 bool allow_optimization = true; // If running from command line, allow option to prevent optimization.
 bool load_saved_file = false; // Are we loading a previously saved CSV file to append to?
@@ -1000,28 +1005,39 @@ static	bool  save_log_frame(int frame_number)
 
     // Also, write the data to the .csv file if one is open.
     if (g_csv_file) {
-      if (first_time) {
-	start.tv_sec = now.tv_sec; start.tv_usec = now.tv_usec;
-	first_time = false;
-      }
-      double interval = timediff(now, start);
-      fprintf(g_csv_file, "%d, %d, %lf,%lf,%lf, %lf, %lf, %lf,%lf, %lf,%lf, %lf,%lf, %d\n",
-        frame_number + loaded_frames, tracker->index(),
-        pos[0], pos[1], pos[2],
-        tracker->xytracker()->get_radius(), center_intensity,
-        orient, length,
-        background, gaussiansummedvalue, mean_background,computedsummedvalue, tracker->get_region_size());
+        if (first_time) {
+            start.tv_sec = now.tv_sec; start.tv_usec = now.tv_usec;
+            first_time = false;
+        }
+        double interval = timediff(now, start);
 
-      // Make sure there are enough vectors to store all available trackers, then
-      // store a new entry for each tracker that currently exists.
-      // We do this only when the CSV file is open so we don't show un-logged locations
-      while ( g_logged_traces.size() < tracker->index() + 1 ) {
-        g_logged_traces.push_back(Position_Vector_XY());
-      }
-      Position_XY tracepos;
-      tracepos.x = tracker->xytracker()->get_x();
-      tracepos.y = tracker->xytracker()->get_y();
-      g_logged_traces[tracker->index()].push_back(tracepos);
+        if (g_enable_internal_values) {
+            fprintf(g_csv_file, "%d, %d, %lf,%lf,%lf, %lf, %lf, %lf,%lf, %lf,%lf, %lf,%lf, %d, %lf\n",
+                    frame_number + loaded_frames, tracker->index(),
+                    pos[0], pos[1], pos[2],
+                    tracker->xytracker()->get_radius(), center_intensity,
+                    orient, length,
+                    background, gaussiansummedvalue, mean_background,computedsummedvalue,
+                    tracker->get_region_size(), tracker->get_sensitivity());
+        } else {
+            fprintf(g_csv_file, "%d, %d, %lf,%lf,%lf, %lf, %lf, %lf,%lf, %lf,%lf, %lf,%lf\n",
+                    frame_number + loaded_frames, tracker->index(),
+                    pos[0], pos[1], pos[2],
+                    tracker->xytracker()->get_radius(), center_intensity,
+                    orient, length,
+                    background, gaussiansummedvalue, mean_background,computedsummedvalue);
+        }
+
+        // Make sure there are enough vectors to store all available trackers, then
+        // store a new entry for each tracker that currently exists.
+        // We do this only when the CSV file is open so we don't show un-logged locations
+        while ( g_logged_traces.size() < tracker->index() + 1 ) {
+            g_logged_traces.push_back(Position_Vector_XY());
+        }
+        Position_XY tracepos;
+        tracepos.x = tracker->xytracker()->get_x();
+        tracepos.y = tracker->xytracker()->get_y();
+        g_logged_traces[tracker->index()].push_back(tracepos);
     }
   }
 
@@ -3168,14 +3184,19 @@ void  logfilename_changed(char *newvalue, void *)
 			}
 		}
 	}
-	if (load_saved_file) {
-	  if ( NULL == (g_csv_file = fopen(csvname, "a")) ) {
-        fprintf(stderr,"Cannot open CSV file for appending: %s\n", csvname);
-      }
-	} else if ( NULL == (g_csv_file = fopen(csvname, "w")) ) {
-      fprintf(stderr,"Cannot open CSV file for writing: %s\n", csvname);
+    if (load_saved_file) {
+        if ( NULL == (g_csv_file = fopen(csvname, "a")) ) {
+            fprintf(stderr,"Cannot open CSV file for appending: %s\n", csvname);
+        }
+    } else if ( NULL == (g_csv_file = fopen(csvname, "w")) ) {
+        fprintf(stderr,"Cannot open CSV file for writing: %s\n", csvname);
     } else {
-      fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius,Center Intensity,Orientation (if meaningful),Length (if meaningful), Fit Background (for FIONA), Gaussian Summed Value (for FIONA), Mean Background (FIONA), Summed Value (for FIONA), Region Size\n");
+        if (g_enable_internal_values) {
+            fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius,Center Intensity,Orientation (if meaningful),Length (if meaningful), Fit Background (for FIONA), Gaussian Summed Value (for FIONA), Mean Background (FIONA), Summed Value (for FIONA), Region Size, Sensitivity\n");
+        } else {
+            fprintf(g_csv_file, "FrameNumber,Spot ID,X,Y,Z,Radius,Center Intensity,Orientation (if meaningful),Length (if meaningful), Fit Background (for FIONA), Gaussian Summed Value (for FIONA), Mean Background (FIONA), Summed Value (for FIONA)\n");
+
+        }
     }
     delete [] csvname;
   }
@@ -3474,17 +3495,30 @@ bool load_trackers_from_file(const char *inname)
     double x,y,z,r;
     double center_intensity, orientation, length, fit, gaussian, mean, summed;
     int region_size;
-    if (sscanf(line, "%d,%d,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%d", &frame_number, &spot_id, &x, &y, &z, &r,
-        &center_intensity, &orientation, &length, &fit, &gaussian, &mean, &summed, &region_size) <= 0) {
-      fprintf(stderr, "load_trackers_from_file(): Bad data line: %s\n", line);
+    double sensitivity;
+
+    if (g_enable_internal_values) {
+        if (sscanf(line, "%d,%d,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%d,%lg", &frame_number, &spot_id, &x, &y, &z, &r,
+                    &center_intensity, &orientation, &length, &fit, &gaussian, &mean, &summed, &region_size, &sensitivity) <= 0) {
+            fprintf(stderr, "load_trackers_from_file(): Bad data line: %s\n", line);
+        }
+    } else {
+        if (sscanf(line, "%d,%d,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg,%lg", &frame_number, &spot_id, &x, &y, &z, &r,
+                    &center_intensity, &orientation, &length, &fit, &gaussian, &mean, &summed) <= 0) {
+            fprintf(stderr, "load_trackers_from_file(): Bad data line: %s\n", line);
+        }
+
     }
+
     if (frame_number == max_frame_number) {
       g_X = x;
       g_Y = y;
       g_Radius = r;
       g_trackers.add_tracker(g_X,g_Y,g_Radius);
       g_trackers.active_tracker()->set_region_size(region_size);
+      g_trackers.active_tracker()->set_sensitivity(sensitivity);
     }
+    
   }
   fclose(f);
 
@@ -3652,6 +3686,7 @@ void Usage(const char *progname)
     fprintf(stderr, "           [-raw_camera_params sizex sizey bitdepth channels headersize frameheadersize]\n");
     fprintf(stderr, "           [-load_state FILE] [-log_video N] [-continue_from FILE] [-append_from FILE]\n");
     fprintf(stderr, "           [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n");
+    fprintf(stderr, "           [-enable_internal_values]\n");
     fprintf(stderr, "       -nogui: Run without the video display window (no Glut/OpenGL)\n");
     fprintf(stderr, "       -gui: Run with the video display window (no Glut/OpenGL)\n");
     fprintf(stderr, "       -kernel: Use kernels of the specified type (default symmetric).\n");
@@ -3708,6 +3743,7 @@ void Usage(const char *progname)
 	fprintf(stderr, "                 ability to continue tracking and to add further log data to the \n");
 	fprintf(stderr, "                 same file.\n");
 	fprintf(stderr, "       -check_bead_count_interval: Interaval in frames to check whether the current bead count is low.\n");
+	fprintf(stderr, "       -enable_internal_values: Output the regions sizes (pixels) and the sensitivity values for each tracker used in fluorescent autofind to the .csv file.\n");
     fprintf(stderr, "       source: The source file for tracking can be specified here (default is\n");
     fprintf(stderr, "                 a dialog box)\n");
     exit(-1);
@@ -4093,6 +4129,9 @@ int main(int argc, char *argv[])
     } else if (!strncmp(argv[i], "-check_bead_count_interval", strlen("-check_bead_count_interval"))) {
       if (++i >= argc) { Usage(argv[0]); }
       g_checkBeadCountInterval = atoi(argv[i]);
+    } else if (!strncmp(argv[i], "-enable_internal_values", strlen("-enable_internal_values"))) {
+        i++;
+        g_enable_internal_values = true;
     } else if (!strncmp(argv[i], "-append_from", strlen("-append_from"))) {
       if (++i >= argc) { Usage(argv[0]); }
 	  load_saved_file = true;

@@ -2707,7 +2707,8 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
           break;
         }
         spot_tracker_Z *z = default_z_tracker_creator();
-        Spot_Information *si = new Spot_Information(xy,z,false, count);
+        Spot_Information *si = new Spot_Information(xy,z);
+        si->set_region_size(count);
         if (si == NULL) {
           fprintf(stderr,"Tracker_Collection_Manager::autofind_fluorescent_beads_in(): Can't make Spot Information\n");
           break;
@@ -2719,7 +2720,6 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
           delete si;
         } else {
           d_trackers.push_back(si);
-          printf("create spot information with region %d\n", si->get_region_size());
         }
       }
     }
@@ -3028,6 +3028,12 @@ bool Tracker_Collection_Manager::mark_tracker_if_lost_in_fluorescence(Spot_Infor
     // value.
     image.read_pixel(x, y, val);
     //printf("    dbg Loc (%d,%d) val %lf, mean %lf, var %lf\n", x,y, val, mean, variance);
+    if (variance > 0) {
+        tracker->set_sensitivity( (val-mean)*(val-mean)/variance );
+    } else {
+        tracker->set_sensitivity( (val-mean)*(val-mean)/0.0001 );
+    }
+
     if ( (val < mean) ||
          ((val-mean)*(val-mean) <= variance * var_thresh) ) {
       tracker->lost(true);

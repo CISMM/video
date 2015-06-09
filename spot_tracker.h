@@ -719,7 +719,7 @@ protected:
 
 class Spot_Information {
 public:
-  Spot_Information(spot_tracker_XY *xytracker, spot_tracker_Z *ztracker, bool unofficial = false, int region_size = 0) {
+  Spot_Information(spot_tracker_XY *xytracker, spot_tracker_Z *ztracker, bool unofficial = false) {
     d_tracker_XY = xytracker;
     d_tracker_Z = ztracker;
     if (!unofficial) {
@@ -730,7 +730,8 @@ public:
         d_index = -1;
     }
     d_lost = false;
-    d_region_size = region_size;
+    d_region_size = 0;
+    d_sensitivity = 0.0;
   }
 
   ~Spot_Information() {
@@ -755,6 +756,10 @@ public:
 
   int get_region_size(void) const { return d_region_size; }
   void set_region_size(int region_size) { d_region_size = region_size; }
+
+  double get_sensitivity(void) const { return d_sensitivity; }
+  void set_sensitivity(double sensitivity) { d_sensitivity = sensitivity; }
+
   // The index to use for the next tracker that is created
   static unsigned get_static_index();
 
@@ -770,6 +775,7 @@ protected:
   static Semaphore      d_index_sem;        //< Semaphore for the following index.
   static unsigned	d_static_index;     //< The index to use for the next one (never to be re-used).
   int               d_region_size;
+  double            d_sensitivity;      //< The sensitivity value computed in fluorescent autofind. 
 };
 
 //----------------------------------------------------------------------------------
