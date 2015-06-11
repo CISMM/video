@@ -2203,6 +2203,11 @@ bool Tracker_Collection_Manager::set_active_tracker_index(unsigned which)
   return true;
 }
 
+void Tracker_Collection_Manager::set_lost_all_if_collide(bool value)
+{
+    d_lost_all_if_collide = value;
+}
+
 //----------------------------------------------------------------------------
 // Class to deal with storing a list of locations on the image
 
@@ -2598,11 +2603,11 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
     double maxi = 0, mini = 1e50;
     double curi;
     for (y = miny; y <= maxy; ++y) {
-      for (x = minx; x <= maxx; ++x) {
-        curi = s_image.read_pixel_nocheck(x, y);
-        if (curi > maxi) { maxi = curi; }
-        if (curi < mini) { mini = curi; }
-      }
+        for (x = minx; x <= maxx; ++x) {
+            curi = s_image.read_pixel_nocheck(x, y);
+            if (curi > maxi) { maxi = curi; }
+            if (curi < mini) { mini = curi; }
+        }
     }
     double threshold = mini + (maxi-mini)*thresh;
 
@@ -2611,18 +2616,18 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
     // -1 value means "no label yet selected".
     double_image *threshold_image = new double_image(minx, maxx, miny, maxy);
     if (threshold_image == NULL) {
-      fprintf(stderr,"Tracker_Collection_Manager::autofind_fluorescent_beads_in(): Out of memory\n");
-      return false;
+        fprintf(stderr,"Tracker_Collection_Manager::autofind_fluorescent_beads_in(): Out of memory\n");
+        return false;
     }
-    #pragma omp parallel for private(x)
+#pragma omp parallel for private(x)
     for (y = miny; y <= maxy; ++y) {
-      for (x = minx; x <= maxx; ++x) {
-        if (s_image.read_pixel_nocheck(x,y) >= threshold) {
-          threshold_image->write_pixel_nocheck(x, y, -1.0);
-        } else {
-          threshold_image->write_pixel_nocheck(x, y, 0.0);
+        for (x = minx; x <= maxx; ++x) {
+            if (s_image.read_pixel_nocheck(x,y) >= threshold) {
+                threshold_image->write_pixel_nocheck(x, y, -1.0);
+            } else {
+                threshold_image->write_pixel_nocheck(x, y, 0.0);
+            }
         }
-      }
     }
 
     // Go through the threshold image and label each component with a number
@@ -2632,12 +2637,12 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
     int index = 0;
     //printf("Looking for components.\n"); fflush(stdout);
     for (x =  minx; x <= maxx; x++) {
-      for (y = miny; y <= maxy; y++) {
-        if (threshold_image->read_pixel_nocheck(x,y) == -1) {
-          index++;
-          flood_connected_component(threshold_image, x,y, index);
+        for (y = miny; y <= maxy; y++) {
+            if (threshold_image->read_pixel_nocheck(x,y) == -1) {
+                index++;
+                flood_connected_component(threshold_image, x,y, index);
+            }
         }
-      }
     }
     //printf("Found %d components.\n", index); fflush(stdout);
 
@@ -2645,7 +2650,7 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
     // This keep the program from filling up all of memory and crashing.
     if ( (max_regions > 0) && (static_cast<unsigned>(index) > max_regions) ) {
         fprintf(stderr, "Warning:Tracker_Collection_Manager::autofind_fluorescent_beads_in(): found %d components, using %d\n",
-              index, max_regions);
+                index, max_regions);
         index = max_regions;
     }
 
@@ -2660,68 +2665,72 @@ bool Tracker_Collection_Manager::autofind_fluorescent_beads_in(const image_wrapp
     int comp;
     for (comp = 1; comp <= index; comp++) {
 
-      // Compute the center of mass for this component.  All components exist
-      // and have at least one pixel in them.
-      double cx = 0, cy = 0;
-      unsigned count = 0;
-      for (x = minx; x <= maxx; x++) {
-        for (y = miny; y <= maxy; y++) {
-          if (threshold_image->read_pixel_nocheck(x,y) == comp) {
-            count++;
-            cx += x;
-            cy += y;
-          }
+        // Compute the center of mass for this component.  All components exist
+        // and have at least one pixel in them.
+        double cx = 0, cy = 0;
+        unsigned count = 0;
+        for (x = minx; x <= maxx; x++) {
+            for (y = miny; y <= maxy; y++) {
+                if (threshold_image->read_pixel_nocheck(x,y) == comp) {
+                    count++;
+                    cx += x;
+                    cy += y;
+                }
+            }
         }
-      }
-      cx /= count;
-      cy /= count;
+        cx /= count;
+        cy /= count;
 
-      // check to make sure we don't already have a tracker too close to where
-      // we want to put the new one.
-      bool safe = true;
-      if (count >= max_region_size)
-      {
-          safe = false;
-      }
+        // check to make sure we don't already have a tracker too close to where
+        // we want to put the new one.
+        bool safe = true;
+        if (count >= max_region_size)
+        {
+            safe = false;
+        }
 
-      for (loop = d_trackers.begin(); loop != d_trackers.end(); loop++)  {
-        double curX, curY;
-        spot_tracker_XY *curTracker = (*loop)->xytracker();
-        curX = curTracker->get_x();
-        curY = curTracker->get_y();
-        if ( (cx >= curX - tooClose) && (cx <= curX + tooClose) &&
-             (cy >= curY - tooClose) && (cy <= curY + tooClose) ) {
-          safe = false;
+        for (loop = d_trackers.begin(); loop != d_trackers.end(); loop++)  {
+            double curX, curY;
+            spot_tracker_XY *curTracker = (*loop)->xytracker();
+            curX = curTracker->get_x();
+            curY = curTracker->get_y();
+            //if ( (cx >= curX - tooClose) && (cx <= curX + tooClose) &&
+            //        (cy >= curY - tooClose) && (cy <= curY + tooClose) ) {
+            if ((cx - curX)*(cx-curX) + (cy - curY)*(cy - curY) < tooClose * tooClose) {
+                safe = false;
+                if (d_lost_all_if_collide) {
+                    (*loop)->lost(true);
+                }
+            }
         }
-      }
-      // Check to make sure we aren't too close to the edge of the image.
-      double zone = d_min_border_distance;
-      if ( (cx < (minx) + zone) || (cx > (maxx) - zone) ||
-           (cy < (miny) + zone) || (cy > (maxy) - zone) ) {
-        safe = false;
-      }
-      if (safe) {
-        spot_tracker_XY *xy = d_xy_tracker_creator(cx, cy, d_default_radius);
-        if (xy == NULL) {
-          fprintf(stderr,"Tracker_Collection_Manager::autofind_fluorescent_beads_in(): Can't make XY tracker\n");
-          break;
+        // Check to make sure we aren't too close to the edge of the image.
+        double zone = d_min_border_distance;
+        if ( (cx < (minx) + zone) || (cx > (maxx) - zone) ||
+                (cy < (miny) + zone) || (cy > (maxy) - zone) ) {
+            safe = false;
         }
-        spot_tracker_Z *z = default_z_tracker_creator();
-        Spot_Information *si = new Spot_Information(xy,z);
-        si->set_region_size(count);
-        if (si == NULL) {
-          fprintf(stderr,"Tracker_Collection_Manager::autofind_fluorescent_beads_in(): Can't make Spot Information\n");
-          break;
+        if (safe) {
+            spot_tracker_XY *xy = d_xy_tracker_creator(cx, cy, d_default_radius);
+            if (xy == NULL) {
+                fprintf(stderr,"Tracker_Collection_Manager::autofind_fluorescent_beads_in(): Can't make XY tracker\n");
+                break;
+            }
+            spot_tracker_Z *z = default_z_tracker_creator();
+            Spot_Information *si = new Spot_Information(xy,z);
+            si->set_region_size(count);
+            if (si == NULL) {
+                fprintf(stderr,"Tracker_Collection_Manager::autofind_fluorescent_beads_in(): Can't make Spot Information\n");
+                break;
+            }
+            // XXX This should also check for lost in non-fluorescence...
+            mark_tracker_if_lost_in_fluorescence( si, s_image, var_thresh );
+            if (si->lost()) {
+                // Deleting the SpotInformation also deletes its trackers.
+                delete si;
+            } else {
+                d_trackers.push_back(si);
+            }
         }
-        // XXX This should also check for lost in non-fluorescence...
-        mark_tracker_if_lost_in_fluorescence( si, s_image, var_thresh );
-        if (si->lost()) {
-          // Deleting the SpotInformation also deletes its trackers.
-          delete si;
-        } else {
-          d_trackers.push_back(si);
-        }
-      }
     }
 
     // Clean up our temporary image.
@@ -3355,22 +3364,28 @@ unsigned Tracker_Collection_Manager::delete_edge_beads_in(const image_wrapper &s
 // tracks from earlier trackers.
 void Tracker_Collection_Manager::mark_colliding_beads_in(const image_wrapper &s_image)
 {
-  std::list<Spot_Information *>::iterator  loop;
-  for (loop = d_trackers.begin(); loop != d_trackers.end(); loop++) {
-    double x = (*loop)->xytracker()->get_x();
-    double y = (*loop)->xytracker()->get_y();
+    std::list<Spot_Information *>::iterator  loop;
+    for (loop = d_trackers.begin(); loop != d_trackers.end(); loop++) {
+        double x = (*loop)->xytracker()->get_x();
+        double y = (*loop)->xytracker()->get_y();
 
-    std::list<Spot_Information *>::iterator loop2;
-    double zone2 = d_min_bead_separation * d_min_bead_separation;
-    for (loop2 = d_trackers.begin(); loop2 != loop; loop2++) {
-      double x2 = (*loop2)->xytracker()->get_x();
-      double y2 = (*loop2)->xytracker()->get_y();
-      double dist2 = ( (x-x2)*(x-x2) + (y-y2)*(y-y2) );
-      if (dist2 < zone2) {
-        (*loop)->lost(true);
-      }
+        std::list<Spot_Information *>::iterator loop2;
+        double zone2 = d_min_bead_separation * d_min_bead_separation;
+        for (loop2 = d_trackers.begin(); loop2 != loop; loop2++) {
+            double x2 = (*loop2)->xytracker()->get_x();
+            double y2 = (*loop2)->xytracker()->get_y();
+            double dist2 = ( (x-x2)*(x-x2) + (y-y2)*(y-y2) );
+            if (dist2 < zone2) {
+                (*loop)->lost(true);
+                printf("id %d is lost\n", (*loop)->index());
+
+                if (d_lost_all_if_collide) {
+                    (*loop2)->lost(true);
+                    printf("id %d is also lost\n", (*loop2)->index());
+                }
+            }
+        }
     }
-  }
 }
 
 // Auto-deletes trackers that have gotten too close to another tracker.

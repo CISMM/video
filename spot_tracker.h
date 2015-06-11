@@ -844,7 +844,9 @@ public:
         , d_active_tracker(-1)
         , d_xy_tracker_creator(xycreator)
         , d_z_tracker_creator(zcreator)
-    { };
+    {
+        d_lost_all_if_collide = false;  
+    };
 
     // Clean up (delete trackers in our vector, etc.)
     ~Tracker_Collection_Manager();
@@ -877,6 +879,7 @@ public:
     // create symmetric XY trackers and no Z trackers.
     void set_xy_tracker_creator(TCM_XYTRACKER_CREATOR newxy);
     void set_z_tracker_creator(TCM_ZTRACKER_CREATOR newz);
+    void set_lost_all_if_collide(bool);
 
     //---------------------------------------------------------------------
     // Adds a new tracker using the default XY and Z tracker creation
@@ -1014,6 +1017,7 @@ protected:
     float                           d_default_fluorescence_lost_threshold;  // Default lost-tracking threshold for new beads
     unsigned                        d_color_index;          // Color index from the image.
     bool                            d_invert;               // Look for dark bead on bright background?
+    bool                            d_lost_all_if_collide;  // Mark all beads colliding to each other lost  
     std::list<Spot_Information *>   d_trackers;             // Trackers we're managing
     int                             d_active_tracker;       // Index of the active tracker, -1 if none.
     TCM_XYTRACKER_CREATOR           d_xy_tracker_creator;   // Used to make new trackers

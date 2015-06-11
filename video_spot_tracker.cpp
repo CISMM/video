@@ -3507,7 +3507,6 @@ bool load_trackers_from_file(const char *inname)
                     &center_intensity, &orientation, &length, &fit, &gaussian, &mean, &summed) <= 0) {
             fprintf(stderr, "load_trackers_from_file(): Bad data line: %s\n", line);
         }
-
     }
 
     if (frame_number == max_frame_number) {
@@ -3687,6 +3686,7 @@ void Usage(const char *progname)
     fprintf(stderr, "           [-load_state FILE] [-log_video N] [-continue_from FILE] [-append_from FILE]\n");
     fprintf(stderr, "           [roper|cooke|edt|diaginc|directx|directx640x480|filename]\n");
     fprintf(stderr, "           [-enable_internal_values]\n");
+    fprintf(stderr, "           [-lost_all_colliding_trackers]\n");
     fprintf(stderr, "       -nogui: Run without the video display window (no Glut/OpenGL)\n");
     fprintf(stderr, "       -gui: Run with the video display window (no Glut/OpenGL)\n");
     fprintf(stderr, "       -kernel: Use kernels of the specified type (default symmetric).\n");
@@ -3744,6 +3744,7 @@ void Usage(const char *progname)
 	fprintf(stderr, "                 same file.\n");
 	fprintf(stderr, "       -check_bead_count_interval: Interaval in frames to check whether the current bead count is low.\n");
 	fprintf(stderr, "       -enable_internal_values: Output the regions sizes (pixels) and the sensitivity values for each tracker used in fluorescent autofind to the .csv file.\n");
+	fprintf(stderr, "       -lost_all_colliding_trackers: When trackers get too close, mark all of them lost instead of leaving one behind.\n"); 
     fprintf(stderr, "       source: The source file for tracking can be specified here (default is\n");
     fprintf(stderr, "                 a dialog box)\n");
     exit(-1);
@@ -4130,8 +4131,10 @@ int main(int argc, char *argv[])
       if (++i >= argc) { Usage(argv[0]); }
       g_checkBeadCountInterval = atoi(argv[i]);
     } else if (!strncmp(argv[i], "-enable_internal_values", strlen("-enable_internal_values"))) {
-        i++;
         g_enable_internal_values = true;
+    } else if (!strncmp(argv[i], "-lost_all_colliding_trackers", strlen("-lost_all_colliding_trackers"))) {
+        g_trackers.set_lost_all_if_collide(true);
+        g_deleted_trackers.set_lost_all_if_collide(true);
     } else if (!strncmp(argv[i], "-append_from", strlen("-append_from"))) {
       if (++i >= argc) { Usage(argv[0]); }
 	  load_saved_file = true;
