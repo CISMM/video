@@ -156,6 +156,9 @@ endif (ImageMagick_FOUND)
 if (WIN32)
   OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" ON)
 endif (WIN32)
+if (WIN32)
+  OPTION(VIDEO_USE_DIRECTSHOW_APPS "Enable to build apps using the DirectShow reader" ON)
+endif (WIN32)
 
 # Configuration options controlling what gets included in the build.
 # Look up each of the camera-driver libraries.  If they are found, then turn them
@@ -442,6 +445,7 @@ if (VIDEO_USE_DIRECTSHOW)
 	FIND_PACKAGE(DirectShow REQUIRED)	# Need to have DirectShow SDK
 	# Add this if you can't compile without out.
 	# ADD_DEFINITIONS( -DCOINIT_DISABLE_OLE1DDE=0x4 )
+	if (VIDEO_USE_DIRECTSHOW_APPS)
 	ADD_LIBRARY (DirectShow_baseclasses
 		${DirectShow_BASECLASS_DIR}/amextra.cpp
 		${DirectShow_BASECLASS_DIR}/amfilter.cpp
@@ -473,16 +477,18 @@ if (VIDEO_USE_DIRECTSHOW)
 		${DirectShow_BASECLASS_DIR}/wxlist.cpp
 		${DirectShow_BASECLASS_DIR}/wxutil.cpp
 	)
+	endif (VIDEO_USE_DIRECTSHOW_APPS)
 
 	set (DX_SOURCES directx_camera_server.cpp directx_videofile_server.cpp)
 	set (DX_PUBLIC_HEADERS directx_camera_server.h directx_videofile_server.h)
 	ADD_LIBRARY (directx_library ${DX_SOURCES} ${DX_PUBLIC_HEADERS})
 	set_property(TARGET directx_library PROPERTY PUBLIC_HEADER ${DX_PUBLIC_HEADERS})
-	install(TARGETS DirectShow_baseclasses
-		ARCHIVE DESTINATION lib)
 	install(TARGETS directx_library
 		ARCHIVE DESTINATION lib
 		PUBLIC_HEADER DESTINATION include)
+	if (VIDEO_USE_DIRECTSHOW_APPS)
+	install(TARGETS DirectShow_baseclasses
+		ARCHIVE DESTINATION lib)
 	set (DirectShow_LIBS DirectShow_baseclasses directx_library)
 
 	SET(TARGET_NAME test_directx_library)
@@ -501,8 +507,10 @@ if (VIDEO_USE_DIRECTSHOW)
 		)
 	endif (VIDEO_USE_IMAGEMAGICK)
 	SET_TARGET_PROPERTIES(test_directx_library PROPERTIES SOLUTION_FOLDER tests)
+	endif (VIDEO_USE_DIRECTSHOW_APPS)
 
   if (VIDEO_BUILD_APPLICATIONS)
+	if (VIDEO_USE_DIRECTSHOW_APPS)
 	SET(TARGET_NAME stereo_spin)
 	ADD_EXECUTABLE(stereo_spin stereo_spin.cpp)
 	TARGET_LINK_LIBRARIES(stereo_spin
@@ -585,6 +593,7 @@ if (VIDEO_USE_DIRECTSHOW)
 	INCLUDE_DIRECTORIES(
 		${DirectShow_INCLUDE_DIRS}
 	)
+	endif (VIDEO_USE_DIRECTSHOW_APPS)
   endif (VIDEO_BUILD_APPLICATIONS)
 
 endif (VIDEO_USE_DIRECTSHOW)
