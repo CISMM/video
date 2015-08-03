@@ -730,6 +730,8 @@ public:
         d_index = -1;
     }
     d_lost = false;
+    d_region_size = 0;
+    d_sensitivity = 0.0;
   }
 
   ~Spot_Information() {
@@ -752,6 +754,12 @@ public:
   bool lost(void) const { return d_lost; };
   void lost(bool l) { d_lost = l; };
 
+  int get_region_size(void) const { return d_region_size; }
+  void set_region_size(int region_size) { d_region_size = region_size; }
+
+  double get_sensitivity(void) const { return d_sensitivity; }
+  void set_sensitivity(double sensitivity) { d_sensitivity = sensitivity; }
+
   // The index to use for the next tracker that is created
   static unsigned get_static_index();
 
@@ -766,6 +774,8 @@ protected:
   bool                  d_lost;             //< Am I lost?
   static Semaphore      d_index_sem;        //< Semaphore for the following index.
   static unsigned	d_static_index;     //< The index to use for the next one (never to be re-used).
+  int               d_region_size;
+  double            d_sensitivity;      //< The sensitivity value computed in fluorescent autofind. 
 };
 
 //----------------------------------------------------------------------------------
@@ -834,7 +844,9 @@ public:
         , d_active_tracker(-1)
         , d_xy_tracker_creator(xycreator)
         , d_z_tracker_creator(zcreator)
-    { };
+    {
+        d_lost_all_if_collide = false;  
+    };
 
     // Clean up (delete trackers in our vector, etc.)
     ~Tracker_Collection_Manager();
@@ -867,6 +879,7 @@ public:
     // create symmetric XY trackers and no Z trackers.
     void set_xy_tracker_creator(TCM_XYTRACKER_CREATOR newxy);
     void set_z_tracker_creator(TCM_ZTRACKER_CREATOR newz);
+    void set_lost_all_if_collide(bool);
 
     //---------------------------------------------------------------------
     // Adds a new tracker using the default XY and Z tracker creation
@@ -1004,6 +1017,7 @@ protected:
     float                           d_default_fluorescence_lost_threshold;  // Default lost-tracking threshold for new beads
     unsigned                        d_color_index;          // Color index from the image.
     bool                            d_invert;               // Look for dark bead on bright background?
+    bool                            d_lost_all_if_collide;  // Mark all beads colliding to each other lost  
     std::list<Spot_Information *>   d_trackers;             // Trackers we're managing
     int                             d_active_tracker;       // Index of the active tracker, -1 if none.
     TCM_XYTRACKER_CREATOR           d_xy_tracker_creator;   // Used to make new trackers
