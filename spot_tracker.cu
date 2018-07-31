@@ -71,7 +71,7 @@ static bool VST_ensure_cuda_ready(const VST_cuda_image_buffer &inbuf)
     
     // Allocate a buffer to be used on the GPU.  It will be
     // copied from host memory.
-    if ( (inbuf.nx != g_cuda_fromhost_nx) || (inbuf.ny != g_cuda_fromhost_nx) ) {
+    if ( (inbuf.nx != g_cuda_fromhost_nx) || (inbuf.ny != g_cuda_fromhost_ny) ) {
 	    
 #ifdef	USE_TEXTURE
 		if (g_cuda_fromhost_array != NULL) {
