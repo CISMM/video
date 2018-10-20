@@ -1,0 +1,5 @@
+Logging info: Rename this file to sc2_cam.log, in order to enable logging.
+              Logging consumes time and should not be enabled permanently.
+              sc2_cam.log will be overwritten at startup of a session.
+              If you like to have more than one session logged, rename this file
+              to sc2_cam_a.log. If both exist sc2_cam_a.log will be used.
