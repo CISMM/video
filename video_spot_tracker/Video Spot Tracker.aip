@@ -1,14 +1,17 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<DOCUMENT Type="Advanced Installer" CreateVersion="13.2" version="13.2" Modules="simple" RootPath="." Language="en" Id="{CC2F8709-EE09-4021-AAC7-31883E97B290}">
+<DOCUMENT Type="Advanced Installer" CreateVersion="13.2" version="15.4" Modules="simple" RootPath="." Language="en" Id="{CC2F8709-EE09-4021-AAC7-31883E97B290}">
+  <COMPONENT cid="caphyon.advinst.msicomp.ProjectOptionsComponent">
+    <ROW Name="HiddenItems" Value="AppXAppDetailsComponent;AppXCapabilitiesComponent;AppXDependenciesComponent;AppXProductDetailsComponent;AppXVisualAssetsComponent;AppXAppDeclarationsComponent;AppXUriRulesComponent"/>
+  </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiPropsComponent">
     <ROW Property="AI_BITMAP_DISPLAY_MODE" Value="0"/>
     <ROW Property="AI_UPGRADE" Value="No"/>
-    <ROW Property="ALLUSERS" Value="1"/>
+    <ROW Property="ALLUSERS" Value="1" MultiBuildValue="DefaultBuild:2"/>
     <ROW Property="ARPCOMMENTS" Value="This installer database contains the logic and data required to install [|ProductName]." ValueLocId="*"/>
     <ROW Property="Manufacturer" Value="CISMM"/>
     <ROW Property="ProductCode" Value="1033:{6246FC66-9F67-4C17-953D-085346EF2CB2} " Type="16"/>
     <ROW Property="ProductLanguage" Value="1033"/>
-    <ROW Property="ProductName" Value="Video Spot Tracker"/>
+    <ROW Property="ProductName" Value="Video_Spot_Tracker"/>
     <ROW Property="ProductVersion" Value="8.1.1" Type="32"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND"/>
     <ROW Property="UpgradeCode" Value="{C2677448-6A81-4913-B692-9C0778CAB161}"/>
@@ -26,6 +29,18 @@
     <ROW Directory="DesktopFolder" Directory_Parent="TARGETDIR" DefaultDir="DESKTO~1|DesktopFolder" IsPseudoRoot="1"/>
     <ROW Directory="SHORTCUTDIR" Directory_Parent="TARGETDIR" DefaultDir="SHORTC~1|SHORTCUTDIR" IsPseudoRoot="1"/>
     <ROW Directory="TARGETDIR" DefaultDir="SourceDir"/>
+    <ROW Directory="dde1.1_Dir" Directory_Parent="tcl8.3_Dir" DefaultDir="dde1.1"/>
+    <ROW Directory="demos_Dir" Directory_Parent="tk8.3_Dir" DefaultDir="demos"/>
+    <ROW Directory="encoding_Dir" Directory_Parent="tcl8.3_Dir" DefaultDir="encoding"/>
+    <ROW Directory="http1.0_Dir" Directory_Parent="tcl8.3_Dir" DefaultDir="http1.0"/>
+    <ROW Directory="http2.3_Dir" Directory_Parent="tcl8.3_Dir" DefaultDir="http2.3"/>
+    <ROW Directory="images_1_Dir" Directory_Parent="tk8.3_Dir" DefaultDir="images"/>
+    <ROW Directory="images_Dir" Directory_Parent="demos_Dir" DefaultDir="images"/>
+    <ROW Directory="msgcat1.1_Dir" Directory_Parent="tcl8.3_Dir" DefaultDir="msgcat1.1"/>
+    <ROW Directory="opt0.4_Dir" Directory_Parent="tcl8.3_Dir" DefaultDir="opt0.4"/>
+    <ROW Directory="reg1.0_Dir" Directory_Parent="tcl8.3_Dir" DefaultDir="reg1.0"/>
+    <ROW Directory="tcl8.3_Dir" Directory_Parent="APPDIR" DefaultDir="tcl8.3"/>
+    <ROW Directory="tk8.3_Dir" Directory_Parent="APPDIR" DefaultDir="tk8.3"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiCompsComponent">
     <ROW Component="PCOLtDlg.dll" ComponentId="{E7BBD2D5-F0E0-40A4-A438-01B3E7840A38}" Directory_="APPDIR" Attributes="0" KeyPath="PCOLtDlg.dll"/>
@@ -36,6 +51,10 @@
     <ROW Component="SC2_DLG.dll" ComponentId="{2A11B5A3-4231-4DB7-B4E2-23E0BBA35941}" Directory_="APPDIR" Attributes="0" KeyPath="SC2_DLG.dll"/>
     <ROW Component="SHORTCUTDIR" ComponentId="{8456C1C2-E911-4244-BDEA-492DAFC9558C}" Directory_="SHORTCUTDIR" Attributes="0"/>
     <ROW Component="SpotCam.dll" ComponentId="{DE613410-CBB2-4DD8-855C-E60440B21325}" Directory_="APPDIR" Attributes="0" KeyPath="SpotCam.dll"/>
+    <ROW Component="arrow.tcl" ComponentId="{4E0F9C83-D259-4B4B-BAC0-31927D8DBCBC}" Directory_="demos_Dir" Attributes="0" KeyPath="arrow.tcl" Type="0"/>
+    <ROW Component="ascii.enc" ComponentId="{38C4E9B7-4A4F-4478-9D3C-6D4ADD03AADD}" Directory_="encoding_Dir" Attributes="0" KeyPath="ascii.enc" Type="0"/>
+    <ROW Component="auto.tcl" ComponentId="{C37A0CB4-A5CB-481C-9669-689C0646F23C}" Directory_="tcl8.3_Dir" Attributes="0" KeyPath="auto.tcl" Type="0"/>
+    <ROW Component="bgerror.tcl" ComponentId="{66BF9183-4AA3-4A3B-93F1-3ECBD4315CAF}" Directory_="tk8.3_Dir" Attributes="0" KeyPath="bgerror.tcl" Type="0"/>
     <ROW Component="circle_of_spots.jpg" ComponentId="{F0457041-43E6-4924-8B71-6CC36EB63F9C}" Directory_="APPDIR" Attributes="0" KeyPath="circle_of_spots.jpg" Type="0"/>
     <ROW Component="cudart32_80.dll" ComponentId="{2C01CF58-743F-48D3-99C5-CBC325A54CAD}" Directory_="APPDIR" Attributes="0" KeyPath="cudart32_80.dll"/>
     <ROW Component="cv100.dll" ComponentId="{3D046E30-48F4-464C-9E73-629B1C351B2D}" Directory_="APPDIR" Attributes="0" KeyPath="cv100.dll"/>
@@ -43,14 +62,24 @@
     <ROW Component="cvcam100.dll" ComponentId="{3DA042B6-0937-4D84-A475-35BBAE01A145}" Directory_="APPDIR" Attributes="0" KeyPath="cvcam100.dll"/>
     <ROW Component="cxcore100.dll" ComponentId="{36A46C66-1086-4C75-8D28-491F98D8B23A}" Directory_="APPDIR" Attributes="0" KeyPath="cxcore100.dll"/>
     <ROW Component="cxts001.dll" ComponentId="{EF738A97-E663-4035-88B3-C25C20604D05}" Directory_="APPDIR" Attributes="0" KeyPath="cxts001.dll"/>
+    <ROW Component="earth.gif" ComponentId="{D2EA98D4-5004-4C70-A0CE-CE541AB0A702}" Directory_="images_Dir" Attributes="0" KeyPath="earth.gif" Type="0"/>
     <ROW Component="edt_mmx.dll" ComponentId="{21B3412B-88BE-4C34-95F4-B97381582532}" Directory_="APPDIR" Attributes="0" KeyPath="edt_mmx.dll"/>
     <ROW Component="glut32.dll" ComponentId="{6522633C-29DA-45DA-A13F-746777F75FC2}" Directory_="APPDIR" Attributes="0" KeyPath="glut32.dll"/>
     <ROW Component="glut32_UNC.dll" ComponentId="{9F8F36C3-564C-46DE-B37F-AAA9791C902E}" Directory_="APPDIR" Attributes="0" KeyPath="glut32_UNC.dll"/>
     <ROW Component="highgui100.dll" ComponentId="{FE52119A-1904-48C7-A37E-9EC9B8D8744F}" Directory_="APPDIR" Attributes="0" KeyPath="highgui100.dll"/>
+    <ROW Component="http.tcl" ComponentId="{2071C077-7612-4BAA-B413-727C82853D84}" Directory_="http1.0_Dir" Attributes="0" KeyPath="http.tcl" Type="0"/>
+    <ROW Component="http.tcl_1" ComponentId="{3A85EF42-EFAC-4DFB-9CAA-21BFA974117E}" Directory_="http2.3_Dir" Attributes="0" KeyPath="http.tcl_1" Type="0"/>
     <ROW Component="libguide40.dll" ComponentId="{CE12333D-6589-47E6-BC17-BA7B4BA75A52}" Directory_="APPDIR" Attributes="0" KeyPath="libguide40.dll"/>
+    <ROW Component="logo.eps" ComponentId="{85A1920F-EB11-4F40-8CF2-47AAD537EEDB}" Directory_="images_1_Dir" Attributes="0" KeyPath="logo.eps" Type="0"/>
     <ROW Component="ml100.dll" ComponentId="{4861DE37-4EA5-45CC-9084-844ADE0D6AEE}" Directory_="APPDIR" Attributes="0" KeyPath="ml100.dll"/>
+    <ROW Component="msgcat.tcl" ComponentId="{8E5678C3-7739-4ED2-9835-A3B59493FD0F}" Directory_="msgcat1.1_Dir" Attributes="0" KeyPath="msgcat.tcl" Type="0"/>
+    <ROW Component="optparse.tcl" ComponentId="{159C6C3C-F9AA-4D8F-BF3E-26975BE50EE2}" Directory_="opt0.4_Dir" Attributes="0" KeyPath="optparse.tcl" Type="0"/>
     <ROW Component="pdvlib.dll" ComponentId="{5D659EA6-4B17-4224-95BA-B84953BF202C}" Directory_="APPDIR" Attributes="0" KeyPath="pdvlib.dll"/>
+    <ROW Component="pkgIndex.tcl" ComponentId="{03923D22-B9B3-4E68-AED9-83FFE396BF6B}" Directory_="dde1.1_Dir" Attributes="0" KeyPath="pkgIndex.tcl" Type="0"/>
+    <ROW Component="pkgIndex.tcl_1" ComponentId="{FE6D3F39-3B8B-4B67-8071-DA59A18AC66E}" Directory_="reg1.0_Dir" Attributes="0" KeyPath="pkgIndex.tcl_5" Type="0"/>
     <ROW Component="tcl83.dll" ComponentId="{A2BDF1F6-5D3C-43B9-BE6D-AEA7370A28E6}" Directory_="APPDIR" Attributes="0" KeyPath="tcl83.dll"/>
+    <ROW Component="tcldde83.dll" ComponentId="{04E9045A-2170-4495-B78D-CEEEAC6547DE}" Directory_="dde1.1_Dir" Attributes="0" KeyPath="tcldde83.dll"/>
+    <ROW Component="tclreg83.dll" ComponentId="{AC1726C1-A9FC-4E5B-BF9A-73A2342000AD}" Directory_="reg1.0_Dir" Attributes="0" KeyPath="tclreg83.dll"/>
     <ROW Component="tk83.dll" ComponentId="{A61D32AD-0DBE-4E04-B305-2782DB6953A5}" Directory_="APPDIR" Attributes="0" KeyPath="tk83.dll"/>
     <ROW Component="video_spot_tracker.exe" ComponentId="{E67D22DB-D233-4AD0-ACE2-F669C7A14811}" Directory_="APPDIR" Attributes="0" KeyPath="video_spot_tracker.exe"/>
     <ROW Component="video_spot_tracker.html" ComponentId="{CD0F07DB-6B09-4A4B-A7E3-A2319C81C774}" Directory_="APPDIR" Attributes="0" KeyPath="video_spot_tracker.html"/>
@@ -59,7 +88,7 @@
     <ROW Component="video_spot_tracker_nogui.exe" ComponentId="{DBF8AEAA-8468-4A5A-9C9D-D789CADFB7BF}" Directory_="APPDIR" Attributes="0" KeyPath="video_spot_tracker_nogui.exe"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiFeatsComponent">
-    <ROW Feature="MainFeature" Title="MainFeature" Description="Description" Display="1" Level="1" Directory_="APPDIR" Attributes="0" Components="PCOLtDlg.dll ProductInformation Pv_icl32.dll Pvcam32.dll SC2_Cam.dll SC2_DLG.dll SHORTCUTDIR SpotCam.dll circle_of_spots.jpg cudart32_80.dll cv100.dll cvaux100.dll cvcam100.dll cxcore100.dll cxts001.dll edt_mmx.dll glut32.dll glut32_UNC.dll highgui100.dll libguide40.dll ml100.dll pdvlib.dll tcl83.dll tk83.dll video_spot_tracker.exe video_spot_tracker.html video_spot_tracker_CUDA.exe video_spot_tracker_local.bat video_spot_tracker_nogui.exe"/>
+    <ROW Feature="MainFeature" Title="MainFeature" Description="Description" Display="1" Level="1" Directory_="APPDIR" Attributes="0" Components="PCOLtDlg.dll ProductInformation Pv_icl32.dll Pvcam32.dll SC2_Cam.dll SC2_DLG.dll SHORTCUTDIR SpotCam.dll arrow.tcl ascii.enc auto.tcl bgerror.tcl circle_of_spots.jpg cudart32_80.dll cv100.dll cvaux100.dll cvcam100.dll cxcore100.dll cxts001.dll earth.gif edt_mmx.dll glut32.dll glut32_UNC.dll highgui100.dll http.tcl http.tcl_1 libguide40.dll logo.eps ml100.dll msgcat.tcl optparse.tcl pdvlib.dll pkgIndex.tcl pkgIndex.tcl_1 tcl83.dll tcldde83.dll tclreg83.dll tk83.dll video_spot_tracker.exe video_spot_tracker.html video_spot_tracker_CUDA.exe video_spot_tracker_local.bat video_spot_tracker_nogui.exe"/>
     <ATTRIBUTE name="CurrentFeature" value="MainFeature"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiFilesComponent">
@@ -68,11 +97,61 @@
     <ROW File="PCOLtDlg.dll" Component_="PCOLtDlg.dll" FileName="PCOLtDlg.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\bin\PCOLtDlg.dll" SelfReg="false" NextFile="pdvlib.dll"/>
     <ROW File="Pv_icl32.dll" Component_="Pv_icl32.dll" FileName="Pv_icl32.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\bin\Pv_icl32.dll" SelfReg="false" NextFile="Pvcam32.dll"/>
     <ROW File="Pvcam32.dll" Component_="Pvcam32.dll" FileName="Pvcam32.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\bin\Pvcam32.dll" SelfReg="false" NextFile="SC2_Cam.dll"/>
+    <ROW File="README" Component_="arrow.tcl" FileName="README" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\README" SelfReg="false" NextFile="rmt"/>
+    <ROW File="README_1" Component_="logo.eps" FileName="README" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\images\README" SelfReg="false" NextFile="tag.txt_2"/>
     <ROW File="SC2_Cam.dll" Component_="SC2_Cam.dll" FileName="SC2_Cam.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\bin\SC2_Cam.dll" SelfReg="false" NextFile="SC2_DLG.dll"/>
     <ROW File="SC2_Cam.txt" Component_="circle_of_spots.jpg" FileName="SC2_Cam.txt" Attributes="0" SourcePath="..\SC2_Cam.txt" SelfReg="false" NextFile="video_spot_tracker_local.bat"/>
     <ROW File="SC2_DLG.dll" Component_="SC2_DLG.dll" FileName="SC2_DLG.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\bin\SC2_DLG.dll" SelfReg="false" NextFile="SpotCam.dll"/>
     <ROW File="SpotCam.dll" Component_="SpotCam.dll" FileName="SpotCam.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\bin\SpotCam.dll" SelfReg="false" NextFile="tcl83.dll"/>
+    <ROW File="arrow.tcl" Component_="arrow.tcl" FileName="arrow.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\arrow.tcl" SelfReg="false" NextFile="bind.tcl"/>
+    <ROW File="ascii.enc" Component_="ascii.enc" FileName="ascii.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\ascii.enc" SelfReg="false" NextFile="big5.enc"/>
+    <ROW File="auto.tcl" Component_="auto.tcl" FileName="auto.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\auto.tcl" SelfReg="false" NextFile="pkgIndex.tcl"/>
+    <ROW File="bgerror.tcl" Component_="bgerror.tcl" FileName="bgerror.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\bgerror.tcl" SelfReg="false" NextFile="button.tcl"/>
+    <ROW File="big5.enc" Component_="ascii.enc" FileName="big5.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\big5.enc" SelfReg="false" NextFile="cp1250.enc"/>
+    <ROW File="bind.tcl" Component_="arrow.tcl" FileName="bind.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\bind.tcl" SelfReg="false" NextFile="bitmap.tcl"/>
+    <ROW File="bitmap.tcl" Component_="arrow.tcl" FileName="bitmap.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\bitmap.tcl" SelfReg="false" NextFile="browse"/>
+    <ROW File="browse" Component_="arrow.tcl" FileName="browse" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\browse" SelfReg="false" NextFile="button.tcl_1"/>
+    <ROW File="button.tcl" Component_="bgerror.tcl" FileName="button.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\button.tcl" SelfReg="false" NextFile="choosedir.tcl"/>
+    <ROW File="button.tcl_1" Component_="arrow.tcl" FileName="button.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\button.tcl" SelfReg="false" NextFile="check.tcl"/>
+    <ROW File="check.tcl" Component_="arrow.tcl" FileName="check.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\check.tcl" SelfReg="false" NextFile="clrpick.tcl_1"/>
+    <ROW File="choosedir.tcl" Component_="bgerror.tcl" FileName="CHOOSE~1.TCL|choosedir.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\choosedir.tcl" SelfReg="false" NextFile="clrpick.tcl"/>
     <ROW File="circle_of_spots.jpg" Component_="circle_of_spots.jpg" FileName="CIRCLE~1.JPG|circle_of_spots.jpg" Attributes="0" SourcePath="circle_of_spots.jpg" SelfReg="false" NextFile="GUI.jpg"/>
+    <ROW File="clrpick.tcl" Component_="bgerror.tcl" FileName="clrpick.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\clrpick.tcl" SelfReg="false" NextFile="comdlg.tcl"/>
+    <ROW File="clrpick.tcl_1" Component_="arrow.tcl" FileName="clrpick.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\clrpick.tcl" SelfReg="false" NextFile="colors.tcl"/>
+    <ROW File="colors.tcl" Component_="arrow.tcl" FileName="colors.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\colors.tcl" SelfReg="false" NextFile="cscroll.tcl"/>
+    <ROW File="comdlg.tcl" Component_="bgerror.tcl" FileName="comdlg.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\comdlg.tcl" SelfReg="false" NextFile="console.tcl"/>
+    <ROW File="console.tcl" Component_="bgerror.tcl" FileName="console.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\console.tcl" SelfReg="false" NextFile="arrow.tcl"/>
+    <ROW File="cp1250.enc" Component_="ascii.enc" FileName="cp1250.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp1250.enc" SelfReg="false" NextFile="cp1251.enc"/>
+    <ROW File="cp1251.enc" Component_="ascii.enc" FileName="cp1251.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp1251.enc" SelfReg="false" NextFile="cp1252.enc"/>
+    <ROW File="cp1252.enc" Component_="ascii.enc" FileName="cp1252.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp1252.enc" SelfReg="false" NextFile="cp1253.enc"/>
+    <ROW File="cp1253.enc" Component_="ascii.enc" FileName="cp1253.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp1253.enc" SelfReg="false" NextFile="cp1254.enc"/>
+    <ROW File="cp1254.enc" Component_="ascii.enc" FileName="cp1254.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp1254.enc" SelfReg="false" NextFile="cp1255.enc"/>
+    <ROW File="cp1255.enc" Component_="ascii.enc" FileName="cp1255.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp1255.enc" SelfReg="false" NextFile="cp1256.enc"/>
+    <ROW File="cp1256.enc" Component_="ascii.enc" FileName="cp1256.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp1256.enc" SelfReg="false" NextFile="cp1257.enc"/>
+    <ROW File="cp1257.enc" Component_="ascii.enc" FileName="cp1257.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp1257.enc" SelfReg="false" NextFile="cp1258.enc"/>
+    <ROW File="cp1258.enc" Component_="ascii.enc" FileName="cp1258.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp1258.enc" SelfReg="false" NextFile="cp437.enc"/>
+    <ROW File="cp437.enc" Component_="ascii.enc" FileName="cp437.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp437.enc" SelfReg="false" NextFile="cp737.enc"/>
+    <ROW File="cp737.enc" Component_="ascii.enc" FileName="cp737.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp737.enc" SelfReg="false" NextFile="cp775.enc"/>
+    <ROW File="cp775.enc" Component_="ascii.enc" FileName="cp775.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp775.enc" SelfReg="false" NextFile="cp850.enc"/>
+    <ROW File="cp850.enc" Component_="ascii.enc" FileName="cp850.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp850.enc" SelfReg="false" NextFile="cp852.enc"/>
+    <ROW File="cp852.enc" Component_="ascii.enc" FileName="cp852.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp852.enc" SelfReg="false" NextFile="cp855.enc"/>
+    <ROW File="cp855.enc" Component_="ascii.enc" FileName="cp855.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp855.enc" SelfReg="false" NextFile="cp857.enc"/>
+    <ROW File="cp857.enc" Component_="ascii.enc" FileName="cp857.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp857.enc" SelfReg="false" NextFile="cp860.enc"/>
+    <ROW File="cp860.enc" Component_="ascii.enc" FileName="cp860.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp860.enc" SelfReg="false" NextFile="cp861.enc"/>
+    <ROW File="cp861.enc" Component_="ascii.enc" FileName="cp861.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp861.enc" SelfReg="false" NextFile="cp862.enc"/>
+    <ROW File="cp862.enc" Component_="ascii.enc" FileName="cp862.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp862.enc" SelfReg="false" NextFile="cp863.enc"/>
+    <ROW File="cp863.enc" Component_="ascii.enc" FileName="cp863.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp863.enc" SelfReg="false" NextFile="cp864.enc"/>
+    <ROW File="cp864.enc" Component_="ascii.enc" FileName="cp864.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp864.enc" SelfReg="false" NextFile="cp865.enc"/>
+    <ROW File="cp865.enc" Component_="ascii.enc" FileName="cp865.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp865.enc" SelfReg="false" NextFile="cp866.enc"/>
+    <ROW File="cp866.enc" Component_="ascii.enc" FileName="cp866.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp866.enc" SelfReg="false" NextFile="cp869.enc"/>
+    <ROW File="cp869.enc" Component_="ascii.enc" FileName="cp869.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp869.enc" SelfReg="false" NextFile="cp874.enc"/>
+    <ROW File="cp874.enc" Component_="ascii.enc" FileName="cp874.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp874.enc" SelfReg="false" NextFile="cp932.enc"/>
+    <ROW File="cp932.enc" Component_="ascii.enc" FileName="cp932.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp932.enc" SelfReg="false" NextFile="cp936.enc"/>
+    <ROW File="cp936.enc" Component_="ascii.enc" FileName="cp936.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp936.enc" SelfReg="false" NextFile="cp949.enc"/>
+    <ROW File="cp949.enc" Component_="ascii.enc" FileName="cp949.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp949.enc" SelfReg="false" NextFile="cp950.enc"/>
+    <ROW File="cp950.enc" Component_="ascii.enc" FileName="cp950.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\cp950.enc" SelfReg="false" NextFile="dingbats.enc"/>
+    <ROW File="cscroll.tcl" Component_="arrow.tcl" FileName="cscroll.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\cscroll.tcl" SelfReg="false" NextFile="ctext.tcl"/>
+    <ROW File="ctext.tcl" Component_="arrow.tcl" FileName="ctext.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\ctext.tcl" SelfReg="false" NextFile="dialog1.tcl"/>
     <ROW File="cudart32_80.dll" Component_="cudart32_80.dll" FileName="CUDART~1.DLL|cudart32_80.dll" Attributes="0" SourcePath="..\..\..\..\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v8.0\bin\cudart32_80.dll" SelfReg="false" NextFile="cv100.dll"/>
     <ROW File="cv100.dll" Component_="cv100.dll" FileName="cv100.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\OpenCV\bin\cv100.dll" SelfReg="false" NextFile="cvaux100.dll"/>
     <ROW File="cvaux100.dll" Component_="cvaux100.dll" FileName="cvaux100.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\OpenCV\bin\cvaux100.dll" SelfReg="false" NextFile="cvcam100.dll"/>
@@ -80,39 +159,182 @@
     <ROW File="cxcore100.dll" Component_="cxcore100.dll" FileName="CXCORE~1.DLL|cxcore100.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\OpenCV\bin\cxcore100.dll" SelfReg="false" NextFile="cxts001.dll"/>
     <ROW File="cxts001.dll" Component_="cxts001.dll" FileName="cxts001.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\OpenCV\bin\cxts001.dll" SelfReg="false" NextFile="highgui100.dll"/>
     <ROW File="deleted_tracker.wav" Component_="circle_of_spots.jpg" FileName="DELETE~1.WAV|deleted_tracker.wav" Attributes="0" SourcePath="..\deleted_tracker.wav" SelfReg="false" NextFile="end_of_video.wav"/>
+    <ROW File="dialog.tcl" Component_="bgerror.tcl" FileName="dialog.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\dialog.tcl" SelfReg="false" NextFile="entry.tcl"/>
+    <ROW File="dialog1.tcl" Component_="arrow.tcl" FileName="dialog1.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\dialog1.tcl" SelfReg="false" NextFile="dialog2.tcl"/>
+    <ROW File="dialog2.tcl" Component_="arrow.tcl" FileName="dialog2.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\dialog2.tcl" SelfReg="false" NextFile="entry1.tcl"/>
+    <ROW File="dingbats.enc" Component_="ascii.enc" FileName="dingbats.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\dingbats.enc" SelfReg="false" NextFile="euccn.enc"/>
+    <ROW File="earth.gif" Component_="earth.gif" FileName="earth.gif" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\images\earth.gif" SelfReg="false" NextFile="earthris.gif"/>
+    <ROW File="earthris.gif" Component_="earth.gif" FileName="earthris.gif" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\images\earthris.gif" SelfReg="false" NextFile="face.bmp"/>
     <ROW File="edt_mmx.dll" Component_="edt_mmx.dll" FileName="edt_mmx.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\bin\edt_mmx.dll" SelfReg="false" NextFile="glut32.dll"/>
     <ROW File="end_of_video.wav" Component_="circle_of_spots.jpg" FileName="END_OF~1.WAV|end_of_video.wav" Attributes="0" SourcePath="..\end_of_video.wav" SelfReg="false" NextFile="lost.wav"/>
+    <ROW File="entry.tcl" Component_="bgerror.tcl" FileName="entry.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\entry.tcl" SelfReg="false" NextFile="focus.tcl"/>
+    <ROW File="entry1.tcl" Component_="arrow.tcl" FileName="entry1.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\entry1.tcl" SelfReg="false" NextFile="entry2.tcl"/>
+    <ROW File="entry2.tcl" Component_="arrow.tcl" FileName="entry2.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\entry2.tcl" SelfReg="false" NextFile="filebox.tcl"/>
+    <ROW File="euccn.enc" Component_="ascii.enc" FileName="euc-cn.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\euc-cn.enc" SelfReg="false" NextFile="eucjp.enc"/>
+    <ROW File="eucjp.enc" Component_="ascii.enc" FileName="euc-jp.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\euc-jp.enc" SelfReg="false" NextFile="euckr.enc"/>
+    <ROW File="euckr.enc" Component_="ascii.enc" FileName="euc-kr.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\euc-kr.enc" SelfReg="false" NextFile="gb12345.enc"/>
+    <ROW File="face.bmp" Component_="earth.gif" FileName="face.bmp" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\images\face.bmp" SelfReg="false" NextFile="flagdown.bmp"/>
+    <ROW File="filebox.tcl" Component_="arrow.tcl" FileName="filebox.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\filebox.tcl" SelfReg="false" NextFile="floor.tcl"/>
+    <ROW File="flagdown.bmp" Component_="earth.gif" FileName="flagdown.bmp" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\images\flagdown.bmp" SelfReg="false" NextFile="flagup.bmp"/>
+    <ROW File="flagup.bmp" Component_="earth.gif" FileName="flagup.bmp" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\images\flagup.bmp" SelfReg="false" NextFile="gray25.bmp"/>
+    <ROW File="floor.tcl" Component_="arrow.tcl" FileName="floor.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\floor.tcl" SelfReg="false" NextFile="form.tcl"/>
+    <ROW File="focus.tcl" Component_="bgerror.tcl" FileName="focus.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\focus.tcl" SelfReg="false" NextFile="logo.eps"/>
+    <ROW File="form.tcl" Component_="arrow.tcl" FileName="form.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\form.tcl" SelfReg="false" NextFile="hello"/>
+    <ROW File="gb12345.enc" Component_="ascii.enc" FileName="gb12345.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\gb12345.enc" SelfReg="false" NextFile="gb1988.enc"/>
+    <ROW File="gb1988.enc" Component_="ascii.enc" FileName="gb1988.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\gb1988.enc" SelfReg="false" NextFile="gb2312.enc"/>
+    <ROW File="gb2312.enc" Component_="ascii.enc" FileName="gb2312.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\gb2312.enc" SelfReg="false" NextFile="iso2022jp.enc"/>
     <ROW File="glut32.dll" Component_="glut32.dll" FileName="glut32.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\bin\glut32.dll" SelfReg="false" NextFile="glut32_UNC.dll"/>
     <ROW File="glut32_UNC.dll" Component_="glut32_UNC.dll" FileName="GLUT32~1.DLL|glut32_UNC.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\bin\glut32_UNC.dll" SelfReg="false" NextFile="PCOLtDlg.dll"/>
+    <ROW File="gray25.bmp" Component_="earth.gif" FileName="gray25.bmp" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\images\gray25.bmp" SelfReg="false" NextFile="letters.bmp"/>
+    <ROW File="hello" Component_="arrow.tcl" FileName="hello" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\hello" SelfReg="false" NextFile="hscale.tcl"/>
     <ROW File="highgui100.dll" Component_="highgui100.dll" FileName="HIGHGU~1.DLL|highgui100.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\OpenCV\bin\highgui100.dll" SelfReg="false" NextFile="libguide40.dll"/>
+    <ROW File="history.tcl" Component_="auto.tcl" FileName="history.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\history.tcl" SelfReg="false" NextFile="http.tcl"/>
+    <ROW File="hscale.tcl" Component_="arrow.tcl" FileName="hscale.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\hscale.tcl" SelfReg="false" NextFile="icon.tcl"/>
+    <ROW File="http.tcl" Component_="http.tcl" FileName="http.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\http1.0\http.tcl" SelfReg="false" NextFile="pkgIndex.tcl_1"/>
+    <ROW File="http.tcl_1" Component_="http.tcl_1" FileName="http.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\http2.3\http.tcl" SelfReg="false" NextFile="pkgIndex.tcl_2"/>
+    <ROW File="icon.tcl" Component_="arrow.tcl" FileName="icon.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\icon.tcl" SelfReg="false" NextFile="image1.tcl"/>
     <ROW File="icon16.bmp" Component_="circle_of_spots.jpg" FileName="icon16.bmp" Attributes="0" SourcePath="icon16.bmp" SelfReg="false" NextFile="icon32.bmp"/>
     <ROW File="icon32.bmp" Component_="circle_of_spots.jpg" FileName="icon32.bmp" Attributes="0" SourcePath="icon32.bmp" SelfReg="false" NextFile="icon48.bmp"/>
     <ROW File="icon48.bmp" Component_="circle_of_spots.jpg" FileName="icon48.bmp" Attributes="0" SourcePath="icon48.bmp" SelfReg="false" NextFile="icon64.bmp"/>
     <ROW File="icon64.bmp" Component_="circle_of_spots.jpg" FileName="icon64.bmp" Attributes="0" SourcePath="icon64.bmp" SelfReg="false" NextFile="icons.ico"/>
     <ROW File="icons.ico" Component_="circle_of_spots.jpg" FileName="icons.ico" Attributes="0" SourcePath="icons.ico" SelfReg="false" NextFile="Installation_README.txt"/>
+    <ROW File="image1.tcl" Component_="arrow.tcl" FileName="image1.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\image1.tcl" SelfReg="false" NextFile="image2.tcl"/>
+    <ROW File="image2.tcl" Component_="arrow.tcl" FileName="image2.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\image2.tcl" SelfReg="false" NextFile="earth.gif"/>
+    <ROW File="init.tcl" Component_="auto.tcl" FileName="init.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\init.tcl" SelfReg="false" NextFile="ldAout.tcl"/>
+    <ROW File="iso2022.enc" Component_="ascii.enc" FileName="iso2022.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\iso2022.enc" SelfReg="false" NextFile="iso88591.enc"/>
+    <ROW File="iso2022jp.enc" Component_="ascii.enc" FileName="ISO202~1.ENC|iso2022-jp.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\iso2022-jp.enc" SelfReg="false" NextFile="iso2022kr.enc"/>
+    <ROW File="iso2022kr.enc" Component_="ascii.enc" FileName="ISO202~2.ENC|iso2022-kr.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\iso2022-kr.enc" SelfReg="false" NextFile="iso2022.enc"/>
+    <ROW File="iso88591.enc" Component_="ascii.enc" FileName="ISO885~1.ENC|iso8859-1.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\iso8859-1.enc" SelfReg="false" NextFile="iso88592.enc"/>
+    <ROW File="iso88592.enc" Component_="ascii.enc" FileName="ISO885~2.ENC|iso8859-2.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\iso8859-2.enc" SelfReg="false" NextFile="iso88593.enc"/>
+    <ROW File="iso88593.enc" Component_="ascii.enc" FileName="ISO885~3.ENC|iso8859-3.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\iso8859-3.enc" SelfReg="false" NextFile="iso88594.enc"/>
+    <ROW File="iso88594.enc" Component_="ascii.enc" FileName="ISO885~4.ENC|iso8859-4.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\iso8859-4.enc" SelfReg="false" NextFile="iso88595.enc"/>
+    <ROW File="iso88595.enc" Component_="ascii.enc" FileName="ISO885~5.ENC|iso8859-5.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\iso8859-5.enc" SelfReg="false" NextFile="iso88596.enc"/>
+    <ROW File="iso88596.enc" Component_="ascii.enc" FileName="ISO885~6.ENC|iso8859-6.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\iso8859-6.enc" SelfReg="false" NextFile="iso88597.enc"/>
+    <ROW File="iso88597.enc" Component_="ascii.enc" FileName="ISO885~7.ENC|iso8859-7.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\iso8859-7.enc" SelfReg="false" NextFile="iso88598.enc"/>
+    <ROW File="iso88598.enc" Component_="ascii.enc" FileName="ISO885~8.ENC|iso8859-8.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\iso8859-8.enc" SelfReg="false" NextFile="iso88599.enc"/>
+    <ROW File="iso88599.enc" Component_="ascii.enc" FileName="ISO885~9.ENC|iso8859-9.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\iso8859-9.enc" SelfReg="false" NextFile="jis0201.enc"/>
+    <ROW File="items.tcl" Component_="arrow.tcl" FileName="items.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\items.tcl" SelfReg="false" NextFile="ixset"/>
+    <ROW File="ixset" Component_="arrow.tcl" FileName="ixset" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\ixset" SelfReg="false" NextFile="label.tcl"/>
+    <ROW File="jis0201.enc" Component_="ascii.enc" FileName="jis0201.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\jis0201.enc" SelfReg="false" NextFile="jis0208.enc"/>
+    <ROW File="jis0208.enc" Component_="ascii.enc" FileName="jis0208.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\jis0208.enc" SelfReg="false" NextFile="jis0212.enc"/>
+    <ROW File="jis0212.enc" Component_="ascii.enc" FileName="jis0212.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\jis0212.enc" SelfReg="false" NextFile="koi8r.enc"/>
     <ROW File="kernel.jpg" Component_="circle_of_spots.jpg" FileName="kernel.jpg" Attributes="0" SourcePath="kernel.jpg" SelfReg="false" NextFile="kymo_graph.jpg"/>
+    <ROW File="koi8r.enc" Component_="ascii.enc" FileName="koi8-r.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\koi8-r.enc" SelfReg="false" NextFile="ksc5601.enc"/>
+    <ROW File="ksc5601.enc" Component_="ascii.enc" FileName="ksc5601.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\ksc5601.enc" SelfReg="false" NextFile="macCentEuro.enc"/>
     <ROW File="kymo_graph.jpg" Component_="circle_of_spots.jpg" FileName="KYMO_G~1.JPG|kymo_graph.jpg" Attributes="0" SourcePath="kymo_graph.jpg" SelfReg="false" NextFile="kymo_main.jpg"/>
     <ROW File="kymo_main.jpg" Component_="circle_of_spots.jpg" FileName="KYMO_M~1.JPG|kymo_main.jpg" Attributes="0" SourcePath="kymo_main.jpg" SelfReg="false" NextFile="kymo_trace.jpg"/>
     <ROW File="kymo_trace.jpg" Component_="circle_of_spots.jpg" FileName="KYMO_T~1.JPG|kymo_trace.jpg" Attributes="0" SourcePath="kymo_trace.jpg" SelfReg="false" NextFile="log.jpg"/>
+    <ROW File="label.tcl" Component_="arrow.tcl" FileName="label.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\label.tcl" SelfReg="false" NextFile="license.terms"/>
+    <ROW File="ldAout.tcl" Component_="auto.tcl" FileName="ldAout.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\ldAout.tcl" SelfReg="false" NextFile="msgcat.tcl"/>
+    <ROW File="letters.bmp" Component_="earth.gif" FileName="letters.bmp" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\images\letters.bmp" SelfReg="false" NextFile="noletter.bmp"/>
     <ROW File="libguide40.dll" Component_="libguide40.dll" FileName="LIBGUI~1.DLL|libguide40.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\OpenCV\bin\libguide40.dll" SelfReg="false" NextFile="ml100.dll"/>
+    <ROW File="license.terms" Component_="arrow.tcl" FileName="LICENS~1.TER|license.terms" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\license.terms" SelfReg="false" NextFile="menu.tcl"/>
+    <ROW File="license.terms_1" Component_="bgerror.tcl" FileName="LICENS~1.TER|license.terms" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\license.terms" SelfReg="false" NextFile="listbox.tcl"/>
+    <ROW File="listbox.tcl" Component_="bgerror.tcl" FileName="listbox.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\listbox.tcl" SelfReg="false" NextFile="menu.tcl_1"/>
     <ROW File="log.jpg" Component_="circle_of_spots.jpg" FileName="log.jpg" Attributes="0" SourcePath="log.jpg" SelfReg="false" NextFile="lost_and_found.jpg"/>
+    <ROW File="logo.eps" Component_="logo.eps" FileName="logo.eps" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\images\logo.eps" SelfReg="false" NextFile="logo100.gif"/>
+    <ROW File="logo100.gif" Component_="logo.eps" FileName="logo100.gif" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\images\logo100.gif" SelfReg="false" NextFile="logo64.gif"/>
+    <ROW File="logo64.gif" Component_="logo.eps" FileName="logo64.gif" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\images\logo64.gif" SelfReg="false" NextFile="logoLarge.gif"/>
+    <ROW File="logoLarge.gif" Component_="logo.eps" FileName="LOGOLA~1.GIF|logoLarge.gif" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\images\logoLarge.gif" SelfReg="false" NextFile="logoMed.gif"/>
+    <ROW File="logoMed.gif" Component_="logo.eps" FileName="logoMed.gif" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\images\logoMed.gif" SelfReg="false" NextFile="pwrdLogo.eps"/>
     <ROW File="lost.wav" Component_="circle_of_spots.jpg" FileName="lost.wav" Attributes="0" SourcePath="..\lost.wav" SelfReg="false" NextFile="SC2_Cam.txt"/>
     <ROW File="lost_and_found.jpg" Component_="circle_of_spots.jpg" FileName="LOST_A~1.JPG|lost_and_found.jpg" Attributes="0" SourcePath="lost_and_found.jpg" SelfReg="false" NextFile="raw_dialog.jpg"/>
+    <ROW File="macCentEuro.enc" Component_="ascii.enc" FileName="MACCEN~1.ENC|macCentEuro.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\macCentEuro.enc" SelfReg="false" NextFile="macCroatian.enc"/>
+    <ROW File="macCroatian.enc" Component_="ascii.enc" FileName="MACCRO~1.ENC|macCroatian.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\macCroatian.enc" SelfReg="false" NextFile="macCyrillic.enc"/>
+    <ROW File="macCyrillic.enc" Component_="ascii.enc" FileName="MACCYR~1.ENC|macCyrillic.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\macCyrillic.enc" SelfReg="false" NextFile="macDingbats.enc"/>
+    <ROW File="macDingbats.enc" Component_="ascii.enc" FileName="MACDIN~1.ENC|macDingbats.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\macDingbats.enc" SelfReg="false" NextFile="macGreek.enc"/>
+    <ROW File="macGreek.enc" Component_="ascii.enc" FileName="macGreek.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\macGreek.enc" SelfReg="false" NextFile="macIceland.enc"/>
+    <ROW File="macIceland.enc" Component_="ascii.enc" FileName="MACICE~1.ENC|macIceland.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\macIceland.enc" SelfReg="false" NextFile="macJapan.enc"/>
+    <ROW File="macJapan.enc" Component_="ascii.enc" FileName="macJapan.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\macJapan.enc" SelfReg="false" NextFile="macRoman.enc"/>
+    <ROW File="macRoman.enc" Component_="ascii.enc" FileName="macRoman.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\macRoman.enc" SelfReg="false" NextFile="macRomania.enc"/>
+    <ROW File="macRomania.enc" Component_="ascii.enc" FileName="MACROM~1.ENC|macRomania.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\macRomania.enc" SelfReg="false" NextFile="macThai.enc"/>
+    <ROW File="macThai.enc" Component_="ascii.enc" FileName="macThai.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\macThai.enc" SelfReg="false" NextFile="macTurkish.enc"/>
+    <ROW File="macTurkish.enc" Component_="ascii.enc" FileName="MACTUR~1.ENC|macTurkish.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\macTurkish.enc" SelfReg="false" NextFile="macUkraine.enc"/>
+    <ROW File="macUkraine.enc" Component_="ascii.enc" FileName="MACUKR~1.ENC|macUkraine.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\macUkraine.enc" SelfReg="false" NextFile="shiftjis.enc"/>
+    <ROW File="menu.tcl" Component_="arrow.tcl" FileName="menu.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\menu.tcl" SelfReg="false" NextFile="menubu.tcl"/>
+    <ROW File="menu.tcl_1" Component_="bgerror.tcl" FileName="menu.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\menu.tcl" SelfReg="false" NextFile="msgbox.tcl_1"/>
+    <ROW File="menubu.tcl" Component_="arrow.tcl" FileName="menubu.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\menubu.tcl" SelfReg="false" NextFile="msgbox.tcl"/>
     <ROW File="ml100.dll" Component_="ml100.dll" FileName="ml100.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\OpenCV\bin\ml100.dll" SelfReg="false" NextFile="circle_of_spots.jpg"/>
+    <ROW File="msgbox.tcl" Component_="arrow.tcl" FileName="msgbox.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\msgbox.tcl" SelfReg="false" NextFile="plot.tcl"/>
+    <ROW File="msgbox.tcl_1" Component_="bgerror.tcl" FileName="msgbox.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\msgbox.tcl" SelfReg="false" NextFile="obsolete.tcl"/>
+    <ROW File="msgcat.tcl" Component_="msgcat.tcl" FileName="msgcat.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\msgcat1.1\msgcat.tcl" SelfReg="false" NextFile="pkgIndex.tcl_3"/>
+    <ROW File="noletter.bmp" Component_="earth.gif" FileName="noletter.bmp" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\images\noletter.bmp" SelfReg="false" NextFile="pattern.bmp"/>
+    <ROW File="obsolete.tcl" Component_="bgerror.tcl" FileName="obsolete.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\obsolete.tcl" SelfReg="false" NextFile="optMenu.tcl"/>
+    <ROW File="optMenu.tcl" Component_="bgerror.tcl" FileName="optMenu.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\optMenu.tcl" SelfReg="false" NextFile="palette.tcl"/>
+    <ROW File="optparse.tcl" Component_="optparse.tcl" FileName="optparse.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\opt0.4\optparse.tcl" SelfReg="false" NextFile="pkgIndex.tcl_4"/>
+    <ROW File="package.tcl" Component_="auto.tcl" FileName="package.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\package.tcl" SelfReg="false" NextFile="parray.tcl"/>
+    <ROW File="palette.tcl" Component_="bgerror.tcl" FileName="palette.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\palette.tcl" SelfReg="false" NextFile="safetk.tcl"/>
+    <ROW File="parray.tcl" Component_="auto.tcl" FileName="parray.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\parray.tcl" SelfReg="false" NextFile="pkgIndex.tcl_5"/>
+    <ROW File="pattern.bmp" Component_="earth.gif" FileName="pattern.bmp" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\images\pattern.bmp" SelfReg="false" NextFile="tag.txt"/>
     <ROW File="pdvlib.dll" Component_="pdvlib.dll" FileName="pdvlib.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\bin\pdvlib.dll" SelfReg="false" NextFile="Pv_icl32.dll"/>
+    <ROW File="pkgIndex.tcl" Component_="pkgIndex.tcl" FileName="pkgIndex.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\dde1.1\pkgIndex.tcl" SelfReg="false" NextFile="tcldde83.dll"/>
+    <ROW File="pkgIndex.tcl_1" Component_="http.tcl" FileName="pkgIndex.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\http1.0\pkgIndex.tcl" SelfReg="false" NextFile="http.tcl_1"/>
+    <ROW File="pkgIndex.tcl_2" Component_="http.tcl_1" FileName="pkgIndex.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\http2.3\pkgIndex.tcl" SelfReg="false" NextFile="init.tcl"/>
+    <ROW File="pkgIndex.tcl_3" Component_="msgcat.tcl" FileName="pkgIndex.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\msgcat1.1\pkgIndex.tcl" SelfReg="false" NextFile="optparse.tcl"/>
+    <ROW File="pkgIndex.tcl_4" Component_="optparse.tcl" FileName="pkgIndex.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\opt0.4\pkgIndex.tcl" SelfReg="false" NextFile="package.tcl"/>
+    <ROW File="pkgIndex.tcl_5" Component_="pkgIndex.tcl_1" FileName="pkgIndex.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\reg1.0\pkgIndex.tcl" SelfReg="false" NextFile="tclreg83.dll"/>
+    <ROW File="plot.tcl" Component_="arrow.tcl" FileName="plot.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\plot.tcl" SelfReg="false" NextFile="puzzle.tcl"/>
+    <ROW File="puzzle.tcl" Component_="arrow.tcl" FileName="puzzle.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\puzzle.tcl" SelfReg="false" NextFile="radio.tcl"/>
+    <ROW File="pwrdLogo.eps" Component_="logo.eps" FileName="pwrdLogo.eps" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\images\pwrdLogo.eps" SelfReg="false" NextFile="pwrdLogo100.gif"/>
+    <ROW File="pwrdLogo100.gif" Component_="logo.eps" FileName="PWRDLO~1.GIF|pwrdLogo100.gif" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\images\pwrdLogo100.gif" SelfReg="false" NextFile="pwrdLogo150.gif"/>
+    <ROW File="pwrdLogo150.gif" Component_="logo.eps" FileName="PWRDLO~2.GIF|pwrdLogo150.gif" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\images\pwrdLogo150.gif" SelfReg="false" NextFile="pwrdLogo175.gif"/>
+    <ROW File="pwrdLogo175.gif" Component_="logo.eps" FileName="PWRDLO~3.GIF|pwrdLogo175.gif" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\images\pwrdLogo175.gif" SelfReg="false" NextFile="pwrdLogo200.gif"/>
+    <ROW File="pwrdLogo200.gif" Component_="logo.eps" FileName="PWRDLO~4.GIF|pwrdLogo200.gif" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\images\pwrdLogo200.gif" SelfReg="false" NextFile="pwrdLogo75.gif"/>
+    <ROW File="pwrdLogo75.gif" Component_="logo.eps" FileName="PWRDLO~5.GIF|pwrdLogo75.gif" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\images\pwrdLogo75.gif" SelfReg="false" NextFile="README_1"/>
+    <ROW File="radio.tcl" Component_="arrow.tcl" FileName="radio.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\radio.tcl" SelfReg="false" NextFile="README"/>
     <ROW File="raw_dialog.jpg" Component_="circle_of_spots.jpg" FileName="RAW_DI~1.JPG|raw_dialog.jpg" Attributes="0" SourcePath="raw_dialog.jpg" SelfReg="false" NextFile="red_green_blue.jpg"/>
     <ROW File="red_green_blue.jpg" Component_="circle_of_spots.jpg" FileName="RED_GR~1.JPG|red_green_blue.jpg" Attributes="0" SourcePath="red_green_blue.jpg" SelfReg="false" NextFile="rod3.jpg"/>
+    <ROW File="rmt" Component_="arrow.tcl" FileName="rmt" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\rmt" SelfReg="false" NextFile="rolodex"/>
     <ROW File="rod3.jpg" Component_="circle_of_spots.jpg" FileName="rod3.jpg" Attributes="0" SourcePath="rod3.jpg" SelfReg="false" NextFile="small_area.jpg"/>
+    <ROW File="rolodex" Component_="arrow.tcl" FileName="rolodex" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\rolodex" SelfReg="false" NextFile="ruler.tcl"/>
+    <ROW File="ruler.tcl" Component_="arrow.tcl" FileName="ruler.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\ruler.tcl" SelfReg="false" NextFile="sayings.tcl"/>
+    <ROW File="russ_widgets.tcl" Component_="circle_of_spots.jpg" FileName="RUSS_W~1.TCL|russ_widgets.tcl" Attributes="0" SourcePath="..\russ_widgets.tcl" SelfReg="false" NextFile="video_spot_tracker.tcl"/>
+    <ROW File="safe.tcl" Component_="auto.tcl" FileName="safe.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\safe.tcl" SelfReg="false" NextFile="tclIndex"/>
+    <ROW File="safetk.tcl" Component_="bgerror.tcl" FileName="safetk.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\safetk.tcl" SelfReg="false" NextFile="scale.tcl"/>
+    <ROW File="sayings.tcl" Component_="arrow.tcl" FileName="sayings.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\sayings.tcl" SelfReg="false" NextFile="search.tcl"/>
+    <ROW File="scale.tcl" Component_="bgerror.tcl" FileName="scale.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\scale.tcl" SelfReg="false" NextFile="scrlbar.tcl"/>
+    <ROW File="scrlbar.tcl" Component_="bgerror.tcl" FileName="scrlbar.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\scrlbar.tcl" SelfReg="false" NextFile="tag.txt_3"/>
+    <ROW File="search.tcl" Component_="arrow.tcl" FileName="search.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\search.tcl" SelfReg="false" NextFile="square"/>
+    <ROW File="shiftjis.enc" Component_="ascii.enc" FileName="shiftjis.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\shiftjis.enc" SelfReg="false" NextFile="symbol.enc"/>
     <ROW File="small_area.jpg" Component_="circle_of_spots.jpg" FileName="SMALL_~1.JPG|small_area.jpg" Attributes="0" SourcePath="small_area.jpg" SelfReg="false" NextFile="three_tracks.jpg"/>
+    <ROW File="square" Component_="arrow.tcl" FileName="square" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\square" SelfReg="false" NextFile="states.tcl"/>
+    <ROW File="states.tcl" Component_="arrow.tcl" FileName="states.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\states.tcl" SelfReg="false" NextFile="style.tcl"/>
+    <ROW File="style.tcl" Component_="arrow.tcl" FileName="style.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\style.tcl" SelfReg="false" NextFile="tag.txt_1"/>
+    <ROW File="symbol.enc" Component_="ascii.enc" FileName="symbol.enc" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\encoding\symbol.enc" SelfReg="false" NextFile="history.tcl"/>
+    <ROW File="tag.txt" Component_="earth.gif" FileName="tag.txt" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\images\tag.txt" SelfReg="false" NextFile="tcllogo.gif"/>
+    <ROW File="tag.txt_1" Component_="arrow.tcl" FileName="tag.txt" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\tag.txt" SelfReg="false" NextFile="tclIndex_1"/>
+    <ROW File="tag.txt_2" Component_="logo.eps" FileName="tag.txt" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\images\tag.txt" SelfReg="false" NextFile="taiku.gif"/>
+    <ROW File="tag.txt_3" Component_="bgerror.tcl" FileName="tag.txt" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\tag.txt" SelfReg="false" NextFile="tclIndex_2"/>
+    <ROW File="taiku.gif" Component_="logo.eps" FileName="tai-ku.gif" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\images\tai-ku.gif" SelfReg="false" NextFile="license.terms_1"/>
     <ROW File="tcl83.dll" Component_="tcl83.dll" FileName="tcl83.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\bin\tcl83.dll" SelfReg="false" NextFile="tk83.dll"/>
+    <ROW File="tclIndex" Component_="auto.tcl" FileName="tclIndex" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\tclIndex" SelfReg="false" NextFile="word.tcl"/>
+    <ROW File="tclIndex_1" Component_="arrow.tcl" FileName="tclIndex" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\tclIndex" SelfReg="false" NextFile="tcolor"/>
+    <ROW File="tclIndex_2" Component_="bgerror.tcl" FileName="tclIndex" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\tclIndex" SelfReg="false" NextFile="tearoff.tcl"/>
+    <ROW File="tcldde83.dll" Component_="tcldde83.dll" FileName="tcldde83.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\dde1.1\tcldde83.dll" SelfReg="false" NextFile="ascii.enc"/>
+    <ROW File="tcllogo.gif" Component_="earth.gif" FileName="tcllogo.gif" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\images\tcllogo.gif" SelfReg="false" NextFile="teapot.ppm"/>
+    <ROW File="tclreg83.dll" Component_="tclreg83.dll" FileName="tclreg83.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\reg1.0\tclreg83.dll" SelfReg="false" NextFile="safe.tcl"/>
+    <ROW File="tcolor" Component_="arrow.tcl" FileName="tcolor" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\tcolor" SelfReg="false" NextFile="text.tcl"/>
+    <ROW File="teapot.ppm" Component_="earth.gif" FileName="teapot.ppm" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\images\teapot.ppm" SelfReg="false" NextFile="items.tcl"/>
+    <ROW File="tearoff.tcl" Component_="bgerror.tcl" FileName="tearoff.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\tearoff.tcl" SelfReg="false" NextFile="text.tcl_1"/>
+    <ROW File="text.tcl" Component_="arrow.tcl" FileName="text.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\text.tcl" SelfReg="false" NextFile="timer"/>
+    <ROW File="text.tcl_1" Component_="bgerror.tcl" FileName="text.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\text.tcl" SelfReg="false" NextFile="tk.tcl"/>
     <ROW File="three_tracks.jpg" Component_="circle_of_spots.jpg" FileName="THREE_~1.JPG|three_tracks.jpg" Attributes="0" SourcePath="three_tracks.jpg" SelfReg="false" NextFile="tracker_type.jpg"/>
+    <ROW File="timer" Component_="arrow.tcl" FileName="timer" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\timer" SelfReg="false" NextFile="twind.tcl"/>
+    <ROW File="tk.tcl" Component_="bgerror.tcl" FileName="tk.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\tk.tcl" SelfReg="false" NextFile="tkfbox.tcl"/>
     <ROW File="tk83.dll" Component_="tk83.dll" FileName="tk83.dll" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\bin\tk83.dll" SelfReg="false" NextFile="cudart32_80.dll"/>
+    <ROW File="tkfbox.tcl" Component_="bgerror.tcl" FileName="tkfbox.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\tkfbox.tcl" SelfReg="false" NextFile="xmfbox.tcl"/>
     <ROW File="tracker_type.jpg" Component_="circle_of_spots.jpg" FileName="TRACKE~1.JPG|tracker_type.jpg" Attributes="0" SourcePath="tracker_type.jpg" SelfReg="false" NextFile="video_spot_tracker.html"/>
+    <ROW File="twind.tcl" Component_="arrow.tcl" FileName="twind.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\twind.tcl" SelfReg="false" NextFile="vscale.tcl"/>
     <ROW File="video_spot_tracker.exe" Component_="video_spot_tracker.exe" FileName="VIDEO_~1.EXE|video_spot_tracker.exe" Attributes="0" SourcePath="..\..\..\vs2013\video\Release\video_spot_tracker.exe" SelfReg="false" NextFile="video_spot_tracker_CUDA.exe" DigSign="true"/>
     <ROW File="video_spot_tracker.html" Component_="video_spot_tracker.html" FileName="VIDEO_~1.HTM|video_spot_tracker.html" Attributes="0" SourcePath="video_spot_tracker.html" SelfReg="false" NextFile="deleted_tracker.wav"/>
+    <ROW File="video_spot_tracker.tcl" Component_="circle_of_spots.jpg" FileName="VIDEO_~1.TCL|video_spot_tracker.tcl" Attributes="0" SourcePath="..\video_spot_tracker.tcl" SelfReg="false"/>
     <ROW File="video_spot_tracker_CUDA.exe" Component_="video_spot_tracker_CUDA.exe" FileName="VIDEO_~2.EXE|video_spot_tracker_CUDA.exe" Attributes="0" SourcePath="..\..\..\vs2013\video\Release\video_spot_tracker_CUDA.exe" SelfReg="false" NextFile="video_spot_tracker_nogui.exe" DigSign="true"/>
-    <ROW File="video_spot_tracker_local.bat" Component_="video_spot_tracker_local.bat" FileName="VIDEO_~1.BAT|video_spot_tracker_local.bat" Attributes="0" SourcePath="..\video_spot_tracker_local.bat" SelfReg="false"/>
+    <ROW File="video_spot_tracker_local.bat" Component_="video_spot_tracker_local.bat" FileName="VIDEO_~1.BAT|video_spot_tracker_local.bat" Attributes="0" SourcePath="..\video_spot_tracker_local.bat" SelfReg="false" NextFile="auto.tcl"/>
     <ROW File="video_spot_tracker_nogui.exe" Component_="video_spot_tracker_nogui.exe" FileName="VIDEO_~3.EXE|video_spot_tracker_nogui.exe" Attributes="0" SourcePath="..\..\..\vs2013\video\Release\video_spot_tracker_nogui.exe" SelfReg="false" NextFile="edt_mmx.dll" DigSign="true"/>
+    <ROW File="vscale.tcl" Component_="arrow.tcl" FileName="vscale.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\vscale.tcl" SelfReg="false" NextFile="widget"/>
+    <ROW File="widget" Component_="arrow.tcl" FileName="widget" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\demos\widget" SelfReg="false" NextFile="dialog.tcl"/>
+    <ROW File="word.tcl" Component_="auto.tcl" FileName="word.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tcl8.3\word.tcl" SelfReg="false" NextFile="bgerror.tcl"/>
+    <ROW File="xmfbox.tcl" Component_="bgerror.tcl" FileName="xmfbox.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\xmfbox.tcl" SelfReg="false" NextFile="russ_widgets.tcl"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.BuildComponent">
     <ROW BuildKey="DefaultBuild" BuildName="DefaultBuild" BuildOrder="1" BuildType="0" PackageFileName="setup_video_spot_tracker_v08_01_01" Languages="en" InstallationType="4" UseLargeSchema="true"/>
@@ -136,6 +358,7 @@
     <ROW Fragment="WelcomeDlg.aip" Path="&lt;AI_THEMES&gt;classic\fragments\WelcomeDlg.aip"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiBinaryComponent">
+    <ROW Name="ShortcutFlags.dll" SourcePath="&lt;AI_CUSTACTS&gt;ShortcutFlags.dll"/>
     <ROW Name="aicustact.dll" SourcePath="&lt;AI_CUSTACTS&gt;aicustact.dll"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiControlEventComponent">
@@ -166,15 +389,24 @@
     <ROW Directory_="SHORTCUTDIR" Component_="SHORTCUTDIR" ManualDelete="false"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiCustActComponent">
+    <ROW Action="AI_ApplyShortcutFlags" Type="3073" Source="ShortcutFlags.dll" Target="UpdateShortcutFlags" WithoutSeq="true"/>
     <ROW Action="AI_DpiContentScale" Type="1" Source="aicustact.dll" Target="DpiContentScale"/>
     <ROW Action="AI_EnableDebugLog" Type="321" Source="aicustact.dll" Target="EnableDebugLog"/>
     <ROW Action="AI_InstallModeCheck" Type="1" Source="aicustact.dll" Target="UpdateInstallMode" WithoutSeq="true"/>
     <ROW Action="AI_PREPARE_UPGRADE" Type="65" Source="aicustact.dll" Target="PrepareUpgrade"/>
+    <ROW Action="AI_PinShortcuts" Type="1" Source="ShortcutFlags.dll" Target="PinShortcuts"/>
+    <ROW Action="AI_PinToStartScreen" Type="1025" Source="ShortcutFlags.dll" Target="PinToStartScreen" WithoutSeq="true"/>
+    <ROW Action="AI_PinToTaskbar" Type="1025" Source="ShortcutFlags.dll" Target="PinToTaskbar" WithoutSeq="true"/>
+    <ROW Action="AI_PrepareShortcutFlags" Type="1" Source="ShortcutFlags.dll" Target="PrepareActionData"/>
     <ROW Action="AI_ResolveKnownFolders" Type="1" Source="aicustact.dll" Target="AI_ResolveKnownFolders"/>
+    <ROW Action="AI_SETMIXINSTLOCATION" Type="1" Source="aicustact.dll" Target="MixedAllUsersInstallLocation"/>
     <ROW Action="AI_SHOW_LOG" Type="65" Source="aicustact.dll" Target="LaunchLogFile" WithoutSeq="true"/>
     <ROW Action="AI_STORE_LOCATION" Type="51" Source="ARPINSTALLLOCATION" Target="[APPDIR]"/>
-    <ROW Action="SET_APPDIR" Type="307" Source="APPDIR" Target="[ProgramFilesFolder][Manufacturer]\[ProductName]"/>
-    <ROW Action="SET_SHORTCUTDIR" Type="307" Source="SHORTCUTDIR" Target="[ProgramMenuFolder][ProductName]" MultiBuildTarget="DefaultBuild:[Manufacturer][ProductName][Productversion]"/>
+    <ROW Action="AI_UnpinFromStartScreen" Type="1025" Source="ShortcutFlags.dll" Target="UnpinFromStartScreen" WithoutSeq="true"/>
+    <ROW Action="AI_UnpinFromTaskbar" Type="1025" Source="ShortcutFlags.dll" Target="UnpinFromTaskbar" WithoutSeq="true"/>
+    <ROW Action="AI_UnpinShortcuts" Type="1" Source="ShortcutFlags.dll" Target="UnpinShortcuts"/>
+    <ROW Action="SET_APPDIR" Type="307" Source="APPDIR" Target="[ProgramFilesFolder][Manufacturer]\[ProductName]" MultiBuildTarget="DefaultBuild:[AI_UserProgramFiles][Manufacturer]\[ProductName]"/>
+    <ROW Action="SET_SHORTCUTDIR" Type="307" Source="SHORTCUTDIR" Target="[ProgramMenuFolder][ProductName]" MultiBuildTarget="DefaultBuild:[ProgramMenuFolder][Manufacturer]\[ProductName]_v[ProductVersion]"/>
     <ROW Action="SET_TARGETDIR_TO_APPDIR" Type="51" Source="TARGETDIR" Target="[APPDIR]"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiIconsComponent">
@@ -185,11 +417,16 @@
     <ROW Action="AI_PREPARE_UPGRADE" Condition="AI_UPGRADE=&quot;No&quot; AND (Not Installed)" Sequence="1399"/>
     <ROW Action="AI_ResolveKnownFolders" Sequence="52"/>
     <ROW Action="AI_EnableDebugLog" Sequence="51"/>
+    <ROW Action="AI_SETMIXINSTLOCATION" Sequence="749"/>
+    <ROW Action="AI_PrepareShortcutFlags" Condition="(VersionNT &gt; 501) AND ((NOT Installed) OR (Installed AND (REMOVE&lt;&gt;&quot;ALL&quot;) AND (AI_INSTALL_MODE&lt;&gt;&quot;Remove&quot;)))" Sequence="4501"/>
+    <ROW Action="AI_PinShortcuts" Condition="(VersionNT &gt; 600) AND ((NOT Installed) OR (Installed AND (REMOVE&lt;&gt;&quot;ALL&quot;) AND (AI_INSTALL_MODE&lt;&gt;&quot;Remove&quot;)))" Sequence="6499"/>
+    <ROW Action="AI_UnpinShortcuts" Condition="(VersionNT &gt; 600) AND (REMOVE = &quot;ALL&quot;)" Sequence="3199"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiInstallUISequenceComponent">
     <ROW Action="AI_ResolveKnownFolders" Sequence="53"/>
     <ROW Action="AI_DpiContentScale" Sequence="52"/>
     <ROW Action="AI_EnableDebugLog" Sequence="51"/>
+    <ROW Action="AI_SETMIXINSTLOCATION" Sequence="749"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiLaunchConditionsComponent">
     <ROW Condition="(VersionNT &lt;&gt; 400)" Description="[ProductName] cannot be installed on [WindowsTypeNT40Display]." DescriptionLocId="AI.LaunchCondition.NoNT40" IsPredefined="true" Builds="DefaultBuild"/>
@@ -198,7 +435,7 @@
     <ROW Condition="VersionNT" Description="[ProductName] cannot be installed on [WindowsType9XDisplay]." DescriptionLocId="AI.LaunchCondition.No9X" IsPredefined="true" Builds="DefaultBuild"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiMergeModsComponent">
-    <ROW Module="Microsoft_VC120_MFC_x86.msm" Path="..\..\..\..\Program Files (x86)\Common Files\Merge modules\Microsoft_VC120_MFC_x86.msm" Feature="MainFeature" Directory="APPDIR"/>
+    <ROW Module="Microsoft_VC120_MFC_x86.msm" Path="..\..\..\..\Program Files (x86)\Common Files\Merge modules\Microsoft_VC120_MFC_x86.msm" Feature="MainFeature" Directory="APPDIR" Order="1"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiRegsComponent">
     <ROW Registry="Path" Root="-1" Key="Software\[Manufacturer]\[ProductName]" Name="Path" Value="[APPDIR]" Component_="ProductInformation"/>
@@ -206,7 +443,7 @@
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiShortsComponent">
     <ROW Shortcut="Manual" Directory_="SHORTCUTDIR" Name="Manual" Component_="video_spot_tracker.html" Target="[#video_spot_tracker.html]" Hotkey="0" IconIndex="0" ShowCmd="1" WkDir="APPDIR"/>
-    <ROW Shortcut="Uninstall" Directory_="SHORTCUTDIR" Name="UNINST~1|Uninstall" Component_="pdvlib.dll" Target="[SystemFolder]msiexec.exe" Arguments="/x [ProductCode]" Hotkey="0" Icon_="SystemFoldermsiexec.exe" IconIndex="0" ShowCmd="1"/>
+    <ROW Shortcut="Uninstall" Directory_="SHORTCUTDIR" Name="UNINST~1|Uninstall" Component_="pdvlib.dll" Target="[SystemFolder]msiexec.exe" Arguments="/x [ProductCode]" Hotkey="0" Icon_="SystemFoldermsiexec.exe" IconIndex="0" ShowCmd="1" CustomFlags="1"/>
     <ROW Shortcut="VideoSpotTracker" Directory_="DesktopFolder" Name="VIDEOS~2|Video Spot Tracker" Component_="video_spot_tracker_local.bat" Target="[#video_spot_tracker_local.bat]" Hotkey="0" IconIndex="0" ShowCmd="1" WkDir="APPDIR"/>
     <ROW Shortcut="VideoSpotTrackerCUDA" Directory_="DesktopFolder" Name="VIDEOS~1|Video Spot Tracker CUDA" Component_="video_spot_tracker_local.bat" Target="[#video_spot_tracker_local.bat]" Arguments="CUDA" Hotkey="0" IconIndex="0" ShowCmd="1" WkDir="APPDIR"/>
     <ROW Shortcut="VideoSpotTrackerCUDA_1" Directory_="SHORTCUTDIR" Name="VIDEOS~1|Video Spot Tracker CUDA" Component_="video_spot_tracker_local.bat" Target="[#video_spot_tracker_local.bat]" Arguments="CUDA" Hotkey="0" IconIndex="0" ShowCmd="1" WkDir="APPDIR"/>
