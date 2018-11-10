@@ -189,7 +189,7 @@ static struct timeval program_start_time;
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "08.12";
+const char *Version_string = "08.13";
 
 //--------------------------------------------------------------------------
 // Global constants

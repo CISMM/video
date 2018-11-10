@@ -10,10 +10,10 @@
     <ROW Property="ARPCOMMENTS" Value="This installer database contains the logic and data required to install [|ProductName]." ValueLocId="*"/>
     <ROW Property="ARPPRODUCTICON" Value="icons.exe" Type="8"/>
     <ROW Property="Manufacturer" Value="CISMM"/>
-    <ROW Property="ProductCode" Value="1033:{164D906B-23B2-4CDC-BC21-D183B773D3C7} " Type="16"/>
+    <ROW Property="ProductCode" Value="1033:{305440E7-DE4B-4151-8EF1-4E62C6FE6770} " Type="16"/>
     <ROW Property="ProductLanguage" Value="1033"/>
     <ROW Property="ProductName" Value="Video_Spot_Tracker"/>
-    <ROW Property="ProductVersion" Value="8.12.2" Type="32"/>
+    <ROW Property="ProductVersion" Value="8.13.0" Type="32"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND"/>
     <ROW Property="UpgradeCode" Value="{C2677448-6A81-4913-B692-9C0778CAB161}"/>
     <ROW Property="WindowsType9X" MultiBuildValue="DefaultBuild:Windows 9x/ME" ValueLocId="-"/>
@@ -44,49 +44,49 @@
     <ROW Directory="tk8.3_Dir" Directory_Parent="APPDIR" DefaultDir="tk8.3"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiCompsComponent">
-    <ROW Component="PCOLtDlg.dll" ComponentId="{EEDD0F29-3AFF-482F-A547-2BE6EF98D044}" Directory_="APPDIR" Attributes="0" KeyPath="PCOLtDlg.dll"/>
-    <ROW Component="ProductInformation" ComponentId="{026A235E-3925-48D0-BF46-EEC20F7C0BEF}" Directory_="APPDIR" Attributes="4" KeyPath="Version"/>
-    <ROW Component="Pv_icl32.dll" ComponentId="{45D7CE1A-8E29-424D-A07F-DB0C26D8906F}" Directory_="APPDIR" Attributes="0" KeyPath="Pv_icl32.dll"/>
-    <ROW Component="Pvcam32.dll" ComponentId="{39F576DC-D510-409B-955A-56C373E6E862}" Directory_="APPDIR" Attributes="0" KeyPath="Pvcam32.dll"/>
-    <ROW Component="SC2_Cam.dll" ComponentId="{D1F42206-DC32-4696-BF79-F571730BBEC6}" Directory_="APPDIR" Attributes="0" KeyPath="SC2_Cam.dll"/>
-    <ROW Component="SC2_DLG.dll" ComponentId="{A95582DC-10AA-464D-BB52-9B86F65AB57C}" Directory_="APPDIR" Attributes="0" KeyPath="SC2_DLG.dll"/>
-    <ROW Component="SHORTCUTDIR" ComponentId="{E1480A45-4DEF-43C7-9E6E-E529BC06BDE9}" Directory_="SHORTCUTDIR" Attributes="0"/>
-    <ROW Component="SpotCam.dll" ComponentId="{8A8E97E4-1F2B-4FB2-86DE-80975F58EF8B}" Directory_="APPDIR" Attributes="0" KeyPath="SpotCam.dll"/>
-    <ROW Component="arrow.tcl" ComponentId="{83101CF7-ACD6-44CD-A218-1737D94AE1D2}" Directory_="demos_Dir" Attributes="0" KeyPath="arrow.tcl" Type="0"/>
-    <ROW Component="ascii.enc" ComponentId="{A9D43C0B-E086-4FF4-9CDC-E06DDAAC236A}" Directory_="encoding_Dir" Attributes="0" KeyPath="ascii.enc" Type="0"/>
-    <ROW Component="auto.tcl" ComponentId="{792B2334-B30C-4C3F-A495-9C26F0C465FF}" Directory_="tcl8.3_Dir" Attributes="0" KeyPath="auto.tcl" Type="0"/>
-    <ROW Component="bgerror.tcl" ComponentId="{3546018E-FF24-4ABF-B039-511827C3BC7F}" Directory_="tk8.3_Dir" Attributes="0" KeyPath="bgerror.tcl" Type="0"/>
-    <ROW Component="circle_of_spots.jpg" ComponentId="{0E85D375-25CD-4262-A5FA-73FC86CF1210}" Directory_="APPDIR" Attributes="0" KeyPath="circle_of_spots.jpg" Type="0"/>
-    <ROW Component="cudart32_80.dll" ComponentId="{BDDF6755-D50E-4A27-9CCF-DB4CE82F195B}" Directory_="APPDIR" Attributes="0" KeyPath="cudart32_80.dll"/>
-    <ROW Component="cv100.dll" ComponentId="{36DADF1B-BFAF-4474-92C9-B59B6D75F2F9}" Directory_="APPDIR" Attributes="0" KeyPath="cv100.dll"/>
-    <ROW Component="cvaux100.dll" ComponentId="{DE2047AD-1B88-4F4C-BD7F-85B51EC7F7E2}" Directory_="APPDIR" Attributes="0" KeyPath="cvaux100.dll"/>
-    <ROW Component="cvcam100.dll" ComponentId="{873A17BF-BC9B-4D46-A2BA-ACC880D2C915}" Directory_="APPDIR" Attributes="0" KeyPath="cvcam100.dll"/>
-    <ROW Component="cxcore100.dll" ComponentId="{4F6C4AD7-34F0-4CFD-BB4C-45173B474DD6}" Directory_="APPDIR" Attributes="0" KeyPath="cxcore100.dll"/>
-    <ROW Component="cxts001.dll" ComponentId="{4A9EA94B-D99C-4A43-A068-A2FBE86D5DED}" Directory_="APPDIR" Attributes="0" KeyPath="cxts001.dll"/>
-    <ROW Component="earth.gif" ComponentId="{3D19119E-8BF0-4E5D-BD8D-1B22689ADB7A}" Directory_="images_Dir" Attributes="0" KeyPath="earth.gif" Type="0"/>
-    <ROW Component="edt_mmx.dll" ComponentId="{5A47FE3F-D3A3-46A6-9A03-448D20FF1019}" Directory_="APPDIR" Attributes="0" KeyPath="edt_mmx.dll"/>
-    <ROW Component="glut32.dll" ComponentId="{F32AD06F-9912-485C-A180-37C3E61A2564}" Directory_="APPDIR" Attributes="0" KeyPath="glut32.dll"/>
-    <ROW Component="glut32_UNC.dll" ComponentId="{2E5AB16B-B179-49BA-89A9-B9BC250C32CC}" Directory_="APPDIR" Attributes="0" KeyPath="glut32_UNC.dll"/>
-    <ROW Component="highgui100.dll" ComponentId="{2DA83BC0-82EB-4609-B69E-F884E05B467D}" Directory_="APPDIR" Attributes="0" KeyPath="highgui100.dll"/>
-    <ROW Component="http.tcl" ComponentId="{11C7AE6E-9B16-4779-9D65-057CEA1E40BA}" Directory_="http1.0_Dir" Attributes="0" KeyPath="http.tcl" Type="0"/>
-    <ROW Component="http.tcl_1" ComponentId="{62BC1525-AA7A-4CDD-8ED1-86C3C15F9C81}" Directory_="http2.3_Dir" Attributes="0" KeyPath="http.tcl_1" Type="0"/>
-    <ROW Component="libguide40.dll" ComponentId="{D36281FA-CDDE-4DA8-8CBE-AF4366F7E471}" Directory_="APPDIR" Attributes="0" KeyPath="libguide40.dll"/>
-    <ROW Component="logo.eps" ComponentId="{5FC4882B-FFC4-45CC-B99B-555F99CC96E2}" Directory_="images_1_Dir" Attributes="0" KeyPath="logo.eps" Type="0"/>
-    <ROW Component="ml100.dll" ComponentId="{B9E950F9-1562-4470-AC62-696C2FDB0BEF}" Directory_="APPDIR" Attributes="0" KeyPath="ml100.dll"/>
-    <ROW Component="msgcat.tcl" ComponentId="{5F698E40-0DB0-402A-BDC9-A1BED32EFFC5}" Directory_="msgcat1.1_Dir" Attributes="0" KeyPath="msgcat.tcl" Type="0"/>
-    <ROW Component="optparse.tcl" ComponentId="{E8A1E00A-241D-4114-96B3-C1C67A6FBA96}" Directory_="opt0.4_Dir" Attributes="0" KeyPath="optparse.tcl" Type="0"/>
-    <ROW Component="pdvlib.dll" ComponentId="{CA0556CC-3818-40C2-AA33-0E258A757468}" Directory_="APPDIR" Attributes="0" KeyPath="pdvlib.dll"/>
-    <ROW Component="pkgIndex.tcl" ComponentId="{FB365779-04E0-42BE-A04F-1FF81794E4A1}" Directory_="dde1.1_Dir" Attributes="0" KeyPath="pkgIndex.tcl" Type="0"/>
-    <ROW Component="pkgIndex.tcl_1" ComponentId="{68CBEB51-59BB-43BD-B5D1-D969419EC70C}" Directory_="reg1.0_Dir" Attributes="0" KeyPath="pkgIndex.tcl_5" Type="0"/>
-    <ROW Component="tcl83.dll" ComponentId="{E6DF63EF-E757-41F8-B00B-2D3A65CD05B8}" Directory_="APPDIR" Attributes="0" KeyPath="tcl83.dll"/>
-    <ROW Component="tcldde83.dll" ComponentId="{48FC0909-7526-4AB9-89AD-9748A3A047DA}" Directory_="dde1.1_Dir" Attributes="0" KeyPath="tcldde83.dll"/>
-    <ROW Component="tclreg83.dll" ComponentId="{1060B20D-321C-477F-A6C7-EBD10B7D54B6}" Directory_="reg1.0_Dir" Attributes="0" KeyPath="tclreg83.dll"/>
-    <ROW Component="tk83.dll" ComponentId="{315C496B-855E-49A8-AE6F-CE1045B55A5F}" Directory_="APPDIR" Attributes="0" KeyPath="tk83.dll"/>
-    <ROW Component="video_spot_tracker.exe" ComponentId="{57B212DD-0A34-4759-8416-CF5CDAFDF30A}" Directory_="APPDIR" Attributes="0" KeyPath="video_spot_tracker.exe"/>
-    <ROW Component="video_spot_tracker.html" ComponentId="{09FBE743-FD58-40FF-AD5C-78045673468A}" Directory_="APPDIR" Attributes="0" KeyPath="video_spot_tracker.html"/>
-    <ROW Component="video_spot_tracker_CUDA.exe" ComponentId="{ADBD5503-8F5F-4F99-ACAB-C264A2EE02B1}" Directory_="APPDIR" Attributes="0" KeyPath="video_spot_tracker_CUDA.exe"/>
-    <ROW Component="video_spot_tracker_local.bat" ComponentId="{B4AC2A46-9BB2-4B63-BE2B-563F5ED6723D}" Directory_="APPDIR" Attributes="0" KeyPath="video_spot_tracker_local.bat"/>
-    <ROW Component="video_spot_tracker_nogui.exe" ComponentId="{DE59161C-D758-4B48-A828-090F23239971}" Directory_="APPDIR" Attributes="0" KeyPath="video_spot_tracker_nogui.exe"/>
+    <ROW Component="PCOLtDlg.dll" ComponentId="{83F29E5F-AF75-43F0-85E9-F68BF526A4C1}" Directory_="APPDIR" Attributes="0" KeyPath="PCOLtDlg.dll"/>
+    <ROW Component="ProductInformation" ComponentId="{600214CA-B34B-4A3F-B687-C5BC5B249E25}" Directory_="APPDIR" Attributes="4" KeyPath="Version"/>
+    <ROW Component="Pv_icl32.dll" ComponentId="{7C131E3E-12E3-44ED-B036-4D7165A63196}" Directory_="APPDIR" Attributes="0" KeyPath="Pv_icl32.dll"/>
+    <ROW Component="Pvcam32.dll" ComponentId="{3C97CAF1-F9DB-42D1-B569-E48EDAA6E66A}" Directory_="APPDIR" Attributes="0" KeyPath="Pvcam32.dll"/>
+    <ROW Component="SC2_Cam.dll" ComponentId="{B9D96EC4-5186-4DB3-866B-A788869C5E6C}" Directory_="APPDIR" Attributes="0" KeyPath="SC2_Cam.dll"/>
+    <ROW Component="SC2_DLG.dll" ComponentId="{B67A099A-EA6D-4D7B-8404-2A635261AE60}" Directory_="APPDIR" Attributes="0" KeyPath="SC2_DLG.dll"/>
+    <ROW Component="SHORTCUTDIR" ComponentId="{20E7F14E-D5AE-424D-9EB6-FE9A0B56BA9E}" Directory_="SHORTCUTDIR" Attributes="0"/>
+    <ROW Component="SpotCam.dll" ComponentId="{65F6DAA6-3EF2-4EB8-907B-C6F3FB28215F}" Directory_="APPDIR" Attributes="0" KeyPath="SpotCam.dll"/>
+    <ROW Component="arrow.tcl" ComponentId="{F0091BCB-0715-4A11-9935-A6E971440261}" Directory_="demos_Dir" Attributes="0" KeyPath="arrow.tcl" Type="0"/>
+    <ROW Component="ascii.enc" ComponentId="{21A54C97-BA43-4B98-83A6-E1D82B646914}" Directory_="encoding_Dir" Attributes="0" KeyPath="ascii.enc" Type="0"/>
+    <ROW Component="auto.tcl" ComponentId="{9ECCCB9B-EEE7-48CB-973A-7EEC0396CC1D}" Directory_="tcl8.3_Dir" Attributes="0" KeyPath="auto.tcl" Type="0"/>
+    <ROW Component="bgerror.tcl" ComponentId="{C54289B3-DAC2-4B51-93E3-72FC16DB059B}" Directory_="tk8.3_Dir" Attributes="0" KeyPath="bgerror.tcl" Type="0"/>
+    <ROW Component="circle_of_spots.jpg" ComponentId="{15483D6B-FCF1-4FAF-AF42-09E9332F46FB}" Directory_="APPDIR" Attributes="0" KeyPath="circle_of_spots.jpg" Type="0"/>
+    <ROW Component="cudart32_80.dll" ComponentId="{579ED180-0895-448F-A05A-691ECBEB8679}" Directory_="APPDIR" Attributes="0" KeyPath="cudart32_80.dll"/>
+    <ROW Component="cv100.dll" ComponentId="{344D8078-A899-487E-9AF1-8A318344FBAC}" Directory_="APPDIR" Attributes="0" KeyPath="cv100.dll"/>
+    <ROW Component="cvaux100.dll" ComponentId="{BF8F6ED1-F3A4-4213-AD9F-2D423C45F831}" Directory_="APPDIR" Attributes="0" KeyPath="cvaux100.dll"/>
+    <ROW Component="cvcam100.dll" ComponentId="{12EF1D3E-69A2-4441-9F83-C0226D1D3B0A}" Directory_="APPDIR" Attributes="0" KeyPath="cvcam100.dll"/>
+    <ROW Component="cxcore100.dll" ComponentId="{2C52265F-9876-4924-B534-21412062E422}" Directory_="APPDIR" Attributes="0" KeyPath="cxcore100.dll"/>
+    <ROW Component="cxts001.dll" ComponentId="{5D0D930E-B0C7-49D0-A0B0-FA41DC07FC78}" Directory_="APPDIR" Attributes="0" KeyPath="cxts001.dll"/>
+    <ROW Component="earth.gif" ComponentId="{672CED7F-F0C7-490D-99F7-229A770C80F3}" Directory_="images_Dir" Attributes="0" KeyPath="earth.gif" Type="0"/>
+    <ROW Component="edt_mmx.dll" ComponentId="{F6830767-F6AB-4126-B1F4-909D4E0130ED}" Directory_="APPDIR" Attributes="0" KeyPath="edt_mmx.dll"/>
+    <ROW Component="glut32.dll" ComponentId="{8EF13521-678C-4BA8-877D-EA04517DF578}" Directory_="APPDIR" Attributes="0" KeyPath="glut32.dll"/>
+    <ROW Component="glut32_UNC.dll" ComponentId="{13082CF5-A1E5-404C-BECC-4247023229F3}" Directory_="APPDIR" Attributes="0" KeyPath="glut32_UNC.dll"/>
+    <ROW Component="highgui100.dll" ComponentId="{EAAE125C-4D34-4618-BBFA-589513AC8BD0}" Directory_="APPDIR" Attributes="0" KeyPath="highgui100.dll"/>
+    <ROW Component="http.tcl" ComponentId="{1F060DE8-2863-426E-8372-B9F4AFAE2673}" Directory_="http1.0_Dir" Attributes="0" KeyPath="http.tcl" Type="0"/>
+    <ROW Component="http.tcl_1" ComponentId="{FEFC20B3-1ED5-4720-83E1-E91EEB938B1D}" Directory_="http2.3_Dir" Attributes="0" KeyPath="http.tcl_1" Type="0"/>
+    <ROW Component="libguide40.dll" ComponentId="{263DB897-7727-4267-9C51-B0CCFEEB8BAC}" Directory_="APPDIR" Attributes="0" KeyPath="libguide40.dll"/>
+    <ROW Component="logo.eps" ComponentId="{2D60FEC4-650A-4CE8-9542-8BA99B6CCC25}" Directory_="images_1_Dir" Attributes="0" KeyPath="logo.eps" Type="0"/>
+    <ROW Component="ml100.dll" ComponentId="{1897EC92-D561-45E0-9658-E9A9A82CD058}" Directory_="APPDIR" Attributes="0" KeyPath="ml100.dll"/>
+    <ROW Component="msgcat.tcl" ComponentId="{B230620D-C32F-4879-82C1-C74890C58B88}" Directory_="msgcat1.1_Dir" Attributes="0" KeyPath="msgcat.tcl" Type="0"/>
+    <ROW Component="optparse.tcl" ComponentId="{0EC616A4-BD46-4D17-9A92-DCDE8652D41D}" Directory_="opt0.4_Dir" Attributes="0" KeyPath="optparse.tcl" Type="0"/>
+    <ROW Component="pdvlib.dll" ComponentId="{BD3015F7-1E77-4486-AE18-8ECBCA8AB07C}" Directory_="APPDIR" Attributes="0" KeyPath="pdvlib.dll"/>
+    <ROW Component="pkgIndex.tcl" ComponentId="{9499223A-25C0-47FA-9482-3671AEA01D8E}" Directory_="dde1.1_Dir" Attributes="0" KeyPath="pkgIndex.tcl" Type="0"/>
+    <ROW Component="pkgIndex.tcl_1" ComponentId="{F7378878-0235-40C3-A67E-4F32930B337E}" Directory_="reg1.0_Dir" Attributes="0" KeyPath="pkgIndex.tcl_5" Type="0"/>
+    <ROW Component="tcl83.dll" ComponentId="{6E29A7F1-5DC4-4278-9A45-CDFFE2A5FBCD}" Directory_="APPDIR" Attributes="0" KeyPath="tcl83.dll"/>
+    <ROW Component="tcldde83.dll" ComponentId="{13CE7D5E-2020-4D67-94F1-A62FED847963}" Directory_="dde1.1_Dir" Attributes="0" KeyPath="tcldde83.dll"/>
+    <ROW Component="tclreg83.dll" ComponentId="{596C66E5-6755-40B9-B26F-725C28519F98}" Directory_="reg1.0_Dir" Attributes="0" KeyPath="tclreg83.dll"/>
+    <ROW Component="tk83.dll" ComponentId="{603F21D9-14D0-406A-9509-DA934E6A7AC1}" Directory_="APPDIR" Attributes="0" KeyPath="tk83.dll"/>
+    <ROW Component="video_spot_tracker.exe" ComponentId="{6685DFC5-5DD3-4A87-B492-33B57CA1D270}" Directory_="APPDIR" Attributes="0" KeyPath="video_spot_tracker.exe"/>
+    <ROW Component="video_spot_tracker.html" ComponentId="{5A0E27A3-08C3-432D-B3B5-064B6AC9BFDF}" Directory_="APPDIR" Attributes="0" KeyPath="video_spot_tracker.html"/>
+    <ROW Component="video_spot_tracker_CUDA.exe" ComponentId="{DBEE3149-FCE5-484C-AAC2-2A09B1147BE6}" Directory_="APPDIR" Attributes="0" KeyPath="video_spot_tracker_CUDA.exe"/>
+    <ROW Component="video_spot_tracker_local.bat" ComponentId="{BCCAF597-109A-4A31-9B23-849FB15E56B8}" Directory_="APPDIR" Attributes="0" KeyPath="video_spot_tracker_local.bat"/>
+    <ROW Component="video_spot_tracker_nogui.exe" ComponentId="{080620FE-18A5-497E-9A2E-428F13DC55AB}" Directory_="APPDIR" Attributes="0" KeyPath="video_spot_tracker_nogui.exe"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiFeatsComponent">
     <ROW Feature="MainFeature" Title="MainFeature" Description="Description" Display="1" Level="1" Directory_="APPDIR" Attributes="0" Components="PCOLtDlg.dll ProductInformation Pv_icl32.dll Pvcam32.dll SC2_Cam.dll SC2_DLG.dll SHORTCUTDIR SpotCam.dll arrow.tcl ascii.enc auto.tcl bgerror.tcl circle_of_spots.jpg cudart32_80.dll cv100.dll cvaux100.dll cvcam100.dll cxcore100.dll cxts001.dll earth.gif edt_mmx.dll glut32.dll glut32_UNC.dll highgui100.dll http.tcl http.tcl_1 libguide40.dll logo.eps ml100.dll msgcat.tcl optparse.tcl pdvlib.dll pkgIndex.tcl pkgIndex.tcl_1 tcl83.dll tcldde83.dll tclreg83.dll tk83.dll video_spot_tracker.exe video_spot_tracker.html video_spot_tracker_CUDA.exe video_spot_tracker_local.bat video_spot_tracker_nogui.exe"/>
@@ -338,7 +338,7 @@
     <ROW File="xmfbox.tcl" Component_="bgerror.tcl" FileName="xmfbox.tcl" Attributes="0" SourcePath="..\..\..\..\Program Files (x86)\CISMM\external\tcl\lib\tk8.3\xmfbox.tcl" SelfReg="false" NextFile="russ_widgets.tcl"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.BuildComponent">
-    <ROW BuildKey="DefaultBuild" BuildName="DefaultBuild" BuildOrder="1" BuildType="0" PackageFileName="setup_video_spot_tracker_v08_12_02" Languages="en" InstallationType="4" UseLargeSchema="true"/>
+    <ROW BuildKey="DefaultBuild" BuildName="DefaultBuild" BuildOrder="1" BuildType="0" PackageFileName="setup_video_spot_tracker_v08_13_00" Languages="en" InstallationType="4" UseLargeSchema="true"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.DictionaryComponent">
     <ROW Path="&lt;AI_DICTS&gt;ui.ail"/>
