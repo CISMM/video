@@ -1,6 +1,6 @@
-<title>Video Spot Tracker v08.01</title>
+<title>Video Spot Tracker v08.13</title>
 
-<h1>Video Spot Tracker version 08.01</h1>
+<h1>Video Spot Tracker version 08.13</h1>
 
 <p>The <i><b>Video Spot Tracker</b></i> program is used to track the motion of 
   one or more spots (particles) in an <a href="http://ffmpeg.org/">FFMPEG</a>-compatible 
@@ -477,6 +477,31 @@
   and have them be tracked using those arguments.</p>
 <h2>Version Information</h2>
 
+<h3>Version 8.13:</h3>
+<ul>
+  <li>
+    Fixed optimize_z to work when the system is automatically finding beads.
+    It now instantiates the appropriate Z tracker rather than the default NULL
+    tracker as new beads are created.
+  </li>
+</ul>
+<h3>Version 8.12:</h3>
+<ul>
+  <li>
+    Added the ability to configure optimize-z by loading a properly-configured
+    state file.  This has to set psf_filename to the Z stack file before setting
+    optimize to 1 and optimize_z to 1.
+  </li>
+  <li>
+    Switched to an Advanced Installer-based installer, which only installs the
+    Video Spot Tracker and the CUDA version of it rather than all of the camera
+    drivers for live cameras.
+  </li>
+  <li>
+    This version now only works with CUDA compute capability 2.0 and up (the original
+    also worked with 1.0).
+  </li>
+</ul>
 <h3>Version 8.01:</h3>
 <ul>
   <li>Fixed bugs in the brightness of the displayed images for 16-bit images when 

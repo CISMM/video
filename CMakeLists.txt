@@ -25,6 +25,10 @@ if(WIN32) # MS-Windows, both 32 and 64 bits
     set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} winmm.lib wsock32.lib /FIXED:NO")
+    # Because we built against older libraries with Visual Studio 2013 in 2018 to
+    # get this compiling, and because they don't have exception safety, we had to turn
+    # this off.
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SAFESEH:NO")
     ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
   endif()
 elseif(APPLE) # Apple
@@ -137,7 +141,7 @@ FIND_PACKAGE(CUDA)
 if (CUDA_FOUND)
 	OPTION(VIDEO_USE_CUDA "Compile and link to CUDA library" ON)
 	include_directories(${CUDA_TOOLKIT_INCLUDE})
-	set(CUDA_NVCC_FLAGS -arch=compute_10 -code=compute_10 CACHE STRING "CUDA compiler command-line arguments" FORCE)
+	set(CUDA_NVCC_FLAGS -arch=compute_20 -code=compute_20 CACHE STRING "CUDA compiler command-line arguments" FORCE)
 else()
 	OPTION(VIDEO_USE_CUDA "Compile and link to CUDA library" OFF)
 endif()
@@ -1001,7 +1005,7 @@ INSTALL(TARGETS ${TARGET_NAME} DESTINATION .)
 # ------------------------------------------------------------------
 ENDIF(NOT APPLE)
 
-if (VIDEO_USE_CUDA)
+if (VIDEO_USE_CUDA AND NOT WIN32)
   SET(TARGET_NAME CUDA_video_filter)
   IF(NOT APPLE)
 	CUDA_ADD_EXECUTABLE(CUDA_video_filter CUDA_video_filter.cpp spot_tracker.cu)
@@ -1083,7 +1087,7 @@ TARGET_LINK_LIBRARIES(swap_ppm_lines
 )
 SET_TARGET_PROPERTIES(swap_ppm_lines PROPERTIES SOLUTION_FOLDER apps)
 
-if (VIDEO_USE_EDT)
+if (VIDEO_USE_EDT AND NOT WIN32)
 	SET(TARGET_NAME GLUItake)
 	ADD_EXECUTABLE(GLUItake
 		glui_take.cpp

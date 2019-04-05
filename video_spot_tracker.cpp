@@ -189,7 +189,7 @@ static struct timeval program_start_time;
 
 //--------------------------------------------------------------------------
 // Version string for this program
-const char *Version_string = "08.01";
+const char *Version_string = "08.13";
 
 //--------------------------------------------------------------------------
 // Global constants
@@ -3348,7 +3348,7 @@ void  handle_save_state_change(int newvalue, void *)
 #ifndef VST_NO_GUI
   //------------------------------------------------------------
   // Create a dialog box that will ask the user
-  // to either fill it in or cancel (if the file is "NONE").
+  // to either fill it in or cancel (if the file is "").
   // Wait until they have made a choice.
   g_save_state_filename = "";
   if (Tcl_Eval(g_tk_control_interp, "ask_user_for_save_state_filename") != TCL_OK) {
@@ -3567,7 +3567,7 @@ void  handle_load_state_change(int newvalue, void *)
 #else
   //------------------------------------------------------------
   // Create a dialog box that will ask the user
-  // to either fill it in or cancel (if the file is "NONE").
+  // to either fill it in or cancel (if the file is "").
   // Wait until they have made a choice.
   g_load_state_filename = "";
   if (Tcl_Eval(g_tk_control_interp, "ask_user_for_load_state_filename") != TCL_OK) {
@@ -3602,20 +3602,25 @@ void  handle_optimize_z_change(int newvalue, void *)
 #else
   list<Spot_Information *>::iterator  loop;
 
-  // User is trying to start Z tracking, so ask them for
-  // a file to load.  If we load one, then set the global
-  // Z tracker to use it.  If we don't set g_opt_z to
-  // zero again.
-  if (newvalue == 1) {
-    g_psf_filename = "";
+  // We put in a special case here to enable a state file to be
+  // loaded that turns on Z optimization using a pre-specified
+  // PSF file name and does not ask the user for one.
+  if (newvalue != 0) {
+    // User is trying to start Z tracking, so ask them for
+    // a file to load.  If we load one, then set the global
+    // Z tracker to use it.  If we don't set g_opt_z to
+    // zero again.
+    if (strcmp(g_psf_filename, "") == 0) {
+      g_psf_filename = "";
 
-    //------------------------------------------------------------
-    // Create a dialog box that will ask the user
-    // to either fill it in or cancel (if the file is "NONE").
-    if (Tcl_Eval(g_tk_control_interp, "ask_user_for_psf_filename") != TCL_OK) {
-      fprintf(stderr, "Tcl_Eval(ask_user_for_psf_filename) failed: %s\n", g_tk_control_interp->result);
-      cleanup();
-      exit(-1);
+      //------------------------------------------------------------
+      // Create a dialog box that will ask the user
+      // to either fill it in or cancel (if the file is "").
+      if (Tcl_Eval(g_tk_control_interp, "ask_user_for_psf_filename") != TCL_OK) {
+        fprintf(stderr, "Tcl_Eval(ask_user_for_psf_filename) failed: %s\n", g_tk_control_interp->result);
+        cleanup();
+        exit(-1);
+      }
     }
 
     do {
@@ -3648,6 +3653,7 @@ void  handle_optimize_z_change(int newvalue, void *)
       g_psf_filename = "";
       g_opt_z = 0;
     }
+    g_opt_z = 1;
 
   // User is turning off Z tracking, so destroy any existing
   // Z tracker and set the pointer to NULL.

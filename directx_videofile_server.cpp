@@ -216,8 +216,8 @@ bool directx_videofile_server::open_and_find_parameters(const char *filename)
 #endif
 
   // Connect the output of the video reader to the sample grabber input
-  fprintf(stderr, "XXX DirectShow reading of video files fails on Windows 7\n");
-  return false;
+  //fprintf(stderr, "XXX DirectShow reading of video files fails on Windows 7\n");
+  //return false;
 
   // XXX The call below hangs on Windows 7 on Russ Taylor's laptop.
   ConnectTwoFilters(_pGraph, pSrc, _pSampleGrabberFilter);
