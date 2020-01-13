@@ -858,7 +858,7 @@ public:
   //-------- image_wrapper methods ----------------
   // Tell what the range is for the image.
   virtual void	read_range(int &minx, int &maxx, int &miny, int &maxy) const
-    { minx = 0; maxx = d_radius; miny = 0; maxy = d_lines.size() - 1; }
+    { minx = 0; maxx = d_radius; miny = 0; maxy = static_cast<int>(d_lines.size()) - 1; }
 
   /// Return the number of colors that the image has
   virtual unsigned  get_num_colors() const {return 1; }
