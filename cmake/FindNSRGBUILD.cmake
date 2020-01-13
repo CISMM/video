@@ -151,7 +151,7 @@ MARK_AS_ADVANCED(GLUI_glut_LIBRARY)
 
 # Normally in Tcl, but NSRG buildtime has it elsewhere...
 SET(TCL_X11_INCLUDE_PATH ${TCL_INCLUDE_PATH}/../../X11/include
-	CACHE TYPE STRING)
+	CACHE STRING "Tcl include directory")
 
 # handle the QUIETLY and REQUIRED arguments and set OpenCV_FOUND to TRUE if 
 # all listed variables are TRUE.  The package name seems to need to be all-caps for this
