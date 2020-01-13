@@ -59,7 +59,7 @@ protected:
   int             m_videoStream;
   AVFrame         *m_pFrame;
   AVFrame         *m_pFrameRGB;
-  AVPacket        m_packet;
+  AVPacket        *m_packet;
   uint8_t         *m_buffer;
   struct SwsContext *m_img_convert_ctx;
 

@@ -160,7 +160,8 @@ bool ffmpeg_video_server::open_video_file(void)
         m_pCodecCtx->width, m_pCodecCtx->height);
 
     // Initialize our packet
-    av_new_packet(&m_packet, numBytes);
+    m_packet = new AVPacket();
+    av_new_packet(m_packet, numBytes);
 
     return true;
 }
@@ -238,12 +239,12 @@ bool ffmpeg_video_server::read_image_to_memory(unsigned int minX, unsigned int m
     // complete video frames in the file, then frameFinished will be
     // 0 at the end of the while loop.
     int             frameFinished = 0;
-    while(!frameFinished && (av_read_frame(m_pFormatCtx, &m_packet)>=0)) {
+    while(!frameFinished && (av_read_frame(m_pFormatCtx, m_packet)>=0)) {
         //printf("dbg: Got a packet\n");
         // Is this a packet from the video stream?
-        if(m_packet.stream_index==m_videoStream) {
+        if(m_packet->stream_index==m_videoStream) {
             // Decode video frame
-            avcodec_decode_video2(m_pCodecCtx, m_pFrame, &frameFinished, &m_packet);
+            avcodec_decode_video2(m_pCodecCtx, m_pFrame, &frameFinished, m_packet);
             //printf("dbg: Decoded\n");
 
             // Did we get a full video frame?
@@ -272,7 +273,8 @@ bool ffmpeg_video_server::read_image_to_memory(unsigned int minX, unsigned int m
         }
 
         // Free the packet that was allocated by av_read_frame
-        av_free_packet(&m_packet);
+        av_free_packet(m_packet);
+        delete m_packet;
         //printf("dbg: Freed a packet\n");
     }
 
