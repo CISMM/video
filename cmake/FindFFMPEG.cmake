@@ -9,6 +9,7 @@ FIND_PATH(FFMPEG_INCLUDE_PATH NAMES libavcodec/avcodec.h
 		PATHS
 		/usr/local/include
 		"C:/usr/local/include"
+		"C:/ffmpeg-4.2.1-win64/include"
 )
 MARK_AS_ADVANCED(FFMPEG_INCLUDE_PATH)
 
@@ -23,6 +24,7 @@ find_library(FFMPEG_AVCODEC_LIBRARY
 	PATHS
 	/usr/local
 	"C:/usr/local"
+	"C:/ffmpeg-4.2.1-win64/lib"
 )
 find_library(FFMPEG_AVDEVICE_LIBRARY
 	NAMES
@@ -32,6 +34,7 @@ find_library(FFMPEG_AVDEVICE_LIBRARY
 	PATHS
 	/usr/local
 	"C:/usr/local"
+	"C:/ffmpeg-4.2.1-win64/lib"
 )
 find_library(FFMPEG_AVFILTER_LIBRARY
 	NAMES
@@ -41,6 +44,7 @@ find_library(FFMPEG_AVFILTER_LIBRARY
 	PATHS
 	/usr/local
 	"C:/usr/local"
+	"C:/ffmpeg-4.2.1-win64/lib"
 )
 find_library(FFMPEG_AVFORMAT_LIBRARY
 	NAMES
@@ -50,6 +54,7 @@ find_library(FFMPEG_AVFORMAT_LIBRARY
 	PATHS
 	/usr/local
 	"C:/usr/local"
+	"C:/ffmpeg-4.2.1-win64/lib"
 )
 find_library(FFMPEG_AVUTIL_LIBRARY
 	NAMES
@@ -59,6 +64,7 @@ find_library(FFMPEG_AVUTIL_LIBRARY
 	PATHS
 	/usr/local
 	"C:/usr/local"
+	"C:/ffmpeg-4.2.1-win64/lib"
 )
 find_library(FFMPEG_SWRESAMPLE_LIBRARY
 	NAMES
@@ -68,6 +74,7 @@ find_library(FFMPEG_SWRESAMPLE_LIBRARY
 	PATHS
 	/usr/local
 	"C:/usr/local"
+	"C:/ffmpeg-4.2.1-win64/lib"
 )
 find_library(FFMPEG_SWSCALE_LIBRARY
 	NAMES
@@ -77,6 +84,7 @@ find_library(FFMPEG_SWSCALE_LIBRARY
 	PATHS
 	/usr/local
 	"C:/usr/local"
+	"C:/ffmpeg-4.2.1-win64/lib"
 )
 
 # handle the QUIETLY and REQUIRED arguments and set FFMPEG_FOUND to TRUE if 
