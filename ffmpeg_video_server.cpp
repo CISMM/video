@@ -3,6 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(55,28,1)
+#define PIX_FMT_RGB24 AV_PIX_FMT_RGB24
+#endif
+
+
 #ifndef max
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
@@ -69,7 +74,11 @@ bool ffmpeg_video_server::open_video_file(void)
 
     // Retrieve stream information
     //printf("dbg: getting stream info\n");
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(55,28,1)
     if(av_find_stream_info(m_pFormatCtx)<0) {
+#else
+    if (avformat_find_stream_info(m_pFormatCtx, NULL) < 0) {
+#endif
         fprintf(stderr,"ffmpeg_video_server::open_video_file(): Cannot find stream information\n");
         return false;
     }
@@ -103,7 +112,7 @@ bool ffmpeg_video_server::open_video_file(void)
 
     // Open codec
     //printf("dbg: opening codec\n");
-#ifdef __APPLE__
+#if (LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(55,28,1)) || defined(__APPLE__)
     if (avcodec_open2(m_pCodecCtx, m_pCodec, NULL)<0) {
 #else
     if (avcodec_open(m_pCodecCtx, m_pCodec)<0) {
@@ -119,14 +128,22 @@ bool ffmpeg_video_server::open_video_file(void)
 
     // Allocate video frame
     //printf("dbg: allocating video frame\n");
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(55,28,1)
     m_pFrame=avcodec_alloc_frame();
+#else
+    m_pFrame = av_frame_alloc();
+#endif
     if (m_pFrame==NULL) {
         fprintf(stderr,"ffmpeg_video_server::open_video_file(): Out of memory allocating video frame\n");
         return false;
     }
 
     // Allocate an AVFrame structure
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(55,28,1)
     m_pFrameRGB=avcodec_alloc_frame();
+#else
+    m_pFrameRGB = av_frame_alloc();
+#endif
     if (m_pFrameRGB==NULL) {
         fprintf(stderr,"ffmpeg_video_server::open_video_file(): Out of memory allocating RGB video frame\n");
         return false;
@@ -165,7 +182,11 @@ bool ffmpeg_video_server::close_video_file(void)
     }
 
     avcodec_close(m_pCodecCtx);
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(55,28,1)
     av_close_input_file(m_pFormatCtx);
+#else
+    avformat_close_input(&m_pFormatCtx);
+#endif
 
     return true;
 }
