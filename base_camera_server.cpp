@@ -841,7 +841,7 @@ bool image_wrapper::write_to_opengl_texture_generic(GLuint tex_id, GLint num_com
       // Set the pixel storage parameters and store the total blank image.
       glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
       glPixelStorei(GL_UNPACK_ROW_LENGTH, _opengl_texture_size_x);
-      glTexImage2D(GL_TEXTURE_2D, 0, NUM_COMPONENTS, _opengl_texture_size_x, _opengl_texture_size_y,
+      glTexImage2D(GL_TEXTURE_2D, 0, FORMAT, _opengl_texture_size_x, _opengl_texture_size_y,
         0, FORMAT, TYPE, tempimage);
 
       delete [] tempimage;
@@ -859,9 +859,10 @@ bool image_wrapper::write_to_opengl_texture_generic(GLuint tex_id, GLint num_com
       // Set the pixel storage parameters and store the total blank image.
       glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
       glPixelStorei(GL_UNPACK_ROW_LENGTH, get_num_columns());
-      glTexImage2D(GL_TEXTURE_2D, 0, 3,
+      glTexImage2D(GL_TEXTURE_2D, 0, FORMAT,
         get_num_columns(), get_num_rows(),
         0, FORMAT, TYPE, buffer_base);
+      printf("XXX Writing texture %dx%d to %d\n", get_num_columns(), get_num_rows(), tex_id);
     }
 
     // We've done the first storage, later ones can just do subset-sized

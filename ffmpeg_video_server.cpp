@@ -176,6 +176,8 @@ bool ffmpeg_video_server::open_video_file(void)
 // Close and free all things associated with this video file.
 bool ffmpeg_video_server::close_video_file(void)
 {
+    delete m_packet;
+
     if (m_buffer) {
         delete [] m_buffer;
         m_buffer = NULL;
@@ -281,7 +283,6 @@ bool ffmpeg_video_server::read_image_to_memory(unsigned int minX, unsigned int m
 
         // Free the packet that was allocated by av_read_frame
         av_free_packet(m_packet);
-        delete m_packet;
         //printf("dbg: Freed a packet\n");
     }
 
