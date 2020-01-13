@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.0)
 PROJECT(CISMM_VIDEO)
 
 #-----------------------------------------------------------------------------
@@ -54,6 +54,16 @@ endif()
 # Local CMake Modules
 list(APPEND CMAKE_MODULE_PATH ${CISMM_VIDEO_SOURCE_DIR} ${CISMM_VIDEO_SOURCE_DIR}/cmake)
 
+# Configuration options controlling what gets included in the build.
+FIND_PACKAGE(TCL)
+FIND_PACKAGE(GLUT)
+if (TCL_FOUND AND GLUT_FOUND)
+  OPTION(VIDEO_BUILD_APPLICATIONS "Enable to build applications" ON)
+else()
+  OPTION(VIDEO_BUILD_APPLICATIONS "Enable to build applications" OFF)
+endif()
+
+
 #-----------------------------------------------------------------------------
 # Libraries we need to do our thing.
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${VIDEO_SOURCE_DIR})
@@ -73,13 +83,6 @@ if (NSRGBUILD_FOUND)
 	)
 else (NSRGBUILD_FOUND)
   FIND_PACKAGE(ImageMagick COMPONENTS MagickCore)	# Do we have ImageMagick?
-  if (VIDEO_BUILD_APPLICATIONS)
-	FIND_PACKAGE(TCL REQUIRED)
-	FIND_PACKAGE(GLUT REQUIRED)
-  else (VIDEO_BUILD_APPLICATIONS)
-	FIND_PACKAGE(TCL)
-	FIND_PACKAGE(GLUT)
-  endif (VIDEO_BUILD_APPLICATIONS)
 endif (NSRGBUILD_FOUND)
 ELSE (WIN32)
   FIND_PACKAGE(NSRGBUILD)
@@ -94,13 +97,6 @@ ELSE (WIN32)
 	${_libsuffixes}
   )
   FIND_PACKAGE(ImageMagick COMPONENTS MagickCore)	# Do we have ImageMagick?
-  if (VIDEO_BUILD_APPLICATIONS)
-	FIND_PACKAGE(TCL REQUIRED)
-	FIND_PACKAGE(GLUT REQUIRED)
-  else (VIDEO_BUILD_APPLICATIONS)
-	FIND_PACKAGE(TCL)
-	FIND_PACKAGE(GLUT)
-  endif (VIDEO_BUILD_APPLICATIONS)
 ENDif (WIN32)
 # See if we have OpenMP on this architecture.  If so, turn it on.
 FIND_PACKAGE(OpenMP)
@@ -153,17 +149,14 @@ else (ImageMagick_FOUND)
 endif (ImageMagick_FOUND)
 
 # Override the defaults below.
-if (WIN32)
+FIND_PACKAGE(DirectShow)
+if (DirectShow_FOUND)
   OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" ON)
-endif (WIN32)
-if (WIN32)
   OPTION(VIDEO_USE_DIRECTSHOW_APPS "Enable to build apps using the DirectShow reader" ON)
-endif (WIN32)
-
-# Configuration options controlling what gets included in the build.
-# Look up each of the camera-driver libraries.  If they are found, then turn them
-# on by default.
-OPTION(VIDEO_BUILD_APPLICATIONS "Enable to build applications" ON)
+else()
+  OPTION(VIDEO_USE_DIRECTSHOW "Enable to include Microsoft DirectShow code in build" OFF)
+  OPTION(VIDEO_USE_DIRECTSHOW_APPS "Enable to build apps using the DirectShow reader" OFF)
+endif ()
 
 find_package(Cooke)
 if (Cooke_FOUND)
