@@ -144,11 +144,11 @@ bool  VRPN_Imager_camera_server::read_one_frame(unsigned short minX, unsigned sh
   // For the Imager server, timeout after two seconds rather than a tenth of a second.
   // This is because some of our our optical cameras have much longer integration times.
   struct timeval start, now;
-  gettimeofday(&start, NULL);
+  vrpn_gettimeofday(&start, NULL);
   int lastFrameNum = _frameNum;
   while (lastFrameNum == _frameNum) {
     _imager->mainloop();
-    gettimeofday(&now, NULL);
+    vrpn_gettimeofday(&now, NULL);
     if (duration(now, start) > 2000000L) {
       return false;
     }
@@ -183,10 +183,10 @@ bool VRPN_Imager_camera_server::open_and_find_parameters(const char *name)
   _status = true;
   _frameNum = -1;
   _imager->mainloop();	  // Do one mainloop to pull in the file from disk
-  gettimeofday(&start, NULL);
+  vrpn_gettimeofday(&start, NULL);
   while (!_gotResolution) {
     _imager->mainloop();
-    gettimeofday(&now, NULL);
+    vrpn_gettimeofday(&now, NULL);
     if (duration(now, start) > 10000000L) {
       fprintf(stderr,"VRPN_Imager_camera_server::open_and_find_parameters(): Timeout trying to read resolution\n");
       return false;
@@ -213,10 +213,10 @@ bool VRPN_Imager_camera_server::open_and_find_parameters(const char *name)
     _paused = false;
     _pause_after_one_frame = true;
   }
-  gettimeofday(&start, NULL);
+  vrpn_gettimeofday(&start, NULL);
   while (true) {
     if (read_one_frame(0, _num_columns-1, 0, _num_rows-1, 0)) { break; }
-    gettimeofday(&now, NULL);
+    vrpn_gettimeofday(&now, NULL);
     if (duration(now, start) > 10000000L) {
       fprintf(stderr,"VRPN_Imager_camera_server::open_and_find_parameters(): Timeout trying to read first frame\n");
       return false;
