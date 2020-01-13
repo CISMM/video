@@ -2,12 +2,14 @@
 
 #include "base_camera_server.h"
 
-// Include the appropriate headers.
-extern "C" {
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-#include <libswscale/swscale.h>
-}
+// Forward declare classes so other code using this library does not need to include
+// external header files.
+struct AVFormatContext;
+struct AVCodecContext;
+struct AVCodec;
+struct AVFrame;
+struct AVPacket;
+struct SwsContext;
 
 class ffmpeg_video_server : public base_camera_server {
 public:

@@ -1,5 +1,12 @@
 #include "ffmpeg_video_server.h"
 
+// Include the appropriate headers.
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libswscale/swscale.h>
+}
+
 #include <stdio.h>
 #include <stdlib.h>
 
