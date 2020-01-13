@@ -852,7 +852,7 @@ public:
     ~Tracker_Collection_Manager();
 
     // Returns information about the trackers we're managing.
-    unsigned tracker_count(void) const { return d_trackers.size(); }
+    unsigned tracker_count(void) const { return static_cast<unsigned>(d_trackers.size()); }
     Spot_Information  *tracker(unsigned which) const;
     Spot_Information  *active_tracker(void) const;
     int active_tracker_index(void) const { return d_active_tracker; }
