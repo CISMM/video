@@ -38,9 +38,9 @@ elseif(APPLE) # Apple
   INCLUDE_DIRECTORIES(
 	${/usr/X11/include}
   )
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.5 -arch x86_64 -arch i386")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -mmacosx-version-min=10.7 -arch x86_64")
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmacosx-version-min=10.5 -arch x86_64 -arch i386")
-SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -headerpad_max_install_names -mmacosx-version-min=10.5 -arch x86_64 -arch i386")
+SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -headerpad_max_install_names -mmacosx-version-min=10.7 -arch x86_64")
 
 #  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall")
 #  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
@@ -756,7 +756,7 @@ TARGET_LINK_LIBRARIES(video_spot_tracker
 )
 SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
 
-IF(NOT APPLE)
+#IF(NOT APPLE)
 install(TARGETS video_spot_tracker
 	RUNTIME DESTINATION bin)
 
@@ -785,7 +785,7 @@ CONFIGURE_FILE(
 INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
 INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
 #--------------------------------------------------------------------------
-ENDIF(NOT APPLE)
+#ENDIF(NOT APPLE)
 endif (NOT VIDEO_USE_CUDA)
 
 # XXX Should move the CUDA compilation into the spot-tracker library code.
