@@ -32,15 +32,16 @@ if(WIN32) # MS-Windows, both 32 and 64 bits
     ADD_DEFINITIONS( -D_CRT_SECURE_NO_WARNINGS )
   endif()
 elseif(APPLE) # Apple
-#Enable later versions of Tcl/Tk to compile with const/non-const changes
+  #Enable later versions of Tcl/Tk to compile with const/non-const changes
   set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fpermissive")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
   INCLUDE_DIRECTORIES(
 	${/usr/X11/include}
   )
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -mmacosx-version-min=10.7 -arch x86_64")
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmacosx-version-min=10.5 -arch x86_64 -arch i386")
-SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -headerpad_max_install_names -mmacosx-version-min=10.7 -arch x86_64")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -mmacosx-version-min=10.7 -arch x86_64")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmacosx-version-min=10.5 -arch x86_64 -arch i386")
+  SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -headerpad_max_install_names -mmacosx-version-min=10.7 -arch x86_64")
+	OPTION(VIDEO_BUILD_MACBUNDLE "Build an application bundle for a mac" ON)
 
 #  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -Wall")
 #  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
@@ -323,11 +324,11 @@ ADD_LIBRARY (base_camera_server_library
 )
 set_property(TARGET base_camera_server_library PROPERTY PUBLIC_HEADER ${BCS_PUBLIC_HEADERS})
 
-if(NOT (APPLE))
+if(NOT VIDEO_BUILD_MACBUNDLE)
 install(TARGETS base_camera_server_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
-endif (NOT (APPLE))
+endif (NOT VIDEO_BUILD_MACBUNDLE OR NOT)
 if (VIDEO_USE_IMAGEMAGICK)
 	set(FS_SOURCES file_stack_server.cpp file_list.cpp)
 	set(FS_PUBLIC_HEADERS file_stack_server.h file_list.h)
@@ -336,11 +337,11 @@ if (VIDEO_USE_IMAGEMAGICK)
 		${FS_SOURCES} ${FS_PUBLIC_HEADERS}
 	)
 	set_property(TARGET file_stack_library PROPERTY PUBLIC_HEADER ${FS_PUBLIC_HEADERS})
-	if(NOT (APPLE))
+	if(NOT VIDEO_BUILD_MACBUNDLE)
 	install(TARGETS file_stack_library
 		ARCHIVE DESTINATION lib
 		PUBLIC_HEADER DESTINATION include)
-	endif (NOT (APPLE))
+	endif (NOT VIDEO_BUILD_MACBUNDLE)
 endif (VIDEO_USE_IMAGEMAGICK)
 
 if (VIDEO_USE_COOKE)
@@ -434,11 +435,11 @@ if (VIDEO_USE_FFMPEG)
 		${FFMPEG_SOURCES} ${FFMPEG_PUBLIC_HEADERS}
 	)
 	set_property(TARGET ffmpeg_video_library PROPERTY PUBLIC_HEADER ${FFMPEG_PUBLIC_HEADERS})
-	if (NOT (APPLE))
+	if (NOT VIDEO_BUILD_MACBUNDLE)
 	install(TARGETS ffmpeg_video_library
 		ARCHIVE DESTINATION lib
 		PUBLIC_HEADER DESTINATION include)
-	endif (NOT (APPLE))
+	endif (NOT VIDEO_BUILD_MACBUNDLE)
 endif (VIDEO_USE_FFMPEG)
 
 # XXX NIKON
@@ -611,13 +612,13 @@ ADD_LIBRARY (spot_tracker_library
 )
 set_property(TARGET spot_tracker_library PROPERTY PUBLIC_HEADER ${STL_PUBLIC_HEADERS})
 
-if(NOT (APPLE))
+if(NOT VIDEO_BUILD_MACBUNDLE)
 
 install(TARGETS spot_tracker_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
 
-endif(NOT (APPLE))
+endif(NOT VIDEO_BUILD_MACBUNDLE)
 #-----------------------------------------------------------------------------
 # STOCC random-number library
 set(STC_SOURCES stocc_random_number_generator/mersenne.cpp
@@ -629,11 +630,11 @@ ADD_LIBRARY (stocc_random_number_generator_library
 )
 set_property(TARGET stocc_random_number_generator_library
 			PROPERTY PUBLIC_HEADER ${STC_PUBLIC_HEADERS})
-if(NOT (APPLE))
+if(NOT VIDEO_BUILD_MACBUNDLE)
 install(TARGETS stocc_random_number_generator_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
-endif(NOT (APPLE))
+endif(NOT VIDEO_BUILD_MACBUNDLE)
 
 #-----------------------------------------------------------------------------
 # Tcl-Linkvar library (not a library in the initial project file)
@@ -644,11 +645,11 @@ ADD_LIBRARY (Tcl_Linkvar
 	${LV_SOURCES} ${LV_PUBLIC_HEADERS}
 )
 set_property(TARGET Tcl_Linkvar PROPERTY PUBLIC_HEADER ${LV_PUBLIC_HEADERS})
-if (NOT APPLE)
+if (NOT VIDEO_BUILD_MACBUNDLE)
 install(TARGETS Tcl_Linkvar
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
-endif (NOT APPLE)
+endif (NOT VIDEO_BUILD_MACBUNDLE NOT APPLE)
 endif (VIDEO_BUILD_APPLICATIONS)
 
 #-----------------------------------------------------------------------------
@@ -670,11 +671,11 @@ if (VIDEO_BUILD_APPLICATIONS)
 # Non-CUDA version of Video Spot Tracker
 if (NOT VIDEO_USE_CUDA)
 SET(TARGET_NAME video_spot_tracker)
-IF(NOT APPLE)
+IF(NOT VIDEO_BUILD_MACBUNDLE)
 	ADD_EXECUTABLE(video_spot_tracker video_spot_tracker.cpp)
-ELSE(NOT APPLE)
+ELSE(NOT VIDEO_BUILD_MACBUNDLE)
 	ADD_EXECUTABLE(video_spot_tracker MACOSX_BUNDLE video_spot_tracker.cpp)
-ENDIF(NOT APPLE)
+ENDIF(NOT VIDEO_BUILD_MACBUNDLE)
 if (VIDEO_USE_IMAGEMAGICK)
 	TARGET_LINK_LIBRARIES(video_spot_tracker
 		file_stack_library
@@ -756,14 +757,14 @@ TARGET_LINK_LIBRARIES(video_spot_tracker
 )
 SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
 
-IF(NOT APPLE)
+IF(NOT VIDEO_BUILD_MACBUNDLE)
 install(TARGETS video_spot_tracker
 	RUNTIME DESTINATION bin)
 
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/video_spot_tracker.tcl
 		${CMAKE_CURRENT_SOURCE_DIR}/russ_widgets.tcl
 	DESTINATION bin)
-ELSE(NOT APPLE)
+ELSE(NOT VIDEO_BUILD_MACBUNDLE)
 SET (CPACK_PACKAGE_FILE_NAME "Video_spot_tracker_v08.01_Intel_Mac_Universal")
 FILE(COPY video_spot_tracker.tcl russ_widgets.tcl DESTINATION video_spot_tracker.app/Contents/MacOS)
 
@@ -785,19 +786,19 @@ CONFIGURE_FILE(
 INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
 INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
 #--------------------------------------------------------------------------
-ENDIF(NOT APPLE)
+ENDIF(NOT VIDEO_BUILD_MACBUNDLE)
 endif (NOT VIDEO_USE_CUDA)
 
 # XXX Should move the CUDA compilation into the spot-tracker library code.
 # XXX Then do we CUDA compile everything that uses spot-tracker lib?
 if (VIDEO_USE_CUDA)
   SET(TARGET_NAME video_spot_tracker_CUDA)
-  IF(NOT APPLE)
+  IF(NOT VIDEO_BUILD_MACBUNDLE)
 	CUDA_ADD_EXECUTABLE(video_spot_tracker_CUDA video_spot_tracker.cpp
 spot_tracker.cu)
-  ELSE(NOT APPLE)
+  ELSE(NOT VIDEO_BUILD_MACBUNDLE)
 	CUDA_ADD_EXECUTABLE(video_spot_tracker_CUDA MACOSX_BUNDLE video_spot_tracker.cpp)
-  ENDIF(NOT APPLE)
+  ENDIF(NOT VIDEO_BUILD_MACBUNDLE)
   TARGET_LINK_LIBRARIES(video_spot_tracker_CUDA ${CUDA_CUDA_LIBRARY})
 
   if (VIDEO_USE_IMAGEMAGICK)
@@ -880,11 +881,11 @@ spot_tracker.cu)
   )
   SET_TARGET_PROPERTIES(video_spot_tracker_CUDA PROPERTIES SOLUTION_FOLDER apps)
 
-  IF(NOT APPLE)
+  IF(NOT VIDEO_BUILD_MACBUNDLE)
     install(TARGETS video_spot_tracker_CUDA RUNTIME DESTINATION bin)
     install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/video_spot_tracker.tcl
 		${CMAKE_CURRENT_SOURCE_DIR}/russ_widgets.tcl DESTINATION bin)
-  ELSE(NOT APPLE)
+  ELSE(NOT VIDEO_BUILD_MACBUNDLE)
     FILE(COPY video_spot_tracker.tcl russ_widgets.tcl DESTINATION video_spot_tracker_CUDA.app/Contents/MacOS)
     INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
 
@@ -899,7 +900,7 @@ spot_tracker.cu)
     #INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
     #INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
     #--------------------------------------------------------------------------
-  ENDIF(NOT APPLE)
+  ENDIF(NOT VIDEO_BUILD_MACBUNDLE)
 
 endif (VIDEO_USE_CUDA)
 
@@ -993,26 +994,26 @@ TARGET_LINK_LIBRARIES(video_spot_tracker_nogui
 set_target_properties(video_spot_tracker_nogui PROPERTIES COMPILE_FLAGS -DVST_NO_GUI)
 SET_TARGET_PROPERTIES(video_spot_tracker_nogui PROPERTIES SOLUTION_FOLDER apps)
 
-IF(NOT APPLE)
+IF(NOT VIDEO_BUILD_MACBUNDLE)
 install(TARGETS video_spot_tracker_nogui
 	RUNTIME DESTINATION bin)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/video_spot_tracker.tcl
 		${CMAKE_CURRENT_SOURCE_DIR}/russ_widgets.tcl
 	DESTINATION bin)
-ELSE(NOT APPLE)
+ELSE(NOT VIDEO_BUILD_MACBUNDLE)
 # Comment out this if you don't want spot_tracker_nogui in the installer
 # ------------------------------------------------------------------
 INSTALL(TARGETS ${TARGET_NAME} DESTINATION .)
 # ------------------------------------------------------------------
-ENDIF(NOT APPLE)
+ENDIF(NOT VIDEO_BUILD_MACBUNDLE)
 
 if (VIDEO_USE_CUDA AND NOT WIN32)
   SET(TARGET_NAME CUDA_video_filter)
-  IF(NOT APPLE)
+  IF(NOT VIDEO_BUILD_MACBUNDLE)
 	CUDA_ADD_EXECUTABLE(CUDA_video_filter CUDA_video_filter.cpp spot_tracker.cu)
-  ELSE(NOT APPLE)
+  ELSE(NOT VIDEO_BUILD_MACBUNDLE)
 	CUDA_ADD_EXECUTABLE(CUDA_video_filter MACOSX_BUNDLE CUDA_video_filter.cpp spot_tracker.cu)
-  ENDIF(NOT APPLE)
+  ENDIF(NOT VIDEO_BUILD_MACBUNDLE)
   TARGET_LINK_LIBRARIES(CUDA_video_filter ${CUDA_CUDA_LIBRARY})
 
   if (VIDEO_USE_IMAGEMAGICK)
@@ -1059,11 +1060,11 @@ if (VIDEO_USE_CUDA AND NOT WIN32)
   )
   SET_TARGET_PROPERTIES(CUDA_video_filter PROPERTIES SOLUTION_FOLDER apps)
 
-  IF(NOT APPLE)
+  IF(NOT VIDEO_BUILD_MACBUNDLE)
     install(TARGETS CUDA_video_filter RUNTIME DESTINATION bin)
     install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/CUDA_video_filter.tcl
 		${CMAKE_CURRENT_SOURCE_DIR}/russ_widgets.tcl DESTINATION bin)
-  ELSE(NOT APPLE)
+  ELSE(NOT VIDEO_BUILD_MACBUNDLE)
     FILE(COPY CUDA_video_filter.tcl russ_widgets.tcl DESTINATION CUDA_video_filter.app/Contents/MacOS)
     INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
 
@@ -1078,7 +1079,7 @@ if (VIDEO_USE_CUDA AND NOT WIN32)
     #--------------------------------------------------------------------------
     #INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
     #INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
-  ENDIF(NOT APPLE)
+  ENDIF(NOT VIDEO_BUILD_MACBUNDLE)
 
 endif (VIDEO_USE_CUDA)
 
@@ -1201,9 +1202,9 @@ MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 
 if( ${APPLICATION_NAME} MATCHES cismm_video_optimizer )
 
-IF(NOT APPLE)
+IF(NOT VIDEO_BUILD_MACBUNDLE)
   ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp)
-ELSE(NOT APPLE)
+ELSE(NOT VIDEO_BUILD_MACBUNDLE)
   ADD_EXECUTABLE(${APPLICATION_NAME} MACOSX_BUNDLE ${APPLICATION_NAME}.cpp)
   FILE(COPY cismm_video_optimizer.tcl russ_widgets.tcl DESTINATION cismm_video_optimizer.app/Contents/MacOS)
 
@@ -1218,7 +1219,7 @@ ELSE(NOT APPLE)
   #INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
   #INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
   #--------------------------------------------------------------------------
-ENDIF(NOT APPLE)
+ENDIF(NOT VIDEO_BUILD_MACBUNDLE)
 
 ELSE()
   ADD_EXECUTABLE(${APPLICATION_NAME} ${APPLICATION_NAME}.cpp)
