@@ -746,7 +746,7 @@ TARGET_LINK_LIBRARIES(video_spot_tracker
 )
 SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
 
-#IF(NOT APPLE)
+IF(NOT APPLE)
 install(TARGETS video_spot_tracker
 	RUNTIME DESTINATION bin)
 
@@ -775,7 +775,7 @@ CONFIGURE_FILE(
 INSTALL(SCRIPT ${CMAKE_BINARY_DIR}/mac_installer.cmake)
 INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
 #--------------------------------------------------------------------------
-#ENDIF(NOT APPLE)
+ENDIF(NOT APPLE)
 endif (NOT VIDEO_USE_CUDA)
 endif (VIDEO_BUILD_TCL)
 
