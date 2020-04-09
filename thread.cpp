@@ -522,7 +522,7 @@ int Thread::go() {
 
 int Thread::kill() {
   // kill the os thread
-  if (ulProcID>0) {
+  if (ulProcID != 0) {
 #ifdef sgi
     if (::kill( (long) ulProcID, SIGKILL)<0) {
       perror("Thread::kill: kill:");
