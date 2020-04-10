@@ -8,6 +8,12 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #endif
 
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(55,28,1)
+#define av_frame_alloc     avcodec_alloc_frame
+#define av_packet_unref    av_free_packet
+#define PIX_FMT_RGB24      AV_PIX_FMT_RGB24
+#endif // LIBAVCODEC_VERSION_INT
+
 // This code is written based on the example code from
 // avcodec_sample.0.5.0.c and based on ffplay.c
 
@@ -69,7 +75,11 @@ bool ffmpeg_video_server::open_video_file(void)
 
     // Retrieve stream information
     //printf("dbg: getting stream info\n");
+#ifdef __APPLE__
+    if(avformat_find_stream_info(m_pFormatCtx, NULL)<0) {
+#else
     if(av_find_stream_info(m_pFormatCtx)<0) {
+#endif
         fprintf(stderr,"ffmpeg_video_server::open_video_file(): Cannot find stream information\n");
         return false;
     }
@@ -119,14 +129,14 @@ bool ffmpeg_video_server::open_video_file(void)
 
     // Allocate video frame
     //printf("dbg: allocating video frame\n");
-    m_pFrame=avcodec_alloc_frame();
+    m_pFrame=av_frame_alloc();
     if (m_pFrame==NULL) {
         fprintf(stderr,"ffmpeg_video_server::open_video_file(): Out of memory allocating video frame\n");
         return false;
     }
 
     // Allocate an AVFrame structure
-    m_pFrameRGB=avcodec_alloc_frame();
+    m_pFrameRGB=av_frame_alloc();
     if (m_pFrameRGB==NULL) {
         fprintf(stderr,"ffmpeg_video_server::open_video_file(): Out of memory allocating RGB video frame\n");
         return false;
@@ -135,11 +145,11 @@ bool ffmpeg_video_server::open_video_file(void)
     // Determine required buffer size and allocate the buffer used
     // internal to FFMPEG and the one we copy data from there into.
     int numBytes;
-    numBytes=avpicture_get_size(PIX_FMT_RGB24, m_pCodecCtx->width, m_pCodecCtx->height);
+    numBytes=avpicture_get_size(AV_PIX_FMT_RGB24, m_pCodecCtx->width, m_pCodecCtx->height);
     m_buffer=new uint8_t[numBytes];
 
     // Assign appropriate parts of buffer to image planes in pFrameRGB
-    avpicture_fill((AVPicture *)m_pFrameRGB, m_buffer, PIX_FMT_RGB24,
+    avpicture_fill((AVPicture *)m_pFrameRGB, m_buffer, AV_PIX_FMT_RGB24,
         m_pCodecCtx->width, m_pCodecCtx->height);
 
     // Initialize our packet
@@ -165,7 +175,11 @@ bool ffmpeg_video_server::close_video_file(void)
     }
 
     avcodec_close(m_pCodecCtx);
+#ifdef __APPLE__
+    avformat_close_input(&m_pFormatCtx);
+#else
     av_close_input_file(m_pFormatCtx);
+#endif
 
     return true;
 }
@@ -234,7 +248,7 @@ bool ffmpeg_video_server::read_image_to_memory(unsigned int minX, unsigned int m
                     int h = m_pCodecCtx->height;
                     m_img_convert_ctx = sws_getContext(w, h,
                                                     m_pCodecCtx->pix_fmt,
-                                                    w, h, PIX_FMT_RGB24, SWS_BICUBIC,
+                                                    w, h, AV_PIX_FMT_RGB24, SWS_BICUBIC,
                                                     NULL, NULL, NULL);
                     if(m_img_convert_ctx == NULL) {
                         fprintf(stderr, "ffmpeg_video_server::read_image_to_memory(): Cannot initialize the conversion context!\n");
