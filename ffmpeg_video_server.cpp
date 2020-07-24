@@ -75,11 +75,7 @@ bool ffmpeg_video_server::open_video_file(void)
 
     // Retrieve stream information
     //printf("dbg: getting stream info\n");
-#ifdef __APPLE__
     if(avformat_find_stream_info(m_pFormatCtx, NULL)<0) {
-#else
-    if(av_find_stream_info(m_pFormatCtx)<0) {
-#endif
         fprintf(stderr,"ffmpeg_video_server::open_video_file(): Cannot find stream information\n");
         return false;
     }
@@ -113,11 +109,7 @@ bool ffmpeg_video_server::open_video_file(void)
 
     // Open codec
     //printf("dbg: opening codec\n");
-#ifdef __APPLE__
     if (avcodec_open2(m_pCodecCtx, m_pCodec, NULL)<0) {
-#else
-    if (avcodec_open(m_pCodecCtx, m_pCodec)<0) {
-#endif
         fprintf(stderr,"ffmpeg_video_server::open_video_file(): Cannot open CODEC\n");
         return false;
     }
@@ -175,11 +167,7 @@ bool ffmpeg_video_server::close_video_file(void)
     }
 
     avcodec_close(m_pCodecCtx);
-#ifdef __APPLE__
     avformat_close_input(&m_pFormatCtx);
-#else
-    av_close_input_file(m_pFormatCtx);
-#endif
 
     return true;
 }
