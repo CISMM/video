@@ -328,7 +328,7 @@ if(NOT VIDEO_BUILD_MACBUNDLE)
 install(TARGETS base_camera_server_library
 	ARCHIVE DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
-endif (NOT VIDEO_BUILD_MACBUNDLE OR NOT)
+endif (NOT VIDEO_BUILD_MACBUNDLE)
 if (VIDEO_USE_IMAGEMAGICK)
 	set(FS_SOURCES file_stack_server.cpp file_list.cpp)
 	set(FS_PUBLIC_HEADERS file_stack_server.h file_list.h)
