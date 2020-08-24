@@ -528,7 +528,7 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
   dy[my_x][my_y] = (2.0f * my_y/(lattice - 1.0f) - 1.0f);
 
   // Synchronize all of the threads in the block.
-  syncthreads();
+  __syncthreads();
 
   // Do the whole optimization here, checking with smaller and smaller
   // steps until we reach the accuracy requested.
@@ -547,14 +547,14 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 	}
 
 	// Synchronize all of the threads in the block.
-	syncthreads();
+	__syncthreads();
 
 	// Make my own tracker with its information copied from the original
 	// passed-in tracker I'm associated with.
 	CUDA_Tracker_Info member_t = t;
 
 	// Synchronize all of the threads in the block.
-	syncthreads();
+	__syncthreads();
 
 	// Compute the fitness for all offsets and then figure out which
 	// is the best.  If the best location is not found on the outside
@@ -567,7 +567,7 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 		fitnesses[my_x][my_y] = cuda_check_fitness_symmetric(img, nx, ny, member_t);
 		
 		// Synchronize all of the threads in the block.
-		syncthreads();
+		__syncthreads();
 
 		// In the first thread, find the highest fitness and its index.
 		// Compare this with the original fitness.  If one is better, set
@@ -624,7 +624,7 @@ static __global__ void VST_cuda_symmetric_opt_kernel(const float *img, int nx, i
 		}
 
 		// Synchronize all of the threads in the block.
-		syncthreads();
+		__syncthreads();
 
 	} while (!done);	  
 }

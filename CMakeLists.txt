@@ -116,7 +116,7 @@ if (OPENMP_FOUND)
 
 endif()
 
-link_directories( ${ImageMagick_MagickCore_LIBRARY_DIR} ${tiff_LIBRARY_DIR} ${jpeg_LIBRARY_DIR})
+link_directories( ${tiff_LIBRARY_DIR} ${jpeg_LIBRARY_DIR})
 
 if (WIN32)
 	# To avoid warnings in case we're using Visual Studio
@@ -135,14 +135,14 @@ elseif(APPLE)
 else(APPLE)
 	set (PTHREAD_LIBRARY pthread)
         # tiff shouldn't be linked separately, but ImageMagick has trouble linking static tiff delegate.
-	set (ImageMagick_Needed_Libs MagickCore tiff)
+	set (ImageMagick_Needed_Libs ${ImageMagick_MagickCore_LIBRARY} tiff)
 endif (WIN32)
 
 FIND_PACKAGE(CUDA)
 if (CUDA_FOUND)
 	OPTION(VIDEO_USE_CUDA "Compile and link to CUDA library" ON)
 	include_directories(${CUDA_TOOLKIT_INCLUDE})
-	set(CUDA_NVCC_FLAGS -arch=compute_20 -code=compute_20 CACHE STRING "CUDA compiler command-line arguments" FORCE)
+	set(CUDA_NVCC_FLAGS -arch=compute_30 -code=compute_30 CACHE STRING "CUDA compiler command-line arguments" FORCE)
 else()
 	OPTION(VIDEO_USE_CUDA "Compile and link to CUDA library" OFF)
 endif()
@@ -303,6 +303,7 @@ if (VIDEO_BUILD_APPLICATIONS)
 	${TCL_X11_INCLUDE_PATH}
 	${GLUT_INCLUDE_DIR}
   )
+	ADD_DEFINITIONS(-DUSE_INTERP_RESULT)
 endif (VIDEO_BUILD_APPLICATIONS)
 
 INCLUDE_DIRECTORIES(
@@ -753,7 +754,7 @@ TARGET_LINK_LIBRARIES(video_spot_tracker
 	${TCL_LIBRARY}
 	${TK_LIBRARY}
 	${GLUT_LIBRARIES}
-        ${FFMPEG_LIBRARIES}
+  ${FFMPEG_LIBRARIES}
 )
 SET_TARGET_PROPERTIES(video_spot_tracker PROPERTIES SOLUTION_FOLDER apps)
 
