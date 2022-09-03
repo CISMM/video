@@ -161,6 +161,51 @@ bool  image_wrapper::write_to_tiff_file(const char *filename, double scale, doub
 #endif
 }
 
+bool  image_wrapper::write_to_pgm_file(const char *filename, unsigned channel, double gain, bool sixteen_bits) const
+{
+  int     r,c;
+  int minx, maxx, miny, maxy, numcols, numrows;
+  read_range(minx, maxx, miny, maxy);
+  numcols = maxx-minx+1;
+  numrows = maxy-miny+1;
+
+  if (channel >= get_num_colors()) {
+      fprintf(stderr, "image_wrapper::write_to_pgm_file(): Invalid channel)\n");
+      return false;
+  }
+
+  FILE *f = fopen(filename, "wb");
+  if (!f) {
+      fprintf(stderr, "image_wrapper::write_to_pgm_file(): Could not open %s for write\n", filename);
+      return false;
+  }
+  int maxval = 255;
+  if (sixteen_bits) { maxval = 65535; }
+  fprintf(f, "P5\n%d %d\n%d\n", numcols, numrows, maxval);
+
+  // Flip the row values around so that the orientation matches the order expected by PGM files.
+  // Make sure to flip on the output, not on the pixel read, because the pixel read
+  // may have other hidden transforms in there.
+  for (r = 0; r < numrows; r++) {
+    for (c = 0; c < numcols; c++) {
+      int flip_r = (numrows - 1) - r;
+      double  value;
+      read_pixel(minx + c, miny + flip_r, value, 0);
+      value *= gain;
+      if (sixteen_bits) {
+        uint16_t uShortValue = value;
+        fwrite(&uShortValue, 2, 1, f);
+      } else {
+        uint8_t uCharValue = value;
+        fwrite(&uCharValue, 1, 1, f);
+      }
+    }
+  }
+
+  fclose(f);
+  return true;
+}
+
 /// Store the specified channel of the portion of the image that is in memory to a TIFF file.
 bool  image_wrapper::write_to_grayscale_tiff_file(const char *filename, unsigned channel, double scale, double offset,
 				                  bool sixteen_bits, const char *magick_files_dir, bool skip_init) const

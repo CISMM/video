@@ -72,6 +72,75 @@ disc_image::disc_image(int minx, int maxx, int miny, int maxy,
   }  
 }
 
+ellipse_image::ellipse_image(int minx, int maxx, int miny, int maxy,
+           double background, double noise,
+           double centerx, double centery, double rx, double ry,
+           double intensity, int oversample) :
+  double_image(minx, maxx, miny, maxy),
+  _oversample(oversample)
+{
+  int i,j, index;
+  double oi,oj;   //< Oversample steps
+
+  // Make sure the parameters are meaningful
+  if ( (_oversample <= 0) ) {
+    fprintf(stderr,"ellipse_image::ellipse_image(): Bad oversample\n");
+    _minx = _maxx = _miny = _maxy = 0;
+    return;
+  }
+
+  // Fill in the background intensity.
+  for (i = _minx; i <= _maxx; i++) {
+    for (j = _miny; j <= _maxy; j++) {
+      write_pixel_nocheck(i, j, background);
+    }
+  }
+
+  // Add in 0.5 pixel to the X and Y positions
+  // so that we center the ellipse on the middle of the pixel rather than
+  // having it centered between pixels.
+  centerx += 0.5;
+  centery += 0.5;
+
+  // Fill in the ellipse intensity (the part of it that is within the image).
+  // Oversample the image by the factor specified in _oversample, averaging
+  // all results within the pixel.
+#ifdef  DEBUG
+  printf("ellipse_image::ellipse_image(): Making ellipse with radii %lg, %lg\n", rx, ry);
+#endif
+  double  rx2 = rx * rx;
+  double  ry2 = ry * ry;
+  for (i = (int)floor(centerx - rx); i <= (int)ceil(centerx + rx); i++) {
+    for (j = (int)floor(centery - ry); j <= (int)ceil(centery + ry); j++) {
+      if (find_index(i,j,index)) {
+  _image[index] = 0;
+  for (oi = 0; oi < _oversample; oi++) {
+    for (oj = 0; oj < _oversample; oj++) {
+      double x = i + oi/_oversample;
+      double y = j + oj/_oversample;
+      if ( 1 >= (x - centerx)*(x - centerx)/rx2 + (y - centery)*(y - centery)/ry2 ) {
+        _image[index] += intensity;
+      } else {
+        _image[index] += background;
+      }
+    }
+  }
+  _image[index] /= (_oversample * _oversample);
+      }
+    }
+  }
+
+  // Add zero-mean uniform noise to the image, with the specified width
+  for (i = _minx; i <= _maxx; i++) {
+    for (j = _miny; j <= _maxy; j++) {
+      if (find_index(i,j,index)) {
+  double  unit_rand = (double)(rand()) / RAND_MAX;
+  _image[index] += (unit_rand - 0.5) * 2 * noise;
+      }
+    }
+  }
+}
+
 multi_disc_image::multi_disc_image(std::vector<bead>& b, 
                            int minx, int maxx, int miny, int maxy,
 		                   double background, double noise,

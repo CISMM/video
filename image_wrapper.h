@@ -46,6 +46,20 @@ protected:
   int	  _oversample;
 };
 
+class ellipse_image: public double_image {
+public:
+  // Create an image of the specified size and background intensity with a
+  // disk in the specified location (may be subpixel) with the specified
+  // radius and intensity.
+  ellipse_image(int minx = 0, int maxx = 255, int miny = 0, int maxy = 255,
+       double background = 127.0, double noise = 0.0,
+       double centerx = 127.25, double centery = 127.75, double rx = 18.5,
+       double ry = 9.25, double intensity = 250, int oversample = 1);
+
+protected:
+  int   _oversample;
+};
+
 class multi_disc_image: public double_image {
 public:
   // Create an image of the specified size and background intensity with

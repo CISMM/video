@@ -5,7 +5,7 @@
 
 const char *version = "01.02";
 
-typedef enum { DISC, CONE, GAUSSIAN, ROD
+typedef enum { DISC, ELLIPSE, CONE, GAUSSIAN, ROD
     } SPOT_TYPE;
 typedef enum { CIRCLE, SPIRAL, RANDOM
     } MOTION_TYPE;
@@ -16,8 +16,9 @@ void Usage (const char * s)
   fprintf(stderr,"       [-imagesize WIDTH HEIGHT]\n");
   fprintf(stderr,"       [-start X Y] [-frames FRAMES]\n");
   fprintf(stderr,"       [-disc VALUE RADIUS | cone VALUE RADIUS | -gaussian CENTER_VALUE STD_DEV |\n");
-  fprintf(stderr,"       -rod VALUE RADIUS LENGTH]\n");
+  fprintf(stderr,"       -rod VALUE RADIUS LENGTH | -ellipse VALUE RX RY]\n");
   fprintf(stderr,"       [-circle RAD SPEED | -spiral SIZE SPEED | -random SEED MAX_STEP MAX_ANGLE]\n");
+  fprintf(stderr,"       -noise n\n");
   fprintf(stderr,"       [BASENAME]\n");
   fprintf(stderr,"     -v: Verbose mode\n");
   fprintf(stderr,"     -background: Specify the background brightness, infraction of total brightness (default 0)\n");
@@ -29,9 +30,12 @@ void Usage (const char * s)
   fprintf(stderr,"     -cone: Draw a cone-shaped bead of specified maximum value (fraction of total) and radius in pixels\n");
   fprintf(stderr,"     -gaussian: Draw a Gaussian-shaped bead of specified maximum fractional brightness and standard deviation in pixels\n");
   fprintf(stderr,"     -rod: Draw a rod shape of specified value (fraction of total) and radius in pixels; angle is in degrees\n");
+  fprintf(stderr,"     -ellipse: Draw an ellipse-shaped bead of specified value (fraction of total) and rx, ry in pixels (default 1.0 10 5)\n");
   fprintf(stderr,"     -circle: Move the bead in a circle of specified radius and speed (degrees/frame) (default 50 3)\n");
   fprintf(stderr,"     -spiral: Move the bead in a spiral of specified size and speed (degrees/frame) (try 1 5)\n");
   fprintf(stderr,"     -random: Move the bead randomly with maximum step size in pixels and angle in degrees\n");
+  fprintf(stderr,"     -noise: Add a noise in the range [-n..n] where n is fraction of intensity (default 0)\n");
+  fprintf(stderr,"     -pgm: Write PGM files (default TIFF files)\n");
   fprintf(stderr,"     BASENAME: Base name for the output file (default ./moving_spot if not specified)\n");
   exit(0);
 }
@@ -63,6 +67,9 @@ int main(int argc, char *argv[])
   double rod_value = 65535;           // Pixel value within a rod
   double rod_radius = 65535;          // Raidus of a rod in pixels
   double rod_length = 65535;          // Length of a rod in pixels
+  double ellipse_value = 65535;       // Pixel value within an ellipse
+  double ellipse_rx = 10;             // Radius of an ellipse in pixels in X
+  double ellipse_ry = 5;              // Radius of an ellipse in pixels in Y
   MOTION_TYPE motion_type = CIRCLE;
   double circle_radius = 25;          // Radius of circular motion
   double circle_speed = 3;            // Speed of moving around the circle in degrees/second
@@ -72,6 +79,8 @@ int main(int argc, char *argv[])
   double random_step = 1;              // Maximum magnitude of noise step
   double random_angle = 1;             // Maximum degrees of angle change
   bool verbose = false;               // Print out info along the way?
+  double noise = 0;                   // Pixel counts of +/-noise to add to each pixel
+  bool do_pgm = false;                // Write PGM files instead of TIFF?
 
   int	realparams = 0;
   int	i;
@@ -102,6 +111,14 @@ int main(int argc, char *argv[])
           if (++i > argc) { Usage(argv[0]); }
 	  disc_radius = atof(argv[i]);
           spot_type = DISC;
+    } else if (!strncmp(argv[i], "-ellipse", strlen("-ellipse"))) {
+          if (++i > argc) { Usage(argv[0]); }
+	  ellipse_value = 65535 * atof(argv[i]);   // Scale so 1 becomes maximum pixel value
+          if (++i > argc) { Usage(argv[0]); }
+	  ellipse_rx = atof(argv[i]);
+          if (++i > argc) { Usage(argv[0]); }
+	  ellipse_ry = atof(argv[i]);
+          spot_type = ELLIPSE;
     } else if (!strncmp(argv[i], "-cone", strlen("-cone"))) {
           if (++i > argc) { Usage(argv[0]); }
 	  cone_value = 65535 * atof(argv[i]);   // Scale 1 becomes maximum pixel value
@@ -143,6 +160,11 @@ int main(int argc, char *argv[])
 	  random_angle = atof(argv[i]);
           motion_type = RANDOM;
           srand(random_seed);
+    } else if (!strncmp(argv[i], "-noise", strlen("-noise"))) {
+          if (++i > argc) { Usage(argv[0]); }
+	  noise =  65535 * atof(argv[i]);
+    } else if (!strncmp(argv[i], "-pgm", strlen("-pgm"))) {
+	  do_pgm = true;
     } else if (!strncmp(argv[i], "-v", strlen("-v"))) {
           verbose = true;
     } else if (argv[i][0] == '-') {	// Unknown flag
@@ -221,12 +243,12 @@ int main(int argc, char *argv[])
     double flip_y = (height - 1) - y;
 
     // Make the appropriate image based on the bead type
-    image_wrapper *bead;
+    double_image *bead;
     double        radius;   // Used for logging
     switch (spot_type) {
     case DISC:
       bead = new disc_image(0, width-1, 0, height-1,
-                            background, 0.0,
+                            background, noise,
                             x, flip_y, disc_radius,
                             disc_value,
                             oversampling);
@@ -236,7 +258,7 @@ int main(int argc, char *argv[])
 
     case CONE:
       bead = new cone_image(0, width-1, 0, height-1,
-                            background, 0.0,
+                            background, noise,
                             x, flip_y, cone_radius,
                             cone_value,
                             oversampling);
@@ -251,7 +273,7 @@ int main(int argc, char *argv[])
       // to multiply by this to get back to unit height and then multiply again
       // by the value we want.
       bead = new Integrated_Gaussian_image(0, width-1, 0, height-1,
-                                           background, 0.0,
+                                           background, noise,
                                            x, flip_y, gaussian_std,
                                            gaussian_value * gaussian_std*gaussian_std * 2 * M_PI,
                                            oversampling);
@@ -260,19 +282,36 @@ int main(int argc, char *argv[])
 
     case ROD:
       bead = new rod_image(0, width-1, 0, height-1,
-                            background, 0.0,
+                            background, noise,
                             x, flip_y, rod_radius,
                             rod_length, angle * M_PI/180, rod_value,
                             oversampling);
       radius = rod_radius;
       break;
+
+    case ELLIPSE:
+      bead = new ellipse_image(0, width-1, 0, height-1,
+                            background, noise,
+                            x, flip_y, ellipse_rx, ellipse_ry,
+                            ellipse_value,
+                            oversampling);
+      radius = ellipse_rx;
+      if (ellipse_ry > radius) { radius = ellipse_ry; }
+      angle = 0.0;
+      break;
     }
 
     // Write the image to file whose name is the base name with
-    // the frame number and .tif added.
-    sprintf(filename, "%s.%04d.tif", basename, frame);
+    // the frame number and the correct file extension added.
+    const char *ext = "tif";
+    if (do_pgm) { ext = "pgm"; }
+    sprintf(filename, "%s.%04d.%s", basename, frame, ext);
     if (verbose) { printf("Writing %s:\n", filename); }
-    bead->write_to_grayscale_tiff_file(filename, 0, 1.0, 0.0, true);
+    if (do_pgm) {
+      bead->write_to_pgm_file(filename, 0, 255.0/65535);
+    } else {
+      bead->write_to_grayscale_tiff_file(filename, 0, 1.0, 0.0, true);
+    }
 
     // Write the information about the current bead to the CSV file, in a format
     // that matches the header description.  We DO NOT flip y in this report.

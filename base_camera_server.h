@@ -144,6 +144,9 @@ public:
 	   read_pixel_nocheck(ixhigh, iyhigh, rgb) * xhighfrac * yhighfrac;
   };
 
+  /// Store the memory image to a PGM file.
+  virtual bool  write_to_pgm_file(const char *filename, unsigned channel = 0, double gain = 1, bool sixteen_bits = false) const;
+
   /// Store the memory image to a PPM file.
   virtual bool  write_to_ppm_file(const char *filename, int gain = 1, bool sixteen_bits = false) const {return false;};
 
