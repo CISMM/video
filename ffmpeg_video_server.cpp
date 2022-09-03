@@ -127,14 +127,13 @@ bool ffmpeg_video_server::open_video_file(void)
 
     // Allocate video frame
     //printf("dbg: allocating video frame\n");
-    m_pFrame=avcodec_alloc_frame();
+    m_pFrame=av_frame_alloc();
     if (m_pFrame==NULL) {
         fprintf(stderr,"ffmpeg_video_server::open_video_file(): Out of memory allocating video frame\n");
         return false;
     }
 
     // Allocate an AVFrame structure
-    m_pFrameRGB=avcodec_alloc_frame();
     m_pFrameRGB=av_frame_alloc();
     if (m_pFrameRGB==NULL) {
         fprintf(stderr,"ffmpeg_video_server::open_video_file(): Out of memory allocating RGB video frame\n");
