@@ -152,13 +152,13 @@ int main(int, char *[])
   avgcount = 1000;
   struct timeval start, end;
   tracker.optimize(image, 0, x,y);	      // Get back to the correct starting location
-  gettimeofday(&start, NULL);
+  vrpn_gettimeofday(&start, NULL);
   for (i = 0; i < avgcount; i++) {
     tracker.optimize_xy(image, 0, x, y,
       x + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2),
       y + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2));
   }
-  gettimeofday(&end, NULL);
+  vrpn_gettimeofday(&end, NULL);
   printf("  Time: %lg seconds per optimization\n", duration(end, start)/avgcount);
 
   printf("-----------------------------------------------------------------\n");
@@ -238,13 +238,13 @@ int main(int, char *[])
   printf("Timing how long it takes to optimize pos to %g pixels from a nearby position on average\n", pixacc);
   avgcount = 100;
   interptracker.optimize(image, 0, x,y);	      // Get back to the correct starting location
-  gettimeofday(&start, NULL);
+  vrpn_gettimeofday(&start, NULL);
   for (i = 0; i < avgcount; i++) {
     interptracker.optimize_xy(image, 0, x, y,
       x + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2),
       y + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2));
   }
-  gettimeofday(&end, NULL);
+  vrpn_gettimeofday(&end, NULL);
   printf("  Time: %lg seconds per optimization\n", duration(end, start)/avgcount);
 
   printf("-----------------------------------------------------------------\n");
@@ -326,13 +326,13 @@ int main(int, char *[])
   printf("Timing how long it takes to optimize pos to %g pixels from a nearby position on average\n", pixacc);
   avgcount = 100;
   conetracker.optimize(image, 0, x,y);	      // Get back to the correct starting location
-  gettimeofday(&start, NULL);
+  vrpn_gettimeofday(&start, NULL);
   for (i = 0; i < avgcount; i++) {
     conetracker.optimize_xy(image, 0, x, y,
       x + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2),
       y + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2));
   }
-  gettimeofday(&end, NULL);
+  vrpn_gettimeofday(&end, NULL);
   printf("  Time: %lg seconds per optimization\n", duration(end, start)/avgcount);
 
   printf("-----------------------------------------------------------------\n");
@@ -415,13 +415,13 @@ int main(int, char *[])
   printf("Timing how long it takes to optimize pos to %g pixels from a nearby position on average\n", pixacc);
   avgcount = 100;
   symmetrictracker.optimize(image, 0, x,y);	      // Get back to the correct starting location
-  gettimeofday(&start, NULL);
+  vrpn_gettimeofday(&start, NULL);
   for (i = 0; i < avgcount; i++) {
     symmetrictracker.optimize_xy(image, 0, x, y,
       x + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2),
       y + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2));
   }
-  gettimeofday(&end, NULL);
+  vrpn_gettimeofday(&end, NULL);
   printf("  Time: %lg seconds per optimization\n", duration(end, start)/avgcount);
 
   printf("-----------------------------------------------------------------\n");
@@ -505,17 +505,18 @@ int main(int, char *[])
   printf("Timing how long it takes to optimize pos to %g pixels from a nearby position on average\n", pixacc);
   avgcount = 10;
   Gaussiantracker.optimize(image, 0, x,y);	      // Get back to the correct starting location
-  gettimeofday(&start, NULL);
+  vrpn_gettimeofday(&start, NULL);
   for (i = 0; i < avgcount; i++) {
     Gaussiantracker.optimize_xy(image, 0, x, y,
       x + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2),
       y + ( (rand()/(double)(RAND_MAX)) - 0.5) * 2 * (testrad/2));
   }
-  gettimeofday(&end, NULL);
+  vrpn_gettimeofday(&end, NULL);
   printf("  Time: %lg seconds per optimization\n", duration(end, start)/avgcount);
 
   //-----------------------------------------------------------------------------------------------
   // Testing the Z-tracking classes.
+#if defined(VST_USE_IMAGEMAGICK)
   printf("-----------------------------------------------------------------\n");
 
   // Construct a PSF kernel by making a number of disc images and sticking them into it.
@@ -552,6 +553,7 @@ int main(int, char *[])
 
   // Delete the PSF file
   unlink("deleteme.tif");
+#endif
   
   return 0;
 }
