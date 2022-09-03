@@ -106,6 +106,8 @@ protected:
 
 class spot_tracker_Z {
 public:
+  virtual ~spot_tracker_Z() {};
+
   // Optimize starting at the specified location to find the best-fit depth.
   // Take only one optimization step.  Return whether we ended up finding a
   // better depth or not.  Return new depth in any case.  The caller tells

@@ -525,22 +525,30 @@ int main(int, char *[])
     discs[i] = new disc_image(0,128, 0,128, 0, 0.0, 64,64, i+10, 255, 4);
     psf->append_line(*discs[i], 64, 64);
   }
+  // Delete the object, which will write the file.
   delete psf;
 
   // Test the best-fit-finding code
-  radial_average_tracker_Z  Ztrack("deleteme.tif");
+  radial_average_tracker_Z  *Ztrack = new radial_average_tracker_Z("deleteme.tif");
   double z = 0.0;
-  Ztrack.locate_best_fit_in_depth(*discs[5], 0, 64, 64, z);
+  Ztrack->locate_best_fit_in_depth(*discs[5], 0, 64, 64, z);
   printf("Z best fit should be 5, found at %lf\n", z);
 
   // Test the optimization code
-  Ztrack.optimize(*discs[7], 0, 64, 64, z);
+  Ztrack->optimize(*discs[7], 0, 64, 64, z);
   printf("Z optimum should be 7, found at %lf\n", z);
 
   // Test on a novel image
-  disc_image test_disc(0,128, 0,128, 0, 0.0, 64,64, 5.5+10, 255, 4);
-  Ztrack.optimize(test_disc, 0, 64, 64, z);
+  disc_image *test_disc = new disc_image(0,128, 0,128, 0, 0.0, 64,64, 5.5+10, 255, 4);
+  Ztrack->optimize(*test_disc, 0, 64, 64, z);
   printf("Z optimum should be 5.5, found at %lf\n", z);
+  delete test_disc;
+  delete Ztrack;
+
+  // We no longer need the images.
+  for (i = 0; i < 10; i++) {
+    delete discs[i];
+  }
 
   // Delete the PSF file
   unlink("deleteme.tif");
