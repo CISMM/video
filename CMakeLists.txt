@@ -55,19 +55,6 @@ endif()
 # Local CMake Modules
 list(APPEND CMAKE_MODULE_PATH ${CISMM_VIDEO_SOURCE_DIR} ${CISMM_VIDEO_SOURCE_DIR}/cmake)
 
-# Configuration options controlling what gets included in the build.
-OPTION(VIDEO_BUILD_APPLICATIONS "Enable to build applications" ON)
-FIND_PACKAGE(TCL)
-FIND_PACKAGE(GLUT)
-if (TCL_FOUND)
-  OPTION(VIDEO_USE_TCL "Enable to build with TCL" ON)
-endif (TCL_FOUND)
-if (GLUT_FOUND)
-	INCLUDE_DIRECTORIES(
-		${GLUT_INCLUDE_DIR}
-	)
-endif (GLUT_FOUND)
-
 #-----------------------------------------------------------------------------
 # Libraries we need to do our thing.
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${VIDEO_SOURCE_DIR})
@@ -80,7 +67,21 @@ FIND_PACKAGE(OpenGL REQUIRED)
 INCLUDE_DIRECTORIES(
 	${QUATLIB_INCLUDE_DIR}
 	${VRPN_INCLUDE_DIR}
+  ${OPENGL_INCLUDE_DIR}
 )
+
+# Configuration options controlling what gets included in the build.
+OPTION(VIDEO_BUILD_APPLICATIONS "Enable to build applications" ON)
+FIND_PACKAGE(TCL)
+FIND_PACKAGE(GLUT)
+if (TCL_FOUND)
+  OPTION(VIDEO_USE_TCL "Enable to build with TCL" ON)
+endif (TCL_FOUND)
+if (GLUT_FOUND)
+	INCLUDE_DIRECTORIES(
+		${GLUT_INCLUDE_DIR}
+	)
+endif (GLUT_FOUND)
 
 IF (WIN32)
 # Try to find NSRG Buildtime (NSRGBUILD) to set all we need for ImageMagic,
