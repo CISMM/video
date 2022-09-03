@@ -55,14 +55,12 @@ endif()
 list(APPEND CMAKE_MODULE_PATH ${CISMM_VIDEO_SOURCE_DIR} ${CISMM_VIDEO_SOURCE_DIR}/cmake)
 
 # Configuration options controlling what gets included in the build.
+OPTION(VIDEO_BUILD_APPLICATIONS "Enable to build applications" ON)
 FIND_PACKAGE(TCL)
 FIND_PACKAGE(GLUT)
-if (TCL_FOUND AND GLUT_FOUND)
-  OPTION(VIDEO_BUILD_APPLICATIONS "Enable to build applications" ON)
-else()
-  OPTION(VIDEO_BUILD_APPLICATIONS "Enable to build applications" OFF)
-endif()
-
+if (TCL_FOUND)
+  OPTION(VIDEO_USE_TCL "Enable to build with TCL" ON)
+endif (TCL_FOUND)
 
 #-----------------------------------------------------------------------------
 # Libraries we need to do our thing.
@@ -133,7 +131,7 @@ FIND_PACKAGE(CUDA)
 if (CUDA_FOUND)
 	OPTION(VIDEO_USE_CUDA "Compile and link to CUDA library" ON)
 	include_directories(${CUDA_TOOLKIT_INCLUDE})
-	set(CUDA_NVCC_FLAGS -arch=compute_10 -code=compute_10 CACHE STRING "CUDA compiler command-line arguments" FORCE)
+	set(CUDA_NVCC_FLAGS -arch=compute_50 -code=compute_50 CACHE STRING "CUDA compiler command-line arguments" FORCE)
 else()
 	OPTION(VIDEO_USE_CUDA "Compile and link to CUDA library" OFF)
 endif()
@@ -430,6 +428,22 @@ if (VIDEO_USE_FFMPEG)
 	endif (NOT (APPLE))
 endif (VIDEO_USE_FFMPEG)
 
+#-----------------------------------------------------------------------------
+# Tcl-Linkvar library (not a library in the initial project file)
+if (VIDEO_USE_TCL)
+  set(LV_SOURCES Tcl_Linkvar.C)
+  set(LV_PUBLIC_HEADERS Tcl_Linkvar.h)
+  ADD_LIBRARY (Tcl_Linkvar
+    ${LV_SOURCES} ${LV_PUBLIC_HEADERS}
+  )
+  set_property(TARGET Tcl_Linkvar PROPERTY PUBLIC_HEADER ${LV_PUBLIC_HEADERS})
+  if (NOT APPLE)
+  install(TARGETS Tcl_Linkvar
+    ARCHIVE DESTINATION lib
+    PUBLIC_HEADER DESTINATION include)
+  endif (NOT APPLE)
+endif (VIDEO_USE_TCL)
+
 # XXX NIKON
 
 #-----------------------------------------------------------------------------
@@ -504,6 +518,7 @@ if (VIDEO_USE_DIRECTSHOW)
 
   if (VIDEO_BUILD_APPLICATIONS)
 	if (VIDEO_USE_DIRECTSHOW_APPS)
+  if (VIDEO_BUILD_TCL)
 	SET(TARGET_NAME stereo_spin)
 	ADD_EXECUTABLE(stereo_spin stereo_spin.cpp)
 	TARGET_LINK_LIBRARIES(stereo_spin
@@ -586,6 +601,7 @@ if (VIDEO_USE_DIRECTSHOW)
 	INCLUDE_DIRECTORIES(
 		${DirectShow_INCLUDE_DIRS}
 	)
+  endif (VIDEO_BUILD_TCL)
 	endif (VIDEO_USE_DIRECTSHOW_APPS)
   endif (VIDEO_BUILD_APPLICATIONS)
 
@@ -625,22 +641,6 @@ install(TARGETS stocc_random_number_generator_library
 endif(NOT (APPLE))
 
 #-----------------------------------------------------------------------------
-# Tcl-Linkvar library (not a library in the initial project file)
-if (VIDEO_BUILD_APPLICATIONS)
-set(LV_SOURCES Tcl_Linkvar.C)
-set(LV_PUBLIC_HEADERS Tcl_Linkvar.h)
-ADD_LIBRARY (Tcl_Linkvar
-	${LV_SOURCES} ${LV_PUBLIC_HEADERS}
-)
-set_property(TARGET Tcl_Linkvar PROPERTY PUBLIC_HEADER ${LV_PUBLIC_HEADERS})
-if (NOT APPLE)
-install(TARGETS Tcl_Linkvar
-	ARCHIVE DESTINATION lib
-	PUBLIC_HEADER DESTINATION include)
-endif (NOT APPLE)
-endif (VIDEO_BUILD_APPLICATIONS)
-
-#-----------------------------------------------------------------------------
 # Include directories needed
 INCLUDE_DIRECTORIES(
 	${QUATLIB_INCLUDE_DIR}
@@ -655,6 +655,7 @@ endif (VIDEO_USE_IMAGEMAGICK)
 # Applications that need more than one file or nonstandard things.
 if (VIDEO_BUILD_APPLICATIONS)
 
+if (VIDEO_BUILD_TCL)
 # Non-CUDA version of Video Spot Tracker
 if (NOT VIDEO_USE_CUDA)
 SET(TARGET_NAME video_spot_tracker)
@@ -775,7 +776,9 @@ INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
 #--------------------------------------------------------------------------
 ENDIF(NOT APPLE)
 endif (NOT VIDEO_USE_CUDA)
+endif (VIDEO_BUILD_TCL)
 
+if (VIDEO_BUILD_TCL)
 # XXX Should move the CUDA compilation into the spot-tracker library code.
 # XXX Then do we CUDA compile everything that uses spot-tracker lib?
 if (VIDEO_USE_CUDA)
@@ -890,6 +893,7 @@ spot_tracker.cu)
   ENDIF(NOT APPLE)
 
 endif (VIDEO_USE_CUDA)
+endif (VIDEO_BUILD_TCL)
 
 # XXX Should move the CUDA compilation into the spot-tracker library code.
 # XXX Then do we CUDA compile everything that uses spot-tracker lib?
@@ -971,11 +975,8 @@ endif (VIDEO_USE_FFMPEG)
 TARGET_LINK_LIBRARIES(video_spot_tracker_nogui
 	spot_tracker_library
 	base_camera_server_library
-	Tcl_Linkvar
 	${VRPN_SERVER_LIBRARIES} ${QUATLIB_LIBRARIES}
 	${OPENGL_gl_LIBRARY}
-	${TCL_LIBRARY}
-	${TK_LIBRARY}
 	${GLUT_LIBRARIES}
 )
 set_target_properties(video_spot_tracker_nogui PROPERTIES COMPILE_FLAGS -DVST_NO_GUI)
@@ -1185,6 +1186,7 @@ MACRO(CAPC_APPLICATION APPLICATION_NAME SOLUTION_NAME)
 ENDMACRO(CAPC_APPLICATION)
 
 MACRO(CPP_APPLICATION APPLICATION_NAME SOLUTION_NAME)
+if (VIDEO_USE_TCL)
   SET(TARGET_NAME ${APPLICATION_NAME})
 
 if( ${APPLICATION_NAME} MATCHES cismm_video_optimizer )
@@ -1299,6 +1301,7 @@ ENDIF() # Match cismm_video_optimizer
   SET_TARGET_PROPERTIES(${APPLICATION_NAME} PROPERTIES SOLUTION_FOLDER ${SOLUTION_NAME})
 
 
+endif (VIDEO_USE_TCL)
 ENDMACRO(CPP_APPLICATION)
 
 MACRO(CPP_NOGUI_APPLICATION APPLICATION_NAME SOLUTION_NAME)
@@ -1389,37 +1392,43 @@ ENDMACRO(CPP_NOGUI_APPLICATION)
 #-----------------------------------------------------------------------------
 # Declaration of the simple applications that don't have extra files
 
-CPP_APPLICATION(add_noise_to_image apps)
-CPP_APPLICATION(invert_image apps)
+if (VIDEO_USE_IMAGEMAGICK)
+CPP_NOGUI_APPLICATION(add_noise_to_image apps)
+CPP_NOGUI_APPLICATION(invert_image apps)
+endif (VIDEO_USE_IMAGEMAGICK)
 CPP_APPLICATION(airy_maker apps)
 if (WIN32)
 	CPP_APPLICATION(argonot apps)
 endif (WIN32)
-CPP_APPLICATION(average_videos apps)
+if (VIDEO_USE_VRPN_IMAGER)
+CPP_NOGUI_APPLICATION(average_videos apps)
+endif (VIDEO_USE_VRPN_IMAGER)
 if (NOT VIDEO_USE_CUDA)
 CPP_APPLICATION(cismm_video_optimizer apps)
 endif (NOT VIDEO_USE_CUDA)
-CPP_APPLICATION(compare_tracking_files apps)
-CPP_APPLICATION(check_found_spots apps)
+CPP_NOGUI_APPLICATION(compare_tracking_files apps)
+CPP_NOGUI_APPLICATION(check_found_spots apps)
 if (VIDEO_USE_EDT)
-	CPP_APPLICATION(edt_video_take apps)
+	CPP_NOGUI_APPLICATION(edt_video_take apps)
 	CAPC_APPLICATION(manual_capture apps)
 endif (VIDEO_USE_EDT)
 if (NOT VIDEO_USE_CUDA)
-CPP_APPLICATION(make_compression_video apps)
-CPP_APPLICATION(make_moving_spot_video apps)
-CPP_APPLICATION(make_multi_spot_test apps)
-CPP_APPLICATION(make_test_image apps)
+CPP_NOGUI_APPLICATION(make_compression_video apps)
+CPP_NOGUI_APPLICATION(make_moving_spot_video apps)
+CPP_NOGUI_APPLICATION(make_multi_spot_test apps)
+if (VIDEO_USE_IMAGEMAGICK)
+CPP_NOGUI_APPLICATION(make_test_image apps)
+endif (VIDEO_USE_IMAGEMAGICK)
 endif (NOT VIDEO_USE_CUDA)
 CPP_NOGUI_APPLICATION(video_imager_server apps)
-CPP_APPLICATION(csv_to_xml apps)
-CPP_APPLICATION(xml_tracking_compare apps)
+CPP_NOGUI_APPLICATION(csv_to_xml apps)
+CPP_NOGUI_APPLICATION(xml_tracking_compare apps)
 if (VIDEO_USE_ROPER)
-	CPP_APPLICATION(roper_example apps)
+	CPP_NOGUI_APPLICATION(roper_example apps)
 	CPP_APPLICATION(roper_spot_tracker apps)
 endif (VIDEO_USE_ROPER)
 if (NOT VIDEO_USE_CUDA)
-CPP_APPLICATION(test_spot_tracker tests)
+CPP_NOGUI_APPLICATION(test_spot_tracker tests)
 endif (NOT VIDEO_USE_CUDA)
 
 # XXX stocc_test_poisson
