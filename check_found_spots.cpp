@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
 	int spot_num = 0;
 	for (double i = 40; i <= 360; i += 80) {
 		for (double j = 40; j <= 360; j += 80) {
-			if ( abs(x - i) < 5 && abs(y - j) < 5 && !(found_spots[spot_num])) {
+			if ( fabs(x - i) < 5 && fabs(y - j) < 5 && !(found_spots[spot_num])) {
 				found_spots[spot_num] = true;
 				count++;
 			}

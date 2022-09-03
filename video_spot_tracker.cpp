@@ -697,7 +697,7 @@ static void  cleanup(void)
   // are being tracked.
 
   { struct timeval now;
-    gettimeofday(&now, NULL);
+    vrpn_gettimeofday(&now, NULL);
     double timesecs = 0.001 * vrpn_TimevalMsecs(vrpn_TimevalDiff(now, program_start_time));
     static int total_frames = g_frame_number + 1;
 
@@ -857,7 +857,7 @@ static	bool  save_log_frame(int frame_number)
 {
   static struct timeval start;
   static bool first_time = true;
-  struct timeval now; gettimeofday(&now, NULL);
+  struct timeval now; vrpn_gettimeofday(&now, NULL);
 
   // If optimization is turned off, only log if the flag is set that lets us log
   // when optimization is turned off.
@@ -2857,10 +2857,10 @@ void myIdleFunc(void)
     static int last_frame_number = g_frame_number;
 
     if (first_time) {
-      gettimeofday(&last_print_time, NULL);
+        vrpn_gettimeofday(&last_print_time, NULL);
       first_time = false;
     } else {
-      gettimeofday(&now, NULL);
+        vrpn_gettimeofday(&now, NULL);
       double timesecs = 0.001 * vrpn_TimevalMsecs(vrpn_TimevalDiff(now, last_print_time));
       if (timesecs >= 5) {
 	double frames_per_sec = (g_frame_number - last_frame_number) / timesecs;

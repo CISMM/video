@@ -62,6 +62,11 @@ FIND_PACKAGE(GLUT)
 if (TCL_FOUND)
   OPTION(VIDEO_USE_TCL "Enable to build with TCL" ON)
 endif (TCL_FOUND)
+if (GLUT_FOUND)
+	INCLUDE_DIRECTORIES(
+		${GLUT_INCLUDE_DIR}
+	)
+endif (GLUT_FOUND)
 
 #-----------------------------------------------------------------------------
 # Libraries we need to do our thing.
@@ -70,9 +75,16 @@ FIND_PACKAGE(quatlib REQUIRED)	# Sets QUATLIB_INCLUDE_DIR and QUATLIB_LIBRARIES
 FIND_PACKAGE(VRPN REQUIRED)
 FIND_PACKAGE(OpenGL REQUIRED)
 
+#-----------------------------------------------------------------------------
+# Include directories needed
+INCLUDE_DIRECTORIES(
+	${QUATLIB_INCLUDE_DIR}
+	${VRPN_INCLUDE_DIR}
+)
+
 IF (WIN32)
 # Try to find NSRG Buildtime (NSRGBUILD) to set all we need for ImageMagic,
-# TCL, and Glut.  If not, then find the individual packages.
+# TCL, and Glut.
 FIND_PACKAGE(NSRGBUILD)
 if (NSRGBUILD_FOUND)
 	set(ImageMagick_FOUND true CACHE BOOL "NSRG found, so ImageMagick found")
@@ -283,15 +295,14 @@ if (WIN32)
         endif (NOT ONCE_SET_CMAKE_INSTALL_PREFIX)
 endif (WIN32)
 
-if (VIDEO_BUILD_APPLICATIONS)
+if (VIDEO_USE_TCL)
   INCLUDE_DIRECTORIES(
 	${TCL_INCLUDE_PATH}
 	${TK_INCLUDE_PATH}
 	${TCL_X11_INCLUDE_PATH}
-	${GLUT_INCLUDE_DIR}
   )
 	ADD_DEFINITIONS(-DUSE_INTERP_RESULT)
-endif (VIDEO_BUILD_APPLICATIONS)
+endif (VIDEO_USE_TCL)
 
 INCLUDE_DIRECTORIES(
 	${Cooke_INCLUDE_PATH}
@@ -642,12 +653,6 @@ install(TARGETS stocc_random_number_generator_library
 	PUBLIC_HEADER DESTINATION include)
 endif(NOT (VIDEO_BUILD_MACBUNDLE))
 
-#-----------------------------------------------------------------------------
-# Include directories needed
-INCLUDE_DIRECTORIES(
-	${QUATLIB_INCLUDE_DIR}
-	${VRPN_INCLUDE_DIR}
-)
 if (VIDEO_USE_IMAGEMAGICK)
   INCLUDE_DIRECTORIES(
 	${ImageMagick_INCLUDE_DIRS}
@@ -900,6 +905,7 @@ endif (VIDEO_BUILD_TCL)
 
 # XXX Should move the CUDA compilation into the spot-tracker library code.
 # XXX Then do we CUDA compile everything that uses spot-tracker lib?
+if (GLUT_FOUND)
 SET(TARGET_NAME video_spot_tracker_nogui)
 if (VIDEO_USE_CUDA)
 	CUDA_ADD_EXECUTABLE(video_spot_tracker_nogui video_spot_tracker.cpp spot_tracker.cu)
@@ -997,8 +1003,9 @@ ELSE(NOT VIDEO_BUILD_MACBUNDLE)
 INSTALL(TARGETS ${TARGET_NAME} DESTINATION .)
 # ------------------------------------------------------------------
 ENDIF(NOT VIDEO_BUILD_MACBUNDLE)
+endif (GLUT_FOUND)
 
-if (VIDEO_USE_CUDA)
+if (VIDEO_USE_CUDA AND VIDEO_USE_TCL)
   SET(TARGET_NAME CUDA_video_filter)
   IF(NOT VIDEO_BUILD_MACBUNDLE)
 	CUDA_ADD_EXECUTABLE(CUDA_video_filter CUDA_video_filter.cpp spot_tracker.cu)
@@ -1078,7 +1085,7 @@ if (VIDEO_USE_CUDA)
     #INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
   ENDIF(NOT VIDEO_BUILD_MACBUNDLE)
 
-endif (VIDEO_USE_CUDA)
+endif (VIDEO_USE_CUDA AND VIDEO_USE_TCL)
 
 SET(TARGET_NAME swap_ppm_lines)
 ADD_EXECUTABLE(swap_ppm_lines swap_ppm_lines.cpp ppm.C)
