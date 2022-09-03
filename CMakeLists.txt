@@ -532,7 +532,7 @@ if (VIDEO_USE_DIRECTSHOW)
 
   if (VIDEO_BUILD_APPLICATIONS)
 	if (VIDEO_USE_DIRECTSHOW_APPS)
-  if (VIDEO_BUILD_TCL)
+  if (VIDEO_USE_TCL)
 	SET(TARGET_NAME stereo_spin)
 	ADD_EXECUTABLE(stereo_spin stereo_spin.cpp)
 	TARGET_LINK_LIBRARIES(stereo_spin
@@ -615,7 +615,7 @@ if (VIDEO_USE_DIRECTSHOW)
 	INCLUDE_DIRECTORIES(
 		${DirectShow_INCLUDE_DIRS}
 	)
-  endif (VIDEO_BUILD_TCL)
+  endif (VIDEO_USE_TCL)
 	endif (VIDEO_USE_DIRECTSHOW_APPS)
   endif (VIDEO_BUILD_APPLICATIONS)
 
@@ -664,7 +664,7 @@ endif (VIDEO_USE_IMAGEMAGICK)
 # Applications that need more than one file or nonstandard things.
 if (VIDEO_BUILD_APPLICATIONS)
 
-if (VIDEO_BUILD_TCL)
+if (VIDEO_USE_TCL)
 # Non-CUDA version of Video Spot Tracker
 if (NOT VIDEO_USE_CUDA)
 SET(TARGET_NAME video_spot_tracker)
@@ -785,9 +785,9 @@ INSTALL(TARGETS ${TARGET_NAME} BUNDLE DESTINATION .)
 #--------------------------------------------------------------------------
 ENDIF(NOT VIDEO_BUILD_MACBUNDLE)
 endif (NOT VIDEO_USE_CUDA)
-endif (VIDEO_BUILD_TCL)
+endif (VIDEO_USE_TCL)
 
-if (VIDEO_BUILD_TCL)
+if (VIDEO_USE_TCL)
 # XXX Should move the CUDA compilation into the spot-tracker library code.
 # XXX Then do we CUDA compile everything that uses spot-tracker lib?
 if (VIDEO_USE_CUDA)
@@ -902,7 +902,7 @@ spot_tracker.cu)
   ENDIF(NOT VIDEO_BUILD_MACBUNDLE)
 
 endif (VIDEO_USE_CUDA)
-endif (VIDEO_BUILD_TCL)
+endif (VIDEO_USE_TCL)
 
 # XXX Should move the CUDA compilation into the spot-tracker library code.
 # XXX Then do we CUDA compile everything that uses spot-tracker lib?
