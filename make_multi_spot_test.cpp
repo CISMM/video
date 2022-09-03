@@ -375,7 +375,7 @@ int main(int argc, char *argv[])
 
     // Write the information about the first bead to the CSV file, in a format
     // that matches the header description.  We DO NOT flip y in this report
-    fprintf(g_csv_file, "%d,0,%lg,%lg,0,%lg,%lg\n", frame, x, y, radius_std, 0);
+    fprintf(g_csv_file, "%d,0,%lg,%lg,0,%lg,%lg\n", frame, x, y, radius_std, 0.0);
 
     // Clean up things allocated for this frame.
     delete beads;

@@ -330,7 +330,7 @@ void  teardown_server_code(void)
 int main(int argc, char *argv[])
 {
 	int	i, realparams;		  // How many non-flag command-line arguments
-	char	*devicename = "directx";  // Name of the device to open
+	const char	*devicename = "directx";  // Name of the device to open
 	int	devicenum = 1;		  // Which, if there are more than one, to open
 	char	*logfilename = NULL;	  // Outgoing log file name.
 
